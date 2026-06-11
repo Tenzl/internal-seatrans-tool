@@ -6,8 +6,17 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url))
 /** @type {import('next').NextConfig} */
 const isProd = process.env.NODE_ENV === 'production'
 
-const API_PROXY_TARGET =
-  process.env.API_PROXY_TARGET || 'http://localhost:8080'
+// Single source of truth for the backend origin: reuse NEXT_PUBLIC_API_BASE_URL
+// (the same value the client uses). API_PROXY_TARGET stays as an optional override.
+// Normalise like api.config.ts so a trailing slash or /api(/vN) suffix can't
+// produce a double /api in the rewrite.
+const API_PROXY_TARGET = (
+  process.env.API_PROXY_TARGET ||
+  process.env.NEXT_PUBLIC_API_BASE_URL ||
+  'http://localhost:8080'
+)
+  .replace(/\/+$/, '')
+  .replace(/\/api(?:\/v\d+)?$/, '')
 
 const nextConfig = {
   // Repo root also has a package-lock.json; pin tracing to this app.
