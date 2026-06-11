@@ -1,0 +1,334 @@
+<!doctype html>
+<!--
+  CANONICAL quote template (source of truth). The frontend customer-portal copy at
+  frontend/public/templates/quote.html is generated from this file by
+  frontend/scripts/sync-quote-template.mjs (runs on frontend predev/prebuild).
+  Edit THIS file; do not hand-edit the frontend copy.
+-->
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Estimated Port Disbursements</title>
+  <style>
+    /* ===== Print setup (Narrow — Word preset) ===== */
+    @page {
+      size: A4;
+      margin-top: 1.2cm;
+      margin-bottom: 1.2cm;
+      margin-left: 0.64cm;
+      margin-right: 0.64cm;
+    }
+    html, body { height: 100%; }
+    body {
+      font-family: Arial, Helvetica, sans-serif;
+      font-size: 10px;
+      color: #000;
+      margin: 0;
+      line-height: 1.2;
+    }
+    /* Page/table width — widened to fit the larger font (near A4 printable width). */
+    :root {
+      --epda-banner-width: 19cm;
+      --epda-banner-height: 2.75cm;
+      --epda-banner-ratio: 1075 / 206;
+    }
+
+    .page {
+      width: var(--epda-banner-width);
+      max-width: 100%;
+      margin: 0 auto;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    .page > * {
+      width: 100%;
+      max-width: 100%;
+      box-sizing: border-box;
+    }
+
+    @media print {
+      html, body { margin: 0; padding: 0; }
+      .page { width: var(--epda-banner-width); max-width: none; }
+    }
+    .muted { color: #222; }
+    .right { text-align: right; }
+    .center { text-align: center; }
+    .bold { font-weight: 700; }
+    .u { text-decoration: underline; }
+    .red { color: #c00000; font-weight: 700; }
+    .small { font-size: 9.5px; }
+    .mt-6 { margin-top: 4px; }
+    .mt-10 { margin-top: 6px; }
+    .mt-14 { margin-top: 9px; }
+    .mb-6 { margin-bottom: 4px; }
+
+    /* ===== Header lines ===== */
+    .top-lines {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 2px 10px;
+      align-items: start;
+    }
+    .top-lines .line { white-space: nowrap; }
+    .top-lines .line span.label { display: inline-block; width: 34px; }
+    .title {
+      margin: 5px 0 4px;
+      font-size: 12.5px;
+      font-weight: 800;
+      letter-spacing: 0.3px;
+    }
+
+    /* ===== Vessel + Port boxes ===== */
+    .page table {
+      border-collapse: collapse;
+      width: 100%;
+      max-width: 100%;
+      table-layout: fixed;
+      box-sizing: border-box;
+    }
+    .box {
+      border: 1px solid #000;
+    }
+    .box td,
+    .box th,
+    .charges td,
+    .charges th {
+      overflow: hidden;
+      word-wrap: break-word;
+      word-break: break-word;
+    }
+    .box td,
+    .box th {
+      border: 1px solid #000;
+      padding: 1px 3px;
+      vertical-align: top;
+    }
+    /*
+     * Vessel/port box căn đúng theo bảng AA:
+     *   - label: giữ nguyên (11%)
+     *   - value kết thúc tại dải cuối cột Details của AA  → 5 + 22 + 30 = 57%
+     *   - port-label kết thúc tại dải cuối cột Remark của AA → 57 + 7 + 18 = 82%
+     *   - value-right: 100 - 82 = 18% (mặc định)
+     */
+    .box .label       { width: 11%; white-space: nowrap; }
+    .box .value       { width: 46%; font-weight: 700; }
+    .box .port-label  { width: 25%; }
+    .box .value-right { width: 18%; font-weight: 700; }
+
+    /* ===== Section titles ===== */
+    .section-title {
+      font-weight: 800;
+      margin: 5px 0 3px;
+    }
+
+    /* ===== Charges table ===== */
+    .charges th, .charges td {
+      border: 1px solid #000;
+      padding: 1px 3px;
+      vertical-align: top;
+    }
+    .charges th {
+      font-weight: 800;
+      text-align: left;
+    }
+    /* Item rộng hơn, Details thu nhỏ — tổng 6 cột = 100% */
+    .charges .col-no      { width: 5%;  text-align: center; }
+    .charges .col-item    { width: 22%; }
+    .charges .col-details { width: 30%; }
+    .charges .col-add     { width: 7%;  text-align: center; }
+    .charges .col-remark  { width: 18%; }
+    .charges .col-amount  { width: 18%; text-align: right; white-space: nowrap; }
+
+    /* BB table (no item column) */
+    .bb th, .bb td { vertical-align: top; }
+    /* BB = 3 cột để chỉnh % */
+    .bb .bb-no { width: 5%; text-align: center; }
+    .bb .bb-details { width: 77%; }
+    .bb .bb-amount { width: 18%; text-align: right; white-space: nowrap; }
+
+    .total-row td {
+      font-weight: 800;
+    }
+    .total-row td:last-child {
+      text-align: right;
+      white-space: nowrap;
+    }
+
+    /* ===== Remark & footer blocks ===== */
+    .remark-row td {
+      font-size: 10px;
+      font-style: italic;
+    }
+
+    .hr {
+      margin: 6px 0 4px;
+      border-top: 1px solid #000;
+      height: 0;
+    }
+    .footer-lines {
+      font-size: 9.5px;
+      line-height: 1.15;
+    }
+    .footer-sep {
+      font-family: "Courier New", Courier, monospace;
+      font-size: 11px;
+      margin: 6px 0;
+    }
+    .signature-block {
+      margin-top: 6px;
+      text-align: left;
+      padding-left: 18px;
+      font-weight: 700;
+      letter-spacing: 0.3px;
+      font-size: 11.5px;
+    }
+    .signature-block img {
+      margin-top: 4px;
+      max-height: 66px;
+    }
+    /* Bank details: a touch larger than body for readability. */
+    .bank-block { font-size: 11.5px; line-height: 1.3; }
+    .indent { padding-left: 10px; }
+
+    .author-header {
+      width: 100%;
+      margin: 0 0 4px;
+      line-height: 0;
+    }
+    .author-header img {
+      display: block;
+      width: 100%;
+      height: auto;
+      aspect-ratio: var(--epda-banner-ratio);
+    }
+  </style>
+</head>
+<body>
+  <div class="page">
+
+    <!-- Banner: làm chuẩn chiều ngang cho toàn bộ nội dung bên dưới -->
+    <div class="author-header">
+      <img src="/landing-image/authorHeader.png" alt="Author header" />
+    </div>
+
+    <!-- ===== TOP HEADER (TO/FM on left; DATE/REF on right) ===== -->
+    <div class="top-lines">
+      <div class="line"><span class="label bold">TO</span>: <span class="u bold">{{to_shipowner}}</span></div>
+      <div class="line right"><span class="label bold">DATE</span>: <span class="bold">{{date}}</span></div>
+
+      <div class="line"><span class="label bold">FM</span>: <span class="bold">SEATRANS - SHIPPING AGENCY</span></div>
+      <div class="line right"><span class="label bold">REF.</span> <span class="bold">{{ref}}</span></div>
+    </div>
+
+    <div class="title center">ESTIMATED PORT DISBURSEMENTS</div>
+
+    <!-- ===== VESSEL + PORT BOX (single table) ===== -->
+    <table class="box">
+      <tr>
+        <td class="label bold">MV</td>
+        <td class="value">{{mv}}</td>
+        <td class="port-label bold">Discharging/loading port</td>
+        <td class="value-right right">{{port_upper}}</td>
+      </tr>
+      <tr>
+        <td class="label bold">DWT</td>
+        <td class="red">{{dwt}}</td>
+        <td class="port-label bold">Discharging/loading term</td>
+        <td class="value-right right">F.O</td>
+      </tr>
+      <tr>
+        <td class="label bold">GRT</td>
+        <td class="red">{{grt}}</td>
+        <td class="port-label bold">Dis/loading at anchorage</td>
+        <td class="value-right right">{{at_anchorage}}</td>
+      </tr>
+      <tr>
+        <td class="label bold">LOA</td>
+        <td class="red">{{loa}}</td>
+        <td class="port-label bold">Discharging/loading at berth</td>
+        <td class="value-right right">{{at_berth}}</td>
+      </tr>
+      <tr>
+        <td class="label bold">ETA</td>
+        <td class="red">{{eta}}</td>
+        <td class="port-label bold"></td>
+        <td class="value-right right"></td>
+      </tr>
+      <tr>
+        <td class="label bold">Cargo/Q'ty</td>
+        <td class="value">{{cargo_qty_mt}} MT OF {{cargo_name_upper}}</td>
+        <td class="port-label bold"></td>
+        <td class="value-right right"></td>
+      </tr>
+    </table>
+
+    <!-- ===== AA TABLE ===== -->
+    <div class="section-title">AA. Port dues and charges :</div>
+    <table class="charges">
+      <tr>
+        <th class="col-no">No.</th>
+        <th class="col-item">Item</th>
+        <th class="col-details">Details (Rate x GRT x ...)</th>
+        <th class="col-add"></th>
+        <th class="col-remark">Remark</th>
+        <th class="col-amount">Amount (USD)</th>
+      </tr>
+
+      {{AA_ROWS}}
+
+      <tr class="total-row">
+        <td colspan="5" class="right">TOTAL A : (I)</td>
+        <td class="red">{{total_a}}</td>
+      </tr>
+    </table>
+
+    <!-- ===== BB TABLE (3 columns) ===== -->
+    <div class="section-title mt-10">BB. Agency fees and expenses :</div>
+    <table class="charges bb">
+      <tr>
+        <th class="bb-no">No.</th>
+        <th class="bb-details" style="text-align: left;">Details</th>
+        <th class="bb-amount">Amount (USD)</th>
+      </tr>
+
+      {{BB_ROWS}}
+
+      <tr class="total-row">
+        <td colspan="2" class="right">TOTAL B : (II)</td>
+        <td class="bb-amount">{{total_b}}</td>
+      </tr>
+      <tr class="total-row">
+        <td colspan="2" class="right">G. TOTAL : (I)+(II)</td>
+        <td class="bb-amount red">{{grand_total}}</td>
+      </tr>
+      <tr class="remark-row">
+        <td class="bb-no"></td>
+        <td class="bb-details" colspan="2">
+          <span class="bold u">Remark</span> :
+          All the port charges/dues are subject to the Govmn't tariff and will be settled basing on the original
+          invoices & vouchers issued by parties concerned
+        </td>
+      </tr>
+    </table>
+
+    <!-- ===== BANK + CONTACT FOOTER (as in sample) ===== -->
+    <div class="mt-10 bank-block">
+      <div class="bold indent">* Our banker full style details:</div>
+      <div>Bank's Name: Joint Stock Commercial Bank For Foreign Trade of VietNam (or " Vietcombank Binh Dinh")</div>
+      <div>Bank's Address: 66C Le Duan street, Quinhon ward , S.R.Vietnam</div>
+      <div>Beneficiary's Name: South East Asia Transport and Logistics JSC ( or "SEATRANS" )</div>
+      <div>Beneficiary's Add: 51 Luu Huu Phuoc street, Qui Nhon Ward, Gia Lai Province, Vietnam</div>
+      <div>Banking USD account No.: 0051370526679</div>
+      <div>SWIFT CODE: BFTVVNVX005</div>
+    </div>
+
+    <div class="signature-block">
+      <div>Authorized signature</div>
+      <img src="/landing-image/authorSignature.jpg" alt="Authorized signature" />
+    </div>
+
+  </div>
+</body>
+</html>
