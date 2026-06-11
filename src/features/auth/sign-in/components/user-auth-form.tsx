@@ -69,7 +69,9 @@ export function UserAuthForm({
         role: u.role ? [u.role] : [],
         exp: Date.now() + 24 * 60 * 60 * 1000,
       })
-      auth.setAccessToken(res.data.token || 'session')
+      // Store only a placeholder, never the real JWT (the session is an HttpOnly
+      // cookie). This keeps the token out of any JS-readable storage (XSS-safe).
+      auth.setAccessToken('session')
 
       toast.success(`Welcome back, ${u.email ?? data.identifier}!`)
       navigate({ to: redirectTo || '/epda/create-epda', replace: true })

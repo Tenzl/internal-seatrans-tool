@@ -6,15 +6,12 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url))
 /** @type {import('next').NextConfig} */
 const isProd = process.env.NODE_ENV === 'production'
 
-// Single source of truth for the backend origin: reuse NEXT_PUBLIC_API_BASE_URL
-// (the same value the client uses). API_PROXY_TARGET stays as an optional override.
-// Normalise like api.config.ts so a trailing slash or /api(/vN) suffix can't
-// produce a double /api in the rewrite.
-const API_PROXY_TARGET = (
-  process.env.API_PROXY_TARGET ||
-  process.env.NEXT_PUBLIC_API_BASE_URL ||
-  'http://localhost:8080'
-)
+// Backend origin the proxy forwards to. Server-only (no NEXT_PUBLIC_ prefix), so
+// it is never exposed to the browser. In prod set API_PROXY_TARGET to the backend
+// URL (e.g. the Render origin); in dev it defaults to localhost.
+const explicitProxyTarget =
+  process.env.API_PROXY_TARGET || process.env.NEXT_PUBLIC_API_BASE_URL || ''
+const API_PROXY_TARGET = (explicitProxyTarget || 'http://localhost:8080')
   .replace(/\/+$/, '')
   .replace(/\/api(?:\/v\d+)?$/, '')
 
@@ -32,10 +29,12 @@ const nextConfig = {
     ignoreBuildErrors: true,
   },
   async rewrites() {
-    // In dev, proxy /api/* to the backend so the cookie-based session
-    // (credentials: 'include') stays same-origin. In prod, the deployment
-    // serves the API behind the same origin (or set API_PROXY_TARGET).
-    if (isProd) return []
+    // Proxy /api/* to the backend so the session cookie stays same-origin
+    // (first-party) — this is what makes login work on mobile, where cross-site
+    // cookies are blocked. Enabled in prod too (BFF pattern), but only when a
+    // backend target is explicitly configured; otherwise the client is expected
+    // to call an absolute NEXT_PUBLIC_API_BASE_URL directly.
+    if (isProd && !explicitProxyTarget) return []
     return [
       {
         source: '/api/:path*',

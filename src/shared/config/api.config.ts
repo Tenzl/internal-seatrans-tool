@@ -3,11 +3,11 @@
  * Only endpoints used by the frontend are listed here.
  */
 
-if (!process.env.NEXT_PUBLIC_API_BASE_URL) {
-  throw new Error('NEXT_PUBLIC_API_BASE_URL is not defined. Please set it in your environment.')
-}
-
-const rawBaseUrl = process.env.NEXT_PUBLIC_API_BASE_URL
+// Backend origin for the client. Leave EMPTY to call the API same-origin via the
+// Next.js rewrite proxy (BFF) — recommended in production so the HttpOnly session
+// cookie stays first-party and works on mobile (cross-site cookies are blocked
+// there). Set an absolute origin only for direct cross-origin calls (dev/testing).
+const rawBaseUrl = (process.env.NEXT_PUBLIC_API_BASE_URL || '')
   .replace(/\/+$/, '')
   .replace(/\/api(?:\/v\d+)?$/, '')
 
