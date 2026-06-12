@@ -88,6 +88,13 @@ export const API_CONFIG = {
     ADMIN_BY_ID: (id: number) => `/admin/commodities/${id}`,
   },
 
+  CARGO_TYPES: {
+    BY_SERVICE_TYPE: (serviceTypeId: number) => `/cargo-types/service-type/${serviceTypeId}`,
+    ADMIN_BASE: '/admin/cargo-types',
+    ADMIN_BY_KEY: (serviceTypeId: number, code: string) =>
+      `/admin/cargo-types/${serviceTypeId}/${encodeURIComponent(code)}`,
+  },
+
   GALLERY: {
     PUBLIC_IMAGES: '/gallery/images',
     ADMIN_BASE: '/admin/gallery-images',
@@ -117,6 +124,7 @@ export const API_CONFIG = {
     ADMIN_USER_ROLES: '/admin/users/roles',
     ADMIN_USER_BY_ID: (id: number) => `/admin/users/${id}`,
     ADMIN_USER_RESET_PASSWORD: (id: number) => `/admin/users/${id}/reset-password`,
+    ADMIN_USER_REACTIVATE: (id: number) => `/admin/users/${id}/reactivate`,
   },
 
   INQUIRIES: {

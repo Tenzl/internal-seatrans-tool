@@ -120,6 +120,8 @@ export interface InvoiceVariantFormProps {
   }
   computed: {
     isLoadingCargoCatalog: boolean
+    /** When true, the selected cargo type has no cargo name — disable the field. */
+    cargoNameDisabled: boolean
     isTallyFeeEligibleCargo: boolean
     shipQuarantineFee: string
     cargoQuarantineFee: string
@@ -185,13 +187,11 @@ export function CreateInvoiceVariantForm({
     : { amount: 0, label: '0 - 1,000' }
   const cargoQtyForDisplay = Number.isFinite(cargoQtyNumeric) && cargoQtyNumeric > 0 ? cargoQtyNumeric : 0
   const normalizedCargoType = normalizeCargoType(values.cargoType || '')
-  const isEquipmentCargo = normalizedCargoType.includes('EQUIPMENT')
-  const isInBagsCargo = normalizedCargoType.includes('IN_BAGS')
-  const onCargoRate = isEquipmentCargo
-    ? resolvedParams.coeff.cargoAgencyEquipRate
-    : isInBagsCargo
-      ? resolvedParams.coeff.cargoAgencyBagRate
-      : resolvedParams.coeff.cargoAgencyBulkRate
+  // Agency fee on cargo comes only from the per-cargo-type rates (Parameter screen).
+  const onCargoRate =
+    (resolvedParams.cargoAgencyRates ?? []).find(
+      (r) => normalizeCargoType(r.code) === normalizedCargoType,
+    )?.rate ?? 0
   const onCargoBaseAmount = onCargoRate * cargoQtyForDisplay
 
   const onGrtLabel = t('sum.onGrt', { label: agencyFeeByGrt.label })
@@ -424,18 +424,37 @@ export function CreateInvoiceVariantForm({
           </div>
 
           <div className="grid gap-2">
-            <Label htmlFor="cargoName" className={customerLabelClass('cargoName', values.cargoName)}>
+            <Label
+              htmlFor="cargoName"
+              className={
+                computed.cargoNameDisabled
+                  ? 'text-muted-foreground'
+                  : customerLabelClass('cargoName', values.cargoName)
+              }
+            >
               {t('epda.cargoName')}
             </Label>
-            <Select value={values.cargoName} onValueChange={handlers.setCargoName}>
-              <SelectTrigger id="cargoName" className={customerClass('cargoName', values.cargoName)}>
+            <Select
+              value={values.cargoName}
+              onValueChange={handlers.setCargoName}
+              disabled={computed.cargoNameDisabled || computed.isLoadingCargoCatalog}
+            >
+              <SelectTrigger
+                id="cargoName"
+                className={mergeEpdaFieldClasses(
+                  computed.cargoNameDisabled ? '' : customerClass('cargoName', values.cargoName),
+                  'disabled:text-muted-foreground',
+                )}
+              >
                 <SelectValue
                   placeholder={
-                    computed.isLoadingCargoCatalog
-                      ? t('ph.cargoNameLoading')
-                      : values.cargoType
-                        ? t('ph.cargoName')
-                        : t('ph.cargoTypeFirst')
+                    computed.cargoNameDisabled
+                      ? t('ph.cargoNameNotApplicable')
+                      : computed.isLoadingCargoCatalog
+                        ? t('ph.cargoNameLoading')
+                        : values.cargoType
+                          ? t('ph.cargoName')
+                          : t('ph.cargoTypeFirst')
                   }
                 />
               </SelectTrigger>
@@ -504,12 +523,7 @@ export function CreateInvoiceVariantForm({
                 min="0"
               />
               <p className="text-xs leading-relaxed text-muted-foreground">
-                {t('epda.buoyHintHcm', {
-                  leg1: resolvedParams.coeff.pilotageLeg1Miles,
-                  leg2: resolvedParams.coeff.pilotageLeg2Miles,
-                  legsum:
-                    resolvedParams.coeff.pilotageLeg1Miles + resolvedParams.coeff.pilotageLeg2Miles,
-                })}
+                {t('epda.buoyHintHcm')}
               </p>
             </div>
           )}

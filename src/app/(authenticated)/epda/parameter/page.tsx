@@ -62,10 +62,13 @@ import {
 import {
   defaultParameterValues,
   mergeParameterValues,
+  type CargoAgencyRate,
   type GrtTier,
   type LoaTier,
   type QuoteVariant,
 } from '@/modules/inquiries/components/common/quoteParameters'
+import { commodityService, type CargoTypeCatalogItem } from '@/modules/gallery/services/commodityService'
+import { serviceTypeService } from '@/modules/service-types/services/serviceTypeService'
 import {
   epdaParametersService,
   type EpdaParameterSet,
@@ -84,6 +87,45 @@ function clone(v: EpdaParameterValues): EpdaParameterValues {
 const num = (v: string): number => {
   const n = Number(v)
   return Number.isFinite(n) ? n : 0
+}
+
+/**
+ * Number input that keeps its own text buffer so decimals can be typed freely.
+ * A plain controlled `value={String(n)}` reformats mid-entry — typing "0." snaps
+ * back to "0" and the decimal point can never be entered. We only re-sync from the
+ * prop when the external value actually diverges (e.g. switching area/port).
+ */
+function DecimalInput({
+  value,
+  onChange,
+  className,
+  placeholder,
+}: {
+  value: number
+  onChange: (n: number) => void
+  className?: string
+  placeholder?: string
+}) {
+  const [text, setText] = useState(value ? String(value) : '')
+  useEffect(() => {
+    if (Number(text || '0') !== value) setText(value ? String(value) : '')
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [value])
+  return (
+    <Input
+      type='number'
+      step='any'
+      inputMode='decimal'
+      className={className}
+      placeholder={placeholder}
+      value={text}
+      onChange={(e) => {
+        setText(e.target.value)
+        const n = Number(e.target.value)
+        onChange(Number.isFinite(n) ? n : 0)
+      }}
+    />
+  )
 }
 
 /** Build the partial override = only the fields that differ from the area baseline. */
@@ -118,6 +160,8 @@ function diffValues(
     out.moorUnmoorBuoyTiers = edited.moorUnmoorBuoyTiers
   if (JSON.stringify(edited.tugTiers) !== JSON.stringify(base.tugTiers))
     out.tugTiers = edited.tugTiers
+  if (JSON.stringify(edited.cargoAgencyRates) !== JSON.stringify(base.cargoAgencyRates))
+    out.cargoAgencyRates = edited.cargoAgencyRates
   return out
 }
 
@@ -295,6 +339,132 @@ function LoaTierTable({
   )
 }
 
+const normalizeCargoTypeCode = (value: string): string =>
+  (value || '').trim().toUpperCase().replace(/[\s-]+/g, '_')
+
+/**
+ * Dynamic "Agency fee on cargo" table: one USD/MT rate per cargo type, freely
+ * add/remove. Cargo types are loaded from the catalog (Shipping Agency). Types
+ * without a row fall back to the bag/equip/bulk coefficient defaults at quote time.
+ */
+function CargoAgencyRateTable({
+  rates,
+  onChange,
+}: {
+  rates: CargoAgencyRate[]
+  onChange: (rates: CargoAgencyRate[]) => void
+}) {
+  const { t } = useI18n()
+
+  const { data: cargoTypes } = useQuery({
+    queryKey: ['cargo-types', 'SHIPPING_AGENCY'],
+    queryFn: async () => {
+      const services = await serviceTypeService.getAllServiceTypes()
+      const sa = services.find(
+        (s) => normalizeCargoTypeCode(s.name) === 'SHIPPING_AGENCY',
+      )
+      if (!sa?.id) return [] as CargoTypeCatalogItem[]
+      return commodityService.getCargoTypesByServiceType(sa.id)
+    },
+  })
+
+  const options = cargoTypes ?? []
+
+  const setRate = (i: number, patch: Partial<CargoAgencyRate>) =>
+    onChange(rates.map((row, idx) => (idx === i ? { ...row, ...patch } : row)))
+  const removeRate = (i: number) => onChange(rates.filter((_, idx) => idx !== i))
+  const addRate = () => {
+    // Pre-select the first cargo type not already in the table.
+    const used = new Set(rates.map((r) => normalizeCargoTypeCode(r.code)))
+    const next = options.find((o) => !used.has(normalizeCargoTypeCode(o.code)))
+    onChange([
+      ...rates,
+      next
+        ? { code: next.code, label: next.displayLabel, rate: 0 }
+        : { code: '', label: '', rate: 0 },
+    ])
+  }
+
+  const labelFor = (code: string) =>
+    options.find((o) => normalizeCargoTypeCode(o.code) === normalizeCargoTypeCode(code))?.displayLabel ||
+    code
+
+  return (
+    <div>
+      <div className='mb-3 flex items-center justify-between gap-3'>
+        <p className='max-w-prose text-sm text-muted-foreground'>{t('cargoRate.desc')}</p>
+        <Button type='button' variant='outline' size='sm' onClick={addRate}>
+          <Plus className='h-4 w-4' /> {t('cargoRate.add')}
+        </Button>
+      </div>
+      {rates.length === 0 ? (
+        <p className='rounded-md border border-dashed bg-muted/20 px-3 py-3 text-sm text-muted-foreground'>
+          {t('cargoRate.empty')}
+        </p>
+      ) : (
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead className='text-sm'>{t('cargoRate.colType')}</TableHead>
+              <TableHead className='w-48 text-sm'>{t('cargoRate.colRate')}</TableHead>
+              <TableHead className='w-12' />
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {rates.map((row, i) => (
+              <TableRow key={i}>
+                <TableCell>
+                  {options.length > 0 ? (
+                    <Select
+                      value={row.code}
+                      onValueChange={(code) => setRate(i, { code, label: labelFor(code) })}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder={t('cargoRate.selectType')} />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {options.map((o) => (
+                          <SelectItem key={o.code} value={o.code}>
+                            {o.displayLabel}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  ) : (
+                    <Input
+                      className='text-base'
+                      value={row.label || row.code}
+                      placeholder={t('cargoRate.selectType')}
+                      onChange={(e) =>
+                        setRate(i, {
+                          code: normalizeCargoTypeCode(e.target.value),
+                          label: e.target.value,
+                        })
+                      }
+                    />
+                  )}
+                </TableCell>
+                <TableCell>
+                  <DecimalInput
+                    className='text-base tabular-nums'
+                    value={row.rate}
+                    onChange={(n) => setRate(i, { rate: n })}
+                  />
+                </TableCell>
+                <TableCell>
+                  <Button type='button' variant='ghost' size='icon' onClick={() => removeRate(i)}>
+                    <Trash2 className='h-4 w-4 text-destructive' />
+                  </Button>
+                </TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+      )}
+    </div>
+  )
+}
+
 /** Collapsible worked example. Click the summary to reveal the table. */
 function ExampleDetails({ summary, children }: { summary: string; children: ReactNode }) {
   return (
@@ -308,14 +478,49 @@ function ExampleDetails({ summary, children }: { summary: string; children: Reac
   )
 }
 
+/** Wrap runs of digits (incl. , . separators) in <strong> so example numbers stand out. */
+function boldNumbers(text: string): ReactNode {
+  return text.split(/(\d[\d.,]*)/g).map((part, i) =>
+    /^\d/.test(part) ? (
+      <strong key={i} className='font-semibold text-foreground'>
+        {part}
+      </strong>
+    ) : (
+      <span key={i}>{part}</span>
+    ),
+  )
+}
+
+const fmtNum = (n: number) =>
+  n.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 2 })
+
+/** Pick a representative GRT that lands inside a middle band of the given tiers. */
+function sampleGrtFor(tiers: GrtTier[]): number {
+  if (!tiers.length) return 0
+  const i = Math.floor((tiers.length - 1) / 2)
+  const tier = tiers[i]
+  const prevMax = i > 0 ? tiers[i - 1].maxGrt ?? 0 : 0
+  if (tier.maxGrt === null) return prevMax + 5000
+  return Math.round((prevMax + tier.maxGrt) / 2)
+}
+
+/** Pick a representative LOA that lands inside a middle band of the given tiers. */
+function sampleLoaFor(tiers: LoaTier[]): number {
+  if (!tiers.length) return 0
+  const i = Math.floor(tiers.length / 2)
+  const tier = tiers[i]
+  const next = tiers[i + 1]
+  return next ? Math.round((tier.minLoa + next.minLoa) / 2) : tier.minLoa + 15
+}
+
 /** Compact two-column row used inside the guide example tables. */
 function ScanRow({
   label,
   test,
   hit,
 }: {
-  label: string
-  test: string
+  label: ReactNode
+  test: ReactNode
   hit?: boolean
 }) {
   return (
@@ -330,42 +535,147 @@ function ScanRow({
   )
 }
 
-/** Static help: how a GRT tier table is read at quote time (used by agency + moor). */
-function GrtLookupGuide() {
+/**
+ * Dynamic garbage worked example. Garbage = rate/cbm × ⌈days / 2⌉ × cbm. HCM shows
+ * berth-due (3 days) and buoy-due (6 days); QN (MIDDLE) has no buoy due, berth only.
+ * Recomputes live as the rates / volume above are edited (like the quarantine example).
+ */
+function GarbageExample({
+  variant,
+  garbage,
+}: {
+  variant: QuoteVariant
+  garbage: EpdaParameterValues['garbage']
+}) {
   const { t } = useI18n()
+  const cbm = garbage.cbmAmount || 1
+  const berthDays = 3
+  const buoyDays = 6
+  const berthBlocks = Math.ceil(berthDays / 2)
+  const buoyBlocks = Math.ceil(buoyDays / 2)
+  const fmt = (n: number) =>
+    n.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 2 })
+  const berthResult = garbage.atBerthUsd * berthBlocks * cbm
+  const buoyResult = garbage.atBuoyUsd * buoyBlocks * cbm
+
   return (
     <div className='space-y-3 rounded-lg border bg-muted/20 p-4'>
-      <h4 className='text-base font-semibold'>{t('guide.grtTitle')}</h4>
-      <p className='max-w-prose text-sm text-muted-foreground'>{t('guide.grtBody')}</p>
-      <ExampleDetails summary={t('guide.grtExSummary')}>
+      <h4 className='text-base font-semibold'>{t('garbageEx.title')}</h4>
+      <p className='max-w-prose text-sm text-muted-foreground'>
+        {variant === 'HCM' ? t('garbageEx.bodyHcm') : t('garbageEx.bodyQn')}
+      </p>
+      <ExampleDetails summary={variant === 'HCM' ? t('garbageEx.summary') : t('garbageEx.summaryQn')}>
         <div className='space-y-1'>
-          <ScanRow label={t('guide.grtEx1')} test={t('guide.grtEx1t')} />
-          <ScanRow label={t('guide.grtEx2')} test={t('guide.grtEx2t')} />
-          <ScanRow label={t('guide.grtEx3')} test={t('guide.grtEx3t')} hit />
-          <ScanRow label={t('guide.grtEx4')} test={t('guide.grtEx4t')} />
-          <ScanRow label={t('guide.grtEx5')} test={t('guide.grtEx5t')} />
+          <ScanRow
+            label={boldNumbers(
+              t('garbageEx.berth', {
+                days: berthDays,
+                blocks: berthBlocks,
+                rate: fmt(garbage.atBerthUsd),
+                cbm,
+              }),
+            )}
+            test={boldNumbers(`= USD ${fmt(berthResult)}`)}
+            hit
+          />
+          {variant === 'HCM' && (
+            <ScanRow
+              label={boldNumbers(
+                t('garbageEx.buoy', {
+                  days: buoyDays,
+                  blocks: buoyBlocks,
+                  rate: fmt(garbage.atBuoyUsd),
+                  cbm,
+                }),
+              )}
+              test={boldNumbers(`= USD ${fmt(buoyResult)}`)}
+              hit
+            />
+          )}
         </div>
-        <p className='mt-3 text-base text-muted-foreground'>{t('guide.grtExResult')}</p>
       </ExampleDetails>
     </div>
   )
 }
 
-/** Static help: how the LOA tier table is read at quote time (used by tug). */
-function LoaLookupGuide() {
+/**
+ * How a GRT tier table is read at quote time (agency + moor). The worked example is
+ * computed live from THIS area's tiers (not a shared HCM sample), with numbers bolded.
+ */
+function GrtLookupGuide({ tiers, sampleGrt }: { tiers: GrtTier[]; sampleGrt: number }) {
   const { t } = useI18n()
+  let matchedIndex = tiers.findIndex((tr) => tr.maxGrt === null || sampleGrt <= tr.maxGrt)
+  if (matchedIndex < 0) matchedIndex = tiers.length - 1
+  const matched = tiers[matchedIndex]
+
+  const scanText = (i: number): string => {
+    if (i > matchedIndex) return t('guide.cmpSkip')
+    const tr = tiers[i]
+    if (tr.maxGrt === null) return t('guide.cmpYes')
+    return `${fmtNum(sampleGrt)} ≤ ${fmtNum(tr.maxGrt)}? ${sampleGrt <= tr.maxGrt ? t('guide.cmpYes') : t('guide.cmpNo')}`
+  }
+  const rowLabel = (tr: GrtTier): string => {
+    const range = tr.label || (tr.maxGrt === null ? '∞' : `≤ ${fmtNum(tr.maxGrt)}`)
+    return `${range} → ${fmtNum(tr.amount)}`
+  }
+
+  return (
+    <div className='space-y-3 rounded-lg border bg-muted/20 p-4'>
+      <h4 className='text-base font-semibold'>{t('guide.grtTitle')}</h4>
+      <p className='max-w-prose text-sm text-muted-foreground'>{t('guide.grtBody')}</p>
+      <ExampleDetails summary={t('guide.grtExSummary', { grt: fmtNum(sampleGrt) })}>
+        <div className='space-y-1'>
+          {tiers.map((tr, i) => (
+            <ScanRow key={i} label={boldNumbers(rowLabel(tr))} test={boldNumbers(scanText(i))} hit={i === matchedIndex} />
+          ))}
+        </div>
+        <p className='mt-3 text-base text-muted-foreground'>
+          {boldNumbers(
+            t('guide.grtExResult', { amount: fmtNum(matched?.amount ?? 0), label: matched?.label ?? '' }),
+          )}
+        </p>
+      </ExampleDetails>
+    </div>
+  )
+}
+
+/**
+ * How the LOA tier table is read at quote time (tug). Computed live from THIS area's
+ * tug tiers — highest Min LOA ≤ ship LOA wins — with numbers bolded.
+ */
+function LoaLookupGuide({ tiers, sampleLoa }: { tiers: LoaTier[]; sampleLoa: number }) {
+  const { t } = useI18n()
+  let matchedIndex = -1
+  tiers.forEach((tr, i) => {
+    if (sampleLoa >= tr.minLoa && (matchedIndex < 0 || tr.minLoa >= tiers[matchedIndex].minLoa)) {
+      matchedIndex = i
+    }
+  })
+  const matched = matchedIndex >= 0 ? tiers[matchedIndex] : undefined
+
+  const scanText = (i: number): string => {
+    const tr = tiers[i]
+    const ans = sampleLoa >= tr.minLoa ? t('guide.cmpYes') : t('guide.cmpNo')
+    return `${fmtNum(sampleLoa)} ≥ ${fmtNum(tr.minLoa)}? ${ans}`
+  }
+  const rowLabel = (tr: LoaTier): string =>
+    `${tr.label || `≥ ${fmtNum(tr.minLoa)}m`} → ${fmtNum(tr.amount)}`
+
   return (
     <div className='space-y-3 rounded-lg border bg-muted/20 p-4'>
       <h4 className='text-base font-semibold'>{t('guide.loaTitle')}</h4>
       <p className='max-w-prose text-sm text-muted-foreground'>{t('guide.loaBody')}</p>
-      <ExampleDetails summary={t('guide.loaExSummary')}>
+      <ExampleDetails summary={t('guide.loaExSummary', { loa: fmtNum(sampleLoa) })}>
         <div className='space-y-1'>
-          <ScanRow label={t('guide.loaEx1')} test={t('guide.loaEx1t')} />
-          <ScanRow label={t('guide.loaEx2')} test={t('guide.loaEx2t')} />
-          <ScanRow label={t('guide.loaEx3')} test={t('guide.loaEx3t')} hit />
-          <ScanRow label={t('guide.loaEx4')} test={t('guide.loaEx4t')} />
+          {tiers.map((tr, i) => (
+            <ScanRow key={i} label={boldNumbers(rowLabel(tr))} test={boldNumbers(scanText(i))} hit={i === matchedIndex} />
+          ))}
         </div>
-        <p className='mt-3 text-base text-muted-foreground'>{t('guide.loaExResult')}</p>
+        <p className='mt-3 text-base text-muted-foreground'>
+          {boldNumbers(
+            t('guide.loaExResult', { amount: fmtNum(matched?.amount ?? 0), label: matched?.label ?? '' }),
+          )}
+        </p>
       </ExampleDetails>
     </div>
   )
@@ -381,8 +691,6 @@ function ValuesEditor({
   onChange: (v: EpdaParameterValues) => void
 }) {
   const { t } = useI18n()
-  const setHours = (k: keyof EpdaParameterValues['hours'], n: number) =>
-    onChange({ ...values, hours: { ...values.hours, [k]: n } })
   const setGarbage = (k: keyof EpdaParameterValues['garbage'], n: number) =>
     onChange({ ...values, garbage: { ...values.garbage, [k]: n } })
   const setQ = (k: keyof EpdaParameterValues['quarantine'], n: number) =>
@@ -392,25 +700,19 @@ function ValuesEditor({
 
   const sections: { id: string; title: string; desc: string; body: ReactNode }[] = [
     {
-      id: 'hours',
-      title: t('sec.hours.title'),
-      desc: t('sec.hours.desc'),
-      body: (
-        <div className='grid grid-cols-2 gap-4 sm:grid-cols-4'>
-          <NumberField label={t('f.berthHours')} value={values.hours.berthHours} onChange={(n) => setHours('berthHours', n)} />
-          <NumberField label={t('f.anchorageHours')} value={values.hours.anchorageHours} onChange={(n) => setHours('anchorageHours', n)} />
-        </div>
-      ),
-    },
-    {
       id: 'garbage',
       title: t('sec.garbage.title'),
       desc: t('sec.garbage.desc'),
       body: (
-        <div className='grid grid-cols-2 gap-4 sm:grid-cols-3'>
-          <NumberField label={t('f.garbageBerth')} value={values.garbage.atBerthUsd} onChange={(n) => setGarbage('atBerthUsd', n)} />
-          <NumberField label={t('f.garbageBuoy')} value={values.garbage.atBuoyUsd} onChange={(n) => setGarbage('atBuoyUsd', n)} />
-          <NumberField label={t('f.garbageCbm')} value={values.garbage.cbmAmount} onChange={(n) => setGarbage('cbmAmount', n)} />
+        <div className='space-y-6'>
+          <div className='grid grid-cols-2 gap-4 sm:grid-cols-3'>
+            <NumberField label={t('f.garbageBerth')} value={values.garbage.atBerthUsd} onChange={(n) => setGarbage('atBerthUsd', n)} />
+            {variant === 'HCM' && (
+              <NumberField label={t('f.garbageBuoy')} value={values.garbage.atBuoyUsd} onChange={(n) => setGarbage('atBuoyUsd', n)} />
+            )}
+            <NumberField label={t('f.garbageCbm')} value={values.garbage.cbmAmount} onChange={(n) => setGarbage('cbmAmount', n)} />
+          </div>
+          <GarbageExample variant={variant} garbage={values.garbage} />
         </div>
       ),
     },
@@ -474,13 +776,35 @@ function ValuesEditor({
             </p>
 
             <ExampleDetails summary={t('q.exampleSummary')}>
-              <p className='mb-2 text-base text-muted-foreground'>{t('q.exIntro')}</p>
+              <p className='mb-2 text-base text-muted-foreground'>
+                {boldNumbers(t('q.exIntro', { threshold: fmtNum(values.quarantine.shipThresholdGrt) }))}
+              </p>
               <div className='space-y-1'>
-                <ScanRow label={t('q.exShip')} test='= 220' />
-                <ScanRow label={t('q.exCargo')} test='= 200' />
-                <ScanRow label={t('q.exTotal')} test='= 420' hit />
+                <ScanRow
+                  label={boldNumbers(t('q.exShip', { high: fmtNum(values.quarantine.shipUnitHighGrt) }))}
+                  test={boldNumbers(`= ${fmtNum(values.quarantine.shipUnitHighGrt * 2)}`)}
+                />
+                <ScanRow
+                  label={boldNumbers(t('q.exCargo', { cargo: fmtNum(values.quarantine.cargoPerTrip) }))}
+                  test={boldNumbers(`= ${fmtNum(values.quarantine.cargoPerTrip * 2)}`)}
+                />
+                <ScanRow
+                  label={boldNumbers(t('q.exTotal'))}
+                  test={boldNumbers(
+                    `= ${fmtNum(values.quarantine.shipUnitHighGrt * 2 + values.quarantine.cargoPerTrip * 2)}`,
+                  )}
+                  hit
+                />
               </div>
-              <p className='mt-3 text-base text-muted-foreground'>{t('q.exSmall')}</p>
+              <p className='mt-3 text-base text-muted-foreground'>
+                {boldNumbers(
+                  t('q.exSmall', {
+                    threshold: fmtNum(values.quarantine.shipThresholdGrt),
+                    low: fmtNum(values.quarantine.shipUnitLowGrt),
+                    total: fmtNum(values.quarantine.shipUnitLowGrt * 2),
+                  }),
+                )}
+              </p>
             </ExampleDetails>
           </div>
         </div>
@@ -492,18 +816,57 @@ function ValuesEditor({
       desc: t('sec.coeff.desc'),
       body: (
         <div className='space-y-7'>
+          {/* Berth / buoy / anchorage dues (per GRT / hour) */}
+          <div className='space-y-3'>
+            <h4 className='text-sm font-semibold uppercase tracking-wide text-muted-foreground'>{t('f.duesGroup')}</h4>
+            <div className='grid grid-cols-2 gap-4 sm:grid-cols-3'>
+              <NumberField label={t('f.berthDue')} value={values.coeff.berthDuePerGrtHour} onChange={(n) => setCoeff('berthDuePerGrtHour', n)} />
+              {variant === 'HCM' && (
+                <NumberField label={t('f.buoyDue')} value={values.coeff.buoyDuePerGrtHour} onChange={(n) => setCoeff('buoyDuePerGrtHour', n)} />
+              )}
+              <NumberField label={t('f.anchorageDue')} value={values.coeff.anchoragePerGrtHour} onChange={(n) => setCoeff('anchoragePerGrtHour', n)} />
+            </div>
+          </div>
+
+          {/* Clearance & ocean freight */}
+          <div className='space-y-3'>
+            <h4 className='text-sm font-semibold uppercase tracking-wide text-muted-foreground'>{t('f.freightGroup')}</h4>
+            <div className='grid grid-cols-2 gap-4 sm:grid-cols-3'>
+              <NumberField label={t('f.clearance')} value={values.coeff.clearanceFee} onChange={(n) => setCoeff('clearanceFee', n)} />
+              <NumberField label={t('f.oceanFrtRate')} value={values.coeff.oceanFrtDefaultRate} onChange={(n) => setCoeff('oceanFrtDefaultRate', n)} />
+              <NumberField label={t('f.oceanFrtTax')} value={values.coeff.oceanFrtTaxRate} onChange={(n) => setCoeff('oceanFrtTaxRate', n)} />
+            </div>
+          </div>
+
+          {/* Ship type factor (tonnage multiplier per ship type) */}
+          <div className='space-y-3'>
+            <h4 className='text-sm font-semibold uppercase tracking-wide text-muted-foreground'>{t('f.shipFactor')}</h4>
+            <div className='grid grid-cols-2 gap-4 sm:grid-cols-3'>
+              <NumberField label={t('f.bulkFactor')} value={values.coeff.bulkFactor} onChange={(n) => setCoeff('bulkFactor', n)} />
+              <NumberField label={t('f.tankerFactor')} value={values.coeff.tankerFactor} onChange={(n) => setCoeff('tankerFactor', n)} />
+            </div>
+          </div>
+
+          {/* Agency fee on cargo (per cargo type) */}
+          <div className='space-y-4'>
+            <h4 className='text-sm font-semibold uppercase tracking-wide text-muted-foreground'>{t('f.cargoAgency')}</h4>
+            <CargoAgencyRateTable
+              rates={values.cargoAgencyRates}
+              onChange={(rows) => onChange({ ...values, cargoAgencyRates: rows })}
+            />
+          </div>
+        </div>
+      ),
+    },
+    {
+      id: 'tonnage-pilotage',
+      title: t('sec.tonnagePilotage.title'),
+      desc: t('sec.tonnagePilotage.desc'),
+      body: (
+        <div className='space-y-4'>
           <div className='grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4'>
             <NumberField label={t('f.tonnagePerGrt')} value={values.coeff.tonnagePerGrt} onChange={(n) => setCoeff('tonnagePerGrt', n)} />
             <NumberField label={t('f.navigationPerGrt')} value={values.coeff.navigationPerGrt} onChange={(n) => setCoeff('navigationPerGrt', n)} />
-            <NumberField label={t('f.tankerFactor')} value={values.coeff.tankerFactor} onChange={(n) => setCoeff('tankerFactor', n)} />
-            <NumberField label={t('f.berthDue')} value={values.coeff.berthDuePerGrtHour} onChange={(n) => setCoeff('berthDuePerGrtHour', n)} />
-            {variant === 'HCM' && (
-              <NumberField label={t('f.buoyDue')} value={values.coeff.buoyDuePerGrtHour} onChange={(n) => setCoeff('buoyDuePerGrtHour', n)} />
-            )}
-            <NumberField label={t('f.anchorageDue')} value={values.coeff.anchoragePerGrtHour} onChange={(n) => setCoeff('anchoragePerGrtHour', n)} />
-            <NumberField label={t('f.clearance')} value={values.coeff.clearanceFee} onChange={(n) => setCoeff('clearanceFee', n)} />
-            <NumberField label={t('f.oceanFrtRate')} value={values.coeff.oceanFrtDefaultRate} onChange={(n) => setCoeff('oceanFrtDefaultRate', n)} />
-            <NumberField label={t('f.oceanFrtTax')} value={values.coeff.oceanFrtTaxRate} onChange={(n) => setCoeff('oceanFrtTaxRate', n)} />
           </div>
 
           <div>
@@ -550,15 +913,6 @@ function ValuesEditor({
               </div>
             </div>
           </div>
-
-          <div>
-            <h4 className='mb-3 text-sm font-semibold uppercase tracking-wide text-muted-foreground'>{t('f.cargoAgency')}</h4>
-            <div className='grid grid-cols-2 gap-4 sm:grid-cols-3'>
-              <NumberField label={t('f.cargoBag')} value={values.coeff.cargoAgencyBagRate} onChange={(n) => setCoeff('cargoAgencyBagRate', n)} />
-              <NumberField label={t('f.cargoEquip')} value={values.coeff.cargoAgencyEquipRate} onChange={(n) => setCoeff('cargoAgencyEquipRate', n)} />
-              <NumberField label={t('f.cargoBulk')} value={values.coeff.cargoAgencyBulkRate} onChange={(n) => setCoeff('cargoAgencyBulkRate', n)} />
-            </div>
-          </div>
         </div>
       ),
     },
@@ -573,7 +927,7 @@ function ValuesEditor({
             tiers={values.agencyFeeTiers}
             onChange={(rows) => onChange({ ...values, agencyFeeTiers: rows })}
           />
-          <GrtLookupGuide />
+          <GrtLookupGuide tiers={values.agencyFeeTiers} sampleGrt={sampleGrtFor(values.agencyFeeTiers)} />
         </div>
       ),
     },
@@ -595,7 +949,10 @@ function ValuesEditor({
               onChange={(rows) => onChange({ ...values, moorUnmoorBuoyTiers: rows })}
             />
           )}
-          <GrtLookupGuide />
+          <GrtLookupGuide
+            tiers={values.moorUnmoorBerthTiers}
+            sampleGrt={sampleGrtFor(values.moorUnmoorBerthTiers)}
+          />
         </div>
       ),
     },
@@ -610,7 +967,7 @@ function ValuesEditor({
             tiers={values.tugTiers}
             onChange={(rows) => onChange({ ...values, tugTiers: rows })}
           />
-          <LoaLookupGuide />
+          <LoaLookupGuide tiers={values.tugTiers} sampleLoa={sampleLoaFor(values.tugTiers)} />
         </div>
       ),
     },
@@ -772,6 +1129,8 @@ export default function Page() {
   const [area, setArea] = useState<AreaOption>('NORTHERN')
   // Href the user clicked while there were unsaved edits — drives the leave popup.
   const [leaveHref, setLeaveHref] = useState<string | null>(null)
+  // Area tab the user tried to switch to while there were unsaved edits.
+  const [pendingArea, setPendingArea] = useState<AreaOption | null>(null)
 
   const { data: sets, isLoading } = useQuery({
     queryKey: ['epda-parameters'],
@@ -834,18 +1193,39 @@ export default function Page() {
     }
   }, [isDirty])
 
-  // Leave the page without saving — go to the href captured by the click guard.
+  // Switching area tabs is not an <a> click, so guard unsaved edits explicitly here.
+  const handleAreaChange = (next: AreaOption) => {
+    if (next === area) return
+    if (isDirty) {
+      setPendingArea(next)
+      return
+    }
+    setArea(next)
+  }
+
+  // Discard unsaved edits — switch to the pending area, or go to the captured href.
   const confirmLeave = () => {
+    if (pendingArea) {
+      setArea(pendingArea)
+      setPendingArea(null)
+      return
+    }
     const href = leaveHref
     setLeaveHref(null)
     if (href) navigate({ to: href })
   }
 
-  // Save the area first, then continue to the captured destination.
+  // Save the area first, then switch area / continue to the captured destination.
   const saveThenLeave = () => {
     const href = leaveHref
+    const nextArea = pendingArea
     saveArea.mutate(undefined, {
       onSuccess: () => {
+        if (nextArea) {
+          setArea(nextArea)
+          setPendingArea(null)
+          return
+        }
         setLeaveHref(null)
         if (href) navigate({ to: href })
       },
@@ -875,7 +1255,7 @@ export default function Page() {
           </div>
         ) : (
           <div className='mt-4 space-y-6'>
-            <Tabs value={area} onValueChange={(v) => setArea(v as AreaOption)}>
+            <Tabs value={area} onValueChange={(v) => handleAreaChange(v as AreaOption)}>
               <TabsList className='h-auto'>
                 {AREA_OPTIONS.map((a) => (
                   <TabsTrigger key={a} value={a} className='px-5 py-2 text-base font-medium'>
@@ -919,7 +1299,15 @@ export default function Page() {
         )}
       </Main>
 
-      <AlertDialog open={leaveHref !== null} onOpenChange={(open) => !open && setLeaveHref(null)}>
+      <AlertDialog
+        open={leaveHref !== null || pendingArea !== null}
+        onOpenChange={(open) => {
+          if (!open) {
+            setLeaveHref(null)
+            setPendingArea(null)
+          }
+        }}
+      >
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>{t('param.unsavedTitle')}</AlertDialogTitle>

@@ -33,6 +33,14 @@ export interface LoaTier {
   label: string
 }
 
+/** Agency fee on cargo (BB section) keyed by cargo type code, USD/MT. */
+export interface CargoAgencyRate {
+  /** Normalized cargo type code (e.g. IN_BULK, EQUIPMENT). */
+  code: string
+  label: string
+  rate: number
+}
+
 export interface EpdaParameterValues {
   hours: {
     berthHours: number
@@ -61,7 +69,10 @@ export interface EpdaParameterValues {
   coeff: {
     tonnagePerGrt: number
     navigationPerGrt: number
+    /** Tonnage multiplier for tanker ships (e.g. 0.85). */
     tankerFactor: number
+    /** Tonnage multiplier for bulk ships (default 1 = full rate). */
+    bulkFactor: number
     berthDuePerGrtHour: number
     buoyDuePerGrtHour: number
     anchoragePerGrtHour: number
@@ -88,6 +99,8 @@ export interface EpdaParameterValues {
   /** HCM "at buoy" table. Empty/unused for QN. */
   moorUnmoorBuoyTiers: GrtTier[]
   tugTiers: LoaTier[]
+  /** Per-cargo-type agency fee on cargo. Empty → fall back to coeff bag/equip/bulk rates. */
+  cargoAgencyRates: CargoAgencyRate[]
 }
 
 /** Deep-partial of the values blob — port overrides only carry changed fields. */
@@ -100,6 +113,7 @@ export type PartialEpdaParameterValues = {
   moorUnmoorBerthTiers?: GrtTier[]
   moorUnmoorBuoyTiers?: GrtTier[]
   tugTiers?: LoaTier[]
+  cargoAgencyRates?: CargoAgencyRate[]
 }
 
 const AGENCY_FEE_TIERS: GrtTier[] = [
@@ -123,6 +137,7 @@ function hcmDefaults(): EpdaParameterValues {
       tonnagePerGrt: 0.034,
       navigationPerGrt: 0.1,
       tankerFactor: 0.85,
+      bulkFactor: 1,
       berthDuePerGrtHour: 0.0031,
       buoyDuePerGrtHour: 0.0013,
       anchoragePerGrtHour: 0.0005,
@@ -165,6 +180,9 @@ function hcmDefaults(): EpdaParameterValues {
       { minLoa: 190, amount: 2600, label: '190 - <205m' },
       { minLoa: 205, amount: 2800, label: '205 - <225m' },
     ],
+    // Empty by default → the calc falls back to coeff bag/equip/bulk rates until an
+    // admin adds explicit per-cargo-type rates on the Parameter screen.
+    cargoAgencyRates: [],
   }
 }
 
@@ -265,5 +283,6 @@ export function mergeParameterValues(
     moorUnmoorBerthTiers: override.moorUnmoorBerthTiers ?? base.moorUnmoorBerthTiers,
     moorUnmoorBuoyTiers: override.moorUnmoorBuoyTiers ?? base.moorUnmoorBuoyTiers,
     tugTiers: override.tugTiers ?? base.tugTiers,
+    cargoAgencyRates: override.cargoAgencyRates ?? base.cargoAgencyRates,
   }
 }

@@ -33,6 +33,8 @@ export interface CreateInvoiceRequiredValues {
 
 export interface RequiredFieldOptions {
   requireFrtTaxType?: boolean
+  /** Cargo types flagged hasCargoName=false don't require a Cargo Name. */
+  requireCargoName?: boolean
 }
 
 const REQUIRED_FIELD_CONFIG: Array<{ key: RequiredFieldKey; label: string }> = [
@@ -51,9 +53,11 @@ const REQUIRED_FIELD_CONFIG: Array<{ key: RequiredFieldKey; label: string }> = [
 
 export function buildRequiredFields(values: CreateInvoiceRequiredValues, options?: RequiredFieldOptions): RequiredField[] {
   const requireFrtTaxType = options?.requireFrtTaxType ?? true
+  const requireCargoName = options?.requireCargoName ?? true
 
   return REQUIRED_FIELD_CONFIG
     .filter((field) => (field.key === 'frtTaxType' ? requireFrtTaxType : true))
+    .filter((field) => (field.key === 'cargoName' ? requireCargoName : true))
     .map((field) => ({
     key: field.key,
     label: field.label,

@@ -9,7 +9,7 @@ import {
   useReactTable,
 } from '@tanstack/react-table'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
-import { KeyRound, Loader2, MoreHorizontal, Plus, Trash2 } from 'lucide-react'
+import { Ban, KeyRound, Loader2, MoreHorizontal, Plus, UserCheck } from 'lucide-react'
 
 import {
   AdminDataPanel,
@@ -17,6 +17,7 @@ import {
   AdminToolbar,
   AdminToolbarGroup,
 } from '@/shared/components/layout/dashboard/admin'
+import { Badge } from '@/shared/components/ui/badge'
 import { Button } from '@/shared/components/ui/button'
 import { Input } from '@/shared/components/ui/input'
 import { Label } from '@/shared/components/ui/label'
@@ -78,6 +79,8 @@ export function ManageUsers() {
   const [isResetting, setIsResetting] = useState(false)
   const [deleteTarget, setDeleteTarget] = useState<AdminUserRow | null>(null)
   const [isDeleting, setIsDeleting] = useState(false)
+  const [reactivateTarget, setReactivateTarget] = useState<AdminUserRow | null>(null)
+  const [isReactivating, setIsReactivating] = useState(false)
 
   const roleGroup: RoleGroup = scope
 
@@ -113,7 +116,19 @@ export function ManageUsers() {
       {
         accessorKey: 'fullName',
         header: 'Name',
-        cell: (ctx) => ctx.getValue<string | null>() ?? '—',
+        cell: (ctx) => {
+          const u = ctx.row.original
+          return (
+            <div className="flex items-center gap-2">
+              <span>{u.fullName ?? '—'}</span>
+              {!u.isActive && (
+                <Badge variant="secondary" className="text-muted-foreground">
+                  Inactive
+                </Badge>
+              )}
+            </div>
+          )
+        },
         meta: { className: 'min-w-[220px]' },
       },
       {
@@ -168,10 +183,17 @@ export function ManageUsers() {
                   <KeyRound className="mr-2 h-4 w-4" />
                   Reset password
                 </DropdownMenuItem>
-                <DropdownMenuItem variant="destructive" onSelect={() => setDeleteTarget(u)}>
-                  <Trash2 className="mr-2 h-4 w-4" />
-                  Delete user
-                </DropdownMenuItem>
+                {u.isActive ? (
+                  <DropdownMenuItem variant="destructive" onSelect={() => setDeleteTarget(u)}>
+                    <Ban className="mr-2 h-4 w-4" />
+                    Deactivate user
+                  </DropdownMenuItem>
+                ) : (
+                  <DropdownMenuItem onSelect={() => setReactivateTarget(u)}>
+                    <UserCheck className="mr-2 h-4 w-4" />
+                    Reactivate user
+                  </DropdownMenuItem>
+                )}
               </DropdownMenuContent>
             </DropdownMenu>
           )
@@ -278,14 +300,30 @@ export function ManageUsers() {
     setIsDeleting(true)
     try {
       await adminUsersService.deleteUser(deleteTarget.id)
-      toast.success(`Deleted ${deleteTarget.email}`)
+      toast.success(`Deactivated ${deleteTarget.email}`)
       setDeleteTarget(null)
       await queryClient.invalidateQueries({ queryKey: ['adminUsers'] })
     } catch (err) {
-      console.error('Failed to delete user:', err)
-      toast.error(err instanceof Error ? err.message : 'Failed to delete user')
+      console.error('Failed to deactivate user:', err)
+      toast.error(err instanceof Error ? err.message : 'Failed to deactivate user')
     } finally {
       setIsDeleting(false)
+    }
+  }
+
+  const handleReactivate = async () => {
+    if (!reactivateTarget) return
+    setIsReactivating(true)
+    try {
+      await adminUsersService.reactivateUser(reactivateTarget.id)
+      toast.success(`Reactivated ${reactivateTarget.email}`)
+      setReactivateTarget(null)
+      await queryClient.invalidateQueries({ queryKey: ['adminUsers'] })
+    } catch (err) {
+      console.error('Failed to reactivate user:', err)
+      toast.error(err instanceof Error ? err.message : 'Failed to reactivate user')
+    } finally {
+      setIsReactivating(false)
     }
   }
 
@@ -489,7 +527,7 @@ export function ManageUsers() {
         </DialogContent>
       </Dialog>
 
-      {/* Delete user */}
+      {/* Deactivate user */}
       <AlertDialog
         open={!!deleteTarget}
         onOpenChange={(next) => {
@@ -498,10 +536,11 @@ export function ManageUsers() {
       >
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Delete user?</AlertDialogTitle>
+            <AlertDialogTitle>Deactivate user?</AlertDialogTitle>
             <AlertDialogDescription>
-              This permanently deletes <span className="font-medium">{deleteTarget?.email}</span>. This
-              action cannot be undone.
+              <span className="font-medium">{deleteTarget?.email}</span> will no longer be able to log
+              in, and existing sessions are revoked. Their records (inquiries, quotes, audit logs) are
+              kept. You can reactivate them later.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -514,7 +553,37 @@ export function ManageUsers() {
               disabled={isDeleting}
               className="bg-destructive text-white hover:bg-destructive/90"
             >
-              {isDeleting ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Delete'}
+              {isDeleting ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Deactivate'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Reactivate user */}
+      <AlertDialog
+        open={!!reactivateTarget}
+        onOpenChange={(next) => {
+          if (!next) setReactivateTarget(null)
+        }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Reactivate user?</AlertDialogTitle>
+            <AlertDialogDescription>
+              <span className="font-medium">{reactivateTarget?.email}</span> will be able to log in
+              again.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isReactivating}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={(e) => {
+                e.preventDefault()
+                void handleReactivate()
+              }}
+              disabled={isReactivating}
+            >
+              {isReactivating ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Reactivate'}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

@@ -275,6 +275,13 @@ export function CreateInvoiceTab({
     [purposeOfCalling]
   )
 
+  // A cargo type with NO cargo names (no commodities) is automatically "type only":
+  // the Cargo Name field is disabled and the PDF shows just the cargo type.
+  const cargoNameDisabled = useMemo(() => {
+    if (!cargoType || isLoadingCargoCatalog) return false
+    return !cargoTypeCatalog.some((item) => item.cargoType === cargoType)
+  }, [cargoType, cargoTypeCatalog, isLoadingCargoCatalog])
+
   const requiredFields = useMemo(
     () =>
       buildRequiredFields({
@@ -289,8 +296,8 @@ export function CreateInvoiceTab({
         cargoName,
         purposeOfCalling,
         frtTaxType,
-      }, { requireFrtTaxType: canEnableFreightTaxDeclaration }),
-    [toShipowner, mv, dischargeLoadingLocation, dwt, grt, loa, cargoQty, cargoType, cargoName, purposeOfCalling, frtTaxType]
+      }, { requireFrtTaxType: canEnableFreightTaxDeclaration, requireCargoName: !cargoNameDisabled }),
+    [toShipowner, mv, dischargeLoadingLocation, dwt, grt, loa, cargoQty, cargoType, cargoName, purposeOfCalling, frtTaxType, cargoNameDisabled]
   )
 
   const missingRequiredFields = useMemo(
@@ -537,6 +544,12 @@ export function CreateInvoiceTab({
   }, [cargoType, cargoName, filteredCargoNames, isLoadingCargoCatalog, pendingInquiryCargo])
 
   useEffect(() => {
+    if (cargoNameDisabled && cargoName) {
+      setCargoName('')
+    }
+  }, [cargoNameDisabled, cargoName])
+
+  useEffect(() => {
     if (!cargoType || !isTallyFeeEligibleCargo(cargoType)) {
       setTallyFeeAmount('')
     }
@@ -603,7 +616,7 @@ export function CreateInvoiceTab({
     loa,
     eta,
     cargoQty,
-    cargoName,
+    cargoName: cargoNameDisabled ? '' : cargoName,
     cargoType,
     cargoTypeOptions,
     filteredCargoNames,
@@ -1034,6 +1047,7 @@ export function CreateInvoiceTab({
 
   const formComputed = {
     isLoadingCargoCatalog,
+    cargoNameDisabled,
     isTallyFeeEligibleCargo: Boolean(cargoType && isTallyFeeEligibleCargo(cargoType)),
     shipQuarantineFee: formatUsdAmount(shipQuarantineFee),
     cargoQuarantineFee: formatUsdAmount(cargoQuarantineFee),

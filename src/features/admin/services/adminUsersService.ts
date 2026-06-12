@@ -76,5 +76,10 @@ export const adminUsersService = {
     const response = await apiClient.delete(API_CONFIG.USERS.ADMIN_USER_BY_ID(userId))
     return unwrapApiResponse<{ id: number }>(response)
   },
+
+  async reactivateUser(userId: number): Promise<{ id: number }> {
+    const response = await apiClient.post(API_CONFIG.USERS.ADMIN_USER_REACTIVATE(userId))
+    return unwrapApiResponse<{ id: number }>(response)
+  },
 }
 

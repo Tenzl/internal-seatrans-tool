@@ -264,7 +264,7 @@ const buildAARows = (
     const anchorageDays = anchorageHoursValue > 0 ? Math.ceil(anchorageHoursValue / 24).toFixed(1) : '0.0'
     const anchorageRemark = anchorageHoursValue ? `abt. ${anchorageDays} days` : ''
 
-    const shipRateFactor = isTankerShip(options?.shipType) ? P.coeff.tankerFactor : 1
+    const shipRateFactor = isTankerShip(options?.shipType) ? P.coeff.tankerFactor : (P.coeff.bulkFactor ?? 1)
 
     const tonnageValue = grtNumeric === null ? null : P.coeff.tonnagePerGrt * grtNumeric * 2 * shipRateFactor
     const tonnage = tonnageValue === null ? `${P.coeff.tonnagePerGrt}*${grtDisplay}*2` : formatAmount(tonnageValue)
@@ -390,14 +390,19 @@ const buildAARows = (
     const clearanceFeesValue = P.coeff.clearanceFee
     const clearanceFees = formatAmount(clearanceFeesValue)
 
-    const berthDaysNumeric = berthHoursValue / 24
+    // Garbage = rate/cbm × ceil(days / 2) × cbm. Days follow the stay location:
+    // at buoy/anchorage use buoy-due hours, otherwise berth-due hours.
+    const garbageHoursValue = mooringLocation === 'anchorage' ? buoyDueHoursValue : berthHoursValue
+    const garbageDaysNumeric = garbageHoursValue / 24
     const garbageUsdNumeric = toNumber(options?.garbageUsdRate)
+    const garbageDefaultRate =
+      mooringLocation === 'anchorage' ? P.garbage.atBuoyUsd : P.garbage.atBerthUsd
     const garbageUsdRate =
-      garbageUsdNumeric !== null && garbageUsdNumeric > 0 ? garbageUsdNumeric : P.garbage.atBerthUsd
+      garbageUsdNumeric !== null && garbageUsdNumeric > 0 ? garbageUsdNumeric : garbageDefaultRate
     const garbageCbmNumeric = toNumber(options?.garbageCbmAmount)
     const garbageCbmAmount = garbageCbmNumeric !== null && garbageCbmNumeric > 0 ? garbageCbmNumeric : 1
     const garbageRemovalValueFinal =
-      garbageUsdRate * Math.ceil(berthDaysNumeric / 2) * garbageCbmAmount
+      garbageUsdRate * Math.ceil(garbageDaysNumeric / 2) * garbageCbmAmount
     const garbageCbmAddText = garbageCbmAmount > 1 ? `${formatCbm(garbageCbmAmount)} cbm` : ''
     const garbageRemoval = formatAmount(garbageRemovalValueFinal)
     
@@ -545,12 +550,11 @@ const buildBBRows = (
   const formatPercent = (value: number) =>
     value.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 2 })
 
-  const pickCargoFee = (name?: string) => {
-    const normalized = (name || '').toUpperCase()
-    if (normalized.includes('BAG')) return P.coeff.cargoAgencyBagRate
-    if (normalized.includes('EQUIP')) return P.coeff.cargoAgencyEquipRate
-    if (normalized.includes('BULK')) return P.coeff.cargoAgencyBulkRate
-    return undefined
+  const pickCargoFee = (value?: string) => {
+    // Agency fee on cargo comes solely from the per-cargo-type rates configured on
+    // the Parameter screen. Unconfigured cargo types have no on-cargo fee.
+    const code = normalizeCargoType(value)
+    return (P.cargoAgencyRates ?? []).find((r) => normalizeCargoType(r.code) === code)?.rate
   }
 
   const renderRow = (row: QuoteRow, index: number) => {

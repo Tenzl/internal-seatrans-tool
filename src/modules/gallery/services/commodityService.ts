@@ -72,21 +72,6 @@ function mapCommodity(raw: Record<string, unknown>): Commodity {
   }
 }
 
-function deriveCargoTypes(commodities: Commodity[]): CargoTypeCatalogItem[] {
-  const seen = new Map<string, CargoTypeCatalogItem>()
-  for (const item of commodities) {
-    const code = (item.cargoType || 'IN_BULK').toUpperCase()
-    if (!seen.has(code)) {
-      seen.set(code, {
-        code,
-        displayLabel: code.replace(/_/g, ' '),
-        serviceTypeType: String(item.serviceTypeId),
-      })
-    }
-  }
-  return Array.from(seen.values())
-}
-
 export const commodityService = {
   getCommoditiesByServiceType: async (serviceTypeId: number): Promise<Commodity[]> => {
     const response = await apiClient.get<ApiResponse<Record<string, unknown>[]>>(
@@ -121,26 +106,34 @@ export const commodityService = {
   },
 
   getCargoTypesByServiceType: async (serviceTypeId: number): Promise<CargoTypeCatalogItem[]> => {
-    const commodities = await commodityService.getCommoditiesByServiceType(serviceTypeId)
-    return deriveCargoTypes(commodities)
+    const response = await apiClient.get<ApiResponse<CargoTypeCatalogItem[]>>(
+      API_CONFIG.CARGO_TYPES.BY_SERVICE_TYPE(serviceTypeId),
+    )
+    return unwrapList<CargoTypeCatalogItem>(response)
   },
 
-  createCargoType: async (_data: CargoTypeCatalogUpsertRequest): Promise<CargoTypeCatalogItem> => {
-    throw new Error(
-      'Cargo type catalog is derived from commodities. Create or edit a commodity and set its cargo type instead.',
+  createCargoType: async (data: CargoTypeCatalogUpsertRequest): Promise<CargoTypeCatalogItem> => {
+    const response = await apiClient.post<ApiResponse<CargoTypeCatalogItem>>(
+      API_CONFIG.CARGO_TYPES.ADMIN_BASE,
+      data,
     )
+    return unwrapOne<CargoTypeCatalogItem>(response)
   },
 
-  updateCargoType: async (_data: CargoTypeCatalogUpsertRequest): Promise<CargoTypeCatalogItem> => {
-    throw new Error(
-      'Cargo type catalog is read-only. Update the cargo type on each commodity instead.',
+  updateCargoType: async (data: CargoTypeCatalogUpsertRequest): Promise<CargoTypeCatalogItem> => {
+    const response = await apiClient.put<ApiResponse<CargoTypeCatalogItem>>(
+      API_CONFIG.CARGO_TYPES.ADMIN_BY_KEY(data.serviceTypeId, data.code),
+      { displayLabel: data.displayLabel },
     )
+    return unwrapOne<CargoTypeCatalogItem>(response)
   },
 
-  deleteCargoType: async (_serviceTypeId: number, _code: string): Promise<void> => {
-    throw new Error(
-      'Cargo type catalog is read-only. Deactivate commodities or change their cargo type instead.',
-    )
+  deleteCargoType: async (serviceTypeId: number, code: string): Promise<void> => {
+    const response = await apiClient.delete(API_CONFIG.CARGO_TYPES.ADMIN_BY_KEY(serviceTypeId, code))
+    if (!response.ok) {
+      const result = await response.json().catch(() => ({}))
+      throw new Error((result as { message?: string }).message || 'Failed to delete cargo type')
+    }
   },
 
   createCommodity: async (data: CreateCommodityRequest): Promise<Commodity> => {
