@@ -52,7 +52,7 @@ export function adminStickyColumnClass(
 
   if (pinLeft.includes(columnId)) {
     return cn(
-      "admin-table-pin-left sticky left-0 min-w-[11rem] shadow-[inset_-1px_0_0_0_hsl(var(--border)/0.55)]",
+      "admin-table-pin-left sticky left-0 min-w-[7rem] shadow-[inset_-1px_0_0_0_hsl(var(--border)/0.55)] sm:min-w-[11rem]",
       isHeader ? pinnedHeader : "z-10 bg-white hover:!bg-white",
       baseClass,
     )

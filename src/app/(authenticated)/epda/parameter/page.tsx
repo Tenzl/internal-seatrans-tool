@@ -219,6 +219,7 @@ function GrtTierTable({
           <Plus className='h-4 w-4' /> {t('tbl.addTier')}
         </Button>
       </div>
+      <div className='overflow-x-auto'>
       <Table>
         <TableHeader>
           <TableRow>
@@ -264,6 +265,7 @@ function GrtTierTable({
           ))}
         </TableBody>
       </Table>
+      </div>
     </div>
   )
 }
@@ -295,6 +297,7 @@ function LoaTierTable({
           <Plus className='h-4 w-4' /> {t('tbl.addTier')}
         </Button>
       </div>
+      <div className='overflow-x-auto'>
       <Table>
         <TableHeader>
           <TableRow>
@@ -335,6 +338,7 @@ function LoaTierTable({
           ))}
         </TableBody>
       </Table>
+      </div>
     </div>
   )
 }
@@ -1266,7 +1270,7 @@ export default function Page() {
             </Tabs>
 
             <Card>
-              <CardHeader className='flex flex-row items-center justify-between'>
+              <CardHeader className='flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between'>
                 <div>
                   <CardTitle className='text-xl'>
                     {t('param.areaSet', { area })}{' '}
@@ -1404,7 +1408,7 @@ function PortOverridesCard({
           <div className='grid gap-1.5'>
             <Label className='text-xs text-muted-foreground'>{t('param.addEditPort')}</Label>
             <Select value={editingPortId ? String(editingPortId) : ''} onValueChange={(v) => beginEdit(Number(v))}>
-              <SelectTrigger className='w-72'>
+              <SelectTrigger className='w-full sm:w-72'>
                 <SelectValue placeholder={t('param.selectPort')} />
               </SelectTrigger>
               <SelectContent>
@@ -1451,7 +1455,7 @@ function PortOverridesCard({
 
         {editingPortId && (
           <Card className='border-primary/40'>
-            <CardHeader className='flex flex-row items-center justify-between'>
+            <CardHeader className='flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between'>
               <CardTitle className='text-base'>{t('param.overrideTitle', { port: portName(editingPortId) })}</CardTitle>
               <div className='flex gap-2'>
                 <Button variant='outline' size='sm' onClick={() => setEditingPortId(null)}>

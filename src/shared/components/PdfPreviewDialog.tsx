@@ -72,7 +72,7 @@ export function PdfPreviewDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent
         showCloseButton={false}
-        className="w-[96vw] max-w-7xl h-[92vh] sm:max-w-7xl flex flex-col p-0 gap-0"
+        className="w-[96vw] max-w-7xl h-[92dvh] sm:max-w-7xl flex flex-col p-0 gap-0"
       >
         <DialogHeader className="gap-3 border-b p-4 sm:flex-row sm:items-center sm:justify-between sm:space-y-0 shrink-0">
           <div className="min-w-0 flex-1 space-y-1">

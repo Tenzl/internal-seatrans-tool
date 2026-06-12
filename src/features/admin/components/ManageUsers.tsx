@@ -334,7 +334,7 @@ export function ManageUsers() {
           <div className="space-y-1.5">
             <Label className="text-xs font-medium text-muted-foreground">Scope</Label>
             <Select value={scope} onValueChange={(v) => setScope(v as UserScope)}>
-              <SelectTrigger className="h-9 w-[220px]">
+              <SelectTrigger className="h-9 w-full sm:w-[220px]">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
@@ -350,7 +350,7 @@ export function ManageUsers() {
           <div className="space-y-1.5">
             <Label className="text-xs font-medium text-muted-foreground">Role</Label>
             <Select value={roleFilter} onValueChange={setRoleFilter} disabled={isLoadingRoles}>
-              <SelectTrigger className="h-9 w-[240px]">
+              <SelectTrigger className="h-9 w-full sm:w-[240px]">
                 <SelectValue placeholder="All roles" />
               </SelectTrigger>
               <SelectContent>
@@ -370,7 +370,7 @@ export function ManageUsers() {
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               placeholder="Search email, name, company…"
-              className="h-9 w-[320px]"
+              className="h-9 w-full sm:w-[320px]"
             />
           </div>
         </AdminToolbarGroup>

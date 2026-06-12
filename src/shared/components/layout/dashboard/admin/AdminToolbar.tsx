@@ -32,7 +32,8 @@ export function AdminToolbarGroup({ children, className, align = "start" }: Admi
   return (
     <div
       className={cn(
-        "flex flex-wrap items-center gap-2",
+        // Stack controls full-width on phones; switch to the wrapping row on sm+.
+        "flex flex-col items-stretch gap-2 sm:flex-row sm:flex-wrap sm:items-center",
         align === "end" && "sm:ml-auto",
         className,
       )}
