@@ -6,7 +6,7 @@ import { Button } from '@/shared/components/ui/button'
 import { Label } from '@/shared/components/ui/label'
 import { Badge } from '@/shared/components/ui/badge'
 import { toast } from '@/shared/utils/toast'
-import { Loader2, Eye, Save, Send, ArrowLeft, Pencil } from 'lucide-react'
+import { Loader2, Eye, Save, Send, ArrowLeft, ArrowRight, Pencil, ChevronDown, ChevronUp } from 'lucide-react'
 import { usePathname, useRouter } from 'next/navigation'
 import { buildDashboardUrl } from '@/shared/utils/dashboardNavigation'
 import { AdminSection } from '@/shared/components/layout/dashboard/admin'
@@ -34,7 +34,7 @@ import {
   type RequiredFieldKey,
 } from '@/features/admin/components/invoice/invoiceValidation'
 import { buildInvoiceQuoteData } from '@/features/admin/components/invoice/buildInvoiceQuoteData'
-import { EpdaFormSection, EpdaFormSkeleton, EpdaSectionRail, type EpdaSectionId } from '@/features/admin/components/invoice/EpdaFormLayout'
+import { EpdaFormSection, EpdaFormSkeleton, EpdaSectionRail, EPDA_SECTIONS, EPDA_CUSTOMER_SECTION, type EpdaSectionId } from '@/features/admin/components/invoice/EpdaFormLayout'
 import {
   applyAdminInquiryToForm,
   buildEpdaPatchPayload,
@@ -248,6 +248,14 @@ export function CreateInvoiceTab({
   const [agencyDiscountPercent, setAgencyDiscountPercent] = useState('')
   const [agencyLumpsumAmount, setAgencyLumpsumAmount] = useState('')
   const [activeSection, setActiveSection] = useState<EpdaSectionId>('epda-general')
+  // Mobile only: collapse the Port area / Port of call pickers into a one-line
+  // summary once both are chosen, so the pinned header stays compact.
+  const [portPickerCollapsed, setPortPickerCollapsed] = useState(false)
+  useEffect(() => {
+    // Collapse once a port is picked; re-open automatically when the area
+    // changes (which clears the port). Tapping "Change" expands it manually.
+    setPortPickerCollapsed(Boolean(selectedArea && port))
+  }, [selectedArea, port])
 
   // A brand-new EPDA (not opened from a customer inquiry) belongs to the signed-in
   // creator. There is no separate customer picker; the owner is the person creating it.
@@ -653,6 +661,22 @@ export function CreateInvoiceTab({
   // for BOTH internal and external — it surfaces who created the order.
   const showCreatorSection = Boolean(viewInquiryMeta && linkedInquiryId)
   const showSaveDraftButton = !readOnly
+
+  // Ordered section ids (matches the rail), used by the mobile Next / Done button.
+  const orderedSectionIds = useMemo<EpdaSectionId[]>(() => {
+    const ids = EPDA_SECTIONS.map((s) => s.id) as EpdaSectionId[]
+    return showCreatorSection ? [EPDA_CUSTOMER_SECTION.id, ...ids] : ids
+  }, [showCreatorSection])
+  const activeSectionIndex = orderedSectionIds.indexOf(activeSection)
+  const isLastSection = activeSectionIndex === orderedSectionIds.length - 1
+  const goToNextSection = () => {
+    const next = orderedSectionIds[activeSectionIndex + 1]
+    if (next) {
+      setActiveSection(next)
+      // Bring the new section to the top, just under the pinned mobile header.
+      window.scrollTo({ top: 0, behavior: 'smooth' })
+    }
+  }
 
   useEffect(() => {
     setLinkedInquiryId(resolvedInquiryId ?? null)
@@ -1192,8 +1216,36 @@ export function CreateInvoiceTab({
             </div>
           )}
 
+          {/* Mobile: one-line summary that toggles the pickers open/closed.
+              Tap to edit (expand) → tap again to collapse. */}
+          {selectedArea && port ? (
+            <button
+              type="button"
+              onClick={() => setPortPickerCollapsed((v) => !v)}
+              className="flex w-full items-center justify-between gap-2 rounded-md border bg-muted/30 px-3 py-2 text-left lg:hidden"
+            >
+              <span className="min-w-0 truncate text-sm">
+                <span className="text-muted-foreground">{t(`area.${selectedArea}`)}</span>
+                <span className="mx-1.5 text-muted-foreground">·</span>
+                <span className="font-medium">{port}</span>
+              </span>
+              <span className="flex shrink-0 items-center gap-1 text-xs font-medium text-primary">
+                {portPickerCollapsed ? t('common.edit') : t('epda.collapse')}
+                {portPickerCollapsed ? (
+                  <ChevronDown className="h-4 w-4" />
+                ) : (
+                  <ChevronUp className="h-4 w-4" />
+                )}
+              </span>
+            </button>
+          ) : null}
           {(
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            <div
+              className={cn(
+                'grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3',
+                portPickerCollapsed && selectedArea && port && 'hidden lg:grid',
+              )}
+            >
               <div className="grid gap-2">
                 <Label htmlFor="portArea">{t('epda.portArea')}</Label>
                 <Select value={selectedArea} onValueChange={(value) => setSelectedArea(value as AreaOption)}>
@@ -1203,7 +1255,7 @@ export function CreateInvoiceTab({
                   <SelectContent>
                     {AREA_OPTIONS.map((area) => (
                       <SelectItem key={area} value={area}>
-                        {area}
+                        {t(`area.${area}`)}
                       </SelectItem>
                     ))}
                   </SelectContent>
@@ -1238,6 +1290,17 @@ export function CreateInvoiceTab({
             </div>
           )}
 
+          {/* Mobile: section rail pinned with the header so you can jump between
+              sections without scrolling up. Desktop uses the rail in the grid below. */}
+          {isInquiryDetailFlow || (selectedArea && port) ? (
+            <EpdaSectionRail
+              active={activeSection}
+              onSelect={setActiveSection}
+              includeCustomer={showCreatorSection}
+              className="lg:hidden"
+            />
+          ) : null}
+
         </div>
 
         {!isInquiryDetailFlow && (!selectedArea || !port) ? (
@@ -1251,7 +1314,7 @@ export function CreateInvoiceTab({
             active={activeSection}
             onSelect={setActiveSection}
             includeCustomer={showCreatorSection}
-            className="lg:sticky lg:top-36 lg:self-start"
+            className="hidden lg:block lg:sticky lg:top-36 lg:self-start"
           />
 
           <div
@@ -1295,13 +1358,36 @@ export function CreateInvoiceTab({
                 getRequiredState={getRequiredState}
               />
             )}
+
+            {/* Mobile: advance through sections; "Done" on the last jumps back to
+                the pinned header (Save / Issue / Preview live there). */}
+            <div className="pt-2 lg:hidden">
+              {isLastSection ? (
+                <Button
+                  type="button"
+                  className="h-11 w-full active:scale-[0.98]"
+                  onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
+                >
+                  {t('epda.done')}
+                </Button>
+              ) : (
+                <Button
+                  type="button"
+                  className="h-11 w-full gap-2 active:scale-[0.98]"
+                  onClick={goToNextSection}
+                >
+                  {t('epda.next')}
+                  <ArrowRight className="h-4 w-4" />
+                </Button>
+              )}
+            </div>
           </div>
         </div>
         )}
 
         {!readOnly && showValidationErrors && missingRequiredFields.length > 0 ? (
           <p className="text-sm text-destructive" role="alert">
-            Required fields: {missingRequiredFields.map((field) => field.label).join(', ')}
+            {t('epda.requiredFields')}: {missingRequiredFields.map((field) => field.label).join(', ')}
           </p>
         ) : null}
       </div>

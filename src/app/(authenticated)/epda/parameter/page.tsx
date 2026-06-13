@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState, type ReactNode } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { ChevronRight, History, Loader2, Plus, RotateCcw, Save, Trash2 } from 'lucide-react'
+import { ChevronLeft, ChevronRight, History, Loader2, Plus, RotateCcw, Save, Trash2 } from 'lucide-react'
 import { toast } from 'sonner'
 import { ConfigDrawer } from '@/components/config-drawer'
 import { Header } from '@/components/layout/header'
@@ -981,10 +981,11 @@ function ValuesEditor({
   const current = sections[Math.min(active, sections.length - 1)]
 
   return (
-    <div className='grid gap-8 lg:grid-cols-[15rem_1fr]'>
-      {/* Numbered section rail — click to view each part */}
-      <nav aria-label='Parameter sections' className='lg:sticky lg:top-24 lg:self-start'>
-        <ol className='flex gap-2 overflow-x-auto pb-1 lg:flex-col lg:gap-1 lg:overflow-visible lg:pb-0'>
+    <div className='grid gap-4 lg:grid-cols-[15rem_1fr] lg:gap-8'>
+      {/* Numbered section rail — click to view each part. On mobile it's a
+          horizontal scroll strip; on desktop a sticky vertical list. */}
+      <nav aria-label='Parameter sections' className='min-w-0 lg:sticky lg:top-24 lg:self-start'>
+        <ol className='flex min-w-0 gap-2 overflow-x-auto pb-1 lg:flex-col lg:gap-1 lg:overflow-visible lg:pb-0'>
           {sections.map((s, i) => {
             const isActive = i === active
             return (
@@ -993,20 +994,24 @@ function ValuesEditor({
                   type='button'
                   onClick={() => setActive(i)}
                   aria-current={isActive ? 'true' : undefined}
-                  className={`flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-left transition-colors ${
+                  className={`flex items-center gap-2 whitespace-nowrap rounded-lg border px-3 py-2 text-left transition-colors lg:w-full lg:gap-3 lg:border-0 lg:py-2.5 ${
                     isActive
-                      ? 'bg-primary/10 text-foreground'
-                      : 'text-muted-foreground hover:bg-muted/60 hover:text-foreground'
+                      ? 'border-primary/30 bg-primary/10 text-foreground'
+                      : 'border-transparent text-muted-foreground hover:bg-muted/60 hover:text-foreground'
                   }`}
                 >
                   <span
-                    className={`text-base font-semibold tabular-nums ${
+                    className={`text-sm font-semibold tabular-nums lg:text-base ${
                       isActive ? 'text-primary' : 'text-muted-foreground/70'
                     }`}
                   >
                     {String(i + 1).padStart(2, '0')}
                   </span>
-                  <span className={`text-base ${isActive ? 'font-semibold' : 'font-medium'}`}>
+                  <span
+                    className={`text-sm lg:text-base ${
+                      isActive ? 'font-semibold' : 'font-medium hidden lg:inline'
+                    }`}
+                  >
                     {s.title}
                   </span>
                 </button>
@@ -1028,6 +1033,58 @@ function ValuesEditor({
           </div>
         </header>
         {current.body}
+
+        {/* Mobile-only pager: previous / next section with their names. */}
+        <nav
+          aria-label='Section pager'
+          className='mt-8 flex items-stretch justify-between gap-3 border-t pt-4 lg:hidden'
+        >
+          {active > 0 ? (
+            <button
+              type='button'
+              onClick={() => {
+                setActive(active - 1)
+                window.scrollTo({ top: 0, behavior: 'smooth' })
+              }}
+              className='flex min-w-0 flex-1 items-center gap-2 rounded-lg border px-3 py-2 text-left transition-transform active:scale-[0.98]'
+            >
+              <ChevronLeft className='h-5 w-5 shrink-0 text-muted-foreground' />
+              <span className='min-w-0'>
+                <span className='block text-[11px] font-medium uppercase tracking-wide text-muted-foreground'>
+                  {t('epda.previous')}
+                </span>
+                <span className='block truncate text-sm font-medium'>
+                  {String(active).padStart(2, '0')} {sections[active - 1].title}
+                </span>
+              </span>
+            </button>
+          ) : (
+            <span className='flex-1' />
+          )}
+
+          {active < sections.length - 1 ? (
+            <button
+              type='button'
+              onClick={() => {
+                setActive(active + 1)
+                window.scrollTo({ top: 0, behavior: 'smooth' })
+              }}
+              className='flex min-w-0 flex-1 items-center justify-end gap-2 rounded-lg border border-primary/30 bg-primary/5 px-3 py-2 text-right transition-transform active:scale-[0.98]'
+            >
+              <span className='min-w-0'>
+                <span className='block text-[11px] font-medium uppercase tracking-wide text-primary'>
+                  {t('epda.next')}
+                </span>
+                <span className='block truncate text-sm font-medium'>
+                  {String(active + 2).padStart(2, '0')} {sections[active + 1].title}
+                </span>
+              </span>
+              <ChevronRight className='h-5 w-5 shrink-0 text-primary' />
+            </button>
+          ) : (
+            <span className='flex-1' />
+          )}
+        </nav>
       </section>
     </div>
   )
@@ -1087,7 +1144,7 @@ function ParamHistoryButton({ area }: { area: AreaOption }) {
         <DialogHeader>
           <DialogTitle className='flex items-center gap-2'>
             <History className='h-4 w-4 text-muted-foreground' />
-            {t('phist.title', { area })}
+            {t('phist.title', { area: t(`area.${area}`) })}
           </DialogTitle>
         </DialogHeader>
         <ul className='max-h-[60vh] space-y-2 overflow-y-auto pr-1'>
@@ -1259,11 +1316,21 @@ export default function Page() {
           </div>
         ) : (
           <div className='mt-4 space-y-6'>
-            <Tabs value={area} onValueChange={(v) => handleAreaChange(v as AreaOption)}>
-              <TabsList className='h-auto'>
+            {/* Area selector — pinned under the header on mobile (compact) so you
+                can switch area without scrolling back up; static on desktop. */}
+            <Tabs
+              value={area}
+              onValueChange={(v) => handleAreaChange(v as AreaOption)}
+              className='sticky top-16 z-30 -mx-4 border-b bg-background/95 px-4 py-2 backdrop-blur supports-[backdrop-filter]:bg-background/80 lg:static lg:mx-0 lg:border-0 lg:bg-transparent lg:px-0 lg:py-0 lg:backdrop-blur-none'
+            >
+              <TabsList className='h-auto w-full lg:w-auto'>
                 {AREA_OPTIONS.map((a) => (
-                  <TabsTrigger key={a} value={a} className='px-5 py-2 text-base font-medium'>
-                    {a}
+                  <TabsTrigger
+                    key={a}
+                    value={a}
+                    className='flex-1 px-3 py-1.5 text-sm font-medium lg:flex-none lg:px-5 lg:py-2 lg:text-base'
+                  >
+                    {t(`area.${a}`)}
                   </TabsTrigger>
                 ))}
               </TabsList>
@@ -1273,7 +1340,7 @@ export default function Page() {
               <CardHeader className='flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between'>
                 <div>
                   <CardTitle className='text-xl'>
-                    {t('param.areaSet', { area })}{' '}
+                    {t('param.areaSet', { area: t(`area.${area}`) })}{' '}
                     <span className='text-base font-normal text-muted-foreground'>
                       ({t('param.template', { variant })})
                     </span>
@@ -1400,7 +1467,7 @@ function PortOverridesCard({
   return (
     <Card>
       <CardHeader>
-        <CardTitle>{t('param.portOverrides', { area })}</CardTitle>
+        <CardTitle>{t('param.portOverrides', { area: t(`area.${area}`) })}</CardTitle>
         <CardDescription>{t('param.portOverridesDesc')}</CardDescription>
       </CardHeader>
       <CardContent className='space-y-4'>
