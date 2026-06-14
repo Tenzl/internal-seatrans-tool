@@ -141,18 +141,40 @@ export const galleryService = {
   ): Promise<GalleryImage> => {
     const formData = new FormData()
     formData.append('file', file)
-    formData.append('province_id', provinceId.toString())
-    formData.append('port_id', portId.toString())
-    formData.append('service_type_id', serviceTypeId.toString())
-    formData.append('commodity_id', commodityId.toString())
+
+    // Send the metadata as query params (not multipart fields): a same-origin
+    // reverse proxy can strip multipart text parts, but URL query always survives.
+    const params = new URLSearchParams({
+      province_id: String(provinceId),
+      port_id: String(portId),
+      service_type_id: String(serviceTypeId),
+      commodity_id: String(commodityId),
+    })
 
     const response = await apiClient.post<ApiResponse<GalleryImageApiDto>>(
-      API_CONFIG.GALLERY.ADMIN_BASE,
+      `${API_CONFIG.GALLERY.ADMIN_BASE}?${params.toString()}`,
       formData,
     )
 
-    const result = await response.json()
-    return toGalleryImage(result.data)
+    const result = await response.json().catch(() => null)
+    // Surface the real backend reason instead of crashing on a null payload.
+    // Validation errors are nested under `error.details` (see GlobalExceptionFilter).
+    if (!response.ok) {
+      const rawDetails = result?.error?.details ?? result?.details
+      const details = Array.isArray(rawDetails)
+        ? rawDetails
+            .map((d: { field?: string; message?: string }) => `${d.field}: ${d.message}`)
+            .join('; ')
+        : ''
+      throw new Error(
+        details || result?.error?.message || result?.message || `Upload failed (HTTP ${response.status})`,
+      )
+    }
+    const dto = (result?.data ?? null) as GalleryImageApiDto | null
+    if (!dto || dto.id == null) {
+      throw new Error(result?.message || 'Upload failed: unexpected server response')
+    }
+    return toGalleryImage(dto)
   },
 
   uploadMultiple: async (

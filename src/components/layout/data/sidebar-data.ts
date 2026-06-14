@@ -9,6 +9,10 @@ import {
   Database,
   Anchor,
   Package,
+  Image,
+  Building2,
+  Newspaper,
+  Tag,
 } from 'lucide-react'
 import { type SidebarData } from '../types'
 
@@ -92,6 +96,32 @@ export const sidebarData: SidebarData = {
               title: 'Cargo',
               icon: Package,
               url: '/data/cargo',
+            },
+            {
+              title: 'Images',
+              icon: Image,
+              url: '/data/images',
+            },
+            {
+              title: 'Offices',
+              icon: Building2,
+              url: '/data/offices',
+            },
+          ],
+        },
+        {
+          title: 'Content Management',
+          icon: Newspaper,
+          items: [
+            {
+              title: 'Posts',
+              icon: Newspaper,
+              url: '/content/posts',
+            },
+            {
+              title: 'Categories',
+              icon: Tag,
+              url: '/content/categories',
             },
           ],
         },
