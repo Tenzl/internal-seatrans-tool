@@ -17,6 +17,13 @@ import {
 import { Button } from '@/shared/components/ui/button'
 import { Input } from '@/shared/components/ui/input'
 import { Label } from '@/shared/components/ui/label'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/shared/components/ui/select'
 import { Textarea } from '@/shared/components/ui/textarea'
 import { bookingShippingService } from '@/features/admin/services/bookingShippingService'
 import {
@@ -96,6 +103,32 @@ function FormField({
   )
 }
 
+type ContactLike = {
+  person?: string | null
+  firstName?: string | null
+  lastName?: string | null
+  email?: string | null
+  phone?: string | null
+  title?: string | null
+}
+
+/** Short label for a contact-person option. */
+function contactLabel(c: ContactLike): string {
+  const name =
+    c.person?.trim() ||
+    [c.firstName, c.lastName].filter(Boolean).join(' ').trim() ||
+    c.email ||
+    'Contact'
+  return c.title ? `${name} — ${c.title}` : name
+}
+
+/** Value written into the shipment "Contact" field when a person is picked. */
+function composeContact(c: ContactLike): string {
+  const name =
+    c.person?.trim() || [c.firstName, c.lastName].filter(Boolean).join(' ').trim()
+  return [name, c.email, c.phone].filter(Boolean).join(' · ')
+}
+
 function SectionSkeleton() {
   return (
     <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
@@ -113,6 +146,7 @@ export function BookingShippingScreen() {
   const queryClient = useQueryClient()
   const [partnerId, setPartnerId] = useState<number | null>(null)
   const [selectedPartner, setSelectedPartner] = useState<PartnerOption | null>(null)
+  const [contactIndex, setContactIndex] = useState<string>('')
   const [partnerSearch, setPartnerSearch] = useState('')
   const [portSearch, setPortSearch] = useState('')
   const [activeSection, setActiveSection] = useState<SectionId>('booking')
@@ -126,13 +160,12 @@ export function BookingShippingScreen() {
   const partnerSearchKey = debouncedPartnerSearch.trim().toLowerCase()
   const portSearchKey = debouncedPortSearch.trim().toLowerCase()
 
-  const partnerSearchReady = partnerSearchKey.length >= BOOKING_SEARCH.minChars
-
+  // Always enabled: an empty search returns the first N partners so the list is
+  // populated as soon as the select opens, no typing required.
   const partnerOptionsQuery = useQuery({
     queryKey: queryKeys.partnerOptions(partnerSearchKey),
     queryFn: () =>
       partnerManagementService.listOptions(partnerSearchKey, BOOKING_SEARCH.limit),
-    enabled: partnerSearchReady,
     staleTime: BOOKING_SHIPPING_CACHE.optionsStaleMs,
     gcTime: BOOKING_SHIPPING_CACHE.gcMs,
     placeholderData: (previous) => previous,
@@ -145,6 +178,20 @@ export function BookingShippingScreen() {
     staleTime: BOOKING_SHIPPING_CACHE.shippingStaleMs,
     gcTime: BOOKING_SHIPPING_CACHE.gcMs,
   })
+
+  // Full partner record (for its contact persons) once one is selected.
+  const partnerDetailQuery = useQuery({
+    queryKey: ['partnerDetail', partnerId],
+    queryFn: () => partnerManagementService.detail(partnerId!),
+    enabled: partnerId != null,
+    staleTime: BOOKING_SHIPPING_CACHE.shippingStaleMs,
+    gcTime: BOOKING_SHIPPING_CACHE.gcMs,
+  })
+
+  const partnerContacts = useMemo(
+    () => partnerDetailQuery.data?.contacts ?? [],
+    [partnerDetailQuery.data],
+  )
 
   const portIds = useMemo(() => collectPortIds(form), [form])
   const portIdsKey = useMemo(() => stablePortIdsKey(portIds), [portIds])
@@ -227,7 +274,7 @@ export function BookingShippingScreen() {
       if (partnerId != null) {
         queryClient.setQueryData(queryKeys.bookingShipping(partnerId), data)
       }
-      toast.success('Shipping record saved')
+      toast.success('Shipment record saved')
     },
     onError: (err: Error) => toast.error(err.message || 'Failed to save'),
   })
@@ -269,6 +316,7 @@ export function BookingShippingScreen() {
   }
 
   const selectPartner = (id: number | null) => {
+    setContactIndex('')
     if (id == null) {
       setPartnerId(null)
       setSelectedPartner(null)
@@ -331,7 +379,7 @@ export function BookingShippingScreen() {
     <div className="mx-auto max-w-7xl space-y-6 px-1 pb-8">
       <header className="flex flex-col gap-4 border-b border-border/60 pb-5 sm:flex-row sm:items-end sm:justify-between">
         <p className="max-w-xl text-sm leading-relaxed text-muted-foreground">
-          Search a partner to begin. Typeahead returns up to {BOOKING_SEARCH.limit} matches per search — nothing loads until you type.
+          Pick a partner to begin. The list shows the first {BOOKING_SEARCH.limit} partners — type to search for more.
         </p>
         {showForm && (
           <Button
@@ -345,7 +393,7 @@ export function BookingShippingScreen() {
             ) : (
               <Save className="mr-2 h-4 w-4" />
             )}
-            Save shipping
+            Save shipment
           </Button>
         )}
       </header>
@@ -357,16 +405,14 @@ export function BookingShippingScreen() {
               Partner
             </p>
             <AsyncSearchSelect
-              label="Search partner"
+              label="Select partner"
               value={partnerId}
               selectedLabel={selectedPartner?.name ?? null}
               options={partnerOptions}
               search={partnerSearch}
               onSearchChange={setPartnerSearch}
-              isLoading={partnerSearchReady && partnerOptionsQuery.isFetching}
+              isLoading={partnerOptionsQuery.isFetching}
               placeholder="Name or customer ID…"
-              requireSearch
-              idleMessage="Type partner name or customer ID (max 10 results)."
               emptyMessage="No partner found."
               allowClear
               onChange={(id) => selectPartner(id)}
@@ -377,9 +423,43 @@ export function BookingShippingScreen() {
               </p>
             )}
           </div>
+
+          {showForm && (
+            <div>
+              <p className="mb-2 text-[0.65rem] font-semibold uppercase tracking-[0.08em] text-muted-foreground">
+                Contact person
+              </p>
+              <Select
+                value={contactIndex || undefined}
+                disabled={partnerDetailQuery.isLoading || partnerContacts.length === 0}
+                onValueChange={(v) => {
+                  if (v === 'NONE') {
+                    setContactIndex('')
+                    setField('contact', null)
+                    return
+                  }
+                  setContactIndex(v)
+                  const contact = partnerContacts[Number(v)]
+                  if (contact) setField('contact', composeContact(contact))
+                }}
+              >
+                <SelectTrigger className="h-9 w-full bg-background">
+                  <SelectValue placeholder={partnerContacts.length ? 'Available' : 'None'} />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="NONE">None</SelectItem>
+                  {partnerContacts.map((contact, i) => (
+                    <SelectItem key={i} value={String(i)}>
+                      {contactLabel(contact)}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
           {!showForm && (
             <p className="text-sm text-muted-foreground">
-              Pick a partner to load shipping data.
+              Pick a partner to load shipment data.
             </p>
           )}
         </aside>
@@ -389,7 +469,7 @@ export function BookingShippingScreen() {
             <div className="space-y-4">
               <div className="flex items-center gap-2 text-sm text-muted-foreground">
                 <Loader2 className="h-4 w-4 animate-spin" />
-                Loading shipping for {selectedPartner?.name ?? 'partner'}…
+                Loading shipment for {selectedPartner?.name ?? 'partner'}…
               </div>
               <SectionSkeleton />
             </div>

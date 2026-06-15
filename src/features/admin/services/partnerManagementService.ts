@@ -7,14 +7,92 @@ import type {
   PartnerImportCommitData,
   PartnerImportMode,
   PartnerImportPreviewData,
+  PartnerImportRowError,
   BookingPartnerListParams,
   BookingPartnerPageData,
   BookingPartnerUpsertRequest,
   CustomerStatus,
 } from '@/features/admin/types/partnerManagement.types'
 
-/** Matches backend max page size — one API request per table page */
-export const PARTNERS_PAGE_SIZE = 100
+/** Rows fetched per table page (server-side pagination). */
+export const PARTNERS_PAGE_SIZE = 20
+
+/** Bulk import can take a while against a remote DB — allow up to 5 minutes. */
+const IMPORT_TIMEOUT_MS = 300000
+
+// ---------------------------------------------------------------------------
+// Import response adapters
+// The backend returns a flat shape ({ total, valid, invalid, rows:[{index,
+// data, isValid, errors}] } for preview; { successCount, errorCount,
+// errorDetails } for commit). The UI consumes PartnerImportPreviewData /
+// PartnerImportCommitData, so we map between them here.
+// ---------------------------------------------------------------------------
+
+interface RawImportPreviewRow {
+  index: number
+  data: Record<string, unknown>
+  isValid: boolean
+  errors: string[]
+}
+
+interface RawImportPreview {
+  total: number
+  valid: number
+  invalid: number
+  rows: RawImportPreviewRow[]
+}
+
+interface RawImportCommit {
+  totalInput: number
+  successCount: number
+  errorCount: number
+  successIndexes: number[]
+  errorDetails: Array<{ index: number; message: string }>
+}
+
+const stringifyCell = (value: unknown): string => {
+  if (value == null) return ''
+  if (Array.isArray(value)) return value.join(', ')
+  return String(value)
+}
+
+const adaptPreview = (raw: RawImportPreview): PartnerImportPreviewData => {
+  const rows = raw.rows ?? []
+  const rowErrors: PartnerImportRowError[] = rows
+    .filter((row) => !row.isValid)
+    .flatMap((row) =>
+      (row.errors?.length ? row.errors : ['Invalid row']).map((message) => ({
+        rowIndex: row.index,
+        message,
+      })),
+    )
+  const validRows = rows
+    .filter((row) => row.isValid)
+    .map((row) => {
+      const out: Record<string, string> = {}
+      for (const [key, value] of Object.entries(row.data ?? {})) {
+        out[key] = stringifyCell(value)
+      }
+      return out
+    })
+
+  return {
+    headers: validRows.length ? Object.keys(validRows[0]) : [],
+    rows: validRows,
+    rowErrors,
+    summary: { total: raw.total ?? 0, valid: raw.valid ?? 0, invalid: raw.invalid ?? 0 },
+  }
+}
+
+const adaptCommit = (raw: RawImportCommit): PartnerImportCommitData => ({
+  createdCount: raw.successCount ?? 0,
+  updatedCount: 0,
+  failedCount: raw.errorCount ?? 0,
+  rowErrors: (raw.errorDetails ?? []).map((error) => ({
+    rowIndex: error.index,
+    message: error.message,
+  })),
+})
 
 const buildListQuery = (params: BookingPartnerListParams) => {
   const query = new URLSearchParams()
@@ -97,16 +175,26 @@ export const partnerManagementService = {
     await unwrap(response)
   },
 
+  /** Wipe ALL partners (to re-import a fresh dataset). */
+  async deleteAll(): Promise<{ deleted: number }> {
+    const response = await apiClient.delete<ApiResponse<{ deleted: number }>>(
+      API_CONFIG.BOOKING_PARTNERS.ADMIN_BASE,
+    )
+    return unwrap<{ deleted: number }>(response)
+  },
+
   async previewImport(file: File): Promise<PartnerImportPreviewData> {
     const formData = new FormData()
     formData.append('file', file)
 
-    const response = await apiClient.post<ApiResponse<PartnerImportPreviewData>>(
+    // Parsing + validating a large file can take a while; relax the timeout.
+    const response = await apiClient.post<ApiResponse<RawImportPreview>>(
       API_CONFIG.BOOKING_PARTNERS.IMPORT_PREVIEW,
       formData,
+      { timeout: IMPORT_TIMEOUT_MS },
     )
 
-    return unwrap<PartnerImportPreviewData>(response)
+    return adaptPreview(await unwrap<RawImportPreview>(response))
   },
 
   async commitImport(file: File, mode: PartnerImportMode): Promise<PartnerImportCommitData> {
@@ -114,12 +202,14 @@ export const partnerManagementService = {
     formData.append('file', file)
     formData.append('mode', mode)
 
-    const response = await apiClient.post<ApiResponse<PartnerImportCommitData>>(
+    // Commit inserts rows one-by-one against a remote DB; allow several minutes.
+    const response = await apiClient.post<ApiResponse<RawImportCommit>>(
       API_CONFIG.BOOKING_PARTNERS.IMPORT_COMMIT,
       formData,
+      { timeout: IMPORT_TIMEOUT_MS },
     )
 
-    return unwrap<PartnerImportCommitData>(response)
+    return adaptCommit(await unwrap<RawImportCommit>(response))
   },
 
   getImportTemplateUrl(): string {

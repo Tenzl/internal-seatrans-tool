@@ -72,7 +72,7 @@ export const sidebarData: SidebarData = {
               url: '/booking/partner',
             },
             {
-              title: 'Shipping',
+              title: 'Shipment',
               icon: Ship,
               url: '/booking/shipping',
             },

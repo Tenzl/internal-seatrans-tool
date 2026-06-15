@@ -24,6 +24,14 @@ const XLSX_MIME_TYPES = new Set([
   'application/octet-stream',
 ])
 
+const CSV_MIME_TYPES = new Set([
+  'text/csv',
+  'application/csv',
+  'application/vnd.ms-excel',
+  'application/octet-stream',
+  '',
+])
+
 export const normalizeHeader = (value: string): string =>
   value
     .trim()
@@ -39,6 +47,17 @@ export const isXlsxFile = (file: File): boolean => {
   // Some browsers may provide an empty MIME type.
   return !file.type || XLSX_MIME_TYPES.has(file.type)
 }
+
+export const isCsvFile = (file: File): boolean => {
+  if (!file.name.toLowerCase().endsWith('.csv')) {
+    return false
+  }
+  return !file.type || CSV_MIME_TYPES.has(file.type)
+}
+
+/** Accept either an .xlsx workbook or a .csv file. */
+export const isSupportedImportFile = (file: File): boolean =>
+  isXlsxFile(file) || isCsvFile(file)
 
 const buildHeaderLookup = (schema: ExcelImportSchema): Map<string, string> => {
   const lookup = new Map<string, string>()
@@ -116,11 +135,12 @@ export const canonicalizeParsedRows = (
 }
 
 export const parseExcelFile = async (file: File): Promise<ParsedExcelResult> => {
-  if (!isXlsxFile(file)) {
-    throw new Error('Only .xlsx files are supported')
+  if (!isSupportedImportFile(file)) {
+    throw new Error('Only .xlsx or .csv files are supported')
   }
 
   const arrayBuffer = await file.arrayBuffer()
+  // SheetJS auto-detects the format, so the same path reads .xlsx and .csv.
   const workbook = XLSX.read(arrayBuffer, { type: 'array' })
   const firstSheetName = workbook.SheetNames[0]
 

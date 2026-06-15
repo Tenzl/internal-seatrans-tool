@@ -57,26 +57,61 @@ interface PartnerImportDialogProps {
 }
 
 const PARTNER_IMPORT_SCHEMA: ExcelImportSchema = {
-  requiredHeaders: ["name", "addition_types"],
+  requiredHeaders: ["name"],
   optionalHeaders: [
+    "addition_types",
+    "customer_id",
     "tax_number",
     "country",
     "city",
+    "contact_person",
+    "contact_first_name",
+    "contact_last_name",
+    "contact_title",
     "contact_email",
+    "contact_phone",
     "phone",
     "fax",
     "tracking_url",
     "address",
     "customer_status",
     "customer_type",
+    "approve_status",
+    "approve_by",
+    "company_establishment_date",
+    "date_of_birth",
+    "payment_due_days",
+    "contract_no",
+    "invoice_company_name",
+    "invoice_company_address",
+    "invoice_company_phone",
+    "invoice_company_email",
+    "invoice_bank_name",
+    "invoice_bank_branch",
+    "invoice_bank_account",
+    // Audit columns are accepted but ignored on import (system-managed).
+    "created_by",
+    "created_at",
+    "created_on",
+    "updated_by",
+    "updated_at",
   ],
   headerAliases: {
-    addition_types: ["addition types", "Addition Types", "addition-types"],
+    addition_types: ["addition types", "Addition Types", "addition-types", "types"],
     contact_email: ["contact email", "Contact Email", "contact-email"],
     customer_status: ["customer status", "Customer Status", "customer-status"],
     customer_type: ["customer type", "Customer Type", "customer-type"],
-    tax_number: ["tax number", "Tax Number", "tax-number"],
+    tax_number: ["tax number", "Tax Number", "tax-number", "invoice-tax number", "invoice_tax_number"],
     tracking_url: ["tracking url", "Tracking URL", "tracking-url"],
+    payment_due_days: ["payment due (days)", "payment due days", "payment_due"],
+    contract_no: ["contract no.", "contract no", "contract-no"],
+    invoice_company_name: ["invoice-company name"],
+    invoice_company_address: ["invoice-company address"],
+    invoice_company_phone: ["invoice-company phone"],
+    invoice_company_email: ["invoice-company email"],
+    invoice_bank_name: ["invoice-bank name"],
+    invoice_bank_branch: ["invoice-bank branch"],
+    invoice_bank_account: ["invoice-bank account"],
   },
 }
 
@@ -208,7 +243,7 @@ export function PartnerImportDialog({ open, onOpenChange, onImported }: PartnerI
         console.warn("Partner import backend preview is unavailable", serverPreviewError)
       }
     } catch (error) {
-      toast.error("Please choose a valid .xlsx file", error)
+      toast.error("Please choose a valid .xlsx or .csv file", error)
       setSelectedFile(null)
       setLocalHeaders([])
       setLocalPreviewRows([])
@@ -222,7 +257,7 @@ export function PartnerImportDialog({ open, onOpenChange, onImported }: PartnerI
 
   const handleCommit = async () => {
     if (!selectedFile) {
-      toast.error("Please choose an .xlsx file first")
+      toast.error("Please choose an .xlsx or .csv file first")
       return
     }
 
@@ -252,7 +287,7 @@ export function PartnerImportDialog({ open, onOpenChange, onImported }: PartnerI
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <FileSpreadsheet className="h-5 w-5" />
-            Import Partner (.xlsx)
+            Import Partner (.xlsx / .csv)
           </DialogTitle>
           <DialogDescription>
             Frontend preview is quick validation only. Final validation and summary come from backend preview/commit.
@@ -262,8 +297,13 @@ export function PartnerImportDialog({ open, onOpenChange, onImported }: PartnerI
         <div className="space-y-4 flex flex-col flex-1 overflow-hidden">
           <div className="grid gap-4 md:grid-cols-2 shrink-0">
             <div className="grid gap-2">
-              <Label htmlFor="partnerImportFile">Excel file</Label>
-              <Input id="partnerImportFile" type="file" accept=".xlsx" onChange={handleFileChange} />
+              <Label htmlFor="partnerImportFile">Excel / CSV file</Label>
+              <Input
+                id="partnerImportFile"
+                type="file"
+                accept=".xlsx,.csv"
+                onChange={handleFileChange}
+              />
               {selectedFile && <p className="text-xs text-muted-foreground">Selected: {selectedFile.name}</p>}
             </div>
 

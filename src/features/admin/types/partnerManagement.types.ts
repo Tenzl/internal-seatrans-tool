@@ -11,9 +11,21 @@ export type PartnerAdditionType =
 
 export type CustomerStatus = 'LEAD' | 'WINCLIENT'
 export type CustomerType = 'AGENT' | 'DIRECT' | 'OTHER'
+export type ApproveStatus = 'APPROVED' | 'PENDING' | 'REJECTED'
 
 export type AdditionTypesMode = 'OR' | 'AND'
 export type PartnerImportMode = 'CREATE_ONLY' | 'UPDATE_ONLY' | 'UPSERT'
+
+/** One contact person; a partner can have zero or many (stored as JSON). */
+export interface PartnerContact {
+  person?: string | null
+  firstName?: string | null
+  lastName?: string | null
+  email?: string | null
+  phone?: string | null
+  title?: string | null
+  dateOfBirth?: string | null
+}
 
 export interface BookingPartnerListItem {
   id: number
@@ -22,14 +34,26 @@ export interface BookingPartnerListItem {
   additionTypes: PartnerAdditionType[]
   country?: string | null
   city?: string | null
-  contactEmail?: string | null
+  contacts: PartnerContact[]
   phone?: string | null
   fax?: string | null
   trackingUrl?: string | null
   address?: string | null
   customerStatus?: CustomerStatus | null
   customerType?: CustomerType | null
+  approveStatus?: ApproveStatus | null
+  approveBy?: string | null
+  companyEstablishmentDate?: string | null
+  paymentDueDays?: number | null
+  contractNo?: string | null
   taxNumber: string
+  invoiceCompanyName?: string | null
+  invoiceCompanyAddress?: string | null
+  invoiceCompanyPhone?: string | null
+  invoiceCompanyEmail?: string | null
+  invoiceBankName?: string | null
+  invoiceBankBranch?: string | null
+  invoiceBankAccount?: string | null
   createdBy: string
   createdAt: string
   updatedBy: string
@@ -41,17 +65,30 @@ export interface BookingPartnerDetail extends BookingPartnerListItem {}
 
 export interface BookingPartnerUpsertRequest {
   name: string
+  customerId?: string
   additionTypes: PartnerAdditionType[]
   country?: string
   city?: string
-  contactEmail?: string
+  contacts?: PartnerContact[]
   phone?: string
   fax?: string
   trackingUrl?: string
   address?: string
   customerStatus?: CustomerStatus
   customerType?: CustomerType
+  approveStatus?: ApproveStatus
+  approveBy?: string
+  companyEstablishmentDate?: string
+  paymentDueDays?: number
+  contractNo?: string
   taxNumber: string
+  invoiceCompanyName?: string
+  invoiceCompanyAddress?: string
+  invoiceCompanyPhone?: string
+  invoiceCompanyEmail?: string
+  invoiceBankName?: string
+  invoiceBankBranch?: string
+  invoiceBankAccount?: string
 }
 
 export interface BookingPartnerPageData {
