@@ -88,12 +88,6 @@ export const API_CONFIG = {
     ADMIN_BY_ID: (id: number) => `/admin/commodities/${id}`,
   },
 
-  CARGO_TYPES: {
-    BY_SERVICE_TYPE: (serviceTypeId: number) => `/cargo-types/service-type/${serviceTypeId}`,
-    ADMIN_BASE: '/admin/cargo-types',
-    ADMIN_BY_KEY: (serviceTypeId: number, code: string) =>
-      `/admin/cargo-types/${serviceTypeId}/${encodeURIComponent(code)}`,
-  },
 
   GALLERY: {
     PUBLIC_IMAGES: '/gallery/images',

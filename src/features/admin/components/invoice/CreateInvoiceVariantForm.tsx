@@ -71,6 +71,7 @@ export interface InvoiceVariantFormProps {
     quarantineCargoMode: QuarantineCargoOption
     frtTaxType: FrtTaxTypeOption | ''
     tallyFeeAmount: string
+    tugAssistanceAmount: string
     oceanFrtRateUsdPerMt: string
     transportLs: string
     boatHireAmount: string
@@ -101,6 +102,7 @@ export interface InvoiceVariantFormProps {
     setQuarantineCargoMode: (value: QuarantineCargoOption) => void
     setFrtTaxType: (value: FrtTaxTypeOption) => void
     setTallyFeeAmount: (value: string) => void
+    setTugAssistanceAmount: (value: string) => void
     setOceanFrtRateUsdPerMt: (value: string) => void
     setTransportLs: (value: string) => void
     setBoatHireAmount: (value: string) => void
@@ -123,6 +125,8 @@ export interface InvoiceVariantFormProps {
     /** When true, the selected cargo type has no cargo name — disable the field. */
     cargoNameDisabled: boolean
     isTallyFeeEligibleCargo: boolean
+    /** When true, LOA is above the highest tug band → tug charge is entered manually. */
+    isLoaOverTugMax: boolean
     shipQuarantineFee: string
     cargoQuarantineFee: string
     canEnableFreightTaxDeclaration: boolean
@@ -676,6 +680,22 @@ export function CreateInvoiceVariantForm({
               className={disabledFieldTextClass}
             />
           </div>
+
+          {computed.isLoaOverTugMax && (
+            <div className="grid gap-2">
+              <Label htmlFor="tugAssistanceAmount">{t('epda.tugAssistance')}</Label>
+              <Input
+                id="tugAssistanceAmount"
+                type="number"
+                value={values.tugAssistanceAmount}
+                onChange={(e) => handlers.setTugAssistanceAmount(e.target.value)}
+                placeholder="0"
+                min="0"
+                step="any"
+              />
+              <p className="text-xs text-muted-foreground">{t('epda.tugAssistanceHint')}</p>
+            </div>
+          )}
         </div>
       </EpdaFormSection>
 

@@ -34,6 +34,7 @@ export type ShippingAgencyAdminInquiry = {
   purposeOfCalling?: string | null
   boatHireAmount?: string | number | null
   tallyFeeAmount?: string | number | null
+  tugAssistanceAmount?: string | number | null
   transportLs?: string | null
   transportQuarantine?: string | null
   quoteForm?: string | null
@@ -144,6 +145,7 @@ export function buildEpdaPatchPayload(
     agencyLumpsumAmount: toNum(params.agencyLumpsumAmount),
     boatHireAmount: toNum(params.boatHireAmount),
     tallyFeeAmount: toNum(params.tallyFeeAmount),
+    tugAssistanceAmount: params.isLoaOverTugMax ? toNum(params.tugAssistanceAmount) : undefined,
     transportLs: params.transportLs || undefined,
     transportQuarantine:
       params.transportQuarantine ?? params.boatHireQuarantineAmount ?? undefined,
@@ -194,6 +196,7 @@ export function buildInternalCreatePayload(
     agencyFeeMode: mapAgencyFeeModeToApi(params.agencyFeeMode),
     agencyDiscountPercent: toNum(params.agencyDiscountPercent),
     agencyLumpsumAmount: toNum(params.agencyLumpsumAmount),
+    tugAssistanceAmount: params.isLoaOverTugMax ? toNum(params.tugAssistanceAmount) : undefined,
   }
 }
 
@@ -227,6 +230,7 @@ export function applyAdminInquiryToForm(
     setBoatHireAmount: (v: string) => void
     setBoatHireQuarantineAmount: (v: string) => void
     setTallyFeeAmount: (v: string) => void
+    setTugAssistanceAmount: (v: string) => void
     setTransportLs: (v: string) => void
   },
 ) {
@@ -267,5 +271,6 @@ export function applyAdminInquiryToForm(
   setters.setBoatHireAmount(toNumStr(inquiry.boatHireAmount) ?? '')
   setters.setBoatHireQuarantineAmount(toNumStr(inquiry.transportQuarantine) ?? '')
   setters.setTallyFeeAmount(toNumStr(inquiry.tallyFeeAmount) ?? '')
+  setters.setTugAssistanceAmount(toNumStr(inquiry.tugAssistanceAmount) ?? '')
   setters.setTransportLs(toStr(inquiry.transportLs) ?? '')
 }

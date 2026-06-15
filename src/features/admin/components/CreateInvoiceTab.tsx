@@ -59,7 +59,9 @@ import {
 import { EpdaFieldChangeHistory } from '@/features/admin/components/invoice/epda/EpdaFieldChangeHistory'
 import { findPortSelectionFromInquiry } from '@/modules/logistics/shippingAgencyPortCatalog'
 import {
+  legacyCargoTypeToCode,
   readInquiryCargoForEpda,
+  SHIPPING_AGENCY_CARGO_TYPES,
   type InquiryCargoFields,
 } from '@/modules/gallery/shippingAgencyCargoCatalog'
 import {
@@ -242,6 +244,7 @@ export function CreateInvoiceTab({
   const [boatHireAmount, setBoatHireAmount] = useState('')
   const [boatHireQuarantineAmount, setBoatHireQuarantineAmount] = useState('')
   const [tallyFeeAmount, setTallyFeeAmount] = useState('')
+  const [tugAssistanceAmount, setTugAssistanceAmount] = useState('')
   const [transportLs, setTransportLs] = useState('')
   const [quarantineCargoMode, setQuarantineCargoMode] = useState<QuarantineCargoOption>('ONE_LEG')
   const [agencyFeeMode, setAgencyFeeMode] = useState<AgencyFeeModeOption>('TARRIF_AGENCY')
@@ -287,8 +290,18 @@ export function CreateInvoiceTab({
   // the Cargo Name field is disabled and the PDF shows just the cargo type.
   const cargoNameDisabled = useMemo(() => {
     if (!cargoType || isLoadingCargoCatalog) return false
-    return !cargoTypeCatalog.some((item) => item.cargoType === cargoType)
+    // Match on the canonical code so commodities tagged with legacy cargo-type
+    // values (EQUIPMENT, IN_BAGS, BULK …) still map to the 3 fixed codes.
+    return !cargoTypeCatalog.some((item) => legacyCargoTypeToCode(item.cargoType) === cargoType)
   }, [cargoType, cargoTypeCatalog, isLoadingCargoCatalog])
+
+  // Above the highest tug band's Min LOA, the tug charge is negotiable → entered manually.
+  const isLoaOverTugMax = useMemo(() => {
+    const loaNum = parseNumeric(loa)
+    const tiers = effectiveParams.tugTiers ?? []
+    if (loaNum === null || !tiers.length) return false
+    return loaNum >= Math.max(...tiers.map((tier) => tier.minLoa))
+  }, [loa, effectiveParams])
 
   const requiredFields = useMemo(
     () =>
@@ -373,12 +386,10 @@ export function CreateInvoiceTab({
           return
         }
 
-        const [cargoTypes, commodities] = await Promise.all([
-          commodityService.getCargoTypesByServiceType(shippingAgency.id),
-          commodityService.getCommoditiesByServiceType(shippingAgency.id),
-        ])
+        // Cargo TYPES are a fixed 3-value enum; only cargo NAMES come from the DB.
+        const commodities = await commodityService.getCommoditiesByServiceType(shippingAgency.id)
 
-        setCargoTypeOptions(Array.isArray(cargoTypes) ? cargoTypes : [])
+        setCargoTypeOptions(SHIPPING_AGENCY_CARGO_TYPES)
         setCargoTypeCatalog(Array.isArray(commodities) ? commodities : [])
       } catch (error) {
         console.error('Failed to load cargo type catalog for EPDA:', error)
@@ -506,7 +517,9 @@ export function CreateInvoiceTab({
 
   const filteredCargoNames = useMemo(() => {
     if (!cargoType) return []
-    const base = cargoTypeCatalog.filter((item) => item.cargoType === cargoType)
+    // Map each commodity's stored cargo type to the canonical code before matching,
+    // so legacy variants (EQUIPMENT, IN_BAGS, BULK …) fall under the right fixed type.
+    const base = cargoTypeCatalog.filter((item) => legacyCargoTypeToCode(item.cargoType) === cargoType)
     if (cargoName && !base.some((item) => item.name === cargoName)) {
       return [
         {
@@ -562,6 +575,10 @@ export function CreateInvoiceTab({
       setTallyFeeAmount('')
     }
   }, [cargoType])
+
+  useEffect(() => {
+    if (!isLoaOverTugMax) setTugAssistanceAmount('')
+  }, [isLoaOverTugMax])
 
   useEffect(() => {
     if (dischargeLoadingLocation !== 'Anchorage') {
@@ -647,6 +664,8 @@ export function CreateInvoiceTab({
     agencyLumpsumAmount,
     isTallyFeeEligible: Boolean(cargoType && isTallyFeeEligibleCargo(cargoType)),
     tallyFeeAmount,
+    isLoaOverTugMax,
+    tugAssistanceAmount,
     berthHours,
     buoyDueHours: quoteForm === 'HCM' && dischargeLoadingLocation === 'Anchorage' ? berthHours : '',
     anchorageHours,
@@ -736,6 +755,7 @@ export function CreateInvoiceTab({
           setBoatHireAmount,
           setBoatHireQuarantineAmount,
           setTallyFeeAmount,
+          setTugAssistanceAmount,
           setTransportLs,
         })
         if (inquiry.portOfCall?.trim()) {
@@ -960,6 +980,7 @@ export function CreateInvoiceTab({
     setBoatHireAmount('')
     setBoatHireQuarantineAmount('')
     setTallyFeeAmount('')
+    setTugAssistanceAmount('')
     setTransportLs('')
     setQuarantineCargoMode('ONE_LEG')
     setAgencyFeeMode('TARRIF_AGENCY')
@@ -1019,6 +1040,7 @@ export function CreateInvoiceTab({
     quarantineCargoMode,
     frtTaxType,
     tallyFeeAmount,
+    tugAssistanceAmount,
     oceanFrtRateUsdPerMt,
     transportLs,
     boatHireAmount,
@@ -1037,7 +1059,13 @@ export function CreateInvoiceTab({
     setGrt,
     setLoa,
     setCargoQty,
-    setCargoType: (value: CargoType) => setCargoType(value as EpdaCargoType),
+    // Manually switching cargo type clears the cargo name — names are type-specific,
+    // and the synthetic fallback in filteredCargoNames would otherwise keep the stale
+    // name "valid" (e.g. a Bulk WOOD_CHIPS lingering under Equipment).
+    setCargoType: (value: CargoType) => {
+      setCargoType(value as EpdaCargoType)
+      setCargoName('')
+    },
     setCargoName,
     setShipType: (value: 'BULK_SHIP' | 'TANKER_SHIP') => setShipType(value),
     setBerthHours,
@@ -1050,6 +1078,7 @@ export function CreateInvoiceTab({
     setQuarantineCargoMode: (value: QuarantineCargoOption) => setQuarantineCargoMode(value),
     setFrtTaxType: (value: FrtTaxTypeOption) => setFrtTaxType(value),
     setTallyFeeAmount,
+    setTugAssistanceAmount,
     setOceanFrtRateUsdPerMt,
     setTransportLs,
     setBoatHireAmount,
@@ -1073,6 +1102,7 @@ export function CreateInvoiceTab({
     isLoadingCargoCatalog,
     cargoNameDisabled,
     isTallyFeeEligibleCargo: Boolean(cargoType && isTallyFeeEligibleCargo(cargoType)),
+    isLoaOverTugMax,
     shipQuarantineFee: formatUsdAmount(shipQuarantineFee),
     cargoQuarantineFee: formatUsdAmount(cargoQuarantineFee),
     isImportFrtTaxType: isImportFrtTaxType(frtTaxType),

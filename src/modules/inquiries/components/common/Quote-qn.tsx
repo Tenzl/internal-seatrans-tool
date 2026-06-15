@@ -56,6 +56,8 @@ export type QuoteData = {
   agency_discount_percent?: string | number
   agency_lumpsum_amount?: string | number
   tally_fee?: string | number
+  /** Manual tug-assistance amount — used when LOA is above the highest tug band. */
+  tug_assistance?: string | number
   pilotage_miles?: string | number
   pilotage_third_miles?: string | number
   /** Resolved EPDA parameter set for the selected area/port. Falls back to QN defaults. */
@@ -195,6 +197,7 @@ const buildAARows = (
     shipType?: string
     transportQuarantine?: string | number
     tallyFee?: string | number
+    tugAssistanceOverride?: string | number
     cargoType?: string
     loa?: string | number
     pilotageMiles?: string | number
@@ -272,7 +275,14 @@ const buildAARows = (
 
     const loaNumeric = toNumber(options?.loa)
     const tugRate = resolveLoaTier(loaNumeric, P.tugTiers)
-    const tugAssistance = tugRate === undefined ? '' : formatAmount(tugRate.amount)
+    // Above the highest tug band, the charge is entered manually (negotiable).
+    const tugOverride = toNumber(options?.tugAssistanceOverride)
+    const tugAssistance =
+      tugOverride !== null
+        ? formatAmount(tugOverride)
+        : tugRate === undefined
+          ? ''
+          : formatAmount(tugRate.amount)
 
     const moorUnmoorRate = resolveGrtTier(grtNumeric, P.moorUnmoorBerthTiers)
     const moorUnmoor = moorUnmoorRate === undefined ? '' : formatAmount(moorUnmoorRate.amount)
@@ -623,6 +633,7 @@ export const renderQuoteHtml = (template: string, data: QuoteData) => {
     shipType: normalizedData.ship_type,
     transportQuarantine: normalizedData.transport_quarantine,
     tallyFee: normalizedData.tally_fee,
+    tugAssistanceOverride: normalizedData.tug_assistance,
     cargoType: normalizedData.cargo_type,
     loa: normalizedData.loa,
     pilotageMiles: normalizedData.pilotage_miles ?? normalizedData.pilotage_third_miles,

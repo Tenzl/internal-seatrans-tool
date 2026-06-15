@@ -1,8 +1,19 @@
-import type { Commodity } from '@/modules/gallery/services/commodityService'
+import type { CargoTypeCatalogItem, Commodity } from '@/modules/gallery/services/commodityService'
 
 export type CargoSelectOption = { label: string; value: string }
 
 export const CARGO_NAME_OTHER = 'OTHER'
+
+/**
+ * Shipping-agency cargo types are a FIXED set of three — they never change, so
+ * they live in code as an enum rather than the editable cargo-type catalog.
+ * Cargo *names* still come from the commodities table, keyed by these codes.
+ */
+export const SHIPPING_AGENCY_CARGO_TYPES: CargoTypeCatalogItem[] = [
+  { code: 'IN_BAG_PACK', displayLabel: 'Bag/Pack', serviceTypeType: 'SHIPPING_AGENCY' },
+  { code: 'IN_EQUIPMENT', displayLabel: 'Equipment', serviceTypeType: 'SHIPPING_AGENCY' },
+  { code: 'IN_BULK', displayLabel: 'Bulk', serviceTypeType: 'SHIPPING_AGENCY' },
+]
 
 export type InquiryCargoFields = {
   cargoType?: string | null
@@ -16,7 +27,8 @@ const normalizeKey = (value: string) =>
 export function isTallyFeeEligibleCargoType(cargoType?: string | null): boolean {
   if (!cargoType?.trim()) return false
   const key = normalizeKey(cargoType)
-  return key === 'IN_BAG_PACK' || key.includes('IN_BAG')
+  // Bag/Pack and Equipment incur a tally fee; Bulk does not.
+  return key === 'IN_BAG_PACK' || key === 'IN_EQUIPMENT' || key.includes('IN_BAG')
 }
 
 export function buildCargoTypeSelectOptions(catalog: Commodity[]): CargoSelectOption[] {
@@ -48,18 +60,20 @@ export function buildCargoNameSelectOptions(
     .sort((a, b) => a.label.localeCompare(b.label))
 }
 
-function legacyCargoTypeToCode(stored?: string | null): string {
+export function legacyCargoTypeToCode(stored?: string | null): string {
   if (!stored?.trim()) return ''
   const key = normalizeKey(stored)
-  if (key === 'IN_BULK' || key === 'INBULK') return 'IN_BULK'
+  if (key === 'IN_BULK' || key === 'INBULK' || key === 'BULK') return 'IN_BULK'
+  if (key === 'IN_EQUIPMENT' || key === 'INEQUIPMENT' || key === 'EQUIPMENT') {
+    return 'IN_EQUIPMENT'
+  }
   if (
     key === 'IN_BAGS' ||
     key === 'IN_BAG_PACK' ||
     key === 'INBAGS' ||
     key === 'INBAGPACK' ||
-    key === 'IN_EQUIPMENT' ||
-    key === 'INEQUIPMENT' ||
-    key === 'EQUIPMENT'
+    key === 'BAG_PACK' ||
+    key === 'BAGPACK'
   ) {
     return 'IN_BAG_PACK'
   }

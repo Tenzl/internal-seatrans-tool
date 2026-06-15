@@ -47,6 +47,9 @@ export interface BuildInvoiceQuoteDataParams {
   agencyLumpsumAmount: string
   isTallyFeeEligible: boolean
   tallyFeeAmount: string
+  /** LOA is above the highest tug band → tug charge is entered manually. */
+  isLoaOverTugMax: boolean
+  tugAssistanceAmount: string
   berthHours: string
   buoyDueHours: string
   anchorageHours: string
@@ -100,6 +103,8 @@ export function buildInvoiceQuoteData(params: BuildInvoiceQuoteDataParams): Invo
     agency_discount_percent: toNumberOrUndefined(params.agencyDiscountPercent),
     agency_lumpsum_amount: toNumberOrUndefined(params.agencyLumpsumAmount),
     tally_fee: params.isTallyFeeEligible && params.tallyFeeAmount ? Number(params.tallyFeeAmount) : undefined,
+    tug_assistance:
+      params.isLoaOverTugMax && params.tugAssistanceAmount ? Number(params.tugAssistanceAmount) : undefined,
     total_a: undefined,
     total_b: undefined,
     grand_total: undefined,

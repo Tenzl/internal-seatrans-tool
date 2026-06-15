@@ -24,12 +24,6 @@ export interface CargoTypeCatalogItem {
   serviceTypeType: string
 }
 
-export interface CargoTypeCatalogUpsertRequest {
-  serviceTypeId: number
-  code: string
-  displayLabel: string
-}
-
 export interface CreateCommodityRequest {
   name: string
   displayName: string
@@ -103,37 +97,6 @@ export const commodityService = {
     )
 
     return { commodityId, current: page.totalElements ?? 0, required }
-  },
-
-  getCargoTypesByServiceType: async (serviceTypeId: number): Promise<CargoTypeCatalogItem[]> => {
-    const response = await apiClient.get<ApiResponse<CargoTypeCatalogItem[]>>(
-      API_CONFIG.CARGO_TYPES.BY_SERVICE_TYPE(serviceTypeId),
-    )
-    return unwrapList<CargoTypeCatalogItem>(response)
-  },
-
-  createCargoType: async (data: CargoTypeCatalogUpsertRequest): Promise<CargoTypeCatalogItem> => {
-    const response = await apiClient.post<ApiResponse<CargoTypeCatalogItem>>(
-      API_CONFIG.CARGO_TYPES.ADMIN_BASE,
-      data,
-    )
-    return unwrapOne<CargoTypeCatalogItem>(response)
-  },
-
-  updateCargoType: async (data: CargoTypeCatalogUpsertRequest): Promise<CargoTypeCatalogItem> => {
-    const response = await apiClient.put<ApiResponse<CargoTypeCatalogItem>>(
-      API_CONFIG.CARGO_TYPES.ADMIN_BY_KEY(data.serviceTypeId, data.code),
-      { displayLabel: data.displayLabel },
-    )
-    return unwrapOne<CargoTypeCatalogItem>(response)
-  },
-
-  deleteCargoType: async (serviceTypeId: number, code: string): Promise<void> => {
-    const response = await apiClient.delete(API_CONFIG.CARGO_TYPES.ADMIN_BY_KEY(serviceTypeId, code))
-    if (!response.ok) {
-      const result = await response.json().catch(() => ({}))
-      throw new Error((result as { message?: string }).message || 'Failed to delete cargo type')
-    }
   },
 
   createCommodity: async (data: CreateCommodityRequest): Promise<Commodity> => {

@@ -19,21 +19,11 @@ import { serviceTypeService, ServiceType } from '@/modules/service-types/service
 import {
   commodityService,
   CargoType,
-  CargoTypeCatalogItem,
   Commodity,
   CreateCommodityRequest,
 } from '@/modules/gallery/services/commodityService'
+import { SHIPPING_AGENCY_CARGO_TYPES } from '@/modules/gallery/shippingAgencyCargoCatalog'
 import { toast } from '@/shared/utils/toast'
-
-const normalizeToken = (value?: string | null): string => {
-  if (!value) return ''
-  return value
-    .trim()
-    .toUpperCase()
-    .replace(/[^A-Z0-9]+/g, '_')
-    .replace(/_+/g, '_')
-    .replace(/^_|_$/g, '')
-}
 
 const prettifyToken = (value: string): string => {
   if (!value) return ''
@@ -49,20 +39,22 @@ type CargoTypeOption = {
   id: string
   value: CargoType
   label: string
-  originalValue?: CargoType
-  isCustom?: boolean
-  isEditing?: boolean
-  isPersisted?: boolean
 }
+
+/** Cargo types are a fixed enum (not editable). These are the only base options. */
+const FIXED_CARGO_TYPE_OPTIONS: CargoTypeOption[] = SHIPPING_AGENCY_CARGO_TYPES.map((t) => ({
+  id: t.code,
+  value: t.code,
+  label: t.displayLabel,
+}))
 
 export function ManageCommodities() {
   const [serviceTypes, setServiceTypes] = useState<ServiceType[]>([])
   const [selectedServiceType, setSelectedServiceType] = useState<number | null>(null)
   const [commodities, setCommodities] = useState<Commodity[]>([])
   const [loading, setLoading] = useState(false)
-  const [cargoTypeOptions, setCargoTypeOptions] = useState<CargoTypeOption[]>([])
+  const cargoTypeOptions = FIXED_CARGO_TYPE_OPTIONS
   const [selectedCargoType, setSelectedCargoType] = useState<CargoType>('IN_BULK')
-  const [isTypeEditMode, setIsTypeEditMode] = useState(false)
   const [deleteDialog, setDeleteDialog] = useState<{ isOpen: boolean; type: Commodity | null }>({
     isOpen: false,
     type: null,
@@ -110,36 +102,11 @@ export function ManageCommodities() {
   useEffect(() => {
     if (selectedServiceType) {
       loadCommodities(selectedServiceType)
-      loadCargoTypes(selectedServiceType)
     } else {
       setCommodities([])
-      setCargoTypeOptions([])
       setSelectedCargoType('IN_BULK')
-      setIsTypeEditMode(false)
     }
-  }, [selectedServiceType, serviceTypes])
-
-  useEffect(() => {
-    if (!selectedServiceType) return
-
-    setCargoTypeOptions((prev) => {
-      const next = [...prev]
-
-      commodities.forEach((item) => {
-        if (!next.some((option) => option.value === item.cargoType)) {
-          next.push({
-            id: item.cargoType,
-            value: item.cargoType,
-            originalValue: item.cargoType,
-            label: prettifyToken(item.cargoType),
-            isPersisted: false,
-          })
-        }
-      })
-
-      return next
-    })
-  }, [commodities, selectedServiceType])
+  }, [selectedServiceType])
 
   const loadServiceTypes = async () => {
     try {
@@ -162,172 +129,6 @@ export function ManageCommodities() {
     } finally {
       setLoading(false)
     }
-  }
-
-  const loadCargoTypes = async (serviceTypeId: number) => {
-    try {
-      const data = await commodityService.getCargoTypesByServiceType(serviceTypeId)
-      const mappedOptions: CargoTypeOption[] = (data || []).map((item: CargoTypeCatalogItem) => ({
-        id: `${item.serviceTypeType}_${item.code}`,
-        value: item.code,
-        originalValue: item.code,
-        label: item.displayLabel,
-        isPersisted: true,
-      }))
-
-      const deduped = mappedOptions.filter(
-        (item, index, arr) => arr.findIndex((candidate) => candidate.value === item.value) === index,
-      )
-
-      setCargoTypeOptions(deduped)
-      setIsTypeEditMode(false)
-
-      if (deduped.length > 0 && !deduped.some((opt) => opt.value === selectedCargoType)) {
-        setSelectedCargoType(deduped[0].value)
-      }
-    } catch (error) {
-      console.error('Error loading cargo type catalog:', error)
-      setCargoTypeOptions([])
-      setIsTypeEditMode(false)
-    }
-  }
-
-  const handleToggleOrAddType = () => {
-    const tempId = `custom_${Date.now()}`
-    const tempValue = `CUSTOM_${Date.now()}`
-    setCargoTypeOptions((prev) => [
-      ...prev,
-      {
-        id: tempId,
-        value: tempValue,
-        originalValue: tempValue,
-        label: '',
-        isCustom: true,
-        isEditing: true,
-        isPersisted: false,
-      },
-    ])
-    setSelectedCargoType(tempValue)
-  }
-
-  const handleCustomTypeLabelChange = (id: string, nextLabel: string) => {
-    setCargoTypeOptions((prev) =>
-      prev.map((option) => {
-        if (option.id !== id) return option
-
-        const nextValue = option.isPersisted
-          ? option.value
-          : normalizeToken(nextLabel) || option.value
-
-        if (selectedCargoType === option.value && nextValue !== option.value) {
-          setSelectedCargoType(nextValue)
-        }
-
-        return {
-          ...option,
-          label: nextLabel,
-          value: nextValue,
-        }
-      }),
-    )
-  }
-
-  const handleCustomTypeBlur = async (id: string) => {
-    if (!selectedServiceType) return
-
-    const target = cargoTypeOptions.find((option) => option.id === id)
-    if (!target) return
-
-    const normalizedLabel = target.label.trim()
-    if (!normalizedLabel) {
-      setCargoTypeOptions((prev) => {
-        const filtered = prev.filter((option) => option.id !== id)
-        if (selectedCargoType === target.value) {
-          setSelectedCargoType(filtered[0]?.value || 'IN_BULK')
-        }
-        return filtered
-      })
-      return
-    }
-
-    try {
-      if (!target.isPersisted) {
-        await commodityService.createCargoType({
-          serviceTypeId: selectedServiceType,
-          code: normalizeToken(target.value) || normalizeToken(target.label),
-          displayLabel: normalizedLabel,
-        })
-      } else {
-        await commodityService.updateCargoType({
-          serviceTypeId: selectedServiceType,
-          code: normalizeToken(target.originalValue || target.value),
-          displayLabel: normalizedLabel,
-        })
-      }
-
-      setCargoTypeOptions((prev) =>
-        prev.map((option) =>
-          option.id === id
-            ? {
-                ...option,
-                label: normalizedLabel,
-                value: option.isPersisted
-                  ? option.value
-                  : normalizeToken(option.value) || normalizeToken(normalizedLabel),
-                originalValue: option.originalValue || option.value,
-                isEditing: false,
-                isPersisted: true,
-              }
-            : option,
-        ),
-      )
-    } catch (error) {
-      console.error('Error saving cargo type badge:', error)
-      showToast('error', 'Failed to save type')
-    }
-  }
-
-  const handleDeleteTypeBadge = async (value: CargoType) => {
-    if (!selectedServiceType) return
-
-    if ((cargoTypeCounts[value] || 0) > 1) {
-      showToast('error', 'Cannot delete type with more than 1 cargo')
-      return
-    }
-
-    const target = cargoTypeOptions.find((option) => option.value === value)
-    if (!target) return
-
-    try {
-      if (target.isPersisted) {
-        await commodityService.deleteCargoType(selectedServiceType, target.originalValue || target.value)
-      }
-
-      setCargoTypeOptions((prev) => {
-        const filtered = prev.filter((option) => option.value !== value)
-        if (selectedCargoType === value) {
-          setSelectedCargoType(filtered[0]?.value || 'IN_BULK')
-        }
-        return filtered
-      })
-    } catch (error) {
-      console.error('Error deleting cargo type badge:', error)
-      showToast('error', 'Failed to delete type')
-    }
-  }
-
-  const handleEnableCustomRename = (id: string) => {
-    setCargoTypeOptions((prev) =>
-      prev.map((option) => (option.id === id ? { ...option, isEditing: true } : option)),
-    )
-  }
-
-  const handleSaveTypeEditMode = async () => {
-    const editingIds = cargoTypeOptions.filter((option) => option.isEditing).map((option) => option.id)
-    for (const id of editingIds) {
-      await handleCustomTypeBlur(id)
-    }
-    setIsTypeEditMode(false)
   }
 
   const showToast = (type: 'success' | 'error', message: string) => {
@@ -531,84 +332,15 @@ export function ManageCommodities() {
             <div className="p-4 border-b bg-muted/30">
               <div className="flex flex-wrap items-center gap-3">
                 {mergedCargoTypeOptions.map((option) => (
-                  <div key={option.id} className="inline-flex items-center">
-                    {option.isEditing ? (
-                      <div className="inline-flex items-center rounded-md border bg-card px-2 py-1 h-9">
-                        <input
-                          value={option.label}
-                          autoFocus
-                          onChange={(e) => handleCustomTypeLabelChange(option.id, e.target.value)}
-                          onBlur={() => handleCustomTypeBlur(option.id)}
-                          onKeyDown={(e) => {
-                            if (e.key === 'Enter') {
-                              handleCustomTypeBlur(option.id)
-                            }
-                          }}
-                          placeholder="type name"
-                          className="w-28 bg-transparent outline-none text-sm"
-                        />
-                      </div>
-                    ) : (
-                      <BadgeButtonCombo
-                        label={option.label}
-                        badge={
-                          isTypeEditMode ? (
-                            <span className="inline-flex items-center gap-1">
-                              <button
-                                type="button"
-                                aria-label={`Edit type ${option.label}`}
-                                onClick={(e) => {
-                                  e.preventDefault()
-                                  e.stopPropagation()
-                                  setSelectedCargoType(option.value)
-                                  handleEnableCustomRename(option.id)
-                                }}
-                                className="inline-flex items-center justify-center rounded-sm"
-                              >
-                                <Edit2 className="h-3.5 w-3.5" />
-                              </button>
-                              <button
-                                type="button"
-                                aria-label={`Delete type ${option.label}`}
-                                disabled={(cargoTypeCounts[option.value] || 0) > 1}
-                                onClick={(e) => {
-                                  e.stopPropagation()
-                                  handleDeleteTypeBadge(option.value)
-                                }}
-                                className="inline-flex items-center justify-center rounded-sm disabled:opacity-40 disabled:cursor-not-allowed"
-                              >
-                                <Trash2 className="h-3.5 w-3.5" />
-                              </button>
-                            </span>
-                          ) : (
-                            <span>{cargoTypeCounts[option.value] || 0}</span>
-                          )
-                        }
-                        size="sm"
-                        variant={selectedCargoType === option.value ? 'default' : 'outline'}
-                        onClick={() => setSelectedCargoType(option.value)}
-                        buttonClassName={(cargoTypeCounts[option.value] || 0) === 0 ? 'bg-red-500 text-white border-red-500 hover:bg-red-400 hover:text-white' : ''}
-                        badgeClassName={(cargoTypeCounts[option.value] || 0) === 0 ? 'bg-red-500 text-white border-red-500' : ''}
-                      />
-                    )}
-                  </div>
+                  <BadgeButtonCombo
+                    key={option.id}
+                    label={option.label}
+                    badge={<span>{cargoTypeCounts[option.value] || 0}</span>}
+                    size="sm"
+                    variant={selectedCargoType === option.value ? 'default' : 'outline'}
+                    onClick={() => setSelectedCargoType(option.value)}
+                  />
                 ))}
-                <div className="ml-auto flex items-center gap-2">
-                  {isTypeEditMode ? (
-                    <>
-                      <Button size="sm" variant="outline" onClick={handleToggleOrAddType}>
-                        + type
-                      </Button>
-                      <Button size="sm" onClick={handleSaveTypeEditMode}>
-                        save
-                      </Button>
-                    </>
-                  ) : (
-                    <Button size="sm" variant="outline" onClick={() => setIsTypeEditMode(true)}>
-                      edit type
-                    </Button>
-                  )}
-                </div>
               </div>
             </div>
 
