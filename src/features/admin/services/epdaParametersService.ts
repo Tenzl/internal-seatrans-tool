@@ -18,19 +18,29 @@ export type {
 /** @deprecated use GrtTier — kept for backward-compatible imports. */
 export type AgencyFeeTier = GrtTier
 
-export type EpdaParameterScope = 'AREA' | 'PORT'
+export type EpdaParameterScope = 'AREA' | 'GROUP' | 'PORT'
 
 export interface EpdaParameterSet {
   id: number
   scope: EpdaParameterScope
   area: string | null
   portId: number | null
+  /** GROUP rows only. */
+  name?: string | null
+  /** GROUP rows only — port ids that belong to the group. */
+  memberPortIds?: number[] | null
   values: PartialEpdaParameterValues
   createdAt?: string
   updatedAt?: string
 }
 
-export type EpdaParameterChangeAction = 'UPSERT_AREA' | 'UPSERT_PORT' | 'DELETE_PORT'
+export type EpdaParameterChangeAction =
+  | 'UPSERT_AREA'
+  | 'UPSERT_PORT'
+  | 'DELETE_PORT'
+  | 'UPSERT_GROUP'
+  | 'DELETE_GROUP'
+  | 'SET_GROUP_MEMBERS'
 
 export interface EpdaParameterChangeLogEntry {
   id: number
@@ -94,6 +104,48 @@ export const epdaParametersService = {
     const res = await apiClient.delete(API_CONFIG.EPDA_PARAMETERS.PORT(portId))
     if (!res.ok && res.status !== 204) {
       throw new Error('Failed to remove port override')
+    }
+  },
+
+  // ---------- port groups ----------
+
+  async listGroups(area: string): Promise<EpdaParameterSet[]> {
+    const res = await apiClient.get(API_CONFIG.EPDA_PARAMETERS.GROUPS(area))
+    return unwrapApiResponse<EpdaParameterSet[]>(res)
+  },
+
+  async createGroup(
+    area: string,
+    name: string,
+    values?: PartialEpdaParameterValues,
+  ): Promise<EpdaParameterSet> {
+    const res = await apiClient.post(API_CONFIG.EPDA_PARAMETERS.GROUPS_CREATE, {
+      area,
+      name,
+      values: values ?? {},
+    })
+    return unwrapApiResponse<EpdaParameterSet>(res)
+  },
+
+  async updateGroup(
+    id: number,
+    patch: { name?: string; values?: PartialEpdaParameterValues },
+  ): Promise<EpdaParameterSet> {
+    const res = await apiClient.put(API_CONFIG.EPDA_PARAMETERS.GROUP(id), patch)
+    return unwrapApiResponse<EpdaParameterSet>(res)
+  },
+
+  async setGroupMembers(id: number, portIds: number[]): Promise<EpdaParameterSet> {
+    const res = await apiClient.put(API_CONFIG.EPDA_PARAMETERS.GROUP_MEMBERS(id), {
+      portIds,
+    })
+    return unwrapApiResponse<EpdaParameterSet>(res)
+  },
+
+  async deleteGroup(id: number): Promise<void> {
+    const res = await apiClient.delete(API_CONFIG.EPDA_PARAMETERS.GROUP(id))
+    if (!res.ok && res.status !== 204) {
+      throw new Error('Failed to delete group')
     }
   },
 

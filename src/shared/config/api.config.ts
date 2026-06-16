@@ -185,6 +185,11 @@ export const API_CONFIG = {
       const s = qs.toString()
       return `/admin/epda-parameters/logs${s ? `?${s}` : ''}`
     },
+    GROUPS: (area: string) =>
+      `/admin/epda-parameters/groups?area=${encodeURIComponent(area)}`,
+    GROUPS_CREATE: '/admin/epda-parameters/groups',
+    GROUP: (id: number) => `/admin/epda-parameters/groups/${id}`,
+    GROUP_MEMBERS: (id: number) => `/admin/epda-parameters/groups/${id}/members`,
   },
 } as const
 

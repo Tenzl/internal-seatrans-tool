@@ -102,11 +102,11 @@ type ShipTypeOption = (typeof SHIP_TYPE_OPTIONS)[number]['value']
 type FrtTaxTypeOption = (typeof FRT_TAX_TYPE_OPTIONS)[number]['value']
 type QuarantineCargoOption = (typeof QUARANTINE_CARGO_OPTIONS)[number]['value']
 
-const normalizeCargoTypeCode = (value: string) => value.trim().toUpperCase().replace(/[\s-]+/g, '_')
-
 const isTallyFeeEligibleCargo = (value: string) => {
-  const normalized = normalizeCargoTypeCode(value)
-  return normalized.includes('IN_BAGS') || normalized.includes('EQUIPMENT')
+  // Bag/Pack and Equipment incur a tally fee; Bulk does not. Canonicalize first —
+  // the current bag code IN_BAG_PACK does NOT contain the substring "IN_BAGS".
+  const code = legacyCargoTypeToCode(value)
+  return code === 'IN_BAG_PACK' || code === 'IN_EQUIPMENT'
 }
 
 const parseNumeric = (value: string) => {

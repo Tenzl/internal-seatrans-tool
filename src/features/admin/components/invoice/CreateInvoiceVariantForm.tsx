@@ -9,6 +9,7 @@ import {
 } from '@/shared/components/ui/select'
 import { DatePicker } from '@/shared/components/ui/date-picker'
 import type { CargoType, CargoTypeCatalogItem, Commodity } from '@/modules/gallery/services/commodityService'
+import { legacyCargoTypeToCode } from '@/modules/gallery/shippingAgencyCargoCatalog'
 import {
   EpdaComputedSummary,
   EpdaFormSection,
@@ -169,7 +170,6 @@ export function CreateInvoiceVariantForm({
     )
   const isBoatHireForAgencyEnabled = values.dischargeLoadingLocation === 'Anchorage'
   const isHcmAnchorage = variant === 'HCM' && values.dischargeLoadingLocation === 'Anchorage'
-  const normalizeCargoType = (value: string) => value.trim().toUpperCase().replace(/[\s-]+/g, '_')
   const grtNumeric = Number(values.grt)
   const cargoQtyNumeric = Number(values.cargoQty)
   const discountNumeric = Number(values.agencyDiscountPercent)
@@ -190,12 +190,15 @@ export function CreateInvoiceVariantForm({
     ? getAgencyFeeByGrt(grtNumeric, resolvedParams.agencyFeeTiers)
     : { amount: 0, label: '0 - 1,000' }
   const cargoQtyForDisplay = Number.isFinite(cargoQtyNumeric) && cargoQtyNumeric > 0 ? cargoQtyNumeric : 0
-  const normalizedCargoType = normalizeCargoType(values.cargoType || '')
   // Agency fee on cargo comes only from the per-cargo-type rates (Parameter screen).
+  // Canonicalize both sides (same logic as the PDF) so the preview can't diverge.
+  const normalizedCargoType = legacyCargoTypeToCode(values.cargoType || '')
   const onCargoRate =
-    (resolvedParams.cargoAgencyRates ?? []).find(
-      (r) => normalizeCargoType(r.code) === normalizedCargoType,
-    )?.rate ?? 0
+    normalizedCargoType === ''
+      ? 0
+      : (resolvedParams.cargoAgencyRates ?? []).find(
+          (r) => legacyCargoTypeToCode(r.code) === normalizedCargoType,
+        )?.rate ?? 0
   const onCargoBaseAmount = onCargoRate * cargoQtyForDisplay
 
   const onGrtLabel = t('sum.onGrt', { label: agencyFeeByGrt.label })

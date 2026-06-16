@@ -1,5 +1,6 @@
 import React from 'react'
 import { formatCargoNameWithType, normalizeInvoiceNumericFields } from '@/shared/utils/invoiceFormatters'
+import { legacyCargoTypeToCode } from '@/modules/gallery/shippingAgencyCargoCatalog'
 import {
   defaultParameterValues,
   resolveGrtTier,
@@ -167,8 +168,11 @@ const normalizeCargoType = (value: unknown) =>
     .replace(/[\s-]+/g, '_')
 
 const isTallyFeeEligibleCargo = (cargoType?: string) => {
-  const normalized = normalizeCargoType(cargoType)
-  return normalized.includes('IN_BAGS') || normalized.includes('EQUIPMENT')
+  // Bag/Pack and Equipment incur a tally fee; Bulk does not. Canonicalize first so
+  // both legacy ("IN_BAGS", "EQUIPMENT") and current codes (IN_BAG_PACK / IN_EQUIPMENT)
+  // match — the canonical bag code IN_BAG_PACK does NOT contain the substring "IN_BAGS".
+  const code = legacyCargoTypeToCode(cargoType)
+  return code === 'IN_BAG_PACK' || code === 'IN_EQUIPMENT'
 }
 
 const isTankerShip = (value?: string) => {
@@ -472,9 +476,12 @@ const buildBBRows = (
 
   const pickCargoFee = (value?: string) => {
     // Agency fee on cargo comes solely from the per-cargo-type rates configured on
-    // the Parameter screen. Unconfigured cargo types have no on-cargo fee.
-    const code = normalizeCargoType(value)
-    return (P.cargoAgencyRates ?? []).find((r) => normalizeCargoType(r.code) === code)?.rate
+    // the Parameter screen. Map both the cargo type and the configured rate code to
+    // the 3 canonical codes (IN_BULK / IN_EQUIPMENT / IN_BAG_PACK) so legacy variants
+    // (e.g. "BULK", "EQUIPMENT", "IN BAGS") still match their rate in the PDF.
+    const code = legacyCargoTypeToCode(value)
+    if (!code) return undefined
+    return (P.cargoAgencyRates ?? []).find((r) => legacyCargoTypeToCode(r.code) === code)?.rate
   }
 
   const renderRow = (row: QuoteRow, index: number) => {

@@ -2,9 +2,10 @@
 
 import { useEffect, useMemo, useState, type ReactNode } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { ChevronLeft, ChevronRight, History, Loader2, Plus, RotateCcw, Save, Trash2 } from 'lucide-react'
+import { ChevronLeft, ChevronRight, HelpCircle, History, Loader2, Plus, RotateCcw, Save, Trash2 } from 'lucide-react'
 import { toast } from 'sonner'
 import { ConfigDrawer } from '@/components/config-drawer'
+import { GuidedTour, type TourStep } from '@/components/guided-tour'
 import { Header } from '@/components/layout/header'
 import { Main } from '@/components/layout/main'
 import { ProfileDropdown } from '@/components/profile-dropdown'
@@ -18,6 +19,7 @@ import {
   CardHeader,
   CardTitle,
 } from '@/components/ui/card'
+import { Badge } from '@/components/ui/badge'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import {
@@ -169,6 +171,40 @@ function diffValues(
   if (JSON.stringify(edited.cargoAgencyRates) !== JSON.stringify(base.cargoAgencyRates))
     out.cargoAgencyRates = edited.cargoAgencyRates
   return out
+}
+
+// Map a stored top-level override key (e.g. "hours", "agencyFeeTiers") to the
+// i18n key of its human-friendly section title — shared by the group/override
+// cards so the chips read like the editor sections, not raw object keys.
+const SECTION_TITLE_KEY: Record<string, string> = {
+  hours: 'sec.hours.title',
+  garbage: 'sec.garbage.title',
+  quarantine: 'sec.quarantine.title',
+  coeff: 'sec.coeff.title',
+  agencyFeeTiers: 'sec.agency.title',
+  moorUnmoorBerthTiers: 'sec.moor.title',
+  moorUnmoorBuoyTiers: 'sec.moor.title',
+  tugTiers: 'sec.tug.title',
+  cargoAgencyRates: 'sec.cargoAgency.title',
+}
+
+/** Chips listing which sections a group/port overrides; muted note when none. */
+function OverriddenBadges({ keys }: { keys: string[] }) {
+  const { t } = useI18n()
+  const labels = Array.from(
+    new Set(keys.map((k) => (SECTION_TITLE_KEY[k] ? t(SECTION_TITLE_KEY[k]) : k)))
+  )
+  if (labels.length === 0)
+    return <span className='text-sm text-muted-foreground'>{t('param.inheritsArea')}</span>
+  return (
+    <div className='flex flex-wrap gap-1'>
+      {labels.map((l) => (
+        <Badge key={l} variant='secondary' className='font-normal'>
+          {l}
+        </Badge>
+      ))}
+    </div>
+  )
 }
 
 // ---------- shared field editors ----------
@@ -1452,31 +1488,102 @@ function ParamHistoryButton({ area }: { area: AreaOption }) {
       tugTiers: t('sec.tug.title'),
     })[k] ?? k
 
-  const changedSections = (
+  // Friendly label for a single scalar field inside a nested group.
+  const fieldLabel = (grp: string, key: string): string => {
+    const map: Record<string, string> = {
+      'hours.berthHours': t('f.berthHours'),
+      'hours.anchorageHours': t('f.anchorageHours'),
+      'hours.pilotageThirdMiles': t('f.pilotage3rdMiles'),
+      'hours.qnPilotageMiles': t('f.pilotageMiles'),
+      'garbage.atBerthUsd': t('f.garbageBerth'),
+      'garbage.atBuoyUsd': t('f.garbageBuoy'),
+      'garbage.cbmAmount': t('f.garbageCbm'),
+      'quarantine.shipUnitLowGrt': t('q.shipSmall'),
+      'quarantine.shipUnitHighGrt': t('q.shipLarge'),
+      'quarantine.shipThresholdGrt': t('q.threshold'),
+      'quarantine.cargoPerTrip': t('q.cargoPerTrip'),
+      'coeff.tonnagePerGrt': t('f.tonnagePerGrt'),
+      'coeff.navigationPerGrt': t('f.navigationPerGrt'),
+      'coeff.tankerFactor': t('f.tankerFactor'),
+      'coeff.bulkFactor': t('f.bulkFactor'),
+      'coeff.berthDuePerGrtHour': t('f.berthDue'),
+      'coeff.buoyDuePerGrtHour': t('f.buoyDue'),
+      'coeff.anchoragePerGrtHour': t('f.anchorageDue'),
+      'coeff.clearanceFee': t('f.clearance'),
+      'coeff.oceanFrtDefaultRate': t('f.oceanFrtRate'),
+      'coeff.oceanFrtTaxRate': t('f.oceanFrtTax'),
+      'coeff.pilotageLeg1Rate': t('f.pilotageLeg1Rate'),
+      'coeff.pilotageLeg1Miles': t('f.pilotageLeg1Miles'),
+      'coeff.pilotageLeg2Rate': t('f.pilotageLeg2Rate'),
+      'coeff.pilotageLeg2Miles': t('f.pilotageLeg2Miles'),
+      'coeff.pilotageLeg3Rate': t('f.pilotageLeg3Rate'),
+      'coeff.pilotageSingleRate': t('f.pilotageSingleRate'),
+      'coeff.pilotageMinAmount': t('f.pilotageMin'),
+    }
+    return map[`${grp}.${key}`] ?? `${sectionLabel(grp)} · ${key}`
+  }
+
+  const fmtVal = (v: unknown): string => {
+    if (v === undefined || v === null) return '—'
+    if (typeof v === 'number') return v.toLocaleString('en-US', { maximumFractionDigits: 4 })
+    return String(v)
+  }
+
+  const NESTED_GROUPS = ['hours', 'garbage', 'quarantine', 'coeff']
+  const ARRAY_FIELDS = [
+    'agencyFeeTiers',
+    'moorUnmoorBerthTiers',
+    'moorUnmoorBuoyTiers',
+    'tugTiers',
+    'cargoAgencyRates',
+  ]
+
+  // Detailed per-field diff: scalar fields show before → after; tier tables show
+  // the row count change (full row diff would be too noisy here).
+  const fieldChanges = (
     before: PartialEpdaParameterValues | null,
     after: PartialEpdaParameterValues | null,
-  ): string[] => {
-    const b = (before ?? {}) as Record<string, unknown>
-    const a = (after ?? {}) as Record<string, unknown>
-    const keys = new Set([...Object.keys(b), ...Object.keys(a)])
-    const out: string[] = []
-    keys.forEach((k) => {
-      if (JSON.stringify(b[k]) !== JSON.stringify(a[k])) out.push(sectionLabel(k))
-    })
+  ): { label: string; from: string; to: string }[] => {
+    const b = (before ?? {}) as Record<string, Record<string, unknown> | unknown[]>
+    const a = (after ?? {}) as Record<string, Record<string, unknown> | unknown[]>
+    const out: { label: string; from: string; to: string }[] = []
+    for (const grp of NESTED_GROUPS) {
+      const bg = (b[grp] ?? {}) as Record<string, unknown>
+      const ag = (a[grp] ?? {}) as Record<string, unknown>
+      const keys = new Set([...Object.keys(bg), ...Object.keys(ag)])
+      keys.forEach((k) => {
+        if (JSON.stringify(bg[k]) !== JSON.stringify(ag[k]))
+          out.push({ label: fieldLabel(grp, k), from: fmtVal(bg[k]), to: fmtVal(ag[k]) })
+      })
+    }
+    for (const key of ARRAY_FIELDS) {
+      if (JSON.stringify(b[key]) !== JSON.stringify(a[key])) {
+        const bn = Array.isArray(b[key]) ? (b[key] as unknown[]).length : 0
+        const an = Array.isArray(a[key]) ? (a[key] as unknown[]).length : 0
+        out.push({
+          label: sectionLabel(key),
+          from: `${bn} ${t('phist.rows')}`,
+          to: `${an} ${t('phist.rows')}`,
+        })
+      }
+    }
     return out
   }
 
   const actionLabel = (action: string) =>
-    action === 'UPSERT_AREA'
-      ? t('phist.upsertArea')
-      : action === 'UPSERT_PORT'
-        ? t('phist.upsertPort')
-        : t('phist.deletePort')
+    ({
+      UPSERT_AREA: t('phist.upsertArea'),
+      UPSERT_PORT: t('phist.upsertPort'),
+      DELETE_PORT: t('phist.deletePort'),
+      UPSERT_GROUP: t('phist.upsertGroup'),
+      DELETE_GROUP: t('phist.deleteGroup'),
+      SET_GROUP_MEMBERS: t('phist.setMembers'),
+    })[action] ?? action
 
   return (
     <Dialog>
       <DialogTrigger asChild>
-        <Button variant='outline' size='sm' className='gap-2'>
+        <Button data-tour='history' variant='outline' size='sm' className='gap-2'>
           <History className='h-4 w-4' /> {t('phist.btn')} ({logs.length})
         </Button>
       </DialogTrigger>
@@ -1489,11 +1596,14 @@ function ParamHistoryButton({ area }: { area: AreaOption }) {
         </DialogHeader>
         <ul className='max-h-[60vh] space-y-2 overflow-y-auto pr-1'>
           {logs.map((log) => {
-            const isCreate = !log.beforeValues && log.action !== 'DELETE_PORT'
-            const sections =
-              log.action === 'DELETE_PORT' || isCreate
-                ? []
-                : changedSections(log.beforeValues, log.afterValues)
+            const isDelete = log.action === 'DELETE_PORT' || log.action === 'DELETE_GROUP'
+            const isMembers = log.action === 'SET_GROUP_MEMBERS'
+            const isCreate = !log.beforeValues && !isDelete && !isMembers
+            const changes = isDelete || isCreate || isMembers ? [] : fieldChanges(log.beforeValues, log.afterValues)
+            const who =
+              log.changedBy.fullName ||
+              log.changedBy.email ||
+              (log.changedBy.id ? `User #${log.changedBy.id}` : '—')
             return (
               <li key={log.id} className='rounded-md border border-border/50 bg-muted/20 px-3 py-2.5 text-sm'>
                 <div className='flex flex-wrap items-baseline justify-between gap-x-3'>
@@ -1503,16 +1613,32 @@ function ParamHistoryButton({ area }: { area: AreaOption }) {
                   </p>
                   <p className='text-[11px] text-muted-foreground'>{new Date(log.createdAt).toLocaleString()}</p>
                 </div>
-                {log.action !== 'DELETE_PORT' ? (
-                  <p className='mt-1 text-[12px] text-muted-foreground'>
-                    {isCreate ? t('phist.created') : `${t('phist.changed')}: ${sections.join(', ') || '—'}`}
-                  </p>
-                ) : null}
-                <p className='mt-0.5 text-[11px] text-muted-foreground'>
-                  {log.changedBy.fullName ||
-                    log.changedBy.email ||
-                    (log.changedBy.id ? `User #${log.changedBy.id}` : '—')}
+
+                {/* Who made the change */}
+                <p className='mt-0.5 text-[12px]'>
+                  <span className='text-muted-foreground'>{t('phist.by')}: </span>
+                  <span className='font-medium text-foreground'>{who}</span>
                 </p>
+
+                {/* What changed — field-level before → after */}
+                {isCreate ? (
+                  <p className='mt-1 text-[12px] text-muted-foreground'>{t('phist.created')}</p>
+                ) : isMembers ? (
+                  <p className='mt-1 text-[12px] text-muted-foreground'>{t('phist.setMembers')}</p>
+                ) : changes.length ? (
+                  <ul className='mt-1 space-y-0.5'>
+                    {changes.map((c, i) => (
+                      <li key={i} className='text-[12px] leading-snug'>
+                        <span className='text-muted-foreground'>{c.label}: </span>
+                        <span className='text-muted-foreground line-through'>{c.from}</span>
+                        <span className='mx-1 text-muted-foreground'>→</span>
+                        <span className='font-semibold text-foreground tabular-nums'>{c.to}</span>
+                      </li>
+                    ))}
+                  </ul>
+                ) : !isDelete ? (
+                  <p className='mt-1 text-[12px] text-muted-foreground'>—</p>
+                ) : null}
               </li>
             )
           })}
@@ -1532,11 +1658,44 @@ export default function Page() {
   const [leaveHref, setLeaveHref] = useState<string | null>(null)
   // Area tab the user tried to switch to while there were unsaved edits.
   const [pendingArea, setPendingArea] = useState<AreaOption | null>(null)
+  // First-visit guided walkthrough of the page.
+  const [tourRun, setTourRun] = useState(false)
 
   const { data: sets, isLoading } = useQuery({
     queryKey: ['epda-parameters'],
     queryFn: () => epdaParametersService.listAll(),
   })
+
+  // Steps for the walkthrough — each anchors to a [data-tour] element below.
+  const tourSteps = useMemo<TourStep[]>(
+    () => [
+      { target: '[data-tour="area-tabs"]', title: t('tour.area.title'), body: t('tour.area.body') },
+      { target: '[data-tour="area-set"]', title: t('tour.areaSet.title'), body: t('tour.areaSet.body') },
+      { target: '[data-tour="save-area"]', title: t('tour.save.title'), body: t('tour.save.body') },
+      { target: '[data-tour="history"]', title: t('tour.history.title'), body: t('tour.history.body') },
+      { target: '[data-tour="groups"]', title: t('tour.groups.title'), body: t('tour.groups.body') },
+      { target: '[data-tour="overrides"]', title: t('tour.overrides.title'), body: t('tour.overrides.body') },
+    ],
+    [t]
+  )
+
+  // Auto-start once on the first visit (after data + layout are ready).
+  useEffect(() => {
+    if (isLoading) return
+    if (typeof window === 'undefined') return
+    if (localStorage.getItem('epda-param-tour-seen')) return
+    const id = window.setTimeout(() => setTourRun(true), 400)
+    return () => window.clearTimeout(id)
+  }, [isLoading])
+
+  const closeTour = () => {
+    setTourRun(false)
+    try {
+      localStorage.setItem('epda-param-tour-seen', '1')
+    } catch {
+      /* ignore storage errors (private mode) */
+    }
+  }
 
   const variant = AREA_TO_VARIANT[area]
   const areaSet = useMemo<EpdaParameterSet | undefined>(
@@ -1648,6 +1807,10 @@ export default function Page() {
             <h2 className='text-3xl font-bold tracking-tight'>{t('param.title')}</h2>
             <p className='max-w-2xl text-base text-muted-foreground'>{t('param.subtitle')}</p>
           </div>
+          <Button variant='outline' size='sm' className='gap-2' onClick={() => setTourRun(true)}>
+            <HelpCircle className='h-4 w-4' />
+            {t('tour.start')}
+          </Button>
         </div>
 
         {isLoading ? (
@@ -1659,6 +1822,7 @@ export default function Page() {
             {/* Area selector — pinned under the header on mobile (compact) so you
                 can switch area without scrolling back up; static on desktop. */}
             <Tabs
+              data-tour='area-tabs'
               value={area}
               onValueChange={(v) => handleAreaChange(v as AreaOption)}
               className='sticky top-16 z-30 -mx-4 border-b bg-background/95 px-4 py-2 backdrop-blur supports-[backdrop-filter]:bg-background/80 lg:static lg:mx-0 lg:border-0 lg:bg-transparent lg:px-0 lg:py-0 lg:backdrop-blur-none'
@@ -1676,7 +1840,7 @@ export default function Page() {
               </TabsList>
             </Tabs>
 
-            <Card>
+            <Card data-tour='area-set'>
               <CardHeader className='flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between'>
                 <div>
                   <CardTitle className='text-xl'>
@@ -1687,9 +1851,13 @@ export default function Page() {
                   </CardTitle>
                   <CardDescription className='text-base'>{t('param.areaDesc')}</CardDescription>
                 </div>
-                <div className='flex items-center gap-2'>
+                <div className='flex flex-col gap-2 sm:flex-row sm:w-auto sm:items-center [&>*]:w-full sm:[&>*]:w-auto'>
                   <ParamHistoryButton area={area} />
-                  <Button onClick={() => saveArea.mutate()} disabled={!isDirty || saveArea.isPending}>
+                  <Button
+                    data-tour='save-area'
+                    onClick={() => saveArea.mutate()}
+                    disabled={!isDirty || saveArea.isPending}
+                  >
                     {saveArea.isPending ? <Loader2 className='h-4 w-4 animate-spin' /> : <Save className='h-4 w-4' />}
                     {t('param.saveArea')}
                   </Button>
@@ -1700,15 +1868,40 @@ export default function Page() {
               </CardContent>
             </Card>
 
-            <PortOverridesCard
-              area={area}
-              variant={variant}
-              areaValues={areaValues}
-              overrides={(sets ?? []).filter((s) => s.scope === 'PORT' && s.area === area)}
-            />
+            <div data-tour='groups'>
+              <PortGroupsCard
+                area={area}
+                variant={variant}
+                areaValues={areaValues}
+                groups={(sets ?? []).filter((s) => s.scope === 'GROUP' && s.area === area)}
+              />
+            </div>
+
+            <div data-tour='overrides'>
+              <PortOverridesCard
+                area={area}
+                variant={variant}
+                areaValues={areaValues}
+                overrides={(sets ?? []).filter((s) => s.scope === 'PORT' && s.area === area)}
+                groups={(sets ?? []).filter((s) => s.scope === 'GROUP' && s.area === area)}
+              />
+            </div>
           </div>
         )}
       </Main>
+
+      <GuidedTour
+        steps={tourSteps}
+        run={tourRun}
+        onClose={closeTour}
+        labels={{
+          next: t('tour.next'),
+          back: t('tour.back'),
+          done: t('tour.done'),
+          skip: t('tour.skip'),
+          step: (i, n) => `${i} / ${n}`,
+        }}
+      />
 
       <AlertDialog
         open={leaveHref !== null || pendingArea !== null}
@@ -1745,11 +1938,13 @@ function PortOverridesCard({
   variant,
   areaValues,
   overrides,
+  groups,
 }: {
   area: AreaOption
   variant: QuoteVariant
   areaValues: EpdaParameterValues
   overrides: EpdaParameterSet[]
+  groups: EpdaParameterSet[]
 }) {
   const qc = useQueryClient()
   const { t } = useI18n()
@@ -1769,6 +1964,13 @@ function PortOverridesCard({
     return m
   }, [overrides])
 
+  // A port's effective baseline = area set overlaid with its group's override (if any).
+  // The port override stores only the diff from THIS baseline (matching port > group > area).
+  const baselineForPort = (portId: number): EpdaParameterValues => {
+    const group = groups.find((g) => (g.memberPortIds ?? []).includes(portId))
+    return mergeParameterValues(areaValues, group?.values)
+  }
+
   // Show the same label Create EPDA uses (portOfCall), falling back to name.
   const portName = (id: number) => {
     const p = ports?.find((x) => x.id === id)
@@ -1777,13 +1979,13 @@ function PortOverridesCard({
 
   const beginEdit = (portId: number) => {
     const ov = overrideByPort.get(portId)
-    setDraft(mergeParameterValues(areaValues, ov?.values))
+    setDraft(mergeParameterValues(baselineForPort(portId), ov?.values))
     setEditingPortId(portId)
   }
 
   const save = useMutation({
     mutationFn: () =>
-      epdaParametersService.upsertPort(editingPortId!, diffValues(areaValues, draft)),
+      epdaParametersService.upsertPort(editingPortId!, diffValues(baselineForPort(editingPortId!), draft)),
     onSuccess: () => {
       toast.success('Port override saved')
       qc.invalidateQueries({ queryKey: ['epda-parameters'] })
@@ -1811,53 +2013,61 @@ function PortOverridesCard({
         <CardDescription>{t('param.portOverridesDesc')}</CardDescription>
       </CardHeader>
       <CardContent className='space-y-4'>
-        <div className='flex flex-wrap items-end gap-3'>
-          <div className='grid gap-1.5'>
-            <Label className='text-xs text-muted-foreground'>{t('param.addEditPort')}</Label>
-            <Select value={editingPortId ? String(editingPortId) : ''} onValueChange={(v) => beginEdit(Number(v))}>
-              <SelectTrigger className='w-full sm:w-72'>
-                <SelectValue placeholder={t('param.selectPort')} />
-              </SelectTrigger>
-              <SelectContent>
-                {(ports ?? []).map((p) => (
-                  <SelectItem key={p.id} value={String(p.id)}>
-                    {p.portOfCall?.trim() || p.name}
-                    {overrideByPort.has(p.id) ? `  ${t('param.overrideTag')}` : ''}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
+        <div className='grid gap-1.5'>
+          <Label className='text-xs text-muted-foreground'>{t('param.addEditPort')}</Label>
+          <Select value={editingPortId ? String(editingPortId) : ''} onValueChange={(v) => beginEdit(Number(v))}>
+            <SelectTrigger className='w-full sm:max-w-xs'>
+              <SelectValue placeholder={t('param.selectPort')} />
+            </SelectTrigger>
+            <SelectContent>
+              {(ports ?? []).map((p) => (
+                <SelectItem key={p.id} value={String(p.id)}>
+                  {p.portOfCall?.trim() || p.name}
+                  {overrideByPort.has(p.id) ? `  ${t('param.overrideTag')}` : ''}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         </div>
 
-        {overrides.length > 0 && (
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>{t('param.colPort')}</TableHead>
-                <TableHead>{t('param.colOverridden')}</TableHead>
-                <TableHead className='w-28' />
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {overrides.map((o) => (
-                <TableRow key={o.id}>
-                  <TableCell className='font-medium'>{portName(o.portId!)}</TableCell>
-                  <TableCell className='text-muted-foreground'>
-                    {Object.keys(o.values ?? {}).join(', ') || '—'}
-                  </TableCell>
-                  <TableCell className='flex gap-1'>
-                    <Button variant='ghost' size='sm' onClick={() => beginEdit(o.portId!)}>
-                      {t('common.edit')}
-                    </Button>
-                    <Button variant='ghost' size='icon' onClick={() => remove.mutate(o.portId!)}>
-                      <RotateCcw className='h-4 w-4' />
-                    </Button>
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
+        {overrides.length === 0 ? (
+          <p className='rounded-lg border border-dashed px-4 py-6 text-center text-sm text-muted-foreground'>
+            {t('param.noOverrides')}
+          </p>
+        ) : (
+          <ul className='grid gap-3'>
+            {overrides.map((o) => {
+              const isActive = editingPortId === o.portId
+              return (
+                <li
+                  key={o.id}
+                  className={`rounded-xl border bg-card p-4 transition-colors ${
+                    isActive ? 'border-primary/50 ring-1 ring-primary/20' : 'hover:border-primary/30'
+                  }`}
+                >
+                  <div className='flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between'>
+                    <div className='min-w-0 space-y-2'>
+                      <span className='block truncate text-base font-semibold'>{portName(o.portId!)}</span>
+                      <OverriddenBadges keys={Object.keys(o.values ?? {})} />
+                    </div>
+                    <div className='flex shrink-0 items-center gap-1.5'>
+                      <Button variant='outline' size='sm' onClick={() => beginEdit(o.portId!)}>
+                        {t('common.edit')}
+                      </Button>
+                      <Button
+                        variant='ghost'
+                        size='icon'
+                        aria-label={t('param.resetToArea')}
+                        onClick={() => remove.mutate(o.portId!)}
+                      >
+                        <RotateCcw className='h-4 w-4' />
+                      </Button>
+                    </div>
+                  </div>
+                </li>
+              )
+            })}
+          </ul>
         )}
 
         {editingPortId && (
@@ -1876,6 +2086,260 @@ function PortOverridesCard({
             </CardHeader>
             <CardContent>
               <ValuesEditor variant={variant} values={draft} onChange={setDraft} />
+            </CardContent>
+          </Card>
+        )}
+      </CardContent>
+    </Card>
+  )
+}
+
+/**
+ * Port groups inside an area: a named set of ports that share one parameter override.
+ * A group inherits the area set and stores only the fields it changes; member ports
+ * resolve area → group → (their own) port override.
+ */
+function PortGroupsCard({
+  area,
+  variant,
+  areaValues,
+  groups,
+}: {
+  area: AreaOption
+  variant: QuoteVariant
+  areaValues: EpdaParameterValues
+  groups: EpdaParameterSet[]
+}) {
+  const qc = useQueryClient()
+  const { t } = useI18n()
+  const [newName, setNewName] = useState('')
+  const [editingParamsId, setEditingParamsId] = useState<number | null>(null)
+  const [nameDraft, setNameDraft] = useState('')
+  const [paramsDraft, setParamsDraft] = useState<EpdaParameterValues>(areaValues)
+  const [editingMembersId, setEditingMembersId] = useState<number | null>(null)
+  const [memberDraft, setMemberDraft] = useState<number[]>([])
+
+  const { data: ports } = useQuery({
+    queryKey: ['ports-by-area', area],
+    queryFn: () => portService.getPortsByArea(area),
+  })
+
+  const portName = (id: number) => {
+    const p = ports?.find((x) => x.id === id)
+    return p?.portOfCall?.trim() || p?.name || `Port #${id}`
+  }
+  const groupOfPort = (pid: number) => groups.find((g) => (g.memberPortIds ?? []).includes(pid))
+
+  const invalidate = () => {
+    qc.invalidateQueries({ queryKey: ['epda-parameters'] })
+    qc.invalidateQueries({ queryKey: ['epda-param-logs'] })
+  }
+  const onError = (e: unknown) => toast.error(e instanceof Error ? e.message : 'Failed')
+
+  const create = useMutation({
+    mutationFn: () => epdaParametersService.createGroup(area, newName.trim()),
+    onSuccess: () => {
+      toast.success('Group created')
+      setNewName('')
+      invalidate()
+    },
+    onError,
+  })
+
+  const saveParams = useMutation({
+    mutationFn: () =>
+      epdaParametersService.updateGroup(editingParamsId!, {
+        name: nameDraft.trim() || undefined,
+        values: diffValues(areaValues, paramsDraft),
+      }),
+    onSuccess: () => {
+      toast.success('Group saved')
+      setEditingParamsId(null)
+      invalidate()
+    },
+    onError,
+  })
+
+  const saveMembers = useMutation({
+    mutationFn: () => epdaParametersService.setGroupMembers(editingMembersId!, memberDraft),
+    onSuccess: () => {
+      toast.success('Ports updated')
+      setEditingMembersId(null)
+      invalidate()
+    },
+    onError,
+  })
+
+  const remove = useMutation({
+    mutationFn: (id: number) => epdaParametersService.deleteGroup(id),
+    onSuccess: () => {
+      toast.success('Group deleted')
+      invalidate()
+    },
+    onError,
+  })
+
+  const beginParams = (g: EpdaParameterSet) => {
+    setNameDraft(g.name ?? '')
+    setParamsDraft(mergeParameterValues(areaValues, g.values))
+    setEditingMembersId(null)
+    setEditingParamsId(g.id)
+  }
+  const beginMembers = (g: EpdaParameterSet) => {
+    setMemberDraft([...(g.memberPortIds ?? [])])
+    setEditingParamsId(null)
+    setEditingMembersId(g.id)
+  }
+  const toggleMember = (pid: number) =>
+    setMemberDraft((d) => (d.includes(pid) ? d.filter((x) => x !== pid) : [...d, pid]))
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>{t('param.groups', { area: t(`area.${area}`) })}</CardTitle>
+        <CardDescription>{t('param.groupsDesc')}</CardDescription>
+      </CardHeader>
+      <CardContent className='space-y-4'>
+        {/* Create a group */}
+        <div className='flex flex-col gap-2 sm:flex-row sm:items-end'>
+          <div className='grid flex-1 gap-1.5'>
+            <Label className='text-xs text-muted-foreground'>{t('param.newGroupName')}</Label>
+            <Input
+              value={newName}
+              onChange={(e) => setNewName(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' && newName.trim() && !create.isPending) create.mutate()
+              }}
+              placeholder={t('param.newGroupName')}
+              className='w-full sm:max-w-xs'
+            />
+          </div>
+          <Button
+            className='w-full sm:w-auto'
+            onClick={() => create.mutate()}
+            disabled={!newName.trim() || create.isPending}
+          >
+            {create.isPending ? <Loader2 className='h-4 w-4 animate-spin' /> : <Plus className='h-4 w-4' />}
+            {t('param.addGroup')}
+          </Button>
+        </div>
+
+        {/* Existing groups — responsive panel list (tables overflow on mobile). */}
+        {groups.length === 0 ? (
+          <p className='rounded-lg border border-dashed px-4 py-6 text-center text-sm text-muted-foreground'>
+            {t('param.noGroups')}
+          </p>
+        ) : (
+          <ul className='grid gap-3'>
+            {groups.map((g) => {
+              const count = (g.memberPortIds ?? []).length
+              const isActive = editingMembersId === g.id || editingParamsId === g.id
+              return (
+                <li
+                  key={g.id}
+                  className={`rounded-xl border bg-card p-4 transition-colors ${
+                    isActive ? 'border-primary/50 ring-1 ring-primary/20' : 'hover:border-primary/30'
+                  }`}
+                >
+                  <div className='flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between'>
+                    <div className='min-w-0 space-y-2'>
+                      <div className='flex flex-wrap items-center gap-2'>
+                        <span className='truncate text-base font-semibold'>{g.name || `#${g.id}`}</span>
+                        <Badge variant='outline' className='shrink-0 font-normal text-muted-foreground'>
+                          {t('param.portCount', { count })}
+                        </Badge>
+                      </div>
+                      <OverriddenBadges keys={Object.keys(g.values ?? {})} />
+                    </div>
+                    <div className='flex shrink-0 flex-wrap items-center gap-1.5'>
+                      <Button variant='outline' size='sm' onClick={() => beginMembers(g)}>
+                        {t('param.colMembers')}
+                      </Button>
+                      <Button variant='outline' size='sm' onClick={() => beginParams(g)}>
+                        {t('param.editParams')}
+                      </Button>
+                      <Button
+                        variant='ghost'
+                        size='icon'
+                        aria-label={t('common.delete')}
+                        onClick={() => remove.mutate(g.id)}
+                      >
+                        <Trash2 className='h-4 w-4 text-destructive' />
+                      </Button>
+                    </div>
+                  </div>
+                </li>
+              )
+            })}
+          </ul>
+        )}
+
+        {/* Assign ports to a group */}
+        {editingMembersId && (
+          <Card className='border-primary/40'>
+            <CardHeader className='flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between'>
+              <CardTitle className='text-base'>
+                {t('param.assignPorts', { group: groups.find((g) => g.id === editingMembersId)?.name ?? '' })}
+              </CardTitle>
+              <div className='flex gap-2'>
+                <Button variant='outline' size='sm' onClick={() => setEditingMembersId(null)}>
+                  {t('common.cancel')}
+                </Button>
+                <Button size='sm' onClick={() => saveMembers.mutate()} disabled={saveMembers.isPending}>
+                  {saveMembers.isPending ? <Loader2 className='h-4 w-4 animate-spin' /> : <Save className='h-4 w-4' />}
+                  {t('param.saveMembers')}
+                </Button>
+              </div>
+            </CardHeader>
+            <CardContent>
+              <div className='flex flex-wrap gap-2'>
+                {(ports ?? []).map((p) => {
+                  const selected = memberDraft.includes(p.id)
+                  const other = groupOfPort(p.id)
+                  const inOther = other && other.id !== editingMembersId
+                  return (
+                    <button
+                      key={p.id}
+                      type='button'
+                      onClick={() => toggleMember(p.id)}
+                      className={`rounded-full border px-3 py-1.5 text-sm transition-colors ${
+                        selected
+                          ? 'border-primary bg-primary/10 font-medium text-foreground'
+                          : 'border-border text-muted-foreground hover:bg-muted/60'
+                      }`}
+                    >
+                      {p.portOfCall?.trim() || p.name}
+                      {inOther && !selected ? (
+                        <span className='ml-1 text-[11px] text-amber-600'>{t('param.inOtherGroup')}</span>
+                      ) : null}
+                    </button>
+                  )
+                })}
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Edit a group's parameter set */}
+        {editingParamsId && (
+          <Card className='border-primary/40'>
+            <CardHeader className='flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between'>
+              <div className='grid gap-1.5'>
+                <Label className='text-xs text-muted-foreground'>{t('param.groupName')}</Label>
+                <Input value={nameDraft} onChange={(e) => setNameDraft(e.target.value)} className='w-full sm:w-72' />
+              </div>
+              <div className='flex gap-2'>
+                <Button variant='outline' size='sm' onClick={() => setEditingParamsId(null)}>
+                  {t('common.cancel')}
+                </Button>
+                <Button size='sm' onClick={() => saveParams.mutate()} disabled={saveParams.isPending}>
+                  {saveParams.isPending ? <Loader2 className='h-4 w-4 animate-spin' /> : <Save className='h-4 w-4' />}
+                  {t('param.saveGroup')}
+                </Button>
+              </div>
+            </CardHeader>
+            <CardContent>
+              <ValuesEditor variant={variant} values={paramsDraft} onChange={setParamsDraft} />
             </CardContent>
           </Card>
         )}
