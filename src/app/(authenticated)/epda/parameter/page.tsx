@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState, type ReactNode } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { ChevronLeft, ChevronRight, HelpCircle, History, Loader2, Plus, RotateCcw, Save, Trash2 } from 'lucide-react'
+import { ChevronLeft, ChevronRight, HelpCircle, History, Loader2, Plus, Save, Trash2 } from 'lucide-react'
 import { toast } from 'sonner'
 import { ConfigDrawer } from '@/components/config-drawer'
 import { GuidedTour, type TourStep } from '@/components/guided-tour'
@@ -1674,6 +1674,10 @@ export default function Page() {
       { target: '[data-tour="save-area"]', title: t('tour.save.title'), body: t('tour.save.body') },
       { target: '[data-tour="history"]', title: t('tour.history.title'), body: t('tour.history.body') },
       { target: '[data-tour="groups"]', title: t('tour.groups.title'), body: t('tour.groups.body') },
+      { target: '[data-tour="group-create"]', title: t('tour.groupCreate.title'), body: t('tour.groupCreate.body') },
+      { target: '[data-tour="group-members"]', title: t('tour.groupMembers.title'), body: t('tour.groupMembers.body') },
+      { target: '[data-tour="group-params"]', title: t('tour.groupParams.title'), body: t('tour.groupParams.body') },
+      { target: '[data-tour="group-delete"]', title: t('tour.groupDelete.title'), body: t('tour.groupDelete.body') },
       { target: '[data-tour="overrides"]', title: t('tour.overrides.title'), body: t('tour.overrides.body') },
     ],
     [t]
@@ -2060,7 +2064,7 @@ function PortOverridesCard({
                         aria-label={t('param.resetToArea')}
                         onClick={() => remove.mutate(o.portId!)}
                       >
-                        <RotateCcw className='h-4 w-4' />
+                        <Trash2 className='h-4 w-4 text-destructive' />
                       </Button>
                     </div>
                   </div>
@@ -2201,7 +2205,7 @@ function PortGroupsCard({
       </CardHeader>
       <CardContent className='space-y-4'>
         {/* Create a group */}
-        <div className='flex flex-col gap-2 sm:flex-row sm:items-end'>
+        <div data-tour='group-create' className='flex flex-col gap-2 sm:flex-row sm:items-end'>
           <div className='grid flex-1 gap-1.5'>
             <Label className='text-xs text-muted-foreground'>{t('param.newGroupName')}</Label>
             <Input
@@ -2252,13 +2256,14 @@ function PortGroupsCard({
                       <OverriddenBadges keys={Object.keys(g.values ?? {})} />
                     </div>
                     <div className='flex shrink-0 flex-wrap items-center gap-1.5'>
-                      <Button variant='outline' size='sm' onClick={() => beginMembers(g)}>
+                      <Button data-tour='group-members' variant='outline' size='sm' onClick={() => beginMembers(g)}>
                         {t('param.colMembers')}
                       </Button>
-                      <Button variant='outline' size='sm' onClick={() => beginParams(g)}>
+                      <Button data-tour='group-params' variant='outline' size='sm' onClick={() => beginParams(g)}>
                         {t('param.editParams')}
                       </Button>
                       <Button
+                        data-tour='group-delete'
                         variant='ghost'
                         size='icon'
                         aria-label={t('common.delete')}

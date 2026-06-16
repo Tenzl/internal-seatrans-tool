@@ -9,7 +9,7 @@ import {
   SidebarRail,
 } from '@/components/ui/sidebar'
 import { useCurrentUser } from '@/hooks/use-current-user'
-import { filterNavGroupsByRole } from '@/config/nav-roles'
+import { filterNavGroupsBySections } from '@/config/section-catalog'
 import { AppTitle } from './app-title'
 import { sidebarData } from './data/sidebar-data'
 import { NavGroup } from './nav-group'
@@ -18,9 +18,9 @@ import { NavUser } from './nav-user'
 export function AppSidebar() {
   const { collapsible, variant } = useLayout()
   const user = useCurrentUser()
-  // Hide role-restricted sections (e.g. Booking/Data Management) for non-admins.
-  // Rules live in src/config/nav-roles.ts.
-  const navGroups = filterNavGroupsByRole(sidebarData.navGroups, user?.role)
+  // Show only the pages this user's role is granted (admins see everything).
+  // Access is per-section — managed in /roles and resolved from /auth/me.
+  const navGroups = filterNavGroupsBySections(sidebarData.navGroups, user)
   return (
     <Sidebar collapsible={collapsible} variant={variant}>
       <SidebarHeader>

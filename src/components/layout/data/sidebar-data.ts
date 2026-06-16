@@ -13,6 +13,7 @@ import {
   Building2,
   Newspaper,
   Tag,
+  ShieldCheck,
 } from 'lucide-react'
 import { type SidebarData } from '../types'
 
@@ -86,6 +87,11 @@ export const sidebarData: SidebarData = {
               title: 'Users',
               icon: Users,
               url: '/users',
+            },
+            {
+              title: 'Roles',
+              icon: ShieldCheck,
+              url: '/roles',
             },
             {
               title: 'Ports',

@@ -191,6 +191,13 @@ export const API_CONFIG = {
     GROUP: (id: number) => `/admin/epda-parameters/groups/${id}`,
     GROUP_MEMBERS: (id: number) => `/admin/epda-parameters/groups/${id}/members`,
   },
+
+  ROLES: {
+    LIST: '/admin/roles',
+    CREATE: '/admin/roles',
+    BY_ID: (id: number) => `/admin/roles/${id}`,
+    SECTION_CATALOG: '/admin/roles/sections/catalog',
+  },
 } as const
 
 export type ApiConfig = typeof API_CONFIG

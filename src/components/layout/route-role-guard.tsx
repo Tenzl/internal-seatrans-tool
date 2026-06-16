@@ -5,19 +5,20 @@ import { Loader2 } from 'lucide-react'
 import { usePathname } from 'next/navigation'
 import { Link } from '@/lib/router'
 import { useAuthUser } from '@/hooks/use-current-user'
-import { canAccessRoute } from '@/config/nav-roles'
+import { canAccessPath } from '@/config/section-catalog'
 
 /**
- * Real route-level role gate. Blocks pages whose path is restricted in
- * src/config/nav-roles.ts (ROUTE_ROLE_ACCESS) for users without the role —
- * even when reached by typing the URL directly. Open routes render instantly.
+ * Real route-level access gate. Blocks pages whose section the user's role was
+ * not granted — even when reached by typing the URL directly. Admins and
+ * unmapped routes render instantly. The backend enforces the same per section,
+ * so this is the UX layer on top.
  */
 export function RouteRoleGuard({ children }: { children: ReactNode }) {
   const pathname = usePathname()
   const { user, loading } = useAuthUser()
 
-  // Allowed (or an unrestricted route) → render immediately.
-  if (canAccessRoute(pathname, user?.role)) {
+  // Allowed (admin, granted, or an unmapped route) → render immediately.
+  if (canAccessPath(pathname, user)) {
     return <>{children}</>
   }
 

@@ -160,10 +160,10 @@ export const authService = {
         }
       }
 
-      // Save token and user to localStorage
+      // Persist only the non-sensitive user profile — the JWT session lives in an
+      // HttpOnly cookie set by the backend (same as login; never store it in JS).
       if (data.success && data.data) {
         persistAuthUser(data.data.user, true)
-        persistAuthToken(data.data.token, true)
       }
 
       return {

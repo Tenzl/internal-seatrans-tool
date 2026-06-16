@@ -1,4 +1,4 @@
-import type { DashboardSection } from '@/shared/config/dashboard-registry'
+import type { DashboardSection } from '@/shared/types/dashboard'
 
 const EPDA_INQUIRY_DETAIL_SECTION = 'shipping-agency-inquiry-detail' as const
 
