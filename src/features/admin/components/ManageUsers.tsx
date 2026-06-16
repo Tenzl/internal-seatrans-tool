@@ -9,7 +9,7 @@ import {
   useReactTable,
 } from '@tanstack/react-table'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
-import { Ban, KeyRound, Loader2, MoreHorizontal, Plus, UserCheck } from 'lucide-react'
+import { Ban, KeyRound, Loader2, MoreHorizontal, Plus, UserCheck, UserCog } from 'lucide-react'
 
 import {
   AdminDataPanel,
@@ -81,6 +81,9 @@ export function ManageUsers() {
   const [isDeleting, setIsDeleting] = useState(false)
   const [reactivateTarget, setReactivateTarget] = useState<AdminUserRow | null>(null)
   const [isReactivating, setIsReactivating] = useState(false)
+  const [roleTarget, setRoleTarget] = useState<AdminUserRow | null>(null)
+  const [roleTargetRoleId, setRoleTargetRoleId] = useState<string>('')
+  const [isUpdatingRole, setIsUpdatingRole] = useState(false)
 
   const roleGroup: RoleGroup = scope
 
@@ -174,6 +177,15 @@ export function ManageUsers() {
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end">
+                <DropdownMenuItem
+                  onSelect={() => {
+                    setRoleTargetRoleId(u.roleId ? String(u.roleId) : '')
+                    setRoleTarget(u)
+                  }}
+                >
+                  <UserCog className="mr-2 h-4 w-4" />
+                  Change role
+                </DropdownMenuItem>
                 <DropdownMenuItem
                   onSelect={() => {
                     setResetPasswordValue('')
@@ -326,6 +338,37 @@ export function ManageUsers() {
       setIsReactivating(false)
     }
   }
+
+  const handleUpdateRole = async () => {
+    if (!roleTarget) return
+    const roleId = Number(roleTargetRoleId)
+    if (!Number.isFinite(roleId) || roleId <= 0) {
+      toast.error('Select a role')
+      return
+    }
+    if (roleId === roleTarget.roleId) {
+      setRoleTarget(null)
+      return
+    }
+    setIsUpdatingRole(true)
+    try {
+      await adminUsersService.updateUserRole(roleTarget.id, roleId)
+      toast.success(`Role updated for ${roleTarget.email}`)
+      setRoleTarget(null)
+      await queryClient.invalidateQueries({ queryKey: ['adminUsers'] })
+    } catch (err) {
+      console.error('Failed to update role:', err)
+      toast.error(err instanceof Error ? err.message : 'Failed to update role')
+    } finally {
+      setIsUpdatingRole(false)
+    }
+  }
+
+  // Roles selectable for the change-role dialog: same group as the target user.
+  const roleOptionsForTarget = useMemo(() => {
+    if (!roleTarget) return roles
+    return roles.filter((r) => r.roleGroup === (roleTarget.roleGroup ?? roleGroup))
+  }, [roles, roleTarget, roleGroup])
 
   return (
     <AdminSection description="Manage internal users (create allowed) and view external accounts (read-only).">
@@ -588,6 +631,58 @@ export function ManageUsers() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Change role */}
+      <Dialog
+        open={!!roleTarget}
+        onOpenChange={(next) => {
+          if (!next) {
+            setRoleTarget(null)
+            setRoleTargetRoleId('')
+          }
+        }}
+      >
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Change role</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3">
+            <p className="text-sm text-muted-foreground">
+              Set a new role for <span className="font-medium">{roleTarget?.email}</span>.
+            </p>
+            <div className="space-y-1.5">
+              <Label>Role</Label>
+              <Select
+                value={roleTargetRoleId}
+                onValueChange={setRoleTargetRoleId}
+                disabled={isLoadingRoles}
+              >
+                <SelectTrigger className="h-9">
+                  <SelectValue placeholder={isLoadingRoles ? 'Loading roles…' : 'Select role'} />
+                </SelectTrigger>
+                <SelectContent>
+                  {roleOptionsForTarget.map((r) => (
+                    <SelectItem key={r.id} value={String(r.id)}>
+                      {r.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <p className="text-xs text-muted-foreground">
+                Only roles in the same group ({roleTarget?.roleGroup ?? roleGroup}) are available.
+              </p>
+            </div>
+          </div>
+          <DialogFooter className="mt-4">
+            <Button type="button" variant="outline" onClick={() => setRoleTarget(null)}>
+              Cancel
+            </Button>
+            <Button type="button" onClick={handleUpdateRole} disabled={isUpdatingRole}>
+              {isUpdatingRole ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Save role'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </AdminSection>
   )
 }

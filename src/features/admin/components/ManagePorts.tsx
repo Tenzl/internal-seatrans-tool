@@ -1,15 +1,18 @@
 'use client'
 
-import React, { type FormEvent, useCallback, useMemo, useState } from 'react'
+import React, { type FormEvent, useCallback, useEffect, useMemo, useState } from 'react'
 import {
   type ColumnDef,
   type SortingState,
+  type VisibilityState,
+  flexRender,
+  functionalUpdate,
   getCoreRowModel,
   getSortedRowModel,
   useReactTable,
 } from '@tanstack/react-table'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
-import { Loader2, Pencil, Plus, Trash2 } from 'lucide-react'
+import { ChevronDown, Loader2, Pencil, Plus, Trash2 } from 'lucide-react'
 import {
   AdminDataPanel,
   AdminSection,
@@ -34,7 +37,21 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/shared/components/ui/select'
-import { DataTableContent, adminStickyColumnClass } from '@/shared/components/ui/data-table'
+import { DataTablePagination } from '@/shared/components/ui/data-table'
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/shared/components/ui/table'
+import {
+  DropdownMenu,
+  DropdownMenuCheckboxItem,
+  DropdownMenuContent,
+  DropdownMenuTrigger,
+} from '@/shared/components/ui/dropdown-menu'
 import { useTableSortHeader } from '@/features/admin/hooks/useTableSortHeader'
 import {
   Dialog,
@@ -78,16 +95,42 @@ interface PortTableRow extends Port {
   provinceName: string
 }
 
+/** Shape of the create / edit dialog form. */
+interface PortFormState {
+  name: string
+  portOfCall: string
+  code: string
+  zoneCode: string
+  countryCode: string
+  latitude: string
+  longitude: string
+  area: string
+  provinceId: number | null
+}
+
+const emptyPortForm: PortFormState = {
+  name: '',
+  portOfCall: '',
+  code: '',
+  zoneCode: '',
+  countryCode: '',
+  latitude: '',
+  longitude: '',
+  area: NONE_VALUE,
+  provinceId: null,
+}
+
 const COLUMN_CLASS_NAMES: Record<string, string> = {
-  area: 'hidden md:table-cell w-32',
-  provinceName: 'hidden lg:table-cell w-48',
-  code: 'hidden md:table-cell w-32',
-  zoneCode: 'hidden lg:table-cell w-32',
-  countryCode: 'hidden lg:table-cell w-32',
-  latitude: 'hidden xl:table-cell w-32',
-  longitude: 'hidden xl:table-cell w-32',
+  area: 'w-32',
+  provinceName: 'w-48',
+  name: 'min-w-[12rem]',
+  portOfCall: 'min-w-[10rem]',
+  code: 'w-32',
+  zoneCode: 'w-32',
+  countryCode: 'w-32',
+  latitude: 'w-32',
+  longitude: 'w-32',
   hasInfo: 'w-40',
-  actions: 'text-right',
 }
 
 const parseOptionalNumber = (rawValue: string, fieldLabel: string): number | undefined => {
@@ -116,18 +159,22 @@ export function ManagePorts() {
     },
   })
 
+  const [serverPage, setServerPage] = useState(0)
   const [portSearch, setPortSearch] = useState('')
   const [searchField, setSearchField] = useState<PortSearchFieldId>('name')
   const debouncedPortSearch = useDebouncedValue(portSearch, 300)
 
-  const portsListQueryKey = queryKeys.portsList(debouncedPortSearch, searchField)
+  const portsListQueryKey = [
+    ...queryKeys.portsList(debouncedPortSearch, searchField),
+    serverPage,
+  ]
 
   const { data: portsPage, isLoading: isPortsQueryLoading, isFetching } = useQuery({
     queryKey: portsListQueryKey,
     queryFn: async () => {
       try {
         return await portService.listPortsPaginated({
-          page: 0,
+          page: serverPage,
           size: PORTS_ADMIN_LIST_SIZE,
           q: debouncedPortSearch.trim() || undefined,
           searchIn: searchField,
@@ -141,204 +188,134 @@ export function ManagePorts() {
 
   const ports = portsPage?.content ?? []
   const totalElements = portsPage?.totalElements ?? 0
+  const serverPageCount = Math.max(1, portsPage?.totalPages ?? 1)
+
+  // Reset to the first page whenever the search query or field changes.
+  useEffect(() => {
+    setServerPage(0)
+  }, [debouncedPortSearch, searchField])
 
   const [isBusy, setIsBusy] = useState(false)
   const isLoading = isPortsQueryLoading || isFetching || isBusy
 
   const [sorting, setSorting] = useState<SortingState>([])
+  const [columnVisibility, setColumnVisibility] = useState<VisibilityState>({
+    // "Has Info" is temporarily hidden by default; all other columns show.
+    // It can still be re-enabled from the "Columns" menu.
+    hasInfo: false,
+  })
 
   const invalidatePortsList = useCallback(() => {
     void queryClient.invalidateQueries({ queryKey: queryKeys.portsListPrefix() })
   }, [queryClient])
 
-  const [addDialogOpen, setAddDialogOpen] = useState(false)
-  const [addPortName, setAddPortName] = useState('')
-  const [addPortOfCall, setAddPortOfCall] = useState('')
-  const [addCode, setAddCode] = useState('')
-  const [addZoneCode, setAddZoneCode] = useState('')
-  const [addCountryCode, setAddCountryCode] = useState('')
-  const [addLatitude, setAddLatitude] = useState('')
-  const [addLongitude, setAddLongitude] = useState('')
-
+  // Combined create / edit dialog --------------------------------------------
+  const [dialogOpen, setDialogOpen] = useState(false)
   const [editingPortId, setEditingPortId] = useState<number | null>(null)
-  const [editingPortName, setEditingPortName] = useState('')
-  const [editingPortOfCall, setEditingPortOfCall] = useState('')
-  const [editingCode, setEditingCode] = useState('')
-  const [editingZoneCode, setEditingZoneCode] = useState('')
-  const [editingCountryCode, setEditingCountryCode] = useState('')
-  const [editingLatitude, setEditingLatitude] = useState('')
-  const [editingLongitude, setEditingLongitude] = useState('')
-  const [editingProvinceId, setEditingProvinceId] = useState<number | null>(null)
-  const [editingArea, setEditingArea] = useState<string>(NONE_VALUE)
+  const [form, setForm] = useState<PortFormState>(emptyPortForm)
   const renderSortableHeader = useTableSortHeader<PortTableRow>()
 
-  const resetEditingState = useCallback(() => {
+  const updateForm = useCallback(
+    <K extends keyof PortFormState>(key: K, value: PortFormState[K]) => {
+      setForm((prev) => ({ ...prev, [key]: value }))
+    },
+    [],
+  )
+
+  const openCreateDialog = () => {
     setEditingPortId(null)
-    setEditingPortName('')
-    setEditingPortOfCall('')
-    setEditingCode('')
-    setEditingZoneCode('')
-    setEditingCountryCode('')
-    setEditingLatitude('')
-    setEditingLongitude('')
-    setEditingProvinceId(null)
-    setEditingArea(NONE_VALUE)
-  }, [])
-
-  const resetAddForm = () => {
-    setAddPortName('')
-    setAddPortOfCall('')
-    setAddCode('')
-    setAddZoneCode('')
-    setAddCountryCode('')
-    setAddLatitude('')
-    setAddLongitude('')
+    setForm(emptyPortForm)
+    setDialogOpen(true)
   }
 
-  const openAddDialog = () => {
-    setAddPortName('')
-    setAddPortOfCall('')
-    setAddCode('')
-    setAddZoneCode('')
-    setAddCountryCode('')
-    setAddLatitude('')
-    setAddLongitude('')
-    setAddDialogOpen(true)
-  }
+  const openEditDialog = useCallback(
+    (port: Port) => {
+      const matchedProvince =
+        port.provinceId != null
+          ? provinces.find((province) => province.id === port.provinceId)
+          : undefined
+      setEditingPortId(port.id)
+      setForm({
+        name: port.name ?? '',
+        portOfCall: port.portOfCall ?? '',
+        code: port.code ?? '',
+        zoneCode: port.zoneCode ?? '',
+        countryCode: port.countryCode ?? '',
+        latitude: port.latitude != null ? String(port.latitude) : '',
+        longitude: port.longitude != null ? String(port.longitude) : '',
+        area: matchedProvince?.area ?? NONE_VALUE,
+        provinceId: port.provinceId ?? null,
+      })
+      setDialogOpen(true)
+    },
+    [provinces],
+  )
 
-  const handleAddPort = async () => {
-    if (!addPortName.trim()) {
-      toast.error('Port name cannot be empty')
-      return
-    }
+  const handleSavePort = useCallback(
+    async (event: FormEvent) => {
+      event.preventDefault()
 
-    try {
-      setIsBusy(true)
-      const payload: Record<string, unknown> = {
-        name: addPortName.trim(),
-        provinceId: null,
+      if (!form.name.trim()) {
+        toast.error('Port name cannot be empty')
+        return
       }
 
-      const maybePortOfCall = addPortOfCall.trim()
-      if (maybePortOfCall) payload.portOfCall = maybePortOfCall
+      const isEditing = editingPortId != null
 
-      const maybeCode = addCode.trim()
-      if (maybeCode) payload.code = maybeCode
+      try {
+        setIsBusy(true)
+        const payload: Record<string, unknown> = {
+          name: form.name.trim(),
+          // null clears the province; the API treats it as "no province".
+          provinceId: form.provinceId ?? null,
+        }
 
-      const maybeZoneCode = addZoneCode.trim()
-      if (maybeZoneCode) payload.zoneCode = maybeZoneCode
+        const maybePortOfCall = form.portOfCall.trim()
+        // On edit, always send so the field can be cleared; on create, omit when empty.
+        if (maybePortOfCall || isEditing) payload.portOfCall = maybePortOfCall
 
-      const maybeCountryCode = addCountryCode.trim()
-      if (maybeCountryCode) payload.countryCode = maybeCountryCode
+        const maybeCode = form.code.trim()
+        if (maybeCode) payload.code = maybeCode
 
-      const maybeLatitude = parseOptionalNumber(addLatitude, 'Latitude')
-      if (maybeLatitude !== undefined) payload.latitude = maybeLatitude
+        const maybeZoneCode = form.zoneCode.trim()
+        if (maybeZoneCode) payload.zoneCode = maybeZoneCode
 
-      const maybeLongitude = parseOptionalNumber(addLongitude, 'Longitude')
-      if (maybeLongitude !== undefined) payload.longitude = maybeLongitude
+        const maybeCountryCode = form.countryCode.trim()
+        if (maybeCountryCode) payload.countryCode = maybeCountryCode
 
-      const response = await apiClient.post<ApiResponse<Port>>(API_CONFIG.PORTS.ADMIN_BASE, payload)
+        // The API expects latitude / longitude as numeric *strings* (IsNumberString).
+        const maybeLatitude = parseOptionalNumber(form.latitude, 'Latitude')
+        if (maybeLatitude !== undefined) payload.latitude = String(maybeLatitude)
 
-      if (!response.ok) {
-        throw new Error('Failed to add port')
+        const maybeLongitude = parseOptionalNumber(form.longitude, 'Longitude')
+        if (maybeLongitude !== undefined) payload.longitude = String(maybeLongitude)
+
+        const response = isEditing
+          ? await apiClient.put<ApiResponse<Port>>(
+              API_CONFIG.PORTS.ADMIN_BY_ID(editingPortId),
+              payload,
+            )
+          : await apiClient.post<ApiResponse<Port>>(API_CONFIG.PORTS.ADMIN_BASE, payload)
+
+        if (!response.ok) {
+          throw new Error(isEditing ? 'Failed to update port' : 'Failed to add port')
+        }
+
+        await response.json()
+        invalidatePortsList()
+        setDialogOpen(false)
+        setEditingPortId(null)
+        setForm(emptyPortForm)
+        toast.success(isEditing ? 'Port updated successfully' : 'Port added successfully')
+      } catch (error) {
+        const fallback = isEditing ? 'Failed to update port' : 'Failed to add port'
+        toast.error(error instanceof Error ? error.message : fallback)
+      } finally {
+        setIsBusy(false)
       }
-
-      await response.json()
-      invalidatePortsList()
-      setAddDialogOpen(false)
-      resetAddForm()
-      toast.success('Port added successfully')
-    } catch (error) {
-      const message = error instanceof Error ? error.message : 'Failed to add port'
-      toast.error(message)
-    } finally {
-      setIsBusy(false)
-    }
-  }
-
-  const handleSubmitAddPort = async (event: FormEvent) => {
-    event.preventDefault()
-    await handleAddPort()
-  }
-
-  const handleEditPort = useCallback((port: Port) => {
-    setEditingPortId(port.id)
-    setEditingPortName(port.name)
-    setEditingPortOfCall(port.portOfCall || '')
-    setEditingProvinceId(port.provinceId)
-
-    const matchedProvince = port.provinceId != null
-      ? provinces.find((province) => province.id === port.provinceId)
-      : undefined
-    setEditingArea(matchedProvince?.area || NONE_VALUE)
-
-    setEditingCode(port.code || '')
-    setEditingZoneCode(port.zoneCode || '')
-    setEditingCountryCode(port.countryCode || '')
-    setEditingLatitude(port.latitude != null ? String(port.latitude) : '')
-    setEditingLongitude(port.longitude != null ? String(port.longitude) : '')
-  }, [provinces])
-
-  const handleSavePort = useCallback(async (portId: number) => {
-    if (!editingPortName.trim()) {
-      toast.error('Port name cannot be empty')
-      return
-    }
-
-    try {
-      setIsBusy(true)
-      const payload: Record<string, unknown> = {
-        name: editingPortName.trim(),
-        portOfCall: editingPortOfCall.trim(),
-      }
-
-      if (editingProvinceId != null) {
-        payload.provinceId = editingProvinceId
-      }
-
-      const maybeCode = editingCode.trim()
-      if (maybeCode) payload.code = maybeCode
-
-      const maybeZoneCode = editingZoneCode.trim()
-      if (maybeZoneCode) payload.zoneCode = maybeZoneCode
-
-      const maybeCountryCode = editingCountryCode.trim()
-      if (maybeCountryCode) payload.countryCode = maybeCountryCode
-
-      const maybeLatitude = parseOptionalNumber(editingLatitude, 'Latitude')
-      if (maybeLatitude !== undefined) payload.latitude = maybeLatitude
-
-      const maybeLongitude = parseOptionalNumber(editingLongitude, 'Longitude')
-      if (maybeLongitude !== undefined) payload.longitude = maybeLongitude
-
-      const response = await apiClient.put<ApiResponse<Port>>(API_CONFIG.PORTS.ADMIN_BY_ID(portId), payload)
-
-      if (!response.ok) {
-        throw new Error('Failed to update port')
-      }
-
-      await response.json()
-      invalidatePortsList()
-      resetEditingState()
-      toast.success('Port updated successfully')
-    } catch (error) {
-      const message = error instanceof Error ? error.message : 'Failed to update port'
-      toast.error(message)
-    } finally {
-      setIsBusy(false)
-    }
-  }, [
-    editingCode,
-    editingCountryCode,
-    editingLatitude,
-    editingLongitude,
-    editingPortName,
-    editingPortOfCall,
-    editingProvinceId,
-    editingZoneCode,
-    invalidatePortsList,
-    resetEditingState,
-  ])
+    },
+    [editingPortId, form, invalidatePortsList],
+  )
 
   const handleDeletePort = useCallback(async (portId: number, portName: string) => {
     if (!confirm(`Are you sure you want to delete port "${portName}"?`)) return
@@ -392,9 +369,9 @@ export function ManagePorts() {
   const searchFieldLabel =
     PORT_SEARCH_FIELDS.find((f) => f.id === searchField)?.label ?? 'Port Name'
 
-  const provincesForEditingArea = useMemo(
-    () => provinces.filter((province) => province.area === editingArea),
-    [provinces, editingArea]
+  const provincesForArea = useMemo(
+    () => provinces.filter((province) => province.area === form.area),
+    [provinces, form.area]
   )
 
   const provinceMap = useMemo(() => {
@@ -416,183 +393,47 @@ export function ManagePorts() {
     {
       accessorKey: 'area',
       header: renderSortableHeader('Area'),
-      cell: ({ row }) => {
-        const port = row.original
-        if (editingPortId !== port.id) return port.area
-
-        return (
-          <Select
-            value={editingArea || NONE_VALUE}
-            onValueChange={(value) => {
-              setEditingArea(value)
-              setEditingProvinceId(null)
-            }}
-          >
-            <SelectTrigger>
-              <SelectValue placeholder="Select area" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value={NONE_VALUE}>No Area</SelectItem>
-              {AREA_OPTIONS.map((area) => (
-                <SelectItem key={area} value={area}>
-                  {area}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        )
-      },
+      cell: ({ row }) => row.original.area,
     },
     {
       accessorKey: 'provinceName',
       header: renderSortableHeader('Province'),
-      cell: ({ row }) => {
-        const port = row.original
-        if (editingPortId !== port.id) return port.provinceName
-
-        return (
-          <Select
-            value={editingProvinceId != null ? editingProvinceId.toString() : NONE_VALUE}
-            onValueChange={(value) => setEditingProvinceId(value === NONE_VALUE ? null : Number(value))}
-            disabled={editingArea === NONE_VALUE}
-          >
-            <SelectTrigger>
-              <SelectValue placeholder={editingArea === NONE_VALUE ? 'Select area first' : 'Select province'} />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value={NONE_VALUE}>No Province</SelectItem>
-              {provincesForEditingArea.map((province) => (
-                <SelectItem key={province.id} value={province.id.toString()}>
-                  {province.displayName || province.name}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        )
-      },
+      cell: ({ row }) => row.original.provinceName,
     },
     {
       accessorKey: 'name',
       header: renderSortableHeader('Port Name'),
-      cell: ({ row }) => {
-        const port = row.original
-        if (editingPortId !== port.id) return port.name
-
-        return (
-          <Input
-            value={editingPortName}
-            onChange={(e) => setEditingPortName(e.target.value)}
-            onKeyPress={(e) => e.key === 'Enter' && handleSavePort(port.id)}
-            autoFocus
-          />
-        )
-      },
+      cell: ({ row }) => <span className="font-medium">{row.original.name}</span>,
     },
     {
       accessorKey: 'portOfCall',
       header: renderSortableHeader('Port of Call'),
-      cell: ({ row }) => {
-        const port = row.original
-        if (editingPortId !== port.id) return port.portOfCall || '-'
-
-        return (
-          <Input
-            value={editingPortOfCall}
-            onChange={(e) => setEditingPortOfCall(e.target.value)}
-            onKeyPress={(e) => e.key === 'Enter' && handleSavePort(port.id)}
-            placeholder="Port of call"
-          />
-        )
-      },
+      cell: ({ row }) => row.original.portOfCall || '-',
     },
     {
       accessorKey: 'code',
       header: 'Code',
-      cell: ({ row }) => {
-        const port = row.original
-        if (editingPortId !== port.id) return port.code || '-'
-
-        return (
-          <Input
-            value={editingCode}
-            onChange={(e) => setEditingCode(e.target.value)}
-            onKeyPress={(e) => e.key === 'Enter' && handleSavePort(port.id)}
-            placeholder="Code"
-          />
-        )
-      },
+      cell: ({ row }) => row.original.code || '-',
     },
     {
       accessorKey: 'zoneCode',
       header: 'Zone',
-      cell: ({ row }) => {
-        const port = row.original
-        if (editingPortId !== port.id) return port.zoneCode || '-'
-
-        return (
-          <Input
-            value={editingZoneCode}
-            onChange={(e) => setEditingZoneCode(e.target.value)}
-            onKeyPress={(e) => e.key === 'Enter' && handleSavePort(port.id)}
-            placeholder="Zone code"
-          />
-        )
-      },
+      cell: ({ row }) => row.original.zoneCode || '-',
     },
     {
       accessorKey: 'countryCode',
       header: 'Country',
-      cell: ({ row }) => {
-        const port = row.original
-        if (editingPortId !== port.id) return port.countryCode || '-'
-
-        return (
-          <Input
-            value={editingCountryCode}
-            onChange={(e) => setEditingCountryCode(e.target.value)}
-            onKeyPress={(e) => e.key === 'Enter' && handleSavePort(port.id)}
-            placeholder="Country code"
-          />
-        )
-      },
+      cell: ({ row }) => row.original.countryCode || '-',
     },
     {
       accessorKey: 'latitude',
       header: 'Latitude',
-      cell: ({ row }) => {
-        const port = row.original
-        if (editingPortId !== port.id) return port.latitude != null ? port.latitude : '-'
-
-        return (
-          <Input
-            value={editingLatitude}
-            onChange={(e) => setEditingLatitude(e.target.value)}
-            onKeyPress={(e) => e.key === 'Enter' && handleSavePort(port.id)}
-            type="number"
-            step="any"
-            placeholder="Latitude"
-          />
-        )
-      },
+      cell: ({ row }) => (row.original.latitude != null ? row.original.latitude : '-'),
     },
     {
       accessorKey: 'longitude',
       header: 'Longitude',
-      cell: ({ row }) => {
-        const port = row.original
-        if (editingPortId !== port.id) return port.longitude != null ? port.longitude : '-'
-
-        return (
-          <Input
-            value={editingLongitude}
-            onChange={(e) => setEditingLongitude(e.target.value)}
-            onKeyPress={(e) => e.key === 'Enter' && handleSavePort(port.id)}
-            type="number"
-            step="any"
-            placeholder="Longitude"
-          />
-        )
-      },
+      cell: ({ row }) => (row.original.longitude != null ? row.original.longitude : '-'),
     },
     {
       id: 'hasInfo',
@@ -605,7 +446,7 @@ export function ManagePorts() {
             variant={port.hasInfo === 1 ? 'default' : 'outline'}
             size="sm"
             onClick={() => handleToggleHasInfo(port)}
-            disabled={isLoading || editingPortId === port.id}
+            disabled={isLoading}
           >
             {port.hasInfo === 1 ? 'Active' : 'Inactive'}
           </Button>
@@ -616,80 +457,64 @@ export function ManagePorts() {
       id: 'actions',
       header: 'Actions',
       enableSorting: false,
+      enableHiding: false,
       cell: ({ row }) => {
         const port = row.original
         return (
           <div className="flex items-center justify-end gap-0.5">
-            {editingPortId === port.id ? (
-              <>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => handleSavePort(port.id)}
-                  disabled={isLoading}
-                >
-                  Save
-                </Button>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={resetEditingState}
-                  disabled={isLoading}
-                >
-                  Cancel
-                </Button>
-              </>
-            ) : (
-              <>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => handleEditPort(port)}
-                  disabled={isLoading}
-                >
-                  <Pencil className="h-4 w-4" />
-                </Button>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => handleDeletePort(port.id, port.name)}
-                  disabled={isLoading}
-                >
-                  <Trash2 className="h-4 w-4 text-destructive" />
-                </Button>
-              </>
-            )}
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => openEditDialog(port)}
+              disabled={isLoading}
+            >
+              <Pencil className="h-4 w-4" />
+            </Button>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => handleDeletePort(port.id, port.name)}
+              disabled={isLoading}
+            >
+              <Trash2 className="h-4 w-4 text-destructive" />
+            </Button>
           </div>
         )
       },
     },
   ], [
-    editingArea,
-    editingCode,
-    editingCountryCode,
-    editingLatitude,
-    editingLongitude,
-    editingPortId,
-    editingPortName,
-    editingPortOfCall,
-    editingProvinceId,
-    editingZoneCode,
     handleDeletePort,
-    handleEditPort,
-    handleSavePort,
     handleToggleHasInfo,
     isLoading,
-    provincesForEditingArea,
-    resetEditingState,
+    openEditDialog,
+    renderSortableHeader,
   ])
 
   const table = useReactTable({
     data: portsForTable,
     columns,
-    state: { sorting },
+    manualPagination: true,
+    rowCount: totalElements,
+    pageCount: serverPageCount,
+    state: {
+      sorting,
+      columnVisibility,
+      pagination: { pageIndex: serverPage, pageSize: PORTS_ADMIN_LIST_SIZE },
+    },
     onSortingChange: setSorting,
+    onColumnVisibilityChange: setColumnVisibility,
+    onPaginationChange: (updater) => {
+      setServerPage((prev) => {
+        const next = functionalUpdate(updater, {
+          pageIndex: prev,
+          pageSize: PORTS_ADMIN_LIST_SIZE,
+        })
+        return next.pageIndex
+      })
+    },
     getCoreRowModel: getCoreRowModel(),
     getSortedRowModel: getSortedRowModel(),
+    autoResetPageIndex: false,
   })
 
   const tableTitle = (() => {
@@ -745,10 +570,32 @@ export function ManagePorts() {
               ) : null}
             </AdminToolbarGroup>
             <AdminToolbarGroup align="end">
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="outline" size="sm" className="h-9">
+                    Columns <ChevronDown className="ml-2 h-4 w-4" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  {table
+                    .getAllColumns()
+                    .filter((column) => column.getCanHide())
+                    .map((column) => (
+                      <DropdownMenuCheckboxItem
+                        key={column.id}
+                        className="capitalize"
+                        checked={column.getIsVisible()}
+                        onCheckedChange={(value) => column.toggleVisibility(!!value)}
+                      >
+                        {column.id}
+                      </DropdownMenuCheckboxItem>
+                    ))}
+                </DropdownMenuContent>
+              </DropdownMenu>
               <Button
                 variant="default"
                 size="sm"
-                onClick={openAddDialog}
+                onClick={openCreateDialog}
                 className="gap-2 transition-transform active:scale-[0.98]"
                 disabled={isLoading}
               >
@@ -765,129 +612,234 @@ export function ManagePorts() {
           empty={!isLoading && ports.length === 0}
           emptyMessage="No ports match your search. Try another field or clear filters."
         >
-          <DataTableContent
+          <div className="overflow-x-auto rounded-md border">
+            <Table>
+              <TableHeader className="sticky top-0 z-20 bg-background">
+                {table.getHeaderGroups().map((headerGroup) => (
+                  <TableRow key={headerGroup.id}>
+                    {headerGroup.headers.map((header) => {
+                      const isActions = header.column.id === 'actions'
+                      return (
+                        <TableHead
+                          key={header.id}
+                          className={`bg-background whitespace-nowrap ${
+                            COLUMN_CLASS_NAMES[header.column.id] ?? ''
+                          }${
+                            isActions
+                              ? ' sticky right-0 z-30 border-l shadow-[-6px_0_6px_-6px_rgba(0,0,0,0.15)]'
+                              : ''
+                          }`}
+                        >
+                          {header.isPlaceholder
+                            ? null
+                            : flexRender(header.column.columnDef.header, header.getContext())}
+                        </TableHead>
+                      )
+                    })}
+                  </TableRow>
+                ))}
+              </TableHeader>
+              <TableBody>
+                {table.getRowModel().rows?.length ? (
+                  table.getRowModel().rows.map((row) => (
+                    <TableRow key={row.id} className="group">
+                      {row.getVisibleCells().map((cell) => {
+                        const isActions = cell.column.id === 'actions'
+                        return (
+                          <TableCell
+                            key={cell.id}
+                            className={`whitespace-nowrap align-top ${
+                              COLUMN_CLASS_NAMES[cell.column.id] ?? ''
+                            }${
+                              isActions
+                                ? ' sticky right-0 z-10 border-l bg-background shadow-[-6px_0_6px_-6px_rgba(0,0,0,0.15)] group-hover:bg-muted/50'
+                                : ''
+                            }`}
+                          >
+                            {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                          </TableCell>
+                        )
+                      })}
+                    </TableRow>
+                  ))
+                ) : (
+                  <TableRow>
+                    <TableCell colSpan={columns.length} className="h-24 text-center">
+                      No results.
+                    </TableCell>
+                  </TableRow>
+                )}
+              </TableBody>
+            </Table>
+          </div>
+          <DataTablePagination
             table={table}
-            columnCount={columns.length}
-            loading={isLoading && ports.length === 0}
-            emptyMessage="No results."
-            tableClassName="w-max min-w-full"
-            columnClassName={(columnId, type) =>
-              adminStickyColumnClass(columnId, type, COLUMN_CLASS_NAMES[columnId] ?? '', {
-                pinRight: ['actions'],
-              })
-            }
+            persistKey="ports-page"
+            totalRowCount={totalElements}
+            isFetching={isFetching && ports.length > 0}
           />
-          {isFetching && ports.length > 0 ? (
-            <p className="mt-3 flex items-center gap-2 text-xs text-muted-foreground">
-              <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden />
-              Updating results…
-            </p>
-          ) : null}
         </AdminDataPanel>
       </AdminSection>
 
       <Dialog
-        open={addDialogOpen}
+        open={dialogOpen}
         onOpenChange={(open) => {
-          setAddDialogOpen(open)
+          setDialogOpen(open)
           if (!open) {
-            resetAddForm()
+            setEditingPortId(null)
+            setForm(emptyPortForm)
           }
         }}
       >
         <DialogContent className="sm:max-w-lg">
           <DialogHeader>
-            <DialogTitle>Add New Port</DialogTitle>
-            <DialogDescription>Enter port information in the form below.</DialogDescription>
+            <DialogTitle>{editingPortId != null ? 'Edit Port' : 'Add New Port'}</DialogTitle>
+            <DialogDescription>
+              {editingPortId != null
+                ? 'Update the port information below.'
+                : 'Enter port information in the form below.'}
+            </DialogDescription>
           </DialogHeader>
 
-          <form onSubmit={handleSubmitAddPort}>
+          <form onSubmit={handleSavePort}>
             <div className="grid grid-cols-1 gap-3 py-2 md:grid-cols-2">
               <div className="space-y-2 md:col-span-2">
-                <Label htmlFor="add-port-name">Port Name</Label>
+                <Label htmlFor="port-name">Port Name</Label>
                 <Input
-                  id="add-port-name"
-                  value={addPortName}
-                  onChange={(e) => setAddPortName(e.target.value)}
+                  id="port-name"
+                  value={form.name}
+                  onChange={(e) => updateForm('name', e.target.value)}
                   placeholder="Enter port name"
                   required
+                  autoFocus
                 />
               </div>
 
               <div className="space-y-2 md:col-span-2">
-                <Label htmlFor="add-port-of-call">Port of Call</Label>
+                <Label htmlFor="port-of-call">Port of Call</Label>
                 <Input
-                  id="add-port-of-call"
-                  value={addPortOfCall}
-                  onChange={(e) => setAddPortOfCall(e.target.value)}
+                  id="port-of-call"
+                  value={form.portOfCall}
+                  onChange={(e) => updateForm('portOfCall', e.target.value)}
                   placeholder="Optional"
                 />
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="add-code">Code</Label>
+                <Label>Area</Label>
+                <Select
+                  value={form.area || NONE_VALUE}
+                  onValueChange={(value) =>
+                    setForm((prev) => ({ ...prev, area: value, provinceId: null }))
+                  }
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select area" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value={NONE_VALUE}>No Area</SelectItem>
+                    {AREA_OPTIONS.map((area) => (
+                      <SelectItem key={area} value={area}>
+                        {area}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-2">
+                <Label>Province</Label>
+                <Select
+                  value={form.provinceId != null ? form.provinceId.toString() : NONE_VALUE}
+                  onValueChange={(value) =>
+                    updateForm('provinceId', value === NONE_VALUE ? null : Number(value))
+                  }
+                  disabled={form.area === NONE_VALUE}
+                >
+                  <SelectTrigger>
+                    <SelectValue
+                      placeholder={form.area === NONE_VALUE ? 'Select area first' : 'Select province'}
+                    />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value={NONE_VALUE}>No Province</SelectItem>
+                    {provincesForArea.map((province) => (
+                      <SelectItem key={province.id} value={province.id.toString()}>
+                        {province.displayName || province.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="port-code">Code</Label>
                 <Input
-                  id="add-code"
-                  value={addCode}
-                  onChange={(e) => setAddCode(e.target.value)}
+                  id="port-code"
+                  value={form.code}
+                  onChange={(e) => updateForm('code', e.target.value)}
                   placeholder="e.g., 123"
                 />
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="add-zone-code">Zone Code</Label>
+                <Label htmlFor="port-zone-code">Zone Code</Label>
                 <Input
-                  id="add-zone-code"
-                  value={addZoneCode}
-                  onChange={(e) => setAddZoneCode(e.target.value)}
+                  id="port-zone-code"
+                  value={form.zoneCode}
+                  onChange={(e) => updateForm('zoneCode', e.target.value)}
                   placeholder="e.g., SOUTHERN"
                 />
               </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="add-country-code">Country Code</Label>
+              <div className="space-y-2 md:col-span-2">
+                <Label htmlFor="port-country-code">Country Code</Label>
                 <Input
-                  id="add-country-code"
-                  value={addCountryCode}
-                  onChange={(e) => setAddCountryCode(e.target.value)}
+                  id="port-country-code"
+                  value={form.countryCode}
+                  onChange={(e) => updateForm('countryCode', e.target.value)}
                   placeholder="e.g., VN"
                 />
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="add-latitude">Latitude</Label>
+                <Label htmlFor="port-latitude">Latitude</Label>
                 <Input
-                  id="add-latitude"
+                  id="port-latitude"
                   type="number"
                   inputMode="decimal"
                   step="any"
-                  value={addLatitude}
-                  onChange={(e) => setAddLatitude(e.target.value)}
+                  value={form.latitude}
+                  onChange={(e) => updateForm('latitude', e.target.value)}
                   placeholder="e.g., 10.73"
                 />
               </div>
 
-              <div className="space-y-2 md:col-span-2">
-                <Label htmlFor="add-longitude">Longitude</Label>
+              <div className="space-y-2">
+                <Label htmlFor="port-longitude">Longitude</Label>
                 <Input
-                  id="add-longitude"
+                  id="port-longitude"
                   type="number"
                   inputMode="decimal"
                   step="any"
-                  value={addLongitude}
-                  onChange={(e) => setAddLongitude(e.target.value)}
+                  value={form.longitude}
+                  onChange={(e) => updateForm('longitude', e.target.value)}
                   placeholder="e.g., 106.71"
                 />
               </div>
             </div>
 
             <DialogFooter>
-              <Button type="button" variant="outline" onClick={() => setAddDialogOpen(false)}>
+              <Button type="button" variant="outline" onClick={() => setDialogOpen(false)}>
                 Cancel
               </Button>
               <Button type="submit" disabled={isLoading} className="gap-2">
-                {isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />}
-                Add New
+                {isLoading ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <Plus className="h-4 w-4" />
+                )}
+                {editingPortId != null ? 'Save changes' : 'Add New'}
               </Button>
             </DialogFooter>
           </form>

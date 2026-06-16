@@ -119,6 +119,7 @@ export const API_CONFIG = {
     ADMIN_USER_BY_ID: (id: number) => `/admin/users/${id}`,
     ADMIN_USER_RESET_PASSWORD: (id: number) => `/admin/users/${id}/reset-password`,
     ADMIN_USER_REACTIVATE: (id: number) => `/admin/users/${id}/reactivate`,
+    ADMIN_USER_ROLE: (id: number) => `/admin/users/${id}/role`,
   },
 
   INQUIRIES: {

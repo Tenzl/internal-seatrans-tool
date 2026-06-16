@@ -1,8 +1,45 @@
-import { useState, useEffect } from 'react'
+"use client"
+
+import { useState, useEffect, useMemo } from 'react'
+import {
+  type ColumnDef,
+  type ColumnFiltersState,
+  type SortingState,
+  type VisibilityState,
+  flexRender,
+  getCoreRowModel,
+  getFilteredRowModel,
+  getPaginationRowModel,
+  getSortedRowModel,
+  useReactTable,
+} from '@tanstack/react-table'
+import { ChevronDown, Pencil, Trash2, Plus } from 'lucide-react'
+
 import { Button } from '@/shared/components/ui/button'
 import { Input } from '@/shared/components/ui/input'
 import { Label } from '@/shared/components/ui/label'
 import { Textarea } from '@/shared/components/ui/textarea'
+import {
+  AdminDataPanel,
+  AdminSection,
+  AdminToolbar,
+  AdminToolbarGroup,
+} from '@/shared/components/layout/dashboard/admin'
+import { DataTablePagination } from '@/shared/components/ui/data-table'
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/shared/components/ui/table'
+import {
+  DropdownMenu,
+  DropdownMenuCheckboxItem,
+  DropdownMenuContent,
+  DropdownMenuTrigger,
+} from '@/shared/components/ui/dropdown-menu'
 import {
   AlertDialog,
   AlertDialogAction,
@@ -13,8 +50,10 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/shared/components/ui/alert-dialog'
+import { useTableSortHeader } from '@/features/admin/hooks/useTableSortHeader'
 import { categoryService, Category, CategoryRequest } from '@/modules/categories/services/categoryService'
-import { Pencil, Trash2, Plus, Tag } from 'lucide-react'
+
+const CATEGORIES_PAGE_SIZE = 10
 
 export function ManageCategories() {
   const [categories, setCategories] = useState<Category[]>([])
@@ -32,6 +71,10 @@ export function ManageCategories() {
     slug: '',
     description: '',
   })
+
+  const [sorting, setSorting] = useState<SortingState>([])
+  const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([])
+  const [columnVisibility, setColumnVisibility] = useState<VisibilityState>({})
 
   useEffect(() => {
     loadCategories()
@@ -61,7 +104,7 @@ export function ManageCategories() {
       setErrorMessage(null)
       const data = await categoryService.getAdminCategories()
       setCategories(data)
-      
+
       // Show info message if no categories loaded from backend
       if (data.length === 0) {
         console.log('No categories loaded. Backend endpoints may not be implemented yet.')
@@ -77,7 +120,7 @@ export function ManageCategories() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    
+
     try {
       if (editingId) {
         await categoryService.updateCategory(editingId, formData)
@@ -86,7 +129,7 @@ export function ManageCategories() {
         await categoryService.createCategory(formData)
         setSuccessMessage('Category created successfully')
       }
-      
+
       resetForm()
       loadCategories()
       setTimeout(() => setSuccessMessage(null), 3000)
@@ -147,155 +190,287 @@ export function ManageCategories() {
     })
   }
 
-  return (
-    <div className="bg-card border rounded-lg p-6">
-      {/* Create/Edit Form */}
-      <div className="mb-6 p-4 border rounded-lg bg-muted/20">
-        <h3 className="font-medium mb-4">
-          {isEditing ? 'Edit Category' : 'Create New Category'}
-        </h3>
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div>
-            <Label htmlFor="name">Category Name *</Label>
-            <Input
-              id="name"
-              value={formData.name}
-              onChange={(e) => {
-                const newName = capitalizeWords(e.target.value)
-                setFormData({ 
-                  ...formData, 
-                  name: newName,
-                  slug: generateSlug(newName)
-                })
-              }}
-              required
-              maxLength={100}
-              placeholder="e.g., Industry News, Company Updates"
-              className="mt-1"
-            />
-            {formData.slug && (
-              <p className="text-xs text-muted-foreground mt-1">
-                Slug: <span className="font-mono">{formData.slug}</span>
-              </p>
-            )}
-          </div>
-          
-          <div>
-            <Label htmlFor="description">Description</Label>
-            <Textarea
-              id="description"
-              value={formData.description}
-              onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-              rows={3}
-              maxLength={500}
-              placeholder="Optional description for this category"
-              className="mt-1"
-            />
-          </div>
+  const renderSortableHeader = useTableSortHeader<Category>()
 
-          <div className="flex gap-2">
-            <Button type="submit" className="cursor-pointer">
-              {isEditing ? 'Update Category' : 'Create Category'}
-            </Button>
-            {isEditing && (
-              <Button type="button" variant="outline" onClick={resetForm} className="cursor-pointer">
-                Cancel
+  const columns = useMemo<ColumnDef<Category>[]>(
+    () => [
+      {
+        accessorKey: 'id',
+        header: renderSortableHeader('ID'),
+        cell: ({ row }) => <span className="tabular-nums">{row.original.id}</span>,
+      },
+      {
+        accessorKey: 'name',
+        header: renderSortableHeader('Name'),
+        cell: ({ row }) => <span className="font-medium">{row.original.name}</span>,
+      },
+      {
+        accessorKey: 'description',
+        header: 'Description',
+        enableSorting: false,
+        cell: ({ row }) => (
+          <span className="text-sm text-muted-foreground block max-w-md truncate">
+            {row.original.description || '-'}
+          </span>
+        ),
+      },
+      {
+        accessorKey: 'createdAt',
+        header: renderSortableHeader('Created At'),
+        cell: ({ row }) => (
+          <span className="text-sm text-muted-foreground">{formatDate(row.original.createdAt)}</span>
+        ),
+      },
+      {
+        id: 'actions',
+        header: 'Actions',
+        enableHiding: false,
+        enableSorting: false,
+        cell: ({ row }) => {
+          const category = row.original
+          return (
+            <div className="flex items-center justify-end gap-0.5">
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => handleEdit(category)}
+                title="Edit"
+              >
+                <Pencil className="h-3 w-3" />
               </Button>
-            )}
-          </div>
-        </form>
-      </div>
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => handleDelete(category)}
+                title="Delete"
+              >
+                <Trash2 className="h-3 w-3" />
+              </Button>
+            </div>
+          )
+        },
+      },
+    ],
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [],
+  )
 
-      {/* Categories List */}
-      {loading ? (
-        <div className="p-12 text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-4 border-primary border-t-transparent mx-auto mb-4" />
-          <p className="text-muted-foreground">Loading categories...</p>
-        </div>
-      ) : categories.length === 0 ? (
-        <div className="p-12 text-center">
-          <Tag className="mx-auto h-12 w-12 text-muted-foreground mb-4" />
-          <p className="text-muted-foreground">No categories found. Create your first category!</p>
-        </div>
-      ) : (
-        <div>
-          {/* Success/Error Messages */}
-          {successMessage && (
-            <div className="mb-4 p-4 bg-success/10 border-2 border-success text-success rounded-lg flex items-center justify-between">
-              <span className="font-medium">{successMessage}</span>
-              <button onClick={() => setSuccessMessage(null)} className="cursor-pointer">
-                <Plus className="h-4 w-4 rotate-45" />
-              </button>
+  const table = useReactTable({
+    data: categories,
+    columns,
+    state: { sorting, columnFilters, columnVisibility },
+    initialState: { pagination: { pageIndex: 0, pageSize: CATEGORIES_PAGE_SIZE } },
+    onSortingChange: setSorting,
+    onColumnFiltersChange: setColumnFilters,
+    onColumnVisibilityChange: setColumnVisibility,
+    getCoreRowModel: getCoreRowModel(),
+    getSortedRowModel: getSortedRowModel(),
+    getFilteredRowModel: getFilteredRowModel(),
+    getPaginationRowModel: getPaginationRowModel(),
+  })
+
+  const search = (table.getColumn('name')?.getFilterValue() as string) ?? ''
+  const total = categories.length
+  const filteredCount = table.getFilteredRowModel().rows.length
+  const tableTitle = search.trim()
+    ? `${filteredCount} result${filteredCount === 1 ? '' : 's'}`
+    : `All Categories (${total})`
+
+  return (
+    <>
+      <AdminSection
+        description="Manage post categories. Search by name; create or edit categories with the form below."
+        toolbar={
+          <div className="space-y-4">
+            {/* Create/Edit Form */}
+            <div className="rounded-lg border bg-muted/20 p-4">
+              <h3 className="mb-4 font-medium">
+                {isEditing ? 'Edit Category' : 'Create New Category'}
+              </h3>
+              <form onSubmit={handleSubmit} className="space-y-4">
+                <div>
+                  <Label htmlFor="name">Category Name *</Label>
+                  <Input
+                    id="name"
+                    value={formData.name}
+                    onChange={(e) => {
+                      const newName = capitalizeWords(e.target.value)
+                      setFormData({
+                        ...formData,
+                        name: newName,
+                        slug: generateSlug(newName),
+                      })
+                    }}
+                    required
+                    maxLength={100}
+                    placeholder="e.g., Industry News, Company Updates"
+                    className="mt-1"
+                  />
+                  {formData.slug && (
+                    <p className="mt-1 text-xs text-muted-foreground">
+                      Slug: <span className="font-mono">{formData.slug}</span>
+                    </p>
+                  )}
+                </div>
+
+                <div>
+                  <Label htmlFor="description">Description</Label>
+                  <Textarea
+                    id="description"
+                    value={formData.description}
+                    onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                    rows={3}
+                    maxLength={500}
+                    placeholder="Optional description for this category"
+                    className="mt-1"
+                  />
+                </div>
+
+                <div className="flex gap-2">
+                  <Button type="submit" className="cursor-pointer">
+                    {isEditing ? 'Update Category' : 'Create Category'}
+                  </Button>
+                  {isEditing && (
+                    <Button type="button" variant="outline" onClick={resetForm} className="cursor-pointer">
+                      Cancel
+                    </Button>
+                  )}
+                </div>
+              </form>
             </div>
-          )}
-          
-          {errorMessage && (
-            <div className="mb-4 p-4 bg-red-50 border-2 border-red-500 text-red-800 rounded-lg flex items-center justify-between">
-              <span className="font-medium">{errorMessage}</span>
-              <button onClick={() => setErrorMessage(null)} className="cursor-pointer">
-                <Plus className="h-4 w-4 rotate-45" />
-              </button>
-            </div>
-          )}
-          
-          <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead className="bg-muted/50">
-                <tr className="border-b">
-                  <th className="text-left py-3 px-4 font-medium">ID</th>
-                  <th className="text-left py-3 px-4 font-medium">Name</th>
-                <th className="text-left py-3 px-4 font-medium">Description</th>
-                <th className="text-left py-3 px-4 font-medium">Created At</th>
-                <th className="text-right py-3 px-4 font-medium">Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {categories.map((category) => (
-                <tr key={category.id} className="border-b hover:bg-muted/20">
-                  <td className="py-3 px-4">{category.id}</td>
-                  <td className="py-3 px-4 font-medium">{category.name}</td>
-                  <td className="py-3 px-4 text-sm text-muted-foreground max-w-md">
-                    {category.description || '-'}
-                  </td>
-                  <td className="py-3 px-4 text-sm text-muted-foreground">
-                    {formatDate(category.createdAt)}
-                  </td>
-                  <td className="py-3 px-4">
-                    <div className="flex gap-2 justify-end">
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => handleEdit(category)}
-                        className="text-primary hover:text-primary/90 hover:bg-primary/10 transition-all hover:scale-110 cursor-pointer"
-                        title="Edit"
+
+            {/* Success/Error Messages */}
+            {successMessage && (
+              <div className="flex items-center justify-between rounded-lg border-2 border-success bg-success/10 p-4 text-success">
+                <span className="font-medium">{successMessage}</span>
+                <button type="button" aria-label="Dismiss" onClick={() => setSuccessMessage(null)} className="cursor-pointer">
+                  <Plus className="h-4 w-4 rotate-45" />
+                </button>
+              </div>
+            )}
+
+            {errorMessage && (
+              <div className="flex items-center justify-between rounded-lg border-2 border-red-500 bg-red-50 p-4 text-red-800">
+                <span className="font-medium">{errorMessage}</span>
+                <button type="button" aria-label="Dismiss" onClick={() => setErrorMessage(null)} className="cursor-pointer">
+                  <Plus className="h-4 w-4 rotate-45" />
+                </button>
+              </div>
+            )}
+
+            {/* Table toolbar */}
+            <AdminToolbar>
+              <AdminToolbarGroup>
+                <Input
+                  placeholder="Search categories by name"
+                  value={search}
+                  onChange={(e) => table.getColumn('name')?.setFilterValue(e.target.value)}
+                  className="h-9 w-full md:w-[300px]"
+                />
+                {search.trim() ? (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => table.getColumn('name')?.setFilterValue('')}
+                  >
+                    Clear
+                  </Button>
+                ) : null}
+              </AdminToolbarGroup>
+              <AdminToolbarGroup align="end">
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="outline" size="sm" className="h-9">
+                      Columns <ChevronDown className="ml-2 h-4 w-4" />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end">
+                    {table.getAllColumns().filter((c) => c.getCanHide()).map((column) => (
+                      <DropdownMenuCheckboxItem
+                        key={column.id}
+                        checked={column.getIsVisible()}
+                        onCheckedChange={(value) => column.toggleVisibility(!!value)}
                       >
-                        <Pencil className="h-4 w-4" />
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => handleDelete(category)}
-                        className="text-red-600 hover:text-red-700 hover:bg-red-50 transition-all hover:scale-110 cursor-pointer"
-                        title="Delete"
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
-                    </div>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-        </div>
-      )}
+                        {column.id}
+                      </DropdownMenuCheckboxItem>
+                    ))}
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              </AdminToolbarGroup>
+            </AdminToolbar>
+          </div>
+        }
+      >
+        <AdminDataPanel
+          meta={tableTitle}
+          loading={loading && categories.length === 0}
+          empty={!loading && categories.length === 0}
+          emptyMessage="No categories found. Create your first category!"
+        >
+          <div className="overflow-x-auto rounded-md border">
+            <Table>
+              <TableHeader className="sticky top-0 z-20 bg-background">
+                {table.getHeaderGroups().map((headerGroup) => (
+                  <TableRow key={headerGroup.id}>
+                    {headerGroup.headers.map((header) => {
+                      const isActions = header.column.id === "actions"
+                      return (
+                        <TableHead
+                          key={header.id}
+                          className={`bg-background whitespace-nowrap${
+                            isActions ? " sticky right-0 z-30 border-l text-right shadow-[-6px_0_6px_-6px_rgba(0,0,0,0.15)]" : ""
+                          }`}
+                        >
+                          {header.isPlaceholder
+                            ? null
+                            : flexRender(header.column.columnDef.header, header.getContext())}
+                        </TableHead>
+                      )
+                    })}
+                  </TableRow>
+                ))}
+              </TableHeader>
+              <TableBody>
+                {table.getRowModel().rows?.length ? (
+                  table.getRowModel().rows.map((row) => (
+                    <TableRow key={row.id} className="group">
+                      {row.getVisibleCells().map((cell) => {
+                        const isActions = cell.column.id === "actions"
+                        return (
+                          <TableCell
+                            key={cell.id}
+                            className={`whitespace-nowrap align-top${
+                              isActions
+                                ? " sticky right-0 z-10 border-l bg-background shadow-[-6px_0_6px_-6px_rgba(0,0,0,0.15)] group-hover:bg-muted/50"
+                                : ""
+                            }`}
+                          >
+                            {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                          </TableCell>
+                        )
+                      })}
+                    </TableRow>
+                  ))
+                ) : (
+                  <TableRow>
+                    <TableCell colSpan={columns.length} className="h-24 text-center">
+                      No categories found.
+                    </TableCell>
+                  </TableRow>
+                )}
+              </TableBody>
+            </Table>
+          </div>
+          <DataTablePagination table={table} persistKey="categories-page" />
+        </AdminDataPanel>
+      </AdminSection>
 
       <AlertDialog open={deleteDialog.isOpen} onOpenChange={(open) => !open && setDeleteDialog({ isOpen: false, category: null })}>
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Are you sure?</AlertDialogTitle>
             <AlertDialogDescription>
-              Are you sure you want to delete category "<strong>{deleteDialog.category?.name}</strong>"? 
+              Are you sure you want to delete category "<strong>{deleteDialog.category?.name}</strong>"?
               This action cannot be undone.
             </AlertDialogDescription>
           </AlertDialogHeader>
@@ -307,6 +482,6 @@ export function ManageCategories() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-    </div>
+    </>
   )
 }

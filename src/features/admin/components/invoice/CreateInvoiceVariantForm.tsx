@@ -283,6 +283,46 @@ export function CreateInvoiceVariantForm({
             />
           </div>
 
+        </div>
+
+        <div className={epdaFieldGridClass()}>
+          <div className="grid gap-2">
+            <Label htmlFor="shipType">{t('epda.shipType')}</Label>
+            <Select value={values.shipType} onValueChange={(value) => handlers.setShipType(value as ShipTypeOption)}>
+              <SelectTrigger id="shipType">
+                <SelectValue placeholder={t('ph.shipType')} />
+              </SelectTrigger>
+              <SelectContent>
+                {options.shipTypeOptions.map((option) => (
+                  <SelectItem key={option.value} value={option.value}>
+                    {t('opt.shipType.' + option.value)}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div className="grid gap-2">
+            <Label htmlFor="purposeOfCalling" className={customerLabelClass('purposeOfCalling', values.purposeOfCalling)}>
+              {t('epda.purpose')}
+            </Label>
+            <Select
+              value={values.purposeOfCalling}
+              onValueChange={(value) => handlers.setPurposeOfCalling(value as PurposeOption)}
+            >
+              <SelectTrigger id="purposeOfCalling" className={customerClass('purposeOfCalling', values.purposeOfCalling)}>
+                <SelectValue placeholder={t('ph.purpose')} />
+              </SelectTrigger>
+              <SelectContent>
+                {options.purposeOptions.map((option) => (
+                  <SelectItem key={option.value} value={option.value}>
+                    {t('opt.purpose.' + option.value)}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
           <div className="grid gap-2">
             <Label
               htmlFor="dischargeLoadingLocation"
@@ -359,41 +399,9 @@ export function CreateInvoiceVariantForm({
             </div>
           </div>
 
-          <div className="grid gap-2">
-            <Label htmlFor="cargoQty" className={customerLabelClass('cargoQty', values.cargoQty)}>
-              {t('epda.qty')}
-            </Label>
-            <Input
-              id="cargoQty"
-              type="number"
-              value={values.cargoQty}
-              onChange={(e) => handlers.setCargoQty(e.target.value)}
-              placeholder={t('ph.qty')}
-              min="0"
-              step="any"
-              className={customerClass('cargoQty', values.cargoQty)}
-              required
-            />
-          </div>
         </div>
 
         <div className={epdaFieldGridClass(3)}>
-          <div className="grid gap-2">
-            <Label htmlFor="shipType">{t('epda.shipType')}</Label>
-            <Select value={values.shipType} onValueChange={(value) => handlers.setShipType(value as ShipTypeOption)}>
-              <SelectTrigger id="shipType">
-                <SelectValue placeholder={t('ph.shipType')} />
-              </SelectTrigger>
-              <SelectContent>
-                {options.shipTypeOptions.map((option) => (
-                  <SelectItem key={option.value} value={option.value}>
-                    {t('opt.shipType.' + option.value)}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-
           <div className="grid gap-2">
             <Label htmlFor="cargoType" className={customerLabelClass('cargoType', values.cargoType)}>
               {t('epda.cargoType')}
@@ -474,6 +482,23 @@ export function CreateInvoiceVariantForm({
               </SelectContent>
             </Select>
           </div>
+
+          <div className="grid gap-2">
+            <Label htmlFor="cargoQty" className={customerLabelClass('cargoQty', values.cargoQty)}>
+              {t('epda.qty')}
+            </Label>
+            <Input
+              id="cargoQty"
+              type="number"
+              value={values.cargoQty}
+              onChange={(e) => handlers.setCargoQty(e.target.value)}
+              placeholder={t('ph.qty')}
+              min="0"
+              step="any"
+              className={customerClass('cargoQty', values.cargoQty)}
+              required
+            />
+          </div>
         </div>
       </EpdaFormSection>
 
@@ -545,27 +570,6 @@ export function CreateInvoiceVariantForm({
               min="1"
               step="any"
             />
-          </div>
-
-          <div className="grid gap-2">
-            <Label htmlFor="purposeOfCalling" className={customerLabelClass('purposeOfCalling', values.purposeOfCalling)}>
-              {t('epda.purpose')}
-            </Label>
-            <Select
-              value={values.purposeOfCalling}
-              onValueChange={(value) => handlers.setPurposeOfCalling(value as PurposeOption)}
-            >
-              <SelectTrigger id="purposeOfCalling" className={customerClass('purposeOfCalling', values.purposeOfCalling)}>
-                <SelectValue placeholder={t('ph.purpose')} />
-              </SelectTrigger>
-              <SelectContent>
-                {options.purposeOptions.map((option) => (
-                  <SelectItem key={option.value} value={option.value}>
-                    {t('opt.purpose.' + option.value)}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
           </div>
 
           <div className="grid gap-2">

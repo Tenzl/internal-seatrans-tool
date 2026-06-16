@@ -65,6 +65,13 @@ export const adminUsersService = {
     return unwrapApiResponse<AdminUserRow>(response)
   },
 
+  async updateUserRole(userId: number, roleId: number): Promise<AdminUserRow> {
+    const response = await apiClient.patch(API_CONFIG.USERS.ADMIN_USER_ROLE(userId), {
+      roleId,
+    })
+    return unwrapApiResponse<AdminUserRow>(response)
+  },
+
   async resetPassword(userId: number, newPassword: string): Promise<{ id: number }> {
     const response = await apiClient.post(API_CONFIG.USERS.ADMIN_USER_RESET_PASSWORD(userId), {
       newPassword,
