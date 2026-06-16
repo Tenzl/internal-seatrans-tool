@@ -25,11 +25,6 @@ import {
 import { SHIPPING_AGENCY_CARGO_TYPES } from '@/modules/gallery/shippingAgencyCargoCatalog'
 import { toast } from '@/shared/utils/toast'
 
-const prettifyToken = (value: string): string => {
-  if (!value) return ''
-  return value.toLowerCase().replace(/_/g, ' ')
-}
-
 const getCargoTypeLabel = (cargoType: CargoType, options: { value: CargoType; label: string }[]): string => {
   const matched = options.find((option) => option.value === cargoType)
   return matched?.label ?? cargoType
@@ -70,27 +65,14 @@ export function ManageCommodities() {
     requiredImageCount: 18,
   })
 
-  const mergedCargoTypeOptions = (() => {
-    const options: CargoTypeOption[] = [...cargoTypeOptions]
-
-    commodities.forEach((item) => {
-      if (!options.find((opt) => opt.value === item.cargoType)) {
-        options.push({
-          id: item.cargoType,
-          value: item.cargoType,
-          label: prettifyToken(item.cargoType),
-        })
-      }
-    })
-
-    return options
-  })()
-
+  // Cargo types are a FIXED enum (Bag/Pack, Equipment, Bulk). We intentionally do
+  // NOT derive extra types from existing data — legacy junk values like
+  // "BREAK BULK" / "PROJECT CARGO" must never resurface as selectable types.
   const filteredCommodities = commodities.filter((type) => {
     return type.cargoType === selectedCargoType
   })
 
-  const cargoTypeCounts = mergedCargoTypeOptions.reduce<Record<CargoType, number>>((acc, option) => {
+  const cargoTypeCounts = cargoTypeOptions.reduce<Record<CargoType, number>>((acc, option) => {
     acc[option.value] = commodities.filter((item) => item.cargoType === option.value).length
     return acc
   }, {} as Record<CargoType, number>)
@@ -158,8 +140,8 @@ export function ManageCommodities() {
       showToast('error', 'Cargo Name is required')
       return
     }
-    if (!mergedCargoTypeOptions.some((option) => option.value === selectedCargoType)) {
-      showToast('error', 'Please create/select a cargo type first')
+    if (!cargoTypeOptions.some((option) => option.value === selectedCargoType)) {
+      showToast('error', 'Please select a cargo type first')
       return
     }
     const normalizedName = deriveCommodityName(newCommodity.displayName)
@@ -182,14 +164,14 @@ export function ManageCommodities() {
       
       const newType = await commodityService.createCommodity(requestData)
       if (!newType) {
-        throw new Error('Empty response when creating cargo type')
+        throw new Error('Empty response when creating cargo name')
       }
       setCommodities(sanitizeCommodities([...commodities, newType]))
       setNewCommodity({ displayName: '' })
-      showToast('success', `Cargo type "${newType.displayName}" added successfully`)
+      showToast('success', `Cargo "${newType.displayName}" added successfully`)
     } catch (error) {
-      console.error('Error adding image type:', error)
-      showToast('error', 'Failed to add cargo type')
+      console.error('Error adding cargo name:', error)
+      showToast('error', 'Failed to add cargo')
     } finally {
       setLoading(false)
     }
@@ -331,7 +313,7 @@ export function ManageCommodities() {
           <div className="bg-card border rounded-lg overflow-hidden">
             <div className="p-4 border-b bg-muted/30">
               <div className="flex flex-wrap items-center gap-3">
-                {mergedCargoTypeOptions.map((option) => (
+                {cargoTypeOptions.map((option) => (
                   <BadgeButtonCombo
                     key={option.id}
                     label={option.label}
@@ -404,7 +386,7 @@ export function ManageCommodities() {
                           )}
                         </td>
                         <td className="py-3 px-4">
-                          <Badge variant="outline">{getCargoTypeLabel(type.cargoType, mergedCargoTypeOptions)}</Badge>
+                          <Badge variant="outline">{getCargoTypeLabel(type.cargoType, cargoTypeOptions)}</Badge>
                         </td>
                         <td className="py-3 px-4">
                           <div className="flex gap-2 justify-end">
