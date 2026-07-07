@@ -54,7 +54,7 @@ export const sidebarData: SidebarData = {
               url: '/epda/create-epda',
             },
             {
-              title: 'Inquiry',
+              title: 'History record',
               url: '/epda/inquiry',
             },
             {
