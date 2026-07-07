@@ -1485,6 +1485,7 @@ function ParamHistoryButton({ area }: { area: AreaOption }) {
       moorUnmoorBerthTiers: `${t('sec.moor.title')} (${t('tbl.atBerth')})`,
       moorUnmoorBuoyTiers: `${t('sec.moor.title')} (${t('tbl.atBuoy')})`,
       tugTiers: t('sec.tug.title'),
+      cargoAgencyRates: t('f.cargoAgency'),
     })[k] ?? k
 
   // Friendly label for a single scalar field inside a nested group.
@@ -1518,6 +1519,9 @@ function ParamHistoryButton({ area }: { area: AreaOption }) {
       'coeff.pilotageLeg3Rate': t('f.pilotageLeg3Rate'),
       'coeff.pilotageSingleRate': t('f.pilotageSingleRate'),
       'coeff.pilotageMinAmount': t('f.pilotageMin'),
+      'coeff.cargoAgencyBagRate': t('f.cargoBag'),
+      'coeff.cargoAgencyEquipRate': t('f.cargoEquip'),
+      'coeff.cargoAgencyBulkRate': t('f.cargoBulk'),
     }
     return map[`${grp}.${key}`] ?? `${sectionLabel(grp)} · ${key}`
   }
@@ -1526,6 +1530,26 @@ function ParamHistoryButton({ area }: { area: AreaOption }) {
     if (v === undefined || v === null) return '—'
     if (typeof v === 'number') return v.toLocaleString('en-US', { maximumFractionDigits: 4 })
     return String(v)
+  }
+
+  const rowFieldLabel = (group: string, key: string): string => {
+    const map: Record<string, string> = {
+      maxGrt: t('tbl.maxGrt'),
+      minLoa: t('tbl.minLoa'),
+      amount: t('tbl.amount'),
+      label: t('tbl.label'),
+      code: t('cargoRate.colType'),
+      rate: t('cargoRate.colRate'),
+    }
+    return map[key] ?? `${sectionLabel(group)} · ${key}`
+  }
+
+  const fmtArrayRow = (row: unknown): string => {
+    if (!row || typeof row !== 'object') return fmtVal(row)
+    const entries = Object.entries(row as Record<string, unknown>)
+      .filter(([, val]) => val !== undefined)
+      .map(([k, val]) => `${rowFieldLabel('row', k)}: ${fmtVal(val)}`)
+    return entries.length ? entries.join(' | ') : '—'
   }
 
   const NESTED_GROUPS = ['hours', 'garbage', 'quarantine', 'coeff']
@@ -1537,8 +1561,8 @@ function ParamHistoryButton({ area }: { area: AreaOption }) {
     'cargoAgencyRates',
   ]
 
-  // Detailed per-field diff: scalar fields show before → after; tier tables show
-  // the row count change (full row diff would be too noisy here).
+  // Detailed per-field diff: scalar fields show before → after; array sections
+  // (tiers/rates) expand into row-level changes so the history shows the full edit.
   const fieldChanges = (
     before: PartialEpdaParameterValues | null,
     after: PartialEpdaParameterValues | null,
@@ -1555,18 +1579,73 @@ function ParamHistoryButton({ area }: { area: AreaOption }) {
           out.push({ label: fieldLabel(grp, k), from: fmtVal(bg[k]), to: fmtVal(ag[k]) })
       })
     }
-    for (const key of ARRAY_FIELDS) {
-      if (JSON.stringify(b[key]) !== JSON.stringify(a[key])) {
-        const bn = Array.isArray(b[key]) ? (b[key] as unknown[]).length : 0
-        const an = Array.isArray(a[key]) ? (a[key] as unknown[]).length : 0
-        out.push({
-          label: sectionLabel(key),
-          from: `${bn} ${t('phist.rows')}`,
-          to: `${an} ${t('phist.rows')}`,
+    for (const group of ARRAY_FIELDS) {
+      const beforeRows = Array.isArray(b[group]) ? (b[group] as Record<string, unknown>[]) : []
+      const afterRows = Array.isArray(a[group]) ? (a[group] as Record<string, unknown>[]) : []
+      const max = Math.max(beforeRows.length, afterRows.length)
+      for (let i = 0; i < max; i += 1) {
+        const beforeRow = beforeRows[i]
+        const afterRow = afterRows[i]
+        const beforeExists = beforeRow && typeof beforeRow === 'object'
+        const afterExists = afterRow && typeof afterRow === 'object'
+        if (!beforeExists || !afterExists) {
+          if (JSON.stringify(beforeRow) !== JSON.stringify(afterRow)) {
+            out.push({
+              label: `${sectionLabel(group)} · #${i + 1}`,
+              from: fmtArrayRow(beforeRow),
+              to: fmtArrayRow(afterRow),
+            })
+          }
+          continue
+        }
+
+        const keys = new Set([
+          ...Object.keys(beforeRow as Record<string, unknown>),
+          ...Object.keys(afterRow as Record<string, unknown>),
+        ])
+
+        keys.forEach((key) => {
+          const fromVal = (beforeRow as Record<string, unknown>)[key]
+          const toVal = (afterRow as Record<string, unknown>)[key]
+          if (JSON.stringify(fromVal) !== JSON.stringify(toVal)) {
+            out.push({
+              label: `${sectionLabel(group)} · #${i + 1} · ${rowFieldLabel(group, key)}`,
+              from: fmtVal(fromVal),
+              to: fmtVal(toVal),
+            })
+          }
         })
       }
     }
     return out
+  }
+
+  const changeKind = (from: string, to: string): 'added' | 'removed' | 'updated' => {
+    if ((from === '—' || from === '') && to !== '—' && to !== '') return 'added'
+    if ((to === '—' || to === '') && from !== '—' && from !== '') return 'removed'
+    return 'updated'
+  }
+
+  const changeBadge = (kind: 'added' | 'removed' | 'updated') => {
+    if (kind === 'added') {
+      return (
+        <Badge variant='outline' className='border-emerald-200 bg-emerald-50 text-emerald-700'>
+          Added
+        </Badge>
+      )
+    }
+    if (kind === 'removed') {
+      return (
+        <Badge variant='outline' className='border-rose-200 bg-rose-50 text-rose-700'>
+          Removed
+        </Badge>
+      )
+    }
+    return (
+      <Badge variant='outline' className='border-sky-200 bg-sky-50 text-sky-700'>
+        Updated
+      </Badge>
+    )
   }
 
   const actionLabel = (action: string) =>
@@ -1598,7 +1677,7 @@ function ParamHistoryButton({ area }: { area: AreaOption }) {
             const isDelete = log.action === 'DELETE_PORT' || log.action === 'DELETE_GROUP'
             const isMembers = log.action === 'SET_GROUP_MEMBERS'
             const isCreate = !log.beforeValues && !isDelete && !isMembers
-            const changes = isDelete || isCreate || isMembers ? [] : fieldChanges(log.beforeValues, log.afterValues)
+            const changes = fieldChanges(log.beforeValues, log.afterValues)
             const who =
               log.changedBy.fullName ||
               log.changedBy.email ||
@@ -1620,21 +1699,30 @@ function ParamHistoryButton({ area }: { area: AreaOption }) {
                 </p>
 
                 {/* What changed — field-level before → after */}
-                {isCreate ? (
-                  <p className='mt-1 text-[12px] text-muted-foreground'>{t('phist.created')}</p>
-                ) : isMembers ? (
+                {isMembers ? (
                   <p className='mt-1 text-[12px] text-muted-foreground'>{t('phist.setMembers')}</p>
                 ) : changes.length ? (
                   <ul className='mt-1 space-y-0.5'>
                     {changes.map((c, i) => (
-                      <li key={i} className='text-[12px] leading-snug'>
-                        <span className='text-muted-foreground'>{c.label}: </span>
-                        <span className='text-muted-foreground line-through'>{c.from}</span>
-                        <span className='mx-1 text-muted-foreground'>→</span>
-                        <span className='font-semibold text-foreground tabular-nums'>{c.to}</span>
+                      <li key={i} className='rounded-sm border border-border/50 bg-background/70 px-2 py-1.5 text-[12px] leading-snug'>
+                        <div className='mb-1 flex flex-wrap items-center gap-2'>
+                          {changeBadge(changeKind(c.from, c.to))}
+                          <span className='font-medium text-foreground'>{c.label}</span>
+                        </div>
+                        <div className='flex flex-wrap items-center gap-1.5'>
+                          <span className='rounded bg-rose-50 px-1.5 py-0.5 font-medium text-rose-700 line-through'>
+                            {c.from}
+                          </span>
+                          <span className='text-muted-foreground'>→</span>
+                          <span className='rounded bg-emerald-50 px-1.5 py-0.5 font-semibold text-emerald-700 tabular-nums'>
+                            {c.to}
+                          </span>
+                        </div>
                       </li>
                     ))}
                   </ul>
+                ) : isCreate ? (
+                  <p className='mt-1 text-[12px] text-muted-foreground'>{t('phist.created')}</p>
                 ) : !isDelete ? (
                   <p className='mt-1 text-[12px] text-muted-foreground'>—</p>
                 ) : null}

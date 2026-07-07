@@ -261,8 +261,8 @@ const buildAARows = (
     const tonnageValue = grtNumeric === null ? null : P.coeff.tonnagePerGrt * grtNumeric * 2 * shipRateFactor
     const tonnage = tonnageValue === null ? `${P.coeff.tonnagePerGrt}*${grtDisplay}*2` : formatAmount(tonnageValue)
 
-    // Ship-type factor (tanker 85%) applies to Tonnage only, not Navigation due.
-    const navigationDueValue = grtNumeric === null ? null : P.coeff.navigationPerGrt * grtNumeric * 2
+    const navigationDueValue =
+      grtNumeric === null ? null : P.coeff.navigationPerGrt * grtNumeric * 2 * shipRateFactor
     const navigationDue =
       navigationDueValue === null ? `${P.coeff.navigationPerGrt}*${grtDisplay}*2` : formatAmount(navigationDueValue)
 
@@ -273,7 +273,7 @@ const buildAARows = (
     const pilotageValue =
       grtNumeric === null
         ? null
-        : Math.max(P.coeff.pilotageSingleRate * grtNumeric * 2 * pilotageMultiplier, pilotageMinAmount)
+        : Math.max(P.coeff.pilotageSingleRate * grtNumeric * 2 * pilotageMultiplier * shipRateFactor, pilotageMinAmount)
     const pilotage = pilotageValue === null ? `${P.coeff.pilotageSingleRate}*${grtDisplay}*2` : formatAmount(pilotageValue)
     const pilotageMilesText = pilotageMultiplier >= 2 ? `${pilotageMultiplier} miles` : ''
 
@@ -286,16 +286,18 @@ const buildAARows = (
         ? formatAmount(tugOverride)
         : tugRate === undefined
           ? ''
-          : formatAmount(tugRate.amount)
+          : formatAmount(tugRate.amount * 2)
 
     const moorUnmoorRate = resolveGrtTier(grtNumeric, P.moorUnmoorBerthTiers)
     const moorUnmoor = moorUnmoorRate === undefined ? '' : formatAmount(moorUnmoorRate.amount)
 
-    const berthDueValue = grtNumeric === null ? null : P.coeff.berthDuePerGrtHour * berthHoursValue * grtNumeric
+    const berthDueValue =
+      grtNumeric === null ? null : P.coeff.berthDuePerGrtHour * berthHoursValue * grtNumeric * shipRateFactor
     const berthDue =
       berthDueValue === null ? `${P.coeff.berthDuePerGrtHour}*${grtDisplay}*${berthHoursValue}` : formatAmount(berthDueValue)
 
-    const anchorageFeesValue = grtNumeric === null ? null : P.coeff.anchoragePerGrtHour * anchorageHoursValue * grtNumeric
+    const anchorageFeesValue =
+      grtNumeric === null ? null : P.coeff.anchoragePerGrtHour * anchorageHoursValue * grtNumeric * shipRateFactor
     const anchorageFees =
       anchorageFeesValue === null
         ? `${P.coeff.anchoragePerGrtHour}*${grtDisplay}*${anchorageHoursValue}`

@@ -276,8 +276,8 @@ const buildAARows = (
     const tonnageValue = grtNumeric === null ? null : P.coeff.tonnagePerGrt * grtNumeric * 2 * shipRateFactor
     const tonnage = tonnageValue === null ? `${P.coeff.tonnagePerGrt}*${grtDisplay}*2` : formatAmount(tonnageValue)
 
-    // Ship-type factor (tanker 85%) applies to Tonnage only, not Navigation due.
-    const navigationDueValue = grtNumeric === null ? null : P.coeff.navigationPerGrt * grtNumeric * 2
+    const navigationDueValue =
+      grtNumeric === null ? null : P.coeff.navigationPerGrt * grtNumeric * 2 * shipRateFactor
     const navigationDue =
       navigationDueValue === null ? `${P.coeff.navigationPerGrt}*${grtDisplay}*2` : formatAmount(navigationDueValue)
 
@@ -296,21 +296,21 @@ const buildAARows = (
     const pilotageThirdMiles = Math.max(buoyPosition - leg1Width - leg2Width, 0)
 
     const pilotageFirstValue =
-      grtNumeric === null ? null : P.coeff.pilotageLeg1Rate * grtNumeric * 2 * pilotageFirstMiles
+      grtNumeric === null ? null : P.coeff.pilotageLeg1Rate * grtNumeric * 2 * pilotageFirstMiles * shipRateFactor
     const pilotageFirst =
       pilotageFirstValue === null
         ? `${P.coeff.pilotageLeg1Rate}*${grtDisplay}*2*${pilotageFirstMiles}`
         : formatAmount(pilotageFirstValue)
 
     const pilotageSecondValue =
-      grtNumeric === null ? null : P.coeff.pilotageLeg2Rate * grtNumeric * 2 * pilotageSecondMiles
+      grtNumeric === null ? null : P.coeff.pilotageLeg2Rate * grtNumeric * 2 * pilotageSecondMiles * shipRateFactor
     const pilotageSecond =
       pilotageSecondValue === null
         ? `${P.coeff.pilotageLeg2Rate}*${grtDisplay}*2*${pilotageSecondMiles}`
         : formatAmount(pilotageSecondValue)
 
     const pilotageThirdValue =
-      grtNumeric === null ? null : P.coeff.pilotageLeg3Rate * grtNumeric * 2 * pilotageThirdMiles
+      grtNumeric === null ? null : P.coeff.pilotageLeg3Rate * grtNumeric * 2 * pilotageThirdMiles * shipRateFactor
     const pilotageThird =
       pilotageThirdValue === null
         ? `${P.coeff.pilotageLeg3Rate}*${grtDisplay}*2*${pilotageThirdMiles}`
@@ -325,7 +325,7 @@ const buildAARows = (
         ? formatAmount(tugOverride)
         : tugRate === undefined
           ? ''
-          : formatAmount(tugRate.amount)
+          : formatAmount(tugRate.amount * 2)
     const mooringLocation = (options?.mooringLocation || '').toLowerCase() === 'anchorage' ? 'anchorage' : 'berth'
     const moorUnmoorRate = resolveGrtTier(
       grtNumeric,
@@ -333,7 +333,8 @@ const buildAARows = (
     )
     const moorUnmoor = moorUnmoorRate === undefined ? '' : formatAmount(moorUnmoorRate.amount)
 
-    const berthDueValue = grtNumeric === null ? null : P.coeff.berthDuePerGrtHour * berthHoursValue * grtNumeric
+    const berthDueValue =
+      grtNumeric === null ? null : P.coeff.berthDuePerGrtHour * berthHoursValue * grtNumeric * shipRateFactor
     const berthDue =
       berthDueValue === null ? `${P.coeff.berthDuePerGrtHour}*${grtDisplay}*${berthHoursValue}` : formatAmount(berthDueValue)
 
@@ -342,11 +343,13 @@ const buildAARows = (
     const buoyDueHoursText = `${buoyDueHoursValue} hrs`
     const buoyDueDays = buoyDueHoursValue > 0 ? Math.ceil(buoyDueHoursValue / 24).toFixed(1) : '0.0'
     const buoyDueRemark = buoyDueHoursValue ? `abt. ${buoyDueDays} days` : ''
-    const buoyDueValue = grtNumeric === null ? null : P.coeff.buoyDuePerGrtHour * buoyDueHoursValue * grtNumeric
+    const buoyDueValue =
+      grtNumeric === null ? null : P.coeff.buoyDuePerGrtHour * buoyDueHoursValue * grtNumeric * shipRateFactor
     const buoyDue =
       buoyDueValue === null ? `${P.coeff.buoyDuePerGrtHour}*${grtDisplay}*${buoyDueHoursValue}` : formatAmount(buoyDueValue)
 
-    const anchorageFeesValue = grtNumeric === null ? null : P.coeff.anchoragePerGrtHour * anchorageHoursValue * grtNumeric
+    const anchorageFeesValue =
+      grtNumeric === null ? null : P.coeff.anchoragePerGrtHour * anchorageHoursValue * grtNumeric * shipRateFactor
     const anchorageFees =
       anchorageFeesValue === null
         ? `${P.coeff.anchoragePerGrtHour}*${grtDisplay}*${anchorageHoursValue}`
