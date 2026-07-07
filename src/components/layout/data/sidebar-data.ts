@@ -25,9 +25,9 @@ export const sidebarData: SidebarData = {
   },
   teams: [
     {
-      name: 'Shadcn Admin',
+      name: 'Seatrans',
       logo: Command,
-      plan: 'Vite + ShadcnUI',
+      plan: 'Admin Dashboard',
     },
     {
       name: 'Acme Inc',

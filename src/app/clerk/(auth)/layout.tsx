@@ -20,7 +20,7 @@ export default function ClerkAuthLayout({
           className='relative z-20 flex items-center text-lg font-medium'
         >
           <Logo className='me-2' />
-          Shadcn Admin
+          Seatrans
         </Link>
 
         <ClerkFullLogo className='relative m-auto size-96' />
