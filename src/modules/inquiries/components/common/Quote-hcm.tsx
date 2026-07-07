@@ -272,6 +272,7 @@ const buildAARows = (
     const anchorageRemark = anchorageHoursValue ? `abt. ${anchorageDays} days` : ''
 
     const shipRateFactor = isTankerShip(options?.shipType) ? P.coeff.tankerFactor : (P.coeff.bulkFactor ?? 1)
+    const tankerRemark = shipRateFactor !== 1 ? '(x85% for tanker)' : ''
 
     const tonnageValue = grtNumeric === null ? null : P.coeff.tonnagePerGrt * grtNumeric * 2 * shipRateFactor
     const tonnage = tonnageValue === null ? `${P.coeff.tonnagePerGrt}*${grtDisplay}*2` : formatAmount(tonnageValue)
@@ -429,31 +430,37 @@ const buildAARows = (
     const pushNumbered = (row: QuoteRow) => defaultRows.push({ ...row, no: row.no ?? nextNo() })
     const pushUnnumbered = (row: QuoteRow) => defaultRows.push({ ...row, no: '' })
 
-    pushNumbered({ item: 'Tonnage', details: `USD ${P.coeff.tonnagePerGrt} / GRT x 2 (in & out)`, amount: tonnage })
+    pushNumbered({
+      item: 'Tonnage',
+      details: `USD ${P.coeff.tonnagePerGrt} / GRT x 2 (in & out)`,
+      remark: tankerRemark,
+      amount: tonnage,
+    })
     pushNumbered({
       item: 'Navigation due',
       details: `USD ${P.coeff.navigationPerGrt} / GRT x 2 (in & out)`,
+      remark: tankerRemark,
       amount: navigationDue,
     })
     pushNumbered({
       item: 'Pilotage',
       details: `USD${P.coeff.pilotageLeg1Rate} / GRT (in+out)`,
       add: `${pilotageFirstMiles} miles`,
-      remark: `1st ${pilotageFirstMiles} miles`,
+      remark: tankerRemark || `1st ${pilotageFirstMiles} miles`,
       amount: pilotageFirst,
     })
     pushUnnumbered({
       item: '',
       details: `USD${P.coeff.pilotageLeg2Rate} / GRT (in+out)`,
       add: `${pilotageSecondMiles} miles`,
-      remark: `2nd ${pilotageSecondMiles} miles`,
+      remark: tankerRemark || `2nd ${pilotageSecondMiles} miles`,
       amount: pilotageSecond,
     })
     pushUnnumbered({
       item: '',
       details: `USD${P.coeff.pilotageLeg3Rate} / GRT (in+out)`,
       add: `${pilotageThirdMiles} miles`,
-      remark: `3rd ${pilotageThirdMiles} miles`,
+      remark: tankerRemark || `3rd ${pilotageThirdMiles} miles`,
       amount: pilotageThird,
     })
     pushNumbered({ item: 'Tug assistance charge', details: '(in & out)', amount: tugAssistance })
@@ -464,7 +471,7 @@ const buildAARows = (
         item: 'Buoy due',
         details: 'USD 0.0013 / GRT / hour x',
         add: buoyDueHoursText,
-        remark: buoyDueRemark,
+        remark: tankerRemark || buoyDueRemark,
         amount: buoyDue,
       })
     } else {
@@ -472,7 +479,7 @@ const buildAARows = (
         item: 'Berth due',
         details: 'USD 0.0031 / GRT / hour x',
         add: berthHoursText,
-        remark: berthRemark,
+        remark: tankerRemark || berthRemark,
         amount: berthDue,
       })
     }
@@ -481,7 +488,7 @@ const buildAARows = (
       item: 'Anchorage fees if any',
       details: 'USD 0.0005 / GRT / hour x',
       add: anchorageHoursText,
-      remark: anchorageRemark,
+      remark: tankerRemark || anchorageRemark,
       amount: anchorageFees,
     })
 

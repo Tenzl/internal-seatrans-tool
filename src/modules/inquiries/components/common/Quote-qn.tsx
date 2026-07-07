@@ -257,6 +257,7 @@ const buildAARows = (
     const anchorageRemark = anchorageHoursValue ? `abt. ${anchorageDays} days` : ''
 
     const shipRateFactor = isTankerShip(options?.shipType) ? P.coeff.tankerFactor : (P.coeff.bulkFactor ?? 1)
+    const tankerRemark = shipRateFactor !== 1 ? '(x85% for tanker)' : ''
 
     const tonnageValue = grtNumeric === null ? null : P.coeff.tonnagePerGrt * grtNumeric * 2 * shipRateFactor
     const tonnage = tonnageValue === null ? `${P.coeff.tonnagePerGrt}*${grtDisplay}*2` : formatAmount(tonnageValue)
@@ -368,13 +369,13 @@ const buildAARows = (
     const garbageRemoval = formatAmount(garbageRemovalValue)
     
     const defaultRows: QuoteRow[] = [
-      { item: 'Tonnage', details: `USD ${P.coeff.tonnagePerGrt} / GRT x 2 (in & out)`, amount: tonnage },
-      { item: 'Navigation due', details: `USD ${P.coeff.navigationPerGrt} / GRT x 2 (in & out)`, amount: navigationDue },
+      { item: 'Tonnage', details: `USD ${P.coeff.tonnagePerGrt} / GRT x 2 (in & out)`, remark: tankerRemark, amount: tonnage },
+      { item: 'Navigation due', details: `USD ${P.coeff.navigationPerGrt} / GRT x 2 (in & out)`, remark: tankerRemark, amount: navigationDue },
       {
         item: 'Pilotage',
         details: `USD${P.coeff.pilotageSingleRate} / GRT x 2 (in & out)`,
         add: pilotageMilesText,
-        remark: '',
+        remark: tankerRemark,
         amount: pilotage,
       },
       { item: 'Tug assistance charge', details: '(in & out)', amount: tugAssistance },
@@ -383,14 +384,14 @@ const buildAARows = (
         item: 'Berth due',
         details: 'USD 0.0031 / GRT / hour x',
         add: berthHoursText,
-        remark: berthRemark,
+        remark: tankerRemark || berthRemark,
         amount: berthDue,
       },
       {
         item: 'Anchorage fees if any',
         details: 'USD 0.0005 / GRT / hour x',
         add: anchorageHoursText,
-        remark: anchorageRemark,
+        remark: tankerRemark || anchorageRemark,
         amount: anchorageFees,
       },
       { item: 'Quarantine fee', details: '', amount: quarantineFee },
