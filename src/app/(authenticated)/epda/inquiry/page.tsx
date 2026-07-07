@@ -10,7 +10,6 @@ import { ThemeSwitch } from '@/components/theme-switch'
 import { ShippingAgencyInquiriesTab } from '@/features/admin/components/ShippingAgencyInquiriesTab'
 import { ShippingAgencyInquiryDetailTab } from '@/features/admin/components/ShippingAgencyInquiryDetailTab'
 import { isShippingAgencyInquiryDetailSection } from '@/shared/utils/dashboardNavigation'
-import { LanguageToggle } from '@/shared/i18n/LanguageToggle'
 
 /**
  * Section router for shipping-agency inquiries — mirrors the legacy MainDashboard:
@@ -27,7 +26,6 @@ export default function Page() {
     <>
       <Header fixed>
         <Search className='me-auto' />
-        <LanguageToggle />
         <ThemeSwitch />
         <ConfigDrawer />
         <ProfileDropdown />

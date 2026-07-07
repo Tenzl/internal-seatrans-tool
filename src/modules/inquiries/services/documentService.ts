@@ -35,18 +35,18 @@ const getAuthHeaders = () => {
 }
 
 /**
- * Document Service - Quản lý tài liệu inquiry
- * Chuẩn doanh nghiệp với error handling, progress tracking, validation
+ * Document service for inquiry attachments.
+ * Includes standardized error handling, progress tracking, and validation.
  */
 export const documentService = {
   /**
-   * Upload tài liệu cho inquiry
-   * @param inquiryId - ID của inquiry
+   * Upload a document for an inquiry.
+   * @param inquiryId - Inquiry ID
    * @param serviceSlug - Service slug (shipping-agency, chartering, freight-forwarding, total-logistic, special-request)
-   * @param documentType - Loại tài liệu
-   * @param file - File PDF cần tải lên
-   * @param description - Mô tả tài liệu
-   * @param onProgress - Callback theo dõi tiến trình upload
+   * @param documentType - Document type
+   * @param file - PDF file to upload
+   * @param description - Document description
+   * @param onProgress - Upload progress callback
    */
   uploadDocument: async (
     inquiryId: number,
@@ -95,7 +95,7 @@ export const documentService = {
   },
 
   /**
-   * Lấy danh sách tài liệu của inquiry
+   * Get all documents for an inquiry.
    */
   getDocuments: async (inquiryId: number, serviceSlug: string): Promise<InquiryDocument[]> => {
     try {
@@ -120,7 +120,7 @@ export const documentService = {
   },
 
   /**
-   * Lấy tài liệu theo loại
+   * Get documents filtered by type.
    */
   getDocumentsByType: async (inquiryId: number, serviceSlug: string, documentType: DocumentType): Promise<InquiryDocument[]> => {
     try {
@@ -157,7 +157,7 @@ export const documentService = {
   },
 
   /**
-   * Download tài liệu
+   * Download a document.
    */
   downloadDocument: async (inquiryId: number, serviceSlug: string, documentId: number): Promise<Blob> => {
     try {
@@ -179,7 +179,7 @@ export const documentService = {
   },
 
   /**
-   * Xóa tài liệu
+   * Delete a document.
    */
   deleteDocument: async (inquiryId: number, serviceSlug: string, documentId: number): Promise<void> => {
     try {

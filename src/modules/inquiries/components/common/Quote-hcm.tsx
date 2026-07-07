@@ -281,7 +281,7 @@ const buildAARows = (
     const navigationDue =
       navigationDueValue === null ? `${P.coeff.navigationPerGrt}*${grtDisplay}*2` : formatAmount(navigationDueValue)
 
-    // Admin enters the total distance to the buoy/berth ("vị trí cảng phao").
+    // Admin enters the total distance to the buoy/berth position.
     // Legs 1 & 2 are flat tariff bands: each charges its full miles once the
     // position reaches into it (not prorated). Leg 3 is the remainder beyond
     // (leg1 + leg2). E.g. position 17 → leg1 (10) + leg2 (20); position 37 →

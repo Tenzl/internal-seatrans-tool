@@ -828,7 +828,7 @@ export function CreateInvoiceTab({
       }
 
       if (!customerUserId || customerUserId < 1) {
-        toast.error('Không xác định được người tạo EPDA. Vui lòng đăng nhập lại.')
+        toast.error('Could not determine the EPDA creator. Please sign in again.')
         return
       }
 

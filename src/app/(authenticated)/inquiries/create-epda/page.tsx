@@ -6,7 +6,6 @@ import { Main } from '@/components/layout/main'
 import { ProfileDropdown } from '@/components/profile-dropdown'
 import { Search } from '@/components/search'
 import { ThemeSwitch } from '@/components/theme-switch'
-import { LanguageToggle } from '@/shared/i18n/LanguageToggle'
 import { useI18n } from '@/shared/i18n/I18nProvider'
 import { CreateInvoiceTab } from '@/features/admin/components/CreateInvoiceTab'
 
@@ -17,7 +16,6 @@ export default function Page() {
     <>
       <Header fixed>
         <Search className='me-auto' />
-        <LanguageToggle />
         <ThemeSwitch />
         <ConfigDrawer />
         <ProfileDropdown />

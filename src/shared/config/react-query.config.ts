@@ -14,7 +14,7 @@ export const queryClientOptions: DefaultOptions = defaultQueryOptions
 
 export const createQueryClient = () => new QueryClient({ defaultOptions: queryClientOptions })
 
-/** Cùng reference mỗi lần gọi — an toàn cho useMemo/useCallback với queryKey */
+/** Stable references across calls for queryKey memoization. */
 const STATIC_LIST_KEYS = {
   ports: ["ports"],
   provinces: ["provinces"],

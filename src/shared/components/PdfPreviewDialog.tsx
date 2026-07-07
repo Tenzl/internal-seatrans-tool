@@ -90,7 +90,7 @@ export function PdfPreviewDialog({
                 className="gap-2"
               >
                 <Pencil className="h-4 w-4" />
-                Chỉnh sửa
+                Edit
               </Button>
             ) : null}
             {!showGenerating ? (

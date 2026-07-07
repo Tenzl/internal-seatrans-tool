@@ -4,7 +4,7 @@ import { createContext, useCallback, useContext, useEffect, useState, type React
 import { messages, type Lang } from './messages'
 
 const STORAGE_KEY = 'epda-lang'
-const DEFAULT_LANG: Lang = 'vi'
+const DEFAULT_LANG: Lang = 'en'
 
 interface I18nContextValue {
   lang: Lang
@@ -20,8 +20,10 @@ export function I18nProvider({ children }: { children: ReactNode }) {
   const [lang, setLangState] = useState<Lang>(DEFAULT_LANG)
 
   useEffect(() => {
-    const saved = typeof window !== 'undefined' ? window.localStorage.getItem(STORAGE_KEY) : null
-    if (saved === 'vi' || saved === 'en') setLangState(saved)
+    if (typeof window !== 'undefined') {
+      window.localStorage.setItem(STORAGE_KEY, DEFAULT_LANG)
+      setLangState(DEFAULT_LANG)
+    }
   }, [])
 
   const setLang = useCallback((next: Lang) => {

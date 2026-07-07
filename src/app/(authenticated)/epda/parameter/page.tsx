@@ -80,7 +80,6 @@ import {
 } from '@/features/admin/services/epdaParametersService'
 import { portService } from '@/modules/logistics/services/portService'
 import { useI18n } from '@/shared/i18n/I18nProvider'
-import { LanguageToggle } from '@/shared/i18n/LanguageToggle'
 
 // Areas shown in the parameter editor. NORTHERN is temporarily hidden here (it
 // stays in AREA_OPTIONS so the Create EPDA form keeps working). To bring it back,
@@ -1800,7 +1799,6 @@ export default function Page() {
     <>
       <Header fixed>
         <Search className='me-auto' />
-        <LanguageToggle />
         <ThemeSwitch />
         <ConfigDrawer />
         <ProfileDropdown />

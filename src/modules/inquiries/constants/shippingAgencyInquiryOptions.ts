@@ -1,9 +1,9 @@
 export const PURPOSE_OF_CALLING_OPTIONS = [
-  { value: 'NHAP_XUAT', label: 'Nhập - Xuất' },
-  { value: 'NHAP_CHUYEN_CANG', label: 'Nhập - Chuyển cảng' },
-  { value: 'CHUYEN_CANG_XUAT', label: 'Chuyển cảng - Xuất' },
-  { value: 'CHUYEN_CANG_CHUYEN_CANG', label: 'Chuyển cảng - Chuyển cảng' },
-  { value: 'MUC_DICH_KHAC', label: 'Mục đích khác' },
+  { value: 'NHAP_XUAT', label: 'Import - Export' },
+  { value: 'NHAP_CHUYEN_CANG', label: 'Import - Transshipment' },
+  { value: 'CHUYEN_CANG_XUAT', label: 'Transshipment - Export' },
+  { value: 'CHUYEN_CANG_CHUYEN_CANG', label: 'Transshipment - Transshipment' },
+  { value: 'MUC_DICH_KHAC', label: 'Other purpose' },
 ] as const
 
 export type PurposeOfCallingValue = (typeof PURPOSE_OF_CALLING_OPTIONS)[number]['value']

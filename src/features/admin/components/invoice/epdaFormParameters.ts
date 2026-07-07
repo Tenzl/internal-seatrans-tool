@@ -54,9 +54,9 @@ export const AGENCY_FEE_MODE_OPTIONS = [
 ] as const
 
 export const QUARANTINE_CARGO_OPTIONS = [
-  { value: 'ONE_LEG', label: 'Chỉ xếp hoặc dở hàng', fee: 100, trips: 1 },
-  { value: 'BOTH_LEGS', label: 'Xếp và dở hàng', fee: 200, trips: 2 },
-  { value: 'OTHER', label: 'Khác (cấp nước / sửa chữa / crew change ...)', fee: 0, trips: 0 },
+  { value: 'ONE_LEG', label: 'Loading or discharging only', fee: 100, trips: 1 },
+  { value: 'BOTH_LEGS', label: 'Loading and discharging', fee: 200, trips: 2 },
+  { value: 'OTHER', label: 'Other (water supply / repair / crew change ...)', fee: 0, trips: 0 },
 ] as const
 export type QuarantineCargoOption = (typeof QUARANTINE_CARGO_OPTIONS)[number]['value']
 
