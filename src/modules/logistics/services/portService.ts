@@ -25,6 +25,7 @@ export interface Port {
   portOfCall?: string
   provinceId: number | null
   provinceName?: string | null
+  provinceArea?: string | null
 
   code?: string
   zoneCode?: string
@@ -97,6 +98,18 @@ async function fetchPortsPage(endpoint: string): Promise<PageResponse<Port>> {
 }
 
 export const portService = {
+  async getPortById(id: number): Promise<Port> {
+    const response = await apiClient.get<ApiResponse<Port>>(API_CONFIG.PORTS.BY_ID(id))
+    if (!response.ok) {
+      throw new Error('Failed to load port details')
+    }
+    const data = await response.json()
+    if (!data.data) {
+      throw new Error('Port not found')
+    }
+    return data.data
+  },
+
   async listPortsPaginated(params: ListPortsParams = {}): Promise<PageResponse<Port>> {
     return fetchPortsPage(buildPortsListUrl(params))
   },

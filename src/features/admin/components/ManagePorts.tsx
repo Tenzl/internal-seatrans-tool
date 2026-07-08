@@ -12,7 +12,7 @@ import {
   useReactTable,
 } from '@tanstack/react-table'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
-import { ChevronDown, Loader2, Pencil, Plus, Trash2 } from 'lucide-react'
+import { ChevronDown, Loader2, Pencil, Plus, Search, Trash2 } from 'lucide-react'
 import {
   AdminDataPanel,
   AdminSection,
@@ -82,6 +82,8 @@ interface Port {
   name: string
   portOfCall?: string
   provinceId: number | null
+  provinceName?: string | null
+  provinceArea?: string | null
   hasInfo?: number
   code?: string
   zoneCode?: string
@@ -108,12 +110,14 @@ interface PortFormState {
   provinceId: number | null
 }
 
+const buildPortOfCall = (name: string): string => name.trim().toUpperCase()
+
 const emptyPortForm: PortFormState = {
   name: '',
   portOfCall: '',
   code: '',
-  zoneCode: '',
-  countryCode: '',
+  zoneCode: 'AS-SIN',
+  countryCode: 'VN',
   latitude: '',
   longitude: '',
   area: NONE_VALUE,
@@ -121,16 +125,17 @@ const emptyPortForm: PortFormState = {
 }
 
 const COLUMN_CLASS_NAMES: Record<string, string> = {
-  area: 'w-32',
-  provinceName: 'w-48',
-  name: 'min-w-[12rem]',
-  portOfCall: 'min-w-[10rem]',
-  code: 'w-32',
-  zoneCode: 'w-32',
-  countryCode: 'w-32',
-  latitude: 'w-32',
-  longitude: 'w-32',
-  hasInfo: 'w-40',
+  area: 'w-[14%]',
+  provinceName: 'w-[22%]',
+  name: 'w-[28%]',
+  portOfCall: 'w-[18%]',
+  code: 'w-[12%]',
+  zoneCode: 'w-[12%]',
+  countryCode: 'w-[10%]',
+  latitude: 'w-[12%]',
+  longitude: 'w-[12%]',
+  hasInfo: 'w-[12%]',
+  actions: 'w-[14%]',
 }
 
 const parseOptionalNumber = (rawValue: string, fieldLabel: string): number | undefined => {
@@ -200,8 +205,11 @@ export function ManagePorts() {
 
   const [sorting, setSorting] = useState<SortingState>([])
   const [columnVisibility, setColumnVisibility] = useState<VisibilityState>({
-    // "Has Info" is temporarily hidden by default; all other columns show.
-    // It can still be re-enabled from the "Columns" menu.
+    // Hide lower-priority detail columns by default, but keep them available in the Columns menu.
+    portOfCall: false,
+    zoneCode: false,
+    latitude: false,
+    longitude: false,
     hasInfo: false,
   })
 
@@ -213,11 +221,24 @@ export function ManagePorts() {
   const [dialogOpen, setDialogOpen] = useState(false)
   const [editingPortId, setEditingPortId] = useState<number | null>(null)
   const [form, setForm] = useState<PortFormState>(emptyPortForm)
+  const [showCreateFields, setShowCreateFields] = useState(false)
+  const debouncedFormPortName = useDebouncedValue(form.name, 250)
   const renderSortableHeader = useTableSortHeader<PortTableRow>()
 
   const updateForm = useCallback(
     <K extends keyof PortFormState>(key: K, value: PortFormState[K]) => {
-      setForm((prev) => ({ ...prev, [key]: value }))
+      setForm((prev) => {
+        if (key === 'name') {
+          const name = String(value)
+          return {
+            ...prev,
+            name,
+            // Keep Port of Call aligned with the uppercase port name.
+            portOfCall: buildPortOfCall(name),
+          }
+        }
+        return { ...prev, [key]: value }
+      })
     },
     [],
   )
@@ -225,6 +246,7 @@ export function ManagePorts() {
   const openCreateDialog = () => {
     setEditingPortId(null)
     setForm(emptyPortForm)
+    setShowCreateFields(false)
     setDialogOpen(true)
   }
 
@@ -243,12 +265,41 @@ export function ManagePorts() {
         countryCode: port.countryCode ?? '',
         latitude: port.latitude != null ? String(port.latitude) : '',
         longitude: port.longitude != null ? String(port.longitude) : '',
-        area: matchedProvince?.area ?? NONE_VALUE,
+        area: port.provinceArea ?? matchedProvince?.area ?? NONE_VALUE,
         provinceId: port.provinceId ?? null,
       })
+      setShowCreateFields(true)
       setDialogOpen(true)
     },
     [provinces],
+  )
+
+  const { data: existingPortOptions = [], isFetching: isSearchingExistingPorts } = useQuery({
+    queryKey: queryKeys.portOptionsSearch(debouncedFormPortName.trim().toLowerCase()),
+    queryFn: () =>
+      portService.listPortOptions({
+        q: debouncedFormPortName.trim(),
+        limit: 8,
+      }),
+    enabled: dialogOpen && editingPortId == null && debouncedFormPortName.trim().length >= 2,
+  })
+
+  const existingPortMatches = existingPortOptions
+
+  const handleSelectExistingPort = useCallback(
+    async (portId: number) => {
+      try {
+        setIsBusy(true)
+        const port = await portService.getPortById(portId)
+        openEditDialog(port)
+        toast.success(`Opened existing port "${port.name}" for editing`)
+      } catch (error) {
+        toast.error(error instanceof Error ? error.message : 'Failed to load existing port')
+      } finally {
+        setIsBusy(false)
+      }
+    },
+    [openEditDialog],
   )
 
   const handleSavePort = useCallback(
@@ -306,6 +357,7 @@ export function ManagePorts() {
         setDialogOpen(false)
         setEditingPortId(null)
         setForm(emptyPortForm)
+        setShowCreateFields(false)
         toast.success(isEditing ? 'Port updated successfully' : 'Port added successfully')
       } catch (error) {
         const fallback = isEditing ? 'Failed to update port' : 'Failed to add port'
@@ -379,14 +431,26 @@ export function ManagePorts() {
   }, [provinces])
 
   const portsForTable = useMemo<PortTableRow[]>(() => {
-    return ports.map((port: Port) => {
-      const province = port.provinceId != null ? provinceMap.get(port.provinceId) : undefined
-      return {
-        ...port,
-        area: province?.area || 'UNKNOWN',
-        provinceName: province?.displayName || province?.name || '-',
-      }
-    })
+    return ports
+      .map((port: Port) => {
+        const province = port.provinceId != null ? provinceMap.get(port.provinceId) : undefined
+        const provinceName = port.provinceName ?? province?.displayName ?? province?.name ?? 'UNKNOWN'
+        const area = port.provinceArea ?? province?.area ?? 'UNKNOWN'
+        return {
+          ...port,
+          area,
+          provinceName,
+        }
+      })
+      .sort((a, b) => {
+        const aUnknown = a.area === 'UNKNOWN' || a.provinceName === 'UNKNOWN'
+        const bUnknown = b.area === 'UNKNOWN' || b.provinceName === 'UNKNOWN'
+        if (aUnknown !== bUnknown) return aUnknown ? 1 : -1
+        const aIsVn = (a.countryCode ?? '').trim().toUpperCase() === 'VN'
+        const bIsVn = (b.countryCode ?? '').trim().toUpperCase() === 'VN'
+        if (aIsVn !== bIsVn) return aIsVn ? -1 : 1
+        return a.name.localeCompare(b.name)
+      })
   }, [ports, provinceMap])
 
   const columns = useMemo<ColumnDef<PortTableRow>[]>(() => [
@@ -613,29 +677,22 @@ export function ManagePorts() {
           emptyMessage="No ports match your search. Try another field or clear filters."
         >
           <div className="overflow-x-auto rounded-md border">
-            <Table>
+            <Table className="table-fixed w-full">
               <TableHeader className="sticky top-0 z-20 bg-background">
                 {table.getHeaderGroups().map((headerGroup) => (
                   <TableRow key={headerGroup.id}>
-                    {headerGroup.headers.map((header) => {
-                      const isActions = header.column.id === 'actions'
-                      return (
-                        <TableHead
-                          key={header.id}
-                          className={`bg-background whitespace-nowrap ${
-                            COLUMN_CLASS_NAMES[header.column.id] ?? ''
-                          }${
-                            isActions
-                              ? ' sticky right-0 z-30 border-l shadow-[-6px_0_6px_-6px_rgba(0,0,0,0.15)]'
-                              : ''
-                          }`}
-                        >
-                          {header.isPlaceholder
-                            ? null
-                            : flexRender(header.column.columnDef.header, header.getContext())}
-                        </TableHead>
-                      )
-                    })}
+                    {headerGroup.headers.map((header) => (
+                      <TableHead
+                        key={header.id}
+                        className={`bg-background whitespace-nowrap ${
+                          COLUMN_CLASS_NAMES[header.column.id] ?? ''
+                        }`}
+                      >
+                        {header.isPlaceholder
+                          ? null
+                          : flexRender(header.column.columnDef.header, header.getContext())}
+                      </TableHead>
+                    ))}
                   </TableRow>
                 ))}
               </TableHeader>
@@ -643,23 +700,16 @@ export function ManagePorts() {
                 {table.getRowModel().rows?.length ? (
                   table.getRowModel().rows.map((row) => (
                     <TableRow key={row.id} className="group">
-                      {row.getVisibleCells().map((cell) => {
-                        const isActions = cell.column.id === 'actions'
-                        return (
-                          <TableCell
-                            key={cell.id}
-                            className={`whitespace-nowrap align-top ${
-                              COLUMN_CLASS_NAMES[cell.column.id] ?? ''
-                            }${
-                              isActions
-                                ? ' sticky right-0 z-10 border-l bg-background shadow-[-6px_0_6px_-6px_rgba(0,0,0,0.15)] group-hover:bg-muted/50'
-                                : ''
-                            }`}
-                          >
-                            {flexRender(cell.column.columnDef.cell, cell.getContext())}
-                          </TableCell>
-                        )
-                      })}
+                      {row.getVisibleCells().map((cell) => (
+                        <TableCell
+                          key={cell.id}
+                          className={`whitespace-nowrap align-middle ${
+                            COLUMN_CLASS_NAMES[cell.column.id] ?? ''
+                          }`}
+                        >
+                          {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                        </TableCell>
+                      ))}
                     </TableRow>
                   ))
                 ) : (
@@ -688,10 +738,11 @@ export function ManagePorts() {
           if (!open) {
             setEditingPortId(null)
             setForm(emptyPortForm)
+            setShowCreateFields(false)
           }
         }}
       >
-        <DialogContent className="sm:max-w-lg">
+        <DialogContent className="flex sm:max-w-lg sm:min-h-[620px] flex-col">
           <DialogHeader>
             <DialogTitle>{editingPortId != null ? 'Edit Port' : 'Add New Port'}</DialogTitle>
             <DialogDescription>
@@ -701,27 +752,75 @@ export function ManagePorts() {
             </DialogDescription>
           </DialogHeader>
 
-          <form onSubmit={handleSavePort}>
-            <div className="grid grid-cols-1 gap-3 py-2 md:grid-cols-2">
+          <form onSubmit={handleSavePort} className="flex flex-1 flex-col">
+            <div className="grid flex-1 grid-cols-1 gap-3 py-2 md:grid-cols-2 content-start">
               <div className="space-y-2 md:col-span-2">
                 <Label htmlFor="port-name">Port Name</Label>
                 <Input
                   id="port-name"
                   value={form.name}
                   onChange={(e) => updateForm('name', e.target.value)}
-                  placeholder="Enter port name"
+                  placeholder="Search or enter port name"
                   required
                   autoFocus
+                  disabled={editingPortId == null && showCreateFields}
+                  readOnly={editingPortId == null && showCreateFields}
                 />
+                {editingPortId == null && !showCreateFields && form.name.trim().length >= 2 ? (
+                  <div className="rounded-lg border bg-muted/20 p-2">
+                    <div className="mb-2 flex items-center gap-2 text-xs text-muted-foreground">
+                      {isSearchingExistingPorts ? (
+                        <>
+                          <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                          Searching existing ports…
+                        </>
+                      ) : (
+                        <>
+                          <Search className="h-3.5 w-3.5" />
+                          Existing ports
+                        </>
+                      )}
+                    </div>
+                    {!isSearchingExistingPorts && existingPortMatches.length === 0 ? (
+                      <p className="px-2 py-1 text-xs text-muted-foreground">
+                        No existing port found. A new port will be created.
+                      </p>
+                    ) : (
+                      <div className="space-y-1 overflow-y-auto">
+                        {existingPortMatches.map((opt) => (
+                          <button
+                            key={opt.id}
+                            type="button"
+                            onClick={() => handleSelectExistingPort(opt.id)}
+                            className="flex w-full items-start justify-between rounded-md px-2 py-2 text-left text-sm transition-colors hover:bg-muted"
+                          >
+                            <span className="min-w-0">
+                              <span className="block truncate font-medium">{opt.name}</span>
+                              {opt.provinceName ? (
+                                <span className="block truncate text-xs text-muted-foreground">
+                                  {opt.provinceName}
+                                </span>
+                              ) : null}
+                            </span>
+                            <span className="ms-3 shrink-0 text-xs text-primary">Edit existing</span>
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                ) : null}
               </div>
 
+              {editingPortId != null || showCreateFields ? (
+                <>
               <div className="space-y-2 md:col-span-2">
                 <Label htmlFor="port-of-call">Port of Call</Label>
                 <Input
                   id="port-of-call"
                   value={form.portOfCall}
-                  onChange={(e) => updateForm('portOfCall', e.target.value)}
-                  placeholder="Optional"
+                  placeholder="Auto-generated from Port Name"
+                  disabled
+                  readOnly
                 />
               </div>
 
@@ -773,12 +872,12 @@ export function ManagePorts() {
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="port-code">Code</Label>
+                <Label htmlFor="port-code">Code (optional)</Label>
                 <Input
                   id="port-code"
                   value={form.code}
                   onChange={(e) => updateForm('code', e.target.value)}
-                  placeholder="e.g., 123"
+                  placeholder="e.g., mã cảng"
                 />
               </div>
 
@@ -788,7 +887,7 @@ export function ManagePorts() {
                   id="port-zone-code"
                   value={form.zoneCode}
                   onChange={(e) => updateForm('zoneCode', e.target.value)}
-                  placeholder="e.g., SOUTHERN"
+                  placeholder="e.g., AS-SIN"
                 />
               </div>
 
@@ -803,7 +902,7 @@ export function ManagePorts() {
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="port-latitude">Latitude</Label>
+                <Label htmlFor="port-latitude">Latitude (optional)</Label>
                 <Input
                   id="port-latitude"
                   type="number"
@@ -816,7 +915,7 @@ export function ManagePorts() {
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="port-longitude">Longitude</Label>
+                <Label htmlFor="port-longitude">Longitude (optional)</Label>
                 <Input
                   id="port-longitude"
                   type="number"
@@ -827,20 +926,33 @@ export function ManagePorts() {
                   placeholder="e.g., 106.71"
                 />
               </div>
+                </>
+              ) : null}
             </div>
 
-            <DialogFooter>
+            <DialogFooter className="mt-auto">
               <Button type="button" variant="outline" onClick={() => setDialogOpen(false)}>
                 Cancel
               </Button>
-              <Button type="submit" disabled={isLoading} className="gap-2">
-                {isLoading ? (
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                ) : (
-                  <Plus className="h-4 w-4" />
-                )}
-                {editingPortId != null ? 'Save changes' : 'Add New'}
-              </Button>
+              {editingPortId == null && !showCreateFields ? (
+                <Button
+                  type="button"
+                  disabled={!form.name.trim() || (!isSearchingExistingPorts && existingPortMatches.length > 0)}
+                  onClick={() => setShowCreateFields(true)}
+                >
+                  Create new
+                </Button>
+              ) : null}
+              {editingPortId != null || showCreateFields ? (
+                <Button type="submit" disabled={isLoading} className="gap-2">
+                  {isLoading ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <Plus className="h-4 w-4" />
+                  )}
+                  {editingPortId != null ? 'Save changes' : 'Add New'}
+                </Button>
+              ) : null}
             </DialogFooter>
           </form>
         </DialogContent>
