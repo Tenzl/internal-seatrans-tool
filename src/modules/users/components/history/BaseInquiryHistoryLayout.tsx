@@ -6,13 +6,20 @@ import { ColumnDef } from '@tanstack/react-table'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/shared/components/ui/card'
 import { Badge } from '@/shared/components/ui/badge'
 import { Alert, AlertDescription } from '@/shared/components/ui/alert'
-import { Loader2, AlertCircle, RefreshCw, FileText, ArrowUpDown, Trash2 } from 'lucide-react'
+import { Loader2, AlertCircle, RefreshCw, FileText, ArrowUpDown, Trash2, Archive, RotateCcw } from 'lucide-react'
 import { Button } from '@/shared/components/ui/button'
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/shared/components/ui/dialog'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/shared/components/ui/select'
 import { useCurrentUser } from '@/hooks/use-current-user'
 import { isAdminRole } from '@/config/section-catalog'
 import { QuotePreview } from '@/modules/inquiries/components/common/Quote-hcm'
-import { InquiryDataTable } from './InquiryDataTable'
+import { InquiryDataTable, type InquiryDeleteMode } from './InquiryDataTable'
 import { InquiryDetailDrawer } from './InquiryDetailDrawer'
 import { buildDashboardUrl } from '@/shared/utils/dashboardNavigation'
 import { useInquiryData } from './useInquiryData'
@@ -40,7 +47,16 @@ export function BaseInquiryHistoryLayout({
 }: BaseInquiryHistoryLayoutProps) {
   const router = useRouter()
   const pathname = usePathname()
-  const { inquiries, isLoading, error, fetchInquiries, deleteInquiries } = useInquiryData({
+  const {
+    inquiries,
+    isLoading,
+    error,
+    fetchInquiries,
+    deleteInquiries,
+    restoreInquiries,
+    archivedFilter,
+    setArchivedFilter,
+  } = useInquiryData({
     serviceType,
     isAdmin,
   })
@@ -48,14 +64,16 @@ export function BaseInquiryHistoryLayout({
   const { quoteHtml, isLoading: loadingQuote, generateInvoicePreview, clearPreview } = useInvoicePreview()
 
   const currentUser = useCurrentUser()
-  // Only a true ADMIN role may delete inquiries (route is already admin-gated,
-  // but other internal staff must not get the delete action).
-  const canDelete = isAdmin && isAdminRole(currentUser?.role)
+  const canSoftDelete = isAdmin && !isAdminRole(currentUser?.role)
+  const canHardDelete = isAdmin && isAdminRole(currentUser?.role)
 
   const [detailInquiry, setDetailInquiry] = useState<any | null>(null)
   const [quoteInquiry, setQuoteInquiry] = useState<any | null>(null)
   const [deleteTarget, setDeleteTarget] = useState<any | null>(null)
+  const [deleteMode, setDeleteMode] = useState<InquiryDeleteMode>('soft')
+  const [restoreTarget, setRestoreTarget] = useState<any | null>(null)
   const [isDeleting, setIsDeleting] = useState(false)
+  const [isRestoring, setIsRestoring] = useState(false)
 
   useEffect(() => {
     fetchInquiries()
@@ -64,6 +82,13 @@ export function BaseInquiryHistoryLayout({
   const getStatusBadge = (status: string) => {
     const config = STATUS_BADGE_CONFIG[status as InquiryStatus] || { variant: 'outline' as const, label: status }
     return <Badge variant={config.variant} className={config.className}>{config.label}</Badge>
+  }
+
+  const getInquiryStatusBadge = (inquiry: any) => {
+    if (inquiry?.isArchived) {
+      return <Badge variant="secondary" className="bg-muted text-muted-foreground">Archived</Badge>
+    }
+    return getStatusBadge(inquiry?.status)
   }
 
   const formatDate = (value: string) => new Date(value).toLocaleString()
@@ -99,24 +124,46 @@ export function BaseInquiryHistoryLayout({
     setDetailInquiry(inquiry)
   }
 
-  const handleDeleteInquiries = async (ids: number[]) => {
+  const handleDeleteInquiries = async (ids: number[], mode: InquiryDeleteMode) => {
     try {
-      await deleteInquiries(ids)
+      await deleteInquiries(ids, mode)
     } catch (error) {
       console.error('Error deleting inquiries:', error)
+      throw error
     }
+  }
+
+  const openDeleteDialog = (inquiry: any, mode: InquiryDeleteMode) => {
+    setDeleteTarget(inquiry)
+    setDeleteMode(mode)
   }
 
   const confirmDeleteInquiry = async () => {
     if (!deleteTarget) return
     setIsDeleting(true)
     try {
-      await deleteInquiries([deleteTarget.id])
+      await deleteInquiries([deleteTarget.id], deleteMode)
       setDeleteTarget(null)
     } catch (error) {
       console.error('Error deleting inquiry:', error)
     } finally {
       setIsDeleting(false)
+    }
+  }
+
+  const confirmRestoreInquiry = async () => {
+    if (!restoreTarget) return
+    setIsRestoring(true)
+    try {
+      await restoreInquiries([restoreTarget.id])
+      setRestoreTarget(null)
+      if (archivedFilter === 'archived') {
+        await fetchInquiries()
+      }
+    } catch (error) {
+      console.error('Error restoring inquiry:', error)
+    } finally {
+      setIsRestoring(false)
     }
   }
 
@@ -178,9 +225,8 @@ export function BaseInquiryHistoryLayout({
           </Button>
         )
       },
-      // Status is system-driven (save draft → Processing/Completed, issue → Quoted);
-      // it is no longer editable by hand, so render a read-only badge for everyone.
-      cell: ({ row }) => getStatusBadge(row.original.status),
+      // Archived rows are only shown to admins; users never see them.
+      cell: ({ row }) => getInquiryStatusBadge(row.original),
     },
   ]
 
@@ -245,16 +291,52 @@ export function BaseInquiryHistoryLayout({
               >
                 View Details
               </Button>
-              {canDelete && (
+              {canSoftDelete && !inq.isArchived && (
                 <Button
                   variant="outline"
                   size="sm"
-                  onClick={() => setDeleteTarget(inq)}
-                  className="gap-2 text-destructive hover:text-destructive"
+                  onClick={() => openDeleteDialog(inq, 'soft')}
+                  className="gap-2"
                 >
-                  <Trash2 className="h-4 w-4" />
-                  Delete
+                  <Archive className="h-4 w-4" />
+                  Archive
                 </Button>
+              )}
+              {canHardDelete && (
+                <>
+                  {!inq.isArchived ? (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => openDeleteDialog(inq, 'hard')}
+                      className="gap-2 text-destructive hover:text-destructive"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                      Delete
+                    </Button>
+                  ) : (
+                    <>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setRestoreTarget(inq)}
+                        className="gap-2"
+                      >
+                        <RotateCcw className="h-4 w-4" />
+                        Restore
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => openDeleteDialog(inq, 'hard')}
+                        className="gap-2 text-destructive hover:text-destructive"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                        Delete
+                      </Button>
+                    </>
+                  )}
+                </>
               )}
             </div>
           )
@@ -321,16 +403,33 @@ export function BaseInquiryHistoryLayout({
                 <CardDescription className="max-w-2xl text-sm leading-relaxed">{description}</CardDescription>
               ) : null}
             </div>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={fetchInquiries}
-              disabled={isLoading}
-              className="gap-2 shrink-0"
-            >
-              <RefreshCw className={`h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} />
-              Reload
-            </Button>
+            <div className="flex items-center gap-2">
+              {canHardDelete ? (
+                <Select
+                  value={archivedFilter}
+                  onValueChange={(value) => setArchivedFilter(value as 'active' | 'archived' | 'all')}
+                >
+                  <SelectTrigger className="w-[140px]">
+                    <SelectValue placeholder="Filter" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="active">Active</SelectItem>
+                    <SelectItem value="archived">Archived</SelectItem>
+                    <SelectItem value="all">All</SelectItem>
+                  </SelectContent>
+                </Select>
+              ) : null}
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={fetchInquiries}
+                disabled={isLoading}
+                className="gap-2 shrink-0"
+              >
+                <RefreshCw className={`h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} />
+                Reload
+              </Button>
+            </div>
           </div>
         </CardHeader>
         <CardContent>
@@ -355,7 +454,8 @@ export function BaseInquiryHistoryLayout({
               searchPlaceholder={
                 isShippingAgencyHistory ? 'Search by vessel name...' : 'Search by name...'
               }
-              onDelete={handleDeleteInquiries}
+              onDelete={canSoftDelete || canHardDelete ? handleDeleteInquiries : undefined}
+              canHardDelete={canHardDelete}
             />
           )}
         </CardContent>
@@ -470,18 +570,55 @@ export function BaseInquiryHistoryLayout({
       <Dialog open={!!deleteTarget} onOpenChange={(open) => !open && !isDeleting && setDeleteTarget(null)}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Delete inquiry</DialogTitle>
+            <DialogTitle>
+              {deleteMode === 'hard' ? 'Permanently delete inquiry?' : 'Archive inquiry?'}
+            </DialogTitle>
             <DialogDescription>
-              This permanently deletes inquiry #{deleteTarget?.id} and its attached documents. This action cannot be undone.
+              {deleteMode === 'hard' ? (
+                <>
+                  Inquiry #{deleteTarget?.id} and its attached documents will be permanently
+                  removed. This cannot be undone.
+                </>
+              ) : (
+                <>
+                  Inquiry #{deleteTarget?.id} will be archived and hidden from user/staff history.
+                  Administrators will still see it as archived.
+                </>
+              )}
             </DialogDescription>
           </DialogHeader>
           <DialogFooter className="gap-2 sm:gap-2">
             <Button variant="outline" onClick={() => setDeleteTarget(null)} disabled={isDeleting}>
               Cancel
             </Button>
-            <Button variant="destructive" onClick={confirmDeleteInquiry} disabled={isDeleting} className="gap-2">
-              {isDeleting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
-              Delete
+            <Button
+              variant={deleteMode === 'hard' ? 'destructive' : 'default'}
+              onClick={confirmDeleteInquiry}
+              disabled={isDeleting}
+              className="gap-2"
+            >
+              {isDeleting ? <Loader2 className="h-4 w-4 animate-spin" /> : deleteMode === 'hard' ? <Trash2 className="h-4 w-4" /> : <Archive className="h-4 w-4" />}
+              {deleteMode === 'hard' ? 'Delete permanently' : 'Archive'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={!!restoreTarget} onOpenChange={(open) => !open && !isRestoring && setRestoreTarget(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Restore inquiry?</DialogTitle>
+            <DialogDescription>
+              Inquiry #{restoreTarget?.id} will be moved back to the active list.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="gap-2 sm:gap-2">
+            <Button variant="outline" onClick={() => setRestoreTarget(null)} disabled={isRestoring}>
+              Cancel
+            </Button>
+            <Button onClick={confirmRestoreInquiry} disabled={isRestoring} className="gap-2">
+              {isRestoring ? <Loader2 className="h-4 w-4 animate-spin" /> : <RotateCcw className="h-4 w-4" />}
+              Restore
             </Button>
           </DialogFooter>
         </DialogContent>

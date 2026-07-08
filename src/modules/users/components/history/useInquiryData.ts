@@ -17,6 +17,8 @@ interface UseInquiryDataOptions {
   isAdmin?: boolean
 }
 
+export type AdminArchivedFilter = 'active' | 'archived' | 'all'
+
 const SERVICE_TYPE_NAME_MAP: Record<string, string> = {
   'shipping-agency': 'SHIPPING AGENCY',
   'freight-forwarding': 'FREIGHT FORWARDING',
@@ -43,6 +45,7 @@ export function useInquiryData(options: UseInquiryDataOptions = {}) {
   const [inquiries, setInquiries] = useState<any[]>([])
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [archivedFilter, setArchivedFilter] = useState<AdminArchivedFilter>('all')
   const updateStatus = useCallback(async (id: number, status: string, serviceSlug?: string) => {
     if (!shouldUseAdminInquiryApi(isAdmin)) return { success: false }
     const serviceName = toServiceTypeName(serviceSlug || serviceType)
@@ -110,6 +113,9 @@ export function useInquiryData(options: UseInquiryDataOptions = {}) {
         if (serviceType?.trim()) {
           params.append('serviceSlug', serviceType.trim())
         }
+        if (isAdmin) {
+          params.append('archived', archivedFilter)
+        }
 
         const response = await apiClient.get<PageResponse<any>>(
           `${API_CONFIG.INQUIRIES.ADMIN_BASE}?${params.toString()}`
@@ -130,13 +136,13 @@ export function useInquiryData(options: UseInquiryDataOptions = {}) {
     } finally {
       setIsLoading(false)
     }
-  }, [serviceType, isAdmin])
+  }, [serviceType, isAdmin, archivedFilter])
 
-  const deleteInquiries = useCallback(async (ids: number[]) => {
+  const deleteInquiries = useCallback(async (ids: number[], mode: 'soft' | 'hard' = 'soft') => {
     try {
       const useAdminApi = shouldUseAdminInquiryApi(isAdmin)
       const endpoint = useAdminApi
-        ? API_CONFIG.INQUIRIES.ADMIN_BATCH_DELETE
+        ? API_CONFIG.INQUIRIES.ADMIN_BATCH_DELETE(mode, serviceType)
         : API_CONFIG.INQUIRIES.USER_BATCH_DELETE
       
       const response = await apiClient.delete(endpoint, {
@@ -144,10 +150,12 @@ export function useInquiryData(options: UseInquiryDataOptions = {}) {
       })
       
       if (!response.ok) {
-        throw new Error('Failed to delete inquiries')
+        const body = await response.json().catch(() => null)
+        throw new Error(
+          body?.error?.message || body?.message || 'Failed to delete inquiries',
+        )
       }
       
-      // Remove deleted inquiries from local state
       setInquiries(prev => prev.filter(inq => !ids.includes(inq.id)))
       
       return { success: true }
@@ -155,7 +163,25 @@ export function useInquiryData(options: UseInquiryDataOptions = {}) {
       console.error('Error deleting inquiries:', err)
       throw err
     }
-  }, [isAdmin])
+  }, [isAdmin, serviceType])
+
+  const restoreInquiries = useCallback(async (ids: number[]) => {
+    const endpoint = API_CONFIG.INQUIRIES.ADMIN_BATCH_RESTORE(serviceType)
+    const response = await apiClient.post(endpoint, { ids })
+
+    if (!response.ok) {
+      const body = await response.json().catch(() => null)
+      throw new Error(body?.error?.message || body?.message || 'Failed to restore inquiries')
+    }
+
+    setInquiries(prev =>
+      prev.map((inq) =>
+        ids.includes(inq.id) ? { ...inq, isArchived: false, deletedAt: null, deletedById: null } : inq,
+      ),
+    )
+
+    return { success: true }
+  }, [serviceType])
 
   const refreshInquiries = useCallback(() => {
     return fetchInquiries()
@@ -167,6 +193,9 @@ export function useInquiryData(options: UseInquiryDataOptions = {}) {
     error,
     fetchInquiries,
     deleteInquiries,
+    restoreInquiries,
+    archivedFilter,
+    setArchivedFilter,
     updateStatus,
     refreshInquiries,
   }

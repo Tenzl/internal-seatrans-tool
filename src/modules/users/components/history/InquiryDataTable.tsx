@@ -50,12 +50,15 @@ import {
   AlertDialogTitle,
 } from "@/shared/components/ui/alert-dialog"
 
+export type InquiryDeleteMode = 'soft' | 'hard'
+
 export interface InquiryDataTableProps<TData extends { id: number }> {
   columns: ColumnDef<TData, any>[]
   data: TData[]
   searchKey?: string
   searchPlaceholder?: string
-  onDelete?: (ids: number[]) => Promise<void>
+  onDelete?: (ids: number[], mode: InquiryDeleteMode) => Promise<void>
+  canHardDelete?: boolean
 }
 
 export function InquiryDataTable<TData extends { id: number }>({
@@ -64,6 +67,7 @@ export function InquiryDataTable<TData extends { id: number }>({
   searchKey,
   searchPlaceholder = "Search...",
   onDelete,
+  canHardDelete = false,
 }: InquiryDataTableProps<TData>) {
   const [sorting, setSorting] = React.useState<SortingState>([])
   const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>([])
@@ -73,6 +77,7 @@ export function InquiryDataTable<TData extends { id: number }>({
   const [dateFrom, setDateFrom] = React.useState<Date>()
   const [dateTo, setDateTo] = React.useState<Date>()
   const [showDeleteDialog, setShowDeleteDialog] = React.useState(false)
+  const [pendingDeleteMode, setPendingDeleteMode] = React.useState<InquiryDeleteMode>('soft')
   const [isDeleting, setIsDeleting] = React.useState(false)
 
   // Define select column (from table-09 pattern)
@@ -100,8 +105,8 @@ export function InquiryDataTable<TData extends { id: number }>({
   }
 
   const columnsWithSelect = React.useMemo(
-    () => [selectColumn, ...columns],
-    [columns]
+    () => (onDelete ? [selectColumn, ...columns] : columns),
+    [columns, onDelete],
   )
 
   // Filter data by date range
@@ -144,13 +149,13 @@ export function InquiryDataTable<TData extends { id: number }>({
   const selectedRows = table.getFilteredSelectedRowModel().rows
   const selectedCount = selectedRows.length
 
-  const handleDelete = async () => {
+  const handleDelete = async (mode: InquiryDeleteMode) => {
     if (!onDelete || selectedCount === 0) return
     
     setIsDeleting(true)
     try {
       const ids = selectedRows.map(row => row.original.id)
-      await onDelete(ids)
+      await onDelete(ids, mode)
       setRowSelection({})
       setShowDeleteDialog(false)
     } catch (error) {
@@ -158,6 +163,11 @@ export function InquiryDataTable<TData extends { id: number }>({
     } finally {
       setIsDeleting(false)
     }
+  }
+
+  const openDeleteDialog = (mode: InquiryDeleteMode) => {
+    setPendingDeleteMode(mode)
+    setShowDeleteDialog(true)
   }
 
   return (
@@ -224,17 +234,32 @@ export function InquiryDataTable<TData extends { id: number }>({
             </Button>
           )}
 
-          {/* Delete button */}
+          {/* Delete / archive button */}
           {onDelete && selectedCount > 0 && (
-            <Button
-              variant="destructive"
-              size="sm"
-              onClick={() => setShowDeleteDialog(true)}
-              className="gap-2 ml-auto"
-            >
-              <Trash2 className="h-4 w-4" />
-              Delete ({selectedCount})
-            </Button>
+            <>
+              {!canHardDelete && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => openDeleteDialog('soft')}
+                  className="gap-2 ml-auto"
+                >
+                  <Trash2 className="h-4 w-4" />
+                  Archive ({selectedCount})
+                </Button>
+              )}
+              {canHardDelete && (
+                <Button
+                  variant="destructive"
+                  size="sm"
+                  onClick={() => openDeleteDialog('hard')}
+                  className="gap-2 ml-auto"
+                >
+                  <Trash2 className="h-4 w-4" />
+                  Delete permanently ({selectedCount})
+                </Button>
+              )}
+            </>
           )}
           
           {/* Column visibility toggle */}
@@ -348,20 +373,31 @@ export function InquiryDataTable<TData extends { id: number }>({
       <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+            <AlertDialogTitle>
+              {pendingDeleteMode === 'hard' ? 'Permanently delete inquiries?' : 'Archive inquiries?'}
+            </AlertDialogTitle>
             <AlertDialogDescription>
-              This will permanently delete {selectedCount} inquiry{selectedCount > 1 ? 'ies' : ''}.
-              This action cannot be undone.
+              {pendingDeleteMode === 'hard'
+                ? `This will permanently delete ${selectedCount} inquiry${selectedCount > 1 ? 'ies' : ''} and attached documents. This cannot be undone.`
+                : `This will archive ${selectedCount} inquiry${selectedCount > 1 ? 'ies' : ''}. They will be hidden from user/staff history but remain visible to administrators.`}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel disabled={isDeleting}>Cancel</AlertDialogCancel>
             <AlertDialogAction
-              onClick={handleDelete}
+              onClick={() => handleDelete(pendingDeleteMode)}
               disabled={isDeleting}
-              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              className={
+                pendingDeleteMode === 'hard'
+                  ? 'bg-destructive text-destructive-foreground hover:bg-destructive/90'
+                  : undefined
+              }
             >
-              {isDeleting ? "Deleting..." : "Delete"}
+              {isDeleting
+                ? 'Processing...'
+                : pendingDeleteMode === 'hard'
+                  ? 'Delete permanently'
+                  : 'Archive'}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

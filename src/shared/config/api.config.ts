@@ -144,7 +144,19 @@ export const API_CONFIG = {
     ADMIN_SHIPPING_AGENCY_CUSTOMER_FIELD_CHANGES: (id: number) =>
       `/admin/inquiries/shipping-agency/${id}/epda/customer-field-changes`,
     USER_BATCH_DELETE: '/inquiries/batch',
-    ADMIN_BATCH_DELETE: '/admin/inquiries/batch',
+    ADMIN_BATCH_DELETE: (mode: 'soft' | 'hard' = 'soft', serviceSlug?: string) => {
+      const qs = new URLSearchParams({ mode })
+      if (serviceSlug?.trim()) qs.set('serviceSlug', serviceSlug.trim())
+      return `/admin/inquiries/batch?${qs.toString()}`
+    },
+    ADMIN_BATCH_RESTORE: (serviceSlug?: string) => {
+      const qs = new URLSearchParams()
+      if (serviceSlug?.trim()) qs.set('serviceSlug', serviceSlug.trim())
+      const suffix = qs.toString()
+      return `/admin/inquiries/batch/restore${suffix ? `?${suffix}` : ''}`
+    },
+    ADMIN_RESTORE: (serviceType: string, id: number) =>
+      `/admin/inquiries/${encodeURIComponent(serviceType)}/${id}/restore`,
   },
 
   DOCUMENTS: {
