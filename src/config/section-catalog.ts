@@ -28,6 +28,7 @@ export const SECTION_CATALOG: SectionDef[] = [
   { key: 'data-cargo', label: 'Cargo', group: 'Data Management', route: '/data/cargo' },
   { key: 'data-images', label: 'Images', group: 'Data Management', route: '/data/images' },
   { key: 'data-offices', label: 'Offices', group: 'Data Management', route: '/data/offices' },
+  { key: 'data-storage', label: 'Storage', group: 'Data Management', route: '/data/storage' },
   { key: 'content-posts', label: 'Posts', group: 'Content Management', route: '/content/posts' },
   { key: 'content-categories', label: 'Categories', group: 'Content Management', route: '/content/categories' },
   { key: 'roles', label: 'Roles & access', group: 'Administration', route: '/roles' },

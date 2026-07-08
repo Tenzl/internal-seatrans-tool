@@ -14,6 +14,7 @@ import {
   Newspaper,
   Tag,
   ShieldCheck,
+  HardDrive,
 } from 'lucide-react'
 import { type SidebarData } from '../types'
 
@@ -112,6 +113,11 @@ export const sidebarData: SidebarData = {
               title: 'Offices',
               icon: Building2,
               url: '/data/offices',
+            },
+            {
+              title: 'Storage',
+              icon: HardDrive,
+              url: '/data/storage',
             },
           ],
         },

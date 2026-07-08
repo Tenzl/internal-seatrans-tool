@@ -131,6 +131,8 @@ export function BaseInquiryHistoryLayout({
     }
   }
 
+  const isShippingAgencyHistory = serviceType === 'shipping-agency'
+
   // Define columns
   const columns: ColumnDef<any>[] = [
     {
@@ -145,19 +147,21 @@ export function BaseInquiryHistoryLayout({
       enableHiding: false,
     },
     {
-      accessorKey: 'fullName',
+      accessorKey: isShippingAgencyHistory ? 'mv' : 'fullName',
       header: ({ column }) => (
         <Button
           variant="ghost"
           onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
         >
-          Customer
+          {isShippingAgencyHistory ? 'Vessel name' : 'Customer'}
           <ArrowUpDown className="ml-2 h-4 w-4" />
         </Button>
       ),
       cell: ({ row }) => {
         const inq = row.original
-        const name = inq.fullName || inq.contactName || inq.name || inq.toName || '—'
+        const name = isShippingAgencyHistory
+          ? inq.mv || inq.vesselName || '—'
+          : inq.fullName || inq.contactName || inq.name || inq.toName || '—'
         return <span className="font-medium">{name}</span>
       },
     },
@@ -347,8 +351,10 @@ export function BaseInquiryHistoryLayout({
             <InquiryDataTable
               columns={columns}
               data={inquiries}
-              searchKey={isAdmin ? "fullName" : undefined}
-              searchPlaceholder="Search by name..."
+              searchKey={isAdmin ? (isShippingAgencyHistory ? 'mv' : 'fullName') : undefined}
+              searchPlaceholder={
+                isShippingAgencyHistory ? 'Search by vessel name...' : 'Search by name...'
+              }
               onDelete={handleDeleteInquiries}
             />
           )}

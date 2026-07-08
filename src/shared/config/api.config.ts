@@ -199,6 +199,27 @@ export const API_CONFIG = {
     BY_ID: (id: number) => `/admin/roles/${id}`,
     SECTION_CATALOG: '/admin/roles/sections/catalog',
   },
+
+  /** Cloudflare R2 object storage (S3-compatible). Separate from Cloudinary gallery uploads. */
+  STORAGE: {
+    LIST: (prefix = '') => {
+      const qs = new URLSearchParams()
+      if (prefix) qs.set('prefix', prefix)
+      const s = qs.toString()
+      return `/admin/storage${s ? `?${s}` : ''}`
+    },
+    FOLDER: '/admin/storage/folders',
+    UPLOAD: (prefix = '') => {
+      const qs = new URLSearchParams()
+      if (prefix) qs.set('prefix', prefix)
+      const s = qs.toString()
+      return `/admin/storage/upload${s ? `?${s}` : ''}`
+    },
+    RENAME: '/admin/storage/rename',
+    DELETE: '/admin/storage',
+    DOWNLOAD_URL: (key: string) =>
+      `/admin/storage/download-url?${new URLSearchParams({ key }).toString()}`,
+  },
 } as const
 
 export type ApiConfig = typeof API_CONFIG

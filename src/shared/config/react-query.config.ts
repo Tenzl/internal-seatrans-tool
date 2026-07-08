@@ -49,4 +49,6 @@ export const queryKeys = {
   adminUsers: (params: { roleGroup: string; q?: string; roleName?: string }) =>
     ['adminUsers', params.roleGroup, params.q ?? '', params.roleName ?? ''] as const,
   adminUserRoles: (roleGroup: string) => ['adminUserRoles', roleGroup] as const,
+  storageList: (prefix: string) => ['storage', 'list', prefix] as const,
+  storageListPrefix: () => ['storage', 'list'] as const,
 }
