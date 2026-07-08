@@ -2044,6 +2044,11 @@ function PortOverridesCard({
   const [editingPortId, setEditingPortId] = useState<number | null>(null)
   const [draft, setDraft] = useState<EpdaParameterValues>(areaValues)
 
+  useEffect(() => {
+    setEditingPortId(null)
+    setDraft(areaValues)
+  }, [area, areaValues])
+
   const { data: ports } = useQuery({
     queryKey: ['ports-by-area', area],
     queryFn: () => portService.getPortsByArea(area),
@@ -2216,6 +2221,14 @@ function PortGroupsCard({
   const [paramsDraft, setParamsDraft] = useState<EpdaParameterValues>(areaValues)
   const [editingMembersId, setEditingMembersId] = useState<number | null>(null)
   const [memberDraft, setMemberDraft] = useState<number[]>([])
+
+  useEffect(() => {
+    setEditingParamsId(null)
+    setEditingMembersId(null)
+    setNameDraft('')
+    setParamsDraft(areaValues)
+    setMemberDraft([])
+  }, [area, areaValues])
 
   const { data: ports } = useQuery({
     queryKey: ['ports-by-area', area],
