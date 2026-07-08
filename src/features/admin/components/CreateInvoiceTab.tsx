@@ -94,7 +94,8 @@ import { extractParamsSnapshot } from '@/modules/inquiries/components/common/quo
 
 type EpdaCargoType = CargoType
 
-type AreaOption = (typeof AREA_OPTIONS)[number]
+type AreaOption = (typeof AREA_OPTIONS)[number]['value']
+const AREA_LABELS = Object.fromEntries(AREA_OPTIONS.map((item) => [item.value, item.label])) as Record<string, string>
 
 const PURPOSE_OPTIONS = PURPOSE_OF_CALLING_OPTIONS
 type PurposeOption = (typeof PURPOSE_OPTIONS)[number]['value']
@@ -127,6 +128,8 @@ const getShipQuarantineTrips = (purpose: string) => {
   if (normalized === 'NHAP_CHUYEN_CANG' || normalized === 'CHUYEN_CANG_XUAT') return 1
   return 0
 }
+
+const getAreaLabel = (value: string) => AREA_LABELS[value] ?? value
 
 const formatUsdAmount = (value: number) =>
   value.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
@@ -1255,7 +1258,7 @@ export function CreateInvoiceTab({
               className="flex w-full items-center justify-between gap-2 rounded-md border bg-muted/30 px-3 py-2 text-left lg:hidden"
             >
               <span className="min-w-0 truncate text-sm">
-                <span className="text-muted-foreground">{t(`area.${selectedArea}`)}</span>
+                <span className="text-muted-foreground">{getAreaLabel(selectedArea)}</span>
                 <span className="mx-1.5 text-muted-foreground">·</span>
                 <span className="font-medium">{port}</span>
               </span>
@@ -1284,8 +1287,8 @@ export function CreateInvoiceTab({
                   </SelectTrigger>
                   <SelectContent>
                     {AREA_OPTIONS.map((area) => (
-                      <SelectItem key={area} value={area}>
-                        {t(`area.${area}`)}
+                      <SelectItem key={area.value} value={area.value}>
+                        {area.label}
                       </SelectItem>
                     ))}
                   </SelectContent>

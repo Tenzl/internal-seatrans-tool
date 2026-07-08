@@ -81,10 +81,10 @@ import {
 import { portService } from '@/modules/logistics/services/portService'
 import { useI18n } from '@/shared/i18n/I18nProvider'
 
-// Areas shown in the parameter editor. NORTHERN is temporarily hidden here (it
-// stays in AREA_OPTIONS so the Create EPDA form keeps working). To bring it back,
-// just use AREA_OPTIONS directly again.
-const VISIBLE_AREA_OPTIONS = AREA_OPTIONS.filter((a) => a !== 'NORTHERN')
+const VISIBLE_AREA_OPTIONS = AREA_OPTIONS
+
+const getAreaLabel = (area: AreaOption) =>
+  VISIBLE_AREA_OPTIONS.find((item) => item.value === area)?.label ?? area
 
 // ---------- value helpers ----------
 function clone(v: EpdaParameterValues): EpdaParameterValues {
@@ -172,27 +172,9 @@ function diffValues(
   return out
 }
 
-// Map a stored top-level override key (e.g. "hours", "agencyFeeTiers") to the
-// i18n key of its human-friendly section title — shared by the group/override
-// cards so the chips read like the editor sections, not raw object keys.
-const SECTION_TITLE_KEY: Record<string, string> = {
-  hours: 'sec.hours.title',
-  garbage: 'sec.garbage.title',
-  quarantine: 'sec.quarantine.title',
-  coeff: 'sec.coeff.title',
-  agencyFeeTiers: 'sec.agency.title',
-  moorUnmoorBerthTiers: 'sec.moor.title',
-  moorUnmoorBuoyTiers: 'sec.moor.title',
-  tugTiers: 'sec.tug.title',
-  cargoAgencyRates: 'sec.cargoAgency.title',
-}
-
 /** Chips listing which sections a group/port overrides; muted note when none. */
-function OverriddenBadges({ keys }: { keys: string[] }) {
+function OverriddenBadges({ labels }: { labels: string[] }) {
   const { t } = useI18n()
-  const labels = Array.from(
-    new Set(keys.map((k) => (SECTION_TITLE_KEY[k] ? t(SECTION_TITLE_KEY[k]) : k)))
-  )
   if (labels.length === 0)
     return <span className='text-sm text-muted-foreground'>{t('param.inheritsArea')}</span>
   return (
@@ -204,6 +186,23 @@ function OverriddenBadges({ keys }: { keys: string[] }) {
       ))}
     </div>
   )
+}
+
+function getCurrentOverrideSectionLabels(
+  t: (key: string, vars?: Record<string, string | number>) => string,
+  values?: PartialEpdaParameterValues | null,
+): string[] {
+  if (!values) return []
+  const labels: string[] = []
+  if (values.coeff && Object.keys(values.coeff).length > 0) labels.push(t('sec.pilotage.title'))
+  if (
+    (values.moorUnmoorBerthTiers && values.moorUnmoorBerthTiers.length > 0) ||
+    (values.moorUnmoorBuoyTiers && values.moorUnmoorBuoyTiers.length > 0)
+  ) {
+    labels.push(t('sec.moor.title'))
+  }
+  if (values.tugTiers && values.tugTiers.length > 0) labels.push(t('sec.tug.title'))
+  return Array.from(new Set(labels))
 }
 
 // ---------- shared field editors ----------
@@ -1128,10 +1127,12 @@ function ValuesEditor({
   variant,
   values,
   onChange,
+  visibleSectionIds,
 }: {
   variant: QuoteVariant
   values: EpdaParameterValues
   onChange: (v: EpdaParameterValues) => void
+  visibleSectionIds?: string[]
 }) {
   const { t } = useI18n()
   const setGarbage = (k: keyof EpdaParameterValues['garbage'], n: number) =>
@@ -1348,9 +1349,11 @@ function ValuesEditor({
       .map((id) => sections.find((s) => s.id === id))
       .filter((s): s is (typeof sections)[number] => Boolean(s))
     const rest = sections.filter((s) => !lead.includes(s.id))
-    return [...picked, ...rest]
+    const all = [...picked, ...rest]
+    if (!visibleSectionIds?.length) return all
+    return all.filter((section) => visibleSectionIds.includes(section.id))
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [sections, variant])
+  }, [sections, variant, visibleSectionIds])
 
   const [active, setActive] = useState(0)
   const current = orderedSections[Math.min(active, orderedSections.length - 1)]
@@ -1669,7 +1672,7 @@ function ParamHistoryButton({ area }: { area: AreaOption }) {
         <DialogHeader>
           <DialogTitle className='flex items-center gap-2'>
             <History className='h-4 w-4 text-muted-foreground' />
-            {t('phist.title', { area: t(`area.${area}`) })}
+            {t('phist.title', { area: getAreaLabel(area) })}
           </DialogTitle>
         </DialogHeader>
         <ul className='max-h-[60vh] space-y-2 overflow-y-auto pr-1'>
@@ -1740,7 +1743,7 @@ export default function Page() {
   const qc = useQueryClient()
   const { t } = useI18n()
   const navigate = useNavigate()
-  const [area, setArea] = useState<AreaOption>(VISIBLE_AREA_OPTIONS[0])
+  const [area, setArea] = useState<AreaOption>(VISIBLE_AREA_OPTIONS[0].value)
   // Href the user clicked while there were unsaved edits — drives the leave popup.
   const [leaveHref, setLeaveHref] = useState<string | null>(null)
   // Area tab the user tried to switch to while there were unsaved edits.
@@ -1920,11 +1923,11 @@ export default function Page() {
               <TabsList className='h-auto w-full lg:w-auto'>
                 {VISIBLE_AREA_OPTIONS.map((a) => (
                   <TabsTrigger
-                    key={a}
-                    value={a}
+                    key={a.value}
+                    value={a.value}
                     className='flex-1 px-3 py-1.5 text-sm font-medium lg:flex-none lg:px-5 lg:py-2 lg:text-base'
                   >
-                    {t(`area.${a}`)}
+                    {a.label}
                   </TabsTrigger>
                 ))}
               </TabsList>
@@ -1934,7 +1937,7 @@ export default function Page() {
               <CardHeader className='flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between'>
                 <div>
                   <CardTitle className='text-xl'>
-                    {t('param.areaSet', { area: t(`area.${area}`) })}{' '}
+                    {t('param.areaSet', { area: getAreaLabel(area) })}{' '}
                     <span className='text-base font-normal text-muted-foreground'>
                       ({t('param.template', { variant })})
                     </span>
@@ -2099,7 +2102,7 @@ function PortOverridesCard({
   return (
     <Card>
       <CardHeader>
-        <CardTitle>{t('param.portOverrides', { area: t(`area.${area}`) })}</CardTitle>
+        <CardTitle>{t('param.portOverrides', { area: getAreaLabel(area) })}</CardTitle>
         <CardDescription>{t('param.portOverridesDesc')}</CardDescription>
       </CardHeader>
       <CardContent className='space-y-4'>
@@ -2138,7 +2141,7 @@ function PortOverridesCard({
                   <div className='flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between'>
                     <div className='min-w-0 space-y-2'>
                       <span className='block truncate text-base font-semibold'>{portName(o.portId!)}</span>
-                      <OverriddenBadges keys={Object.keys(o.values ?? {})} />
+                      <OverriddenBadges labels={getCurrentOverrideSectionLabels(t, o.values)} />
                     </div>
                     <div className='flex shrink-0 items-center gap-1.5'>
                       <Button variant='outline' size='sm' onClick={() => beginEdit(o.portId!)}>
@@ -2175,7 +2178,12 @@ function PortOverridesCard({
               </div>
             </CardHeader>
             <CardContent>
-              <ValuesEditor variant={variant} values={draft} onChange={setDraft} />
+              <ValuesEditor
+                variant={variant}
+                values={draft}
+                onChange={setDraft}
+                visibleSectionIds={['pilotage', 'tug', 'moor']}
+              />
             </CardContent>
           </Card>
         )}
@@ -2286,7 +2294,7 @@ function PortGroupsCard({
   return (
     <Card>
       <CardHeader>
-        <CardTitle>{t('param.groups', { area: t(`area.${area}`) })}</CardTitle>
+        <CardTitle>{t('param.groups', { area: getAreaLabel(area) })}</CardTitle>
         <CardDescription>{t('param.groupsDesc')}</CardDescription>
       </CardHeader>
       <CardContent className='space-y-4'>
@@ -2339,7 +2347,7 @@ function PortGroupsCard({
                           {t('param.portCount', { count })}
                         </Badge>
                       </div>
-                      <OverriddenBadges keys={Object.keys(g.values ?? {})} />
+                      <OverriddenBadges labels={getCurrentOverrideSectionLabels(t, g.values)} />
                     </div>
                     <div className='flex shrink-0 flex-wrap items-center gap-1.5'>
                       <Button data-tour='group-members' variant='outline' size='sm' onClick={() => beginMembers(g)}>

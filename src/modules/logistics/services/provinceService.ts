@@ -7,7 +7,7 @@ export interface Province {
   name: string
   displayName?: string
   code?: number
-  area?: string
+  area?: number
 }
 
 export const provinceService = {

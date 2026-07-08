@@ -23,7 +23,7 @@ export type EpdaParameterScope = 'AREA' | 'GROUP' | 'PORT'
 export interface EpdaParameterSet {
   id: number
   scope: EpdaParameterScope
-  area: string | null
+  area: '1' | '2' | '3' | null
   portId: number | null
   /** GROUP rows only. */
   name?: string | null
@@ -45,7 +45,7 @@ export type EpdaParameterChangeAction =
 export interface EpdaParameterChangeLogEntry {
   id: number
   scope: EpdaParameterScope
-  area: string | null
+  area: '1' | '2' | '3' | null
   portId: number | null
   action: EpdaParameterChangeAction
   createdAt: string
@@ -61,7 +61,7 @@ export const epdaParametersService = {
   },
 
   async getEffective(
-    area: string,
+    area: '1' | '2' | '3',
     portId?: number,
   ): Promise<EpdaParameterValues> {
     const res = await apiClient.get(
@@ -70,13 +70,13 @@ export const epdaParametersService = {
     return unwrapApiResponse<EpdaParameterValues>(res)
   },
 
-  async getArea(area: string): Promise<EpdaParameterSet | null> {
+  async getArea(area: '1' | '2' | '3'): Promise<EpdaParameterSet | null> {
     const res = await apiClient.get(API_CONFIG.EPDA_PARAMETERS.AREA(area))
     return unwrapApiResponse<EpdaParameterSet | null>(res)
   },
 
   async upsertArea(
-    area: string,
+    area: '1' | '2' | '3',
     values: PartialEpdaParameterValues,
   ): Promise<EpdaParameterSet> {
     const res = await apiClient.put(API_CONFIG.EPDA_PARAMETERS.AREA(area), {
@@ -109,13 +109,13 @@ export const epdaParametersService = {
 
   // ---------- port groups ----------
 
-  async listGroups(area: string): Promise<EpdaParameterSet[]> {
+  async listGroups(area: '1' | '2' | '3'): Promise<EpdaParameterSet[]> {
     const res = await apiClient.get(API_CONFIG.EPDA_PARAMETERS.GROUPS(area))
     return unwrapApiResponse<EpdaParameterSet[]>(res)
   },
 
   async createGroup(
-    area: string,
+    area: '1' | '2' | '3',
     name: string,
     values?: PartialEpdaParameterValues,
   ): Promise<EpdaParameterSet> {
@@ -150,7 +150,7 @@ export const epdaParametersService = {
   },
 
   async listChangeLogs(opts?: {
-    area?: string
+    area?: '1' | '2' | '3'
     portId?: number
     limit?: number
   }): Promise<EpdaParameterChangeLogEntry[]> {

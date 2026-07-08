@@ -1,7 +1,8 @@
 import { portService, type Port, type PortArea } from '@/modules/logistics/services/portService'
+import type { AreaOption } from '@/features/admin/components/invoice/epdaFormParameters'
 import type { CargoSelectOption } from '@/modules/gallery/shippingAgencyCargoCatalog'
 
-const AREAS: PortArea[] = ['NORTHERN', 'MIDDLE', 'SOUTHERN']
+const AREAS: PortArea[] = [1, 2, 3]
 
 const normalizePortKey = (value: string) => value.trim().toUpperCase()
 
@@ -22,7 +23,7 @@ export function buildPortOfCallSelectOptions(ports: Port[]): CargoSelectOption[]
 /** Find area + port list for a stored inquiry port (canonical `portOfCall` when in catalog). */
 export async function findPortSelectionFromInquiry(
   portOfCall: string | null | undefined,
-): Promise<{ area: PortArea | ''; ports: Port[]; portOfCall: string }> {
+): Promise<{ area: AreaOption | ''; ports: Port[]; portOfCall: string }> {
   const stored = portOfCall?.trim() ?? ''
   if (!stored) {
     return { area: '', ports: [], portOfCall: '' }
@@ -38,7 +39,7 @@ export async function findPortSelectionFromInquiry(
         (p.name?.trim() && normalizePortKey(p.name) === key),
     )
     if (matched?.portOfCall) {
-      return { area, ports, portOfCall: matched.portOfCall.trim() }
+      return { area: String(area) as AreaOption, ports, portOfCall: matched.portOfCall.trim() }
     }
   }
 

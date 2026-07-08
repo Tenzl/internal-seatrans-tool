@@ -2,7 +2,7 @@ import { apiClient } from '@/shared/utils/apiClient'
 import { API_CONFIG } from '@/shared/config/api.config'
 import type { ApiResponse, PageResponse } from '@/shared/types/api.types'
 
-export type PortArea = 'NORTHERN' | 'MIDDLE' | 'SOUTHERN'
+export type PortArea = 1 | 2 | 3
 
 export type PortSearchFieldId =
   | 'area'
@@ -25,7 +25,7 @@ export interface Port {
   portOfCall?: string
   provinceId: number | null
   provinceName?: string | null
-  provinceArea?: string | null
+  provinceArea?: number | null
 
   code?: string
   zoneCode?: string
@@ -67,7 +67,7 @@ function buildPortsListUrl(params: ListPortsParams = {}): string {
   if (params.q?.trim()) search.set('q', params.q.trim())
   if (params.searchIn) search.set('searchIn', params.searchIn)
   if (params.area) {
-    search.set('area', params.area.trim().toUpperCase())
+    search.set('area', String(params.area))
   }
   if (params.provinceId != null) {
     search.set('provinceId', String(params.provinceId))

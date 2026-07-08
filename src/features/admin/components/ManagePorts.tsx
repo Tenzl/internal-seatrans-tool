@@ -62,7 +62,11 @@ import {
   DialogTitle,
 } from '@/shared/components/ui/dialog'
 
-const AREA_OPTIONS = ['NORTHERN', 'MIDDLE', 'SOUTHERN'] as const
+const AREA_OPTIONS = [
+  { value: '1', label: 'NORTHERN' },
+  { value: '2', label: 'MIDDLE' },
+  { value: '3', label: 'SOUTHERN' },
+] as const
 const NONE_VALUE = '__NONE__'
 
 const PORT_SEARCH_FIELDS = [
@@ -83,7 +87,7 @@ interface Port {
   portOfCall?: string
   provinceId: number | null
   provinceName?: string | null
-  provinceArea?: string | null
+  provinceArea?: number | null
   hasInfo?: number
   code?: string
   zoneCode?: string
@@ -111,6 +115,11 @@ interface PortFormState {
 }
 
 const buildPortOfCall = (name: string): string => name.trim().toUpperCase()
+const AREA_LABELS: Record<string, string> = Object.fromEntries(AREA_OPTIONS.map((item) => [item.value, item.label]))
+const getAreaLabel = (value?: number | string | null): string => {
+  if (value === null || value === undefined || value === '' || value === NONE_VALUE) return 'UNKNOWN'
+  return AREA_LABELS[String(value)] ?? 'UNKNOWN'
+}
 
 const emptyPortForm: PortFormState = {
   name: '',
@@ -265,7 +274,12 @@ export function ManagePorts() {
         countryCode: port.countryCode ?? '',
         latitude: port.latitude != null ? String(port.latitude) : '',
         longitude: port.longitude != null ? String(port.longitude) : '',
-        area: port.provinceArea ?? matchedProvince?.area ?? NONE_VALUE,
+        area:
+          port.provinceArea != null
+            ? String(port.provinceArea)
+            : matchedProvince?.area != null
+              ? String(matchedProvince.area)
+              : NONE_VALUE,
         provinceId: port.provinceId ?? null,
       })
       setShowCreateFields(true)
@@ -422,7 +436,7 @@ export function ManagePorts() {
     PORT_SEARCH_FIELDS.find((f) => f.id === searchField)?.label ?? 'Port Name'
 
   const provincesForArea = useMemo(
-    () => provinces.filter((province) => province.area === form.area),
+    () => provinces.filter((province) => String(province.area ?? '') === form.area),
     [provinces, form.area]
   )
 
@@ -435,7 +449,7 @@ export function ManagePorts() {
       .map((port: Port) => {
         const province = port.provinceId != null ? provinceMap.get(port.provinceId) : undefined
         const provinceName = port.provinceName ?? province?.displayName ?? province?.name ?? 'UNKNOWN'
-        const area = port.provinceArea ?? province?.area ?? 'UNKNOWN'
+        const area = getAreaLabel(port.provinceArea ?? province?.area ?? null)
         return {
           ...port,
           area,
@@ -838,8 +852,8 @@ export function ManagePorts() {
                   <SelectContent>
                     <SelectItem value={NONE_VALUE}>No Area</SelectItem>
                     {AREA_OPTIONS.map((area) => (
-                      <SelectItem key={area} value={area}>
-                        {area}
+                      <SelectItem key={area.value} value={area.value}>
+                        {area.label}
                       </SelectItem>
                     ))}
                   </SelectContent>

@@ -23,14 +23,18 @@ export type { EpdaParameterValues, GrtTier }
 export { defaultParameterValues }
 
 /** Port areas. The EPDA template variant follows the area (no manual HCM/QN pick). */
-export const AREA_OPTIONS = ['NORTHERN', 'MIDDLE', 'SOUTHERN'] as const
-export type AreaOption = (typeof AREA_OPTIONS)[number]
+export const AREA_OPTIONS = [
+  { value: '1', label: 'Area 1' },
+  { value: '2', label: 'Area 2' },
+  { value: '3', label: 'Area 3' },
+] as const
+export type AreaOption = (typeof AREA_OPTIONS)[number]['value']
 
 /** Area → quote template variant (see quoteFormFromArea). */
 export const AREA_TO_VARIANT: Record<AreaOption, 'HCM' | 'QN'> = {
-  NORTHERN: 'HCM',
-  MIDDLE: 'QN',
-  SOUTHERN: 'HCM',
+  '1': 'HCM',
+  '2': 'QN',
+  '3': 'HCM',
 }
 
 export const PURPOSE_OPTIONS = PURPOSE_OF_CALLING_OPTIONS
