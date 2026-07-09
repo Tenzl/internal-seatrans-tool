@@ -12,7 +12,7 @@ import {
   useReactTable,
 } from '@tanstack/react-table'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
-import { ChevronDown, Loader2, Pencil, Plus, Search, Trash2 } from 'lucide-react'
+import { ChevronDown, Loader2, Pencil, Plus, Trash2 } from 'lucide-react'
 import {
   AdminDataPanel,
   AdminSection,
@@ -237,9 +237,11 @@ export function ManagePorts() {
   const [dialogOpen, setDialogOpen] = useState(false)
   const [editingPortId, setEditingPortId] = useState<number | null>(null)
   const [form, setForm] = useState<PortFormState>(emptyPortForm)
-  const [showCreateFields, setShowCreateFields] = useState(false)
-  const debouncedFormPortName = useDebouncedValue(form.name, 250)
   const renderSortableHeader = useTableSortHeader<PortTableRow>()
+
+  const hasActiveSearch = debouncedPortSearch.trim().length > 0
+  const searchSettled = !isPortsQueryLoading && !isFetching
+  const canAddPort = hasActiveSearch && searchSettled && totalElements === 0
 
   const updateForm = useCallback(
     <K extends keyof PortFormState>(key: K, value: PortFormState[K]) => {
@@ -260,9 +262,13 @@ export function ManagePorts() {
   )
 
   const openCreateDialog = () => {
+    const prefilledName = searchField === 'name' ? debouncedPortSearch.trim() : ''
     setEditingPortId(null)
-    setForm(emptyPortForm)
-    setShowCreateFields(false)
+    setForm({
+      ...emptyPortForm,
+      name: prefilledName,
+      portOfCall: prefilledName ? buildPortOfCall(prefilledName) : '',
+    })
     setDialogOpen(true)
   }
 
@@ -289,38 +295,9 @@ export function ManagePorts() {
               : NONE_VALUE,
         provinceId: port.provinceId ?? null,
       })
-      setShowCreateFields(true)
       setDialogOpen(true)
     },
     [provinces],
-  )
-
-  const { data: existingPortOptions = [], isFetching: isSearchingExistingPorts } = useQuery({
-    queryKey: queryKeys.portOptionsSearch(debouncedFormPortName.trim().toLowerCase()),
-    queryFn: () =>
-      portService.listPortOptions({
-        q: debouncedFormPortName.trim(),
-        limit: 8,
-      }),
-    enabled: dialogOpen && editingPortId == null && debouncedFormPortName.trim().length >= 2,
-  })
-
-  const existingPortMatches = existingPortOptions
-
-  const handleSelectExistingPort = useCallback(
-    async (portId: number) => {
-      try {
-        setIsBusy(true)
-        const port = await portService.getPortById(portId)
-        openEditDialog(port)
-        toast.success(`Opened existing port "${port.name}" for editing`)
-      } catch (error) {
-        toast.error(error instanceof Error ? error.message : 'Failed to load existing port')
-      } finally {
-        setIsBusy(false)
-      }
-    },
-    [openEditDialog],
   )
 
   const handleSavePort = useCallback(
@@ -378,7 +355,6 @@ export function ManagePorts() {
         setDialogOpen(false)
         setEditingPortId(null)
         setForm(emptyPortForm)
-        setShowCreateFields(false)
         toast.success(isEditing ? 'Port updated successfully' : 'Port added successfully')
       } catch (error) {
         const fallback = isEditing ? 'Failed to update port' : 'Failed to add port'
@@ -682,7 +658,12 @@ export function ManagePorts() {
                 size="sm"
                 onClick={openCreateDialog}
                 className="gap-2 transition-transform active:scale-[0.98]"
-                disabled={isLoading}
+                disabled={!canAddPort}
+                title={
+                  canAddPort
+                    ? undefined
+                    : 'Search for a port first — Add port is available when no matches are found'
+                }
               >
                 <Plus className="h-4 w-4" />
                 Add port
@@ -695,7 +676,11 @@ export function ManagePorts() {
           meta={tableTitle}
           loading={isLoading && ports.length === 0}
           empty={!isLoading && ports.length === 0}
-          emptyMessage="No ports match your search. Try another field or clear filters."
+          emptyMessage={
+            hasActiveSearch
+              ? 'No ports match your search. You can add a new port using the button above.'
+              : 'Search for a port by name, area, province, or other fields.'
+          }
         >
           <div className="overflow-x-auto rounded-md border">
             <Table className="table-fixed w-full">
@@ -759,7 +744,6 @@ export function ManagePorts() {
           if (!open) {
             setEditingPortId(null)
             setForm(emptyPortForm)
-            setShowCreateFields(false)
           }
         }}
       >
@@ -769,7 +753,7 @@ export function ManagePorts() {
             <DialogDescription>
               {editingPortId != null
                 ? 'Update the port information below.'
-                : 'Enter port information in the form below.'}
+                : 'No matching port was found. Fill in the details to create a new port.'}
             </DialogDescription>
           </DialogHeader>
 
@@ -781,59 +765,12 @@ export function ManagePorts() {
                   id="port-name"
                   value={form.name}
                   onChange={(e) => updateForm('name', e.target.value)}
-                  placeholder="Search or enter port name"
+                  placeholder="Enter port name"
                   required
                   autoFocus
-                  disabled={editingPortId == null && showCreateFields}
-                  readOnly={editingPortId == null && showCreateFields}
                 />
-                {editingPortId == null && !showCreateFields && form.name.trim().length >= 2 ? (
-                  <div className="rounded-lg border bg-muted/20 p-2">
-                    <div className="mb-2 flex items-center gap-2 text-xs text-muted-foreground">
-                      {isSearchingExistingPorts ? (
-                        <>
-                          <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                          Searching existing ports…
-                        </>
-                      ) : (
-                        <>
-                          <Search className="h-3.5 w-3.5" />
-                          Existing ports
-                        </>
-                      )}
-                    </div>
-                    {!isSearchingExistingPorts && existingPortMatches.length === 0 ? (
-                      <p className="px-2 py-1 text-xs text-muted-foreground">
-                        No existing port found. A new port will be created.
-                      </p>
-                    ) : (
-                      <div className="space-y-1 overflow-y-auto">
-                        {existingPortMatches.map((opt) => (
-                          <button
-                            key={opt.id}
-                            type="button"
-                            onClick={() => handleSelectExistingPort(opt.id)}
-                            className="flex w-full items-start justify-between rounded-md px-2 py-2 text-left text-sm transition-colors hover:bg-muted"
-                          >
-                            <span className="min-w-0">
-                              <span className="block truncate font-medium">{opt.name}</span>
-                              {opt.provinceName ? (
-                                <span className="block truncate text-xs text-muted-foreground">
-                                  {opt.provinceName}
-                                </span>
-                              ) : null}
-                            </span>
-                            <span className="ms-3 shrink-0 text-xs text-primary">Edit existing</span>
-                          </button>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                ) : null}
               </div>
 
-              {editingPortId != null || showCreateFields ? (
-                <>
               <div className="space-y-2 md:col-span-2">
                 <Label htmlFor="port-of-call">Port of Call</Label>
                 <Input
@@ -947,33 +884,20 @@ export function ManagePorts() {
                   placeholder="e.g., 106.71"
                 />
               </div>
-                </>
-              ) : null}
             </div>
 
             <DialogFooter className="mt-auto">
               <Button type="button" variant="outline" onClick={() => setDialogOpen(false)}>
                 Cancel
               </Button>
-              {editingPortId == null && !showCreateFields ? (
-                <Button
-                  type="button"
-                  disabled={!form.name.trim() || (!isSearchingExistingPorts && existingPortMatches.length > 0)}
-                  onClick={() => setShowCreateFields(true)}
-                >
-                  Create new
-                </Button>
-              ) : null}
-              {editingPortId != null || showCreateFields ? (
-                <Button type="submit" disabled={isLoading} className="gap-2">
-                  {isLoading ? (
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                  ) : (
-                    <Plus className="h-4 w-4" />
-                  )}
-                  {editingPortId != null ? 'Save changes' : 'Add New'}
-                </Button>
-              ) : null}
+              <Button type="submit" disabled={isLoading} className="gap-2">
+                {isLoading ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <Plus className="h-4 w-4" />
+                )}
+                {editingPortId != null ? 'Save changes' : 'Add New'}
+              </Button>
             </DialogFooter>
           </form>
         </DialogContent>

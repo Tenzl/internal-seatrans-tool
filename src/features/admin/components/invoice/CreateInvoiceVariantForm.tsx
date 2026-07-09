@@ -213,16 +213,6 @@ export function CreateInvoiceVariantForm({
   })}${subAgencySuffix}`
   const onCargoLabel = t('sum.onCargo', { rate: onCargoRate.toFixed(2), qty: cargoQtyForDisplay })
 
-  const duesSummaryItems: EpdaSummaryItem[] = [
-    { label: t('sum.shipQuar'), value: `USD ${computed.shipQuarantineFee}` },
-    { label: t('sum.cargoQuar'), value: `USD ${computed.cargoQuarantineFee}` },
-    {
-      label: t('sum.frtNote'),
-      value: computed.canEnableFreightTaxDeclaration ? computed.frtHint : t('sum.naPurpose'),
-      hint: computed.canEnableFreightTaxDeclaration ? t('sum.frtHintBelow') : undefined,
-    },
-  ]
-
   const agencySummaryItems: EpdaSummaryItem[] =
     values.agencyFeeMode === 'TARRIF_AGENCY'
       ? [
@@ -243,7 +233,7 @@ export function CreateInvoiceVariantForm({
           <div className="grid gap-2">
             <Label htmlFor="toShipowner" className={customerLabelClass('toShipowner', values.toShipowner)}>
               {t('epda.toShipowner')}
-</Label>
+            </Label>
             <Input
               id="toShipowner"
               value={values.toShipowner}
@@ -253,7 +243,9 @@ export function CreateInvoiceVariantForm({
               required
             />
           </div>
+        </div>
 
+        <div className={epdaFieldGridClass()}>
           <div className="grid gap-2">
             <Label htmlFor="mv" className={customerLabelClass('mv', values.mv)}>
               {t('epda.mv')}
@@ -284,9 +276,6 @@ export function CreateInvoiceVariantForm({
             />
           </div>
 
-        </div>
-
-        <div className={epdaFieldGridClass()}>
           <div className="grid gap-2">
             <Label htmlFor="shipType">{t('epda.shipType')}</Label>
             <Select value={values.shipType} onValueChange={(value) => handlers.setShipType(value as ShipTypeOption)}>
@@ -302,7 +291,9 @@ export function CreateInvoiceVariantForm({
               </SelectContent>
             </Select>
           </div>
+        </div>
 
+        <div className={epdaFieldGridClass()}>
           <div className="grid gap-2">
             <Label htmlFor="purposeOfCalling" className={customerLabelClass('purposeOfCalling', values.purposeOfCalling)}>
               {t('epda.purpose')}
@@ -318,6 +309,25 @@ export function CreateInvoiceVariantForm({
                 {options.purposeOptions.map((option) => (
                   <SelectItem key={option.value} value={option.value}>
                     {t('opt.purpose.' + option.value)}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div className="grid gap-2">
+            <Label htmlFor="quarantineCargoMode">{t('epda.quarantineCargo')}</Label>
+            <Select
+              value={values.quarantineCargoMode}
+              onValueChange={(value) => handlers.setQuarantineCargoMode(value as QuarantineCargoOption)}
+            >
+              <SelectTrigger id="quarantineCargoMode">
+                <SelectValue placeholder={t('ph.quarantineCargo')} />
+              </SelectTrigger>
+              <SelectContent>
+                {options.quarantineCargoOptions.map((option) => (
+                  <SelectItem key={option.value} value={option.value}>
+                    {t('opt.quarantine.' + option.value)}
                   </SelectItem>
                 ))}
               </SelectContent>
@@ -509,8 +519,6 @@ export function CreateInvoiceVariantForm({
         title={t('epda.secDues')}
         description={t('epda.secDuesDesc')}
       >
-        <EpdaComputedSummary items={duesSummaryItems} />
-
         <div className={epdaFieldGridClass()}>
           <div className="grid gap-2">
             <Label htmlFor="berthHours">{isHcmAnchorage ? t('epda.buoyHours') : t('epda.berthHours')}</Label>
@@ -571,25 +579,6 @@ export function CreateInvoiceVariantForm({
               min="1"
               step="any"
             />
-          </div>
-
-          <div className="grid gap-2">
-            <Label htmlFor="quarantineCargoMode">{t('epda.quarantineCargo')}</Label>
-            <Select
-              value={values.quarantineCargoMode}
-              onValueChange={(value) => handlers.setQuarantineCargoMode(value as QuarantineCargoOption)}
-            >
-              <SelectTrigger id="quarantineCargoMode">
-                <SelectValue placeholder={t('ph.quarantineCargo')} />
-              </SelectTrigger>
-              <SelectContent>
-                {options.quarantineCargoOptions.map((option) => (
-                  <SelectItem key={option.value} value={option.value}>
-                    {t('opt.quarantine.' + option.value)}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
           </div>
 
           <div className="grid gap-2">
@@ -705,6 +694,7 @@ export function CreateInvoiceVariantForm({
             </div>
           )}
         </div>
+
       </EpdaFormSection>
 
       <EpdaFormSection
