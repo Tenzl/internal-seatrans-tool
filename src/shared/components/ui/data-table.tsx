@@ -53,7 +53,7 @@ export function adminStickyColumnClass(
   if (pinLeft.includes(columnId)) {
     return cn(
       "admin-table-pin-left sticky left-0 min-w-[7rem] shadow-[inset_-1px_0_0_0_hsl(var(--border)/0.55)] sm:min-w-[11rem]",
-      isHeader ? pinnedHeader : "z-10 bg-white hover:!bg-white",
+      isHeader ? pinnedHeader : "z-10 bg-background hover:!bg-background",
       baseClass,
     )
   }
@@ -63,7 +63,7 @@ export function adminStickyColumnClass(
       "admin-table-pin-right sticky right-0 min-w-[4.25rem] w-max max-w-[9rem]",
       "shadow-[inset_1px_0_0_0_hsl(var(--border)/0.55)]",
       !isHeader && "!px-0 !pr-1 !pl-2",
-      isHeader ? pinnedHeader : "z-10 bg-white hover:!bg-white",
+      isHeader ? pinnedHeader : "z-10 bg-background hover:!bg-background",
       baseClass,
     )
   }

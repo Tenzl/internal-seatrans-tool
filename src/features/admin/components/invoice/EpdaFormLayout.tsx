@@ -84,11 +84,11 @@ export function EpdaSectionRail({
     : [...EPDA_SECTIONS]
   return (
     <nav className={className} aria-label="EPDA form sections">
-      <ol className="flex gap-2 overflow-x-auto pb-1 lg:flex-col lg:gap-1 lg:overflow-visible lg:pb-0">
+      <ol className="flex gap-2 overflow-x-auto pb-1 md:flex-col md:gap-1 md:overflow-visible md:pb-0">
         {sections.map((section) => {
           const isActive = section.id === active
           return (
-            <li key={section.id} className="shrink-0 lg:shrink">
+            <li key={section.id} className="shrink-0 md:shrink">
               <button
                 type="button"
                 onClick={() => onSelect(section.id)}

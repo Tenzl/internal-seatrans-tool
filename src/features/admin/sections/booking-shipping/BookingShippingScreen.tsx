@@ -580,7 +580,7 @@ export function BookingShippingScreen() {
                   {form.transitLegs.map((leg, index) => (
                     <div
                       key={`leg-${index}-${leg.portId}`}
-                      className="grid gap-3 rounded-lg border border-border/60 bg-muted/10 p-3 sm:grid-cols-[1fr_1fr_1fr_auto] sm:items-end"
+                      className="grid grid-cols-1 gap-3 rounded-lg border border-border/60 bg-muted/10 p-3 md:grid-cols-2 lg:grid-cols-4 lg:items-end"
                     >
                       <AsyncSearchSelect
                         label={`Port (${leg.sortOrder})`}

@@ -35,6 +35,11 @@ export function getAreaShortLabel(value: AreaOption | string): string {
   return item?.shortLabel ?? String(value)
 }
 
+export function getAreaLabel(value: AreaOption | string): string {
+  const item = AREA_OPTIONS.find((area) => area.value === value)
+  return item?.label ?? String(value)
+}
+
 /** Area → dedicated worksheet variant (see quoteFormFromArea). */
 export const AREA_TO_VARIANT: Record<AreaOption, 'HCM' | 'QN' | 'HN'> = {
   '1': 'HN',

@@ -61,13 +61,28 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/shared/components/ui/dialog'
-
-const AREA_OPTIONS = [
-  { value: '1', label: 'NORTHERN' },
-  { value: '2', label: 'MIDDLE' },
-  { value: '3', label: 'SOUTHERN' },
-] as const
+import { AREA_OPTIONS as EPDA_AREA_OPTIONS, getAreaShortLabel } from '@/features/admin/components/invoice/epdaFormParameters'
+const AREA_OPTIONS = EPDA_AREA_OPTIONS
 const NONE_VALUE = '__NONE__'
+
+const getInitialPortsColumnVisibility = (): VisibilityState => {
+  const base: VisibilityState = {
+    portOfCall: false,
+    zoneCode: false,
+    latitude: false,
+    longitude: false,
+    hasInfo: false,
+  }
+  if (typeof window !== 'undefined' && window.matchMedia('(max-width: 767px)').matches) {
+    return {
+      ...base,
+      provinceName: false,
+      countryCode: false,
+      code: false,
+    }
+  }
+  return base
+}
 
 const PORT_SEARCH_FIELDS = [
   { id: 'area', label: 'Area' },
@@ -115,10 +130,9 @@ interface PortFormState {
 }
 
 const buildPortOfCall = (name: string): string => name.trim().toUpperCase()
-const AREA_LABELS: Record<string, string> = Object.fromEntries(AREA_OPTIONS.map((item) => [item.value, item.label]))
 const getAreaLabel = (value?: number | string | null): string => {
   if (value === null || value === undefined || value === '' || value === NONE_VALUE) return 'UNKNOWN'
-  return AREA_LABELS[String(value)] ?? 'UNKNOWN'
+  return getAreaShortLabel(String(value)) ?? 'UNKNOWN'
 }
 
 const emptyPortForm: PortFormState = {
@@ -213,14 +227,7 @@ export function ManagePorts() {
   const isLoading = isPortsQueryLoading || isFetching || isBusy
 
   const [sorting, setSorting] = useState<SortingState>([])
-  const [columnVisibility, setColumnVisibility] = useState<VisibilityState>({
-    // Hide lower-priority detail columns by default, but keep them available in the Columns menu.
-    portOfCall: false,
-    zoneCode: false,
-    latitude: false,
-    longitude: false,
-    hasInfo: false,
-  })
+  const [columnVisibility, setColumnVisibility] = useState<VisibilityState>(getInitialPortsColumnVisibility)
 
   const invalidatePortsList = useCallback(() => {
     void queryClient.invalidateQueries({ queryKey: queryKeys.portsListPrefix() })

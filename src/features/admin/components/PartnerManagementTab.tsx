@@ -291,6 +291,41 @@ const fromDetail = (detail: BookingPartnerDetail): FormState => ({
   invoiceBankAccount: detail.invoiceBankAccount || "",
 })
 
+const MOBILE_PARTNER_COLUMN_HIDDEN: VisibilityState = {
+  country: false,
+  city: false,
+  contacts: false,
+  phone: false,
+  fax: false,
+  trackingUrl: false,
+  customerType: false,
+  taxNumber: false,
+  approveStatus: false,
+  updatedBy: false,
+  updatedAt: false,
+}
+
+const getInitialPartnerColumnVisibility = (): VisibilityState => {
+  const base: VisibilityState = {
+    address: false,
+    approveBy: false,
+    companyEstablishmentDate: false,
+    paymentDueDays: false,
+    contractNo: false,
+    invoiceCompanyName: false,
+    invoiceCompanyAddress: false,
+    invoiceCompanyPhone: false,
+    invoiceCompanyEmail: false,
+    invoiceBankName: false,
+    invoiceBankBranch: false,
+    invoiceBankAccount: false,
+  }
+  if (typeof window !== 'undefined' && window.matchMedia('(max-width: 767px)').matches) {
+    return { ...base, ...MOBILE_PARTNER_COLUMN_HIDDEN }
+  }
+  return base
+}
+
 // ---------------------------------------------------------------------------
 // Component
 // ---------------------------------------------------------------------------
@@ -304,20 +339,7 @@ export function PartnerManagementTab() {
   const [activeAdditionType, setActiveAdditionType] = useState<PartnerAdditionType | "ALL">("ALL")
   const [activeCustomerStatus, setActiveCustomerStatus] = useState<CustomerStatus | "ALL">("ALL")
   const [activeCustomerType, setActiveCustomerType] = useState<CustomerType | "ALL">("ALL")
-  const [columnVisibility, setColumnVisibility] = useState<VisibilityState>({
-    address: false,
-    approveBy: false,
-    companyEstablishmentDate: false,
-    paymentDueDays: false,
-    contractNo: false,
-    invoiceCompanyName: false,
-    invoiceCompanyAddress: false,
-    invoiceCompanyPhone: false,
-    invoiceCompanyEmail: false,
-    invoiceBankName: false,
-    invoiceBankBranch: false,
-    invoiceBankAccount: false,
-  })
+  const [columnVisibility, setColumnVisibility] = useState<VisibilityState>(getInitialPartnerColumnVisibility)
   const [sorting, setSorting] = useState<SortingState>([{ id: "updatedAt", desc: true }])
 
   const partnersListQueryKey = queryKeys.partnersList(

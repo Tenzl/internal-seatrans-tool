@@ -6,8 +6,15 @@ import { ColumnDef } from '@tanstack/react-table'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/shared/components/ui/card'
 import { Badge } from '@/shared/components/ui/badge'
 import { Alert, AlertDescription } from '@/shared/components/ui/alert'
-import { Loader2, AlertCircle, RefreshCw, FileText, ArrowUpDown, Trash2, Archive, RotateCcw } from 'lucide-react'
+import { Loader2, AlertCircle, RefreshCw, FileText, ArrowUpDown, Trash2, Archive, RotateCcw, MoreHorizontal } from 'lucide-react'
 import { Button } from '@/shared/components/ui/button'
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/shared/components/ui/dropdown-menu'
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/shared/components/ui/dialog'
 import {
   Select,
@@ -29,6 +36,7 @@ import {
   getServiceSlugFromInquiry,
 } from './serviceInquirySchemas'
 import { STATUS_QUOTED, STATUS_COMPLETED, STATUS_BADGE_CONFIG, InquiryStatus } from '@/shared/constants/inquiry-status'
+import { useIsMobile } from '@/hooks/use-mobile'
 
 interface BaseInquiryHistoryLayoutProps {
   serviceType?: string
@@ -179,6 +187,182 @@ export function BaseInquiryHistoryLayout({
   }
 
   const isShippingAgencyHistory = serviceType === 'shipping-agency'
+  const isMobile = useIsMobile()
+
+  const inquiryColumnVisibility = isMobile
+    ? { portOfCall: false, submittedAt: false }
+    : undefined
+
+  const renderRowActions = (inq: any) => {
+    const slug = getServiceSlugFromInquiry(inq) || serviceType
+    const isShippingAgency = slug === 'shipping-agency'
+
+    const desktopActions = () => {
+      if (isAdmin) {
+        return (
+          <div className="flex gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => handleOpenDetail(inq)}
+              className="gap-2"
+            >
+              View Details
+            </Button>
+            {canSoftDelete && !inq.isArchived && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => openDeleteDialog(inq, 'soft')}
+                className="gap-2"
+              >
+                <Archive className="h-4 w-4" />
+                Archive
+              </Button>
+            )}
+            {canHardDelete && (
+              <>
+                {!inq.isArchived ? (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => openDeleteDialog(inq, 'hard')}
+                    className="gap-2 text-destructive hover:text-destructive"
+                  >
+                    <Trash2 className="h-4 w-4" />
+                    Delete
+                  </Button>
+                ) : (
+                  <>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setRestoreTarget(inq)}
+                      className="gap-2"
+                    >
+                      <RotateCcw className="h-4 w-4" />
+                      Restore
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => openDeleteDialog(inq, 'hard')}
+                      className="gap-2 text-destructive hover:text-destructive"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                      Delete
+                    </Button>
+                  </>
+                )}
+              </>
+            )}
+          </div>
+        )
+      }
+
+      if (isShippingAgency) {
+        const isQuoted = inq.status === STATUS_QUOTED
+        return (
+          <div className="flex gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => handleOpenDetail(inq)}
+              className="gap-2"
+            >
+              View Details
+            </Button>
+            {isQuoted && (
+              <Button
+                variant="secondary"
+                size="sm"
+                onClick={() => handleViewQuote(inq)}
+                className="gap-2"
+              >
+                <FileText className="h-4 w-4" />
+                View Invoice
+              </Button>
+            )}
+          </div>
+        )
+      }
+
+      return (
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => handleOpenDetail(inq)}
+          className="gap-2"
+        >
+          View Details
+        </Button>
+      )
+    }
+
+    const mobileMenu = () => (
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <Button
+            variant="outline"
+            size="icon"
+            className="h-10 w-10 active:scale-[0.98]"
+            aria-label="Row actions"
+          >
+            <MoreHorizontal className="h-4 w-4" />
+          </Button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="end" className="w-48">
+          <DropdownMenuItem onClick={() => handleOpenDetail(inq)}>
+            View Details
+          </DropdownMenuItem>
+          {isAdmin && canSoftDelete && !inq.isArchived && (
+            <DropdownMenuItem onClick={() => openDeleteDialog(inq, 'soft')}>
+              <Archive className="mr-2 h-4 w-4" />
+              Archive
+            </DropdownMenuItem>
+          )}
+          {isAdmin && canHardDelete && !inq.isArchived && (
+            <DropdownMenuItem
+              onClick={() => openDeleteDialog(inq, 'hard')}
+              className="text-destructive focus:text-destructive"
+            >
+              <Trash2 className="mr-2 h-4 w-4" />
+              Delete
+            </DropdownMenuItem>
+          )}
+          {isAdmin && canHardDelete && inq.isArchived && (
+            <>
+              <DropdownMenuItem onClick={() => setRestoreTarget(inq)}>
+                <RotateCcw className="mr-2 h-4 w-4" />
+                Restore
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem
+                onClick={() => openDeleteDialog(inq, 'hard')}
+                className="text-destructive focus:text-destructive"
+              >
+                <Trash2 className="mr-2 h-4 w-4" />
+                Delete permanently
+              </DropdownMenuItem>
+            </>
+          )}
+          {!isAdmin && isShippingAgency && inq.status === STATUS_QUOTED && (
+            <DropdownMenuItem onClick={() => handleViewQuote(inq)}>
+              <FileText className="mr-2 h-4 w-4" />
+              View Invoice
+            </DropdownMenuItem>
+          )}
+        </DropdownMenuContent>
+      </DropdownMenu>
+    )
+
+    return (
+      <div className="flex justify-end">
+        <div className="hidden md:block">{desktopActions()}</div>
+        <div className="md:hidden">{mobileMenu()}</div>
+      </div>
+    )
+  }
 
   // Define columns
   const columns: ColumnDef<any>[] = [
@@ -274,115 +458,7 @@ export function BaseInquiryHistoryLayout({
     {
       id: 'actions',
       header: 'Actions',
-      cell: ({ row }) => {
-        const inq = row.original
-        const slug = getServiceSlugFromInquiry(inq) || serviceType
-        const isShippingAgency = slug === 'shipping-agency'
-
-        // Admin actions
-        if (isAdmin) {
-          return (
-            <div className="flex gap-2">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => handleOpenDetail(inq)}
-                className="gap-2"
-              >
-                View Details
-              </Button>
-              {canSoftDelete && !inq.isArchived && (
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => openDeleteDialog(inq, 'soft')}
-                  className="gap-2"
-                >
-                  <Archive className="h-4 w-4" />
-                  Archive
-                </Button>
-              )}
-              {canHardDelete && (
-                <>
-                  {!inq.isArchived ? (
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => openDeleteDialog(inq, 'hard')}
-                      className="gap-2 text-destructive hover:text-destructive"
-                    >
-                      <Trash2 className="h-4 w-4" />
-                      Delete
-                    </Button>
-                  ) : (
-                    <>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => setRestoreTarget(inq)}
-                        className="gap-2"
-                      >
-                        <RotateCcw className="h-4 w-4" />
-                        Restore
-                      </Button>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => openDeleteDialog(inq, 'hard')}
-                        className="gap-2 text-destructive hover:text-destructive"
-                      >
-                        <Trash2 className="h-4 w-4" />
-                        Delete
-                      </Button>
-                    </>
-                  )}
-                </>
-              )}
-            </div>
-          )
-        }
-
-        // User actions
-        if (isShippingAgency) {
-          // Shipping agency: View Invoice only available when status is QUOTED
-          const isQuoted = inq.status === STATUS_QUOTED
-          return (
-            <div className="flex gap-2">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => handleOpenDetail(inq)}
-                className="gap-2"
-              >
-                View Details
-              </Button>
-              {isQuoted && (
-                <Button
-                  variant="secondary"
-                  size="sm"
-                  onClick={() => handleViewQuote(inq)}
-                  className="gap-2"
-                >
-                  <FileText className="h-4 w-4" />
-                  View Invoice
-                </Button>
-              )}
-            </div>
-          )
-        }
-
-        // Other services: only View Details
-        return (
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => handleOpenDetail(inq)}
-            className="gap-2"
-          >
-            View Details
-          </Button>
-        )
-      },
+      cell: ({ row }) => renderRowActions(row.original),
     }
   )
 
@@ -394,8 +470,8 @@ export function BaseInquiryHistoryLayout({
     <>
       <Card>
         <CardHeader className="border-b border-border/50 pb-4">
-          <div className="flex items-start justify-between gap-4">
-            <div className="space-y-1.5">
+          <div className="flex flex-wrap items-start justify-between gap-3">
+            <div className="min-w-0 flex-1 space-y-1.5">
               {title ? (
                 <CardTitle className="text-lg font-semibold tracking-tight">{title}</CardTitle>
               ) : null}
@@ -403,13 +479,13 @@ export function BaseInquiryHistoryLayout({
                 <CardDescription className="max-w-2xl text-sm leading-relaxed">{description}</CardDescription>
               ) : null}
             </div>
-            <div className="flex items-center gap-2">
+            <div className="flex w-full flex-wrap items-center gap-2 sm:w-auto sm:justify-end">
               {canHardDelete ? (
                 <Select
                   value={archivedFilter}
                   onValueChange={(value) => setArchivedFilter(value as 'active' | 'archived' | 'all')}
                 >
-                  <SelectTrigger className="w-[140px]">
+                  <SelectTrigger className="h-10 w-full sm:h-9 sm:w-[140px]">
                     <SelectValue placeholder="Filter" />
                   </SelectTrigger>
                   <SelectContent>
@@ -424,7 +500,7 @@ export function BaseInquiryHistoryLayout({
                 size="sm"
                 onClick={fetchInquiries}
                 disabled={isLoading}
-                className="gap-2 shrink-0"
+                className="h-10 shrink-0 gap-2 active:scale-[0.98] sm:h-9"
               >
                 <RefreshCw className={`h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} />
                 Reload
@@ -456,6 +532,7 @@ export function BaseInquiryHistoryLayout({
               }
               onDelete={canSoftDelete || canHardDelete ? handleDeleteInquiries : undefined}
               canHardDelete={canHardDelete}
+              initialColumnVisibility={inquiryColumnVisibility}
             />
           )}
         </CardContent>
@@ -484,7 +561,7 @@ export function BaseInquiryHistoryLayout({
             }
           }}
         >
-          <DialogContent className="max-w-4xl w-full">
+          <DialogContent className="max-h-[calc(100dvh-2rem)] w-[calc(100%-2rem)] max-w-4xl overflow-y-auto bg-background p-4 sm:p-6">
             <DialogHeader>
               <DialogTitle>Invoice Preview</DialogTitle>
               <DialogDescription>
@@ -493,8 +570,8 @@ export function BaseInquiryHistoryLayout({
             </DialogHeader>
 
             <div className="flex flex-col gap-3">
-              <div className="flex flex-col gap-4 min-h-[70vh]">
-                <div className="flex-1 min-h-[70vh] rounded-md border overflow-hidden bg-white">
+              <div className="flex flex-col gap-4 min-h-[50dvh] sm:min-h-[70vh]">
+                <div className="flex-1 min-h-[50dvh] sm:min-h-[70vh] rounded-md border overflow-hidden bg-background">
                   {loadingQuote ? (
                     <div className="flex items-center justify-center h-full bg-muted">
                       <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
@@ -511,7 +588,7 @@ export function BaseInquiryHistoryLayout({
               </div>
 
               {quoteHtml && (
-                <div className="flex justify-end gap-2">
+                <div className="flex flex-col gap-2 sm:flex-row sm:justify-end">
                   <Button
                     variant="outline"
                     onClick={async () => {
@@ -545,7 +622,7 @@ export function BaseInquiryHistoryLayout({
                         document.body.removeChild(iframe)
                       }, 1000)
                     }}
-                    className="gap-2"
+                    className="h-11 gap-2 active:scale-[0.98] sm:h-10"
                   >
                     <FileText className="h-4 w-4" />
                     Save PDF
@@ -556,6 +633,7 @@ export function BaseInquiryHistoryLayout({
                       setQuoteInquiry(null)
                       clearPreview()
                     }}
+                    className="h-11 active:scale-[0.98] sm:h-10"
                   >
                     Close
                   </Button>

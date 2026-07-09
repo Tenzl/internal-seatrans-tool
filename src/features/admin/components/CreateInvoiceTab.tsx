@@ -59,6 +59,8 @@ import {
   AlertDialogTitle,
 } from '@/shared/components/ui/alert-dialog'
 import { EpdaFieldChangeHistory } from '@/features/admin/components/invoice/epda/EpdaFieldChangeHistory'
+import { useCurrentUser } from '@/hooks/use-current-user'
+import { isAdminRole } from '@/config/section-catalog'
 import { findPortSelectionFromInquiry } from '@/modules/logistics/shippingAgencyPortCatalog'
 import {
   legacyCargoTypeToCode,
@@ -79,6 +81,7 @@ import { cn } from '@/shared/lib/utils'
 import { PURPOSE_OF_CALLING_OPTIONS } from '@/modules/inquiries/constants/shippingAgencyInquiryOptions'
 import {
   AREA_OPTIONS,
+  getAreaLabel,
   SHIP_TYPE_OPTIONS,
   FRT_TAX_TYPE_OPTIONS,
   AGENCY_FEE_MODE_OPTIONS,
@@ -98,9 +101,6 @@ import { extractParamsSnapshot } from '@/modules/inquiries/components/common/quo
 type EpdaCargoType = CargoType
 
 type AreaOption = (typeof AREA_OPTIONS)[number]['value']
-const AREA_LABELS = Object.fromEntries(
-  AREA_OPTIONS.map((item) => [item.value, item.shortLabel]),
-) as Record<string, string>
 
 const PURPOSE_OPTIONS = PURPOSE_OF_CALLING_OPTIONS
 type PurposeOption = (typeof PURPOSE_OPTIONS)[number]['value']
@@ -133,8 +133,6 @@ const getShipQuarantineTrips = (purpose: string) => {
   if (normalized === 'NHAP_CHUYEN_CANG' || normalized === 'CHUYEN_CANG_XUAT') return 1
   return 0
 }
-
-const getAreaLabel = (value: string) => AREA_LABELS[value] ?? value
 
 const formatUsdAmount = (value: number) =>
   value.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
@@ -176,6 +174,8 @@ export function CreateInvoiceTab({
   const pathname = usePathname()
   const searchParams = useSearchParams()
   const { t } = useI18n()
+  const currentUser = useCurrentUser()
+  const canViewEditHistory = CUSTOMER_FIELD_HISTORY_ENABLED && isAdminRole(currentUser?.role)
   const flow: EpdaScreenFlow =
     flowProp ??
     (searchParams.get('section') === 'shipping-agency-inquiry-detail' ? 'inquiry-detail' : 'create')
@@ -1133,14 +1133,14 @@ export function CreateInvoiceTab({
 
   const editorActions = (
     <div className="grid w-full grid-cols-2 gap-2 md:flex md:w-auto md:flex-wrap md:items-center md:justify-end">
-      {CUSTOMER_FIELD_HISTORY_ENABLED && linkedInquiryId ? (
+      {canViewEditHistory && linkedInquiryId ? (
         <EpdaFieldChangeHistory inquiryId={linkedInquiryId} refreshKey={fieldChangeHistoryKey} />
       ) : null}
       <Button
         variant="outline"
         onClick={handleReset}
         disabled={isFormBusy}
-        className="h-10 active:scale-[0.98] sm:h-9"
+        className="h-11 active:scale-[0.98] sm:h-9"
       >
         <span className="hidden sm:inline">{t('epda.reset')}</span>
         <span className="sm:hidden">{t('epda.resetShort')}</span>
@@ -1150,7 +1150,7 @@ export function CreateInvoiceTab({
           variant="outline"
           onClick={handleSaveDraft}
           disabled={isFormBusy}
-          className="h-10 gap-2 active:scale-[0.98] sm:h-9"
+          className="h-11 gap-2 active:scale-[0.98] sm:h-9"
         >
           {isSavingDraft ? (
             <Loader2 className="h-4 w-4 animate-spin" />
@@ -1165,7 +1165,7 @@ export function CreateInvoiceTab({
         variant="secondary"
         onClick={handleIssueToCustomer}
         disabled={isFormBusy || !linkedInquiryId}
-        className="h-10 gap-2 active:scale-[0.98] sm:h-9"
+        className="h-11 gap-2 active:scale-[0.98] sm:h-9"
       >
         {isIssuing ? (
           <Loader2 className="h-4 w-4 animate-spin" />
@@ -1178,7 +1178,7 @@ export function CreateInvoiceTab({
       <Button
         onClick={handlePreview}
         disabled={isFormBusy}
-        className="col-span-2 h-10 gap-2 active:scale-[0.98] md:col-span-1 md:h-9"
+        className="col-span-2 h-11 gap-2 active:scale-[0.98] md:col-span-1 md:h-9"
       >
         {isLoading ? (
           <>
@@ -1221,7 +1221,7 @@ export function CreateInvoiceTab({
       <div className="min-w-0 space-y-6 [&_[role=combobox]]:w-full">
 
         {isInquiryDetailFlow ? (
-          <h2 className="text-3xl font-bold tracking-tight">{t('epda.editTitle')}</h2>
+          <h2 className="text-2xl font-bold tracking-tight sm:text-3xl">{t('epda.editTitle')}</h2>
         ) : null}
 
         {backToInquiries}
@@ -1229,7 +1229,7 @@ export function CreateInvoiceTab({
           className={cn(
             'space-y-4',
             !embedded &&
-              'sticky top-0 z-10 -mx-1 border-b border-border/60 bg-background/95 px-1 pb-4 pt-1 backdrop-blur-md supports-[backdrop-filter]:bg-background/80',
+              'sticky top-0 z-10 -mx-1 border-b border-border/60 bg-background/95 px-1 pb-4 pt-1 max-md:backdrop-blur-none md:backdrop-blur supports-[backdrop-filter]:bg-background/80',
           )}
         >
           {isLoadingInquiry ? (
@@ -1293,7 +1293,9 @@ export function CreateInvoiceTab({
                 <Label htmlFor="portArea">{t('epda.portArea')}</Label>
                 <Select value={selectedArea} onValueChange={(value) => setSelectedArea(value as AreaOption)}>
                   <SelectTrigger id="portArea">
-                    <SelectValue placeholder={t('epda.selectArea')} />
+                    <SelectValue placeholder={t('epda.selectArea')}>
+                      {selectedArea ? getAreaLabel(selectedArea) : null}
+                    </SelectValue>
                   </SelectTrigger>
                   <SelectContent>
                     {AREA_OPTIONS.map((area) => (
@@ -1340,7 +1342,7 @@ export function CreateInvoiceTab({
               active={activeSection}
               onSelect={setActiveSection}
               includeCustomer={showCreatorSection}
-              className="lg:hidden"
+              className="md:hidden"
             />
           ) : null}
 
@@ -1352,12 +1354,12 @@ export function CreateInvoiceTab({
             <p className="mx-auto mt-1 max-w-md text-sm text-muted-foreground">{t('epda.chooseStartHint')}</p>
           </div>
         ) : (
-        <div className="grid gap-8 lg:grid-cols-[15rem_1fr]">
+        <div className="grid gap-8 md:grid-cols-[15rem_1fr]">
           <EpdaSectionRail
             active={activeSection}
             onSelect={setActiveSection}
             includeCustomer={showCreatorSection}
-            className="hidden lg:block lg:sticky lg:top-36 lg:self-start"
+            className="hidden md:block md:sticky md:top-36 md:self-start"
           />
 
           <div
@@ -1414,7 +1416,7 @@ export function CreateInvoiceTab({
 
             {/* Mobile: advance through sections; "Done" on the last jumps back to
                 the pinned header (Save / Issue / Preview live there). */}
-            <div className="pt-2 lg:hidden">
+            <div className="pt-2 md:hidden">
               {isLastSection ? (
                 <Button
                   type="button"

@@ -2,10 +2,9 @@
 
 import { useEffect, useMemo, useState, type ReactNode } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { ChevronLeft, ChevronRight, HelpCircle, History, Loader2, Plus, Save, Trash2 } from 'lucide-react'
+import { ChevronLeft, ChevronRight, History, Loader2, Plus, Save, Trash2 } from 'lucide-react'
 import { toast } from 'sonner'
 import { ConfigDrawer } from '@/components/config-drawer'
-import { GuidedTour, type TourStep } from '@/components/guided-tour'
 import { Header } from '@/components/layout/header'
 import { Main } from '@/components/layout/main'
 import { ProfileDropdown } from '@/components/profile-dropdown'
@@ -82,6 +81,8 @@ import {
 } from '@/features/admin/services/epdaParametersService'
 import { portService } from '@/modules/logistics/services/portService'
 import { useI18n } from '@/shared/i18n/I18nProvider'
+import { useCurrentUser } from '@/hooks/use-current-user'
+import { isAdminRole } from '@/config/section-catalog'
 
 const VISIBLE_AREA_OPTIONS = AREA_OPTIONS
 
@@ -1179,7 +1180,7 @@ function ValuesEditor({
       body: (
         <div className='space-y-4'>
           {/* Editable inputs */}
-          <div className='grid grid-cols-2 gap-4 sm:max-w-md'>
+          <div className='grid grid-cols-1 gap-4 sm:max-w-md sm:grid-cols-2'>
             <NumberField label={t('f.tonnagePerGrt')} value={values.coeff.tonnagePerGrt} onChange={(n) => setCoeff('tonnagePerGrt', n)} />
             <NumberField label={t('f.navigationPerGrt')} value={values.coeff.navigationPerGrt} onChange={(n) => setCoeff('navigationPerGrt', n)} />
           </div>
@@ -1194,7 +1195,7 @@ function ValuesEditor({
       desc: t('sec.garbage.desc'),
       body: (
         <div className='space-y-6'>
-          <div className='grid grid-cols-2 gap-4 sm:grid-cols-3'>
+          <div className='grid grid-cols-1 gap-4 sm:grid-cols-2 sm:max-w-md'>
             <NumberField label={t('f.garbageBerth')} value={values.garbage.atBerthUsd} onChange={(n) => setGarbage('atBerthUsd', n)} />
             {isHcmWorksheet(variant) && (
               <NumberField label={t('f.garbageBuoy')} value={values.garbage.atBuoyUsd} onChange={(n) => setGarbage('atBuoyUsd', n)} />
@@ -1341,7 +1342,7 @@ function ValuesEditor({
       body: (
         <div className='space-y-6'>
           {/* Rate parameters (per GRT / hour) */}
-          <div className='grid grid-cols-2 gap-4 sm:grid-cols-3'>
+          <div className='grid grid-cols-1 gap-4 sm:grid-cols-2 sm:max-w-md'>
             <NumberField label={t('f.berthDue')} value={values.coeff.berthDuePerGrtHour} onChange={(n) => setCoeff('berthDuePerGrtHour', n)} />
             {isHcmWorksheet(variant) && (
               <NumberField label={t('f.buoyDue')} value={values.coeff.buoyDuePerGrtHour} onChange={(n) => setCoeff('buoyDuePerGrtHour', n)} />
@@ -1398,21 +1399,21 @@ function ValuesEditor({
     : 1
 
   return (
-    <div className='grid gap-4 lg:grid-cols-[15rem_1fr] lg:gap-8'>
+    <div className='grid gap-4 md:grid-cols-[15rem_1fr] md:gap-8'>
       {/* Numbered section rail — click to view each part. On mobile it's a
           horizontal scroll strip; on desktop a sticky vertical list. */}
-      <nav aria-label='Parameter sections' className='min-w-0 lg:sticky lg:top-24 lg:self-start'>
-        <ol className='flex min-w-0 gap-2 overflow-x-auto pb-1 lg:flex-col lg:gap-1 lg:overflow-visible lg:pb-0'>
+      <nav aria-label='Parameter sections' className='min-w-0 md:sticky md:top-24 md:self-start'>
+        <ol className='flex min-w-0 gap-2 overflow-x-auto pb-1 md:flex-col md:gap-1 md:overflow-visible md:pb-0'>
           {orderedSections.map((s, i) => {
             const isActive = i === active
             const sectionNumber = getSectionDisplayNumber(s.id, i, useGlobalSectionNumbers)
             return (
-              <li key={s.id} className='shrink-0 lg:shrink'>
+              <li key={s.id} className='shrink-0 md:shrink'>
                 <button
                   type='button'
                   onClick={() => setActive(i)}
                   aria-current={isActive ? 'true' : undefined}
-                  className={`flex items-center gap-2 whitespace-nowrap rounded-lg border px-3 py-2 text-left transition-colors lg:w-full lg:gap-3 lg:border-0 lg:py-2.5 ${
+                  className={`flex items-center gap-2 whitespace-nowrap rounded-lg border px-3 py-2 text-left transition-colors md:w-full md:gap-3 md:border-0 md:py-2.5 ${
                     isActive
                       ? 'border-primary/30 bg-primary/10 text-foreground'
                       : 'border-transparent text-muted-foreground hover:bg-muted/60 hover:text-foreground'
@@ -1525,12 +1526,15 @@ function ValuesEditor({
 // ---------- edit-history button + modal ----------
 function ParamHistoryButton({ area }: { area: AreaOption }) {
   const { t } = useI18n()
+  const currentUser = useCurrentUser()
+  const canViewHistory = isAdminRole(currentUser?.role)
   const { data: logs } = useQuery({
     queryKey: ['epda-param-logs', area],
     queryFn: () => epdaParametersService.listChangeLogs({ area, limit: 50 }),
+    enabled: canViewHistory,
   })
 
-  if (!logs || logs.length === 0) return null
+  if (!canViewHistory || !logs || logs.length === 0) return null
 
   const sectionLabel = (k: string): string =>
     ({
@@ -1718,7 +1722,7 @@ function ParamHistoryButton({ area }: { area: AreaOption }) {
   return (
     <Dialog>
       <DialogTrigger asChild>
-        <Button data-tour='history' variant='outline' size='sm' className='gap-2'>
+        <Button variant='outline' size='sm' className='gap-2'>
           <History className='h-4 w-4' /> {t('phist.btn')} ({logs.length})
         </Button>
       </DialogTrigger>
@@ -1802,43 +1806,11 @@ export default function Page() {
   const [leaveHref, setLeaveHref] = useState<string | null>(null)
   // Area tab the user tried to switch to while there were unsaved edits.
   const [pendingArea, setPendingArea] = useState<AreaOption | null>(null)
-  // First-visit guided walkthrough of the page.
-  const [tourRun, setTourRun] = useState(false)
 
   const { data: sets, isLoading } = useQuery({
     queryKey: ['epda-parameters'],
     queryFn: () => epdaParametersService.listAll(),
   })
-
-  // Steps for the walkthrough — each anchors to a [data-tour] element below.
-  const tourSteps = useMemo<TourStep[]>(
-    () => [
-      { target: '[data-tour="area-tabs"]', title: t('tour.area.title'), body: t('tour.area.body') },
-      { target: '[data-tour="area-set"]', title: t('tour.areaSet.title'), body: t('tour.areaSet.body') },
-      { target: '[data-tour="save-area"]', title: t('tour.save.title'), body: t('tour.save.body') },
-      { target: '[data-tour="history"]', title: t('tour.history.title'), body: t('tour.history.body') },
-      { target: '[data-tour="overrides"]', title: t('tour.overrides.title'), body: t('tour.overrides.body') },
-    ],
-    [t]
-  )
-
-  // Auto-start once on the first visit (after data + layout are ready).
-  useEffect(() => {
-    if (isLoading) return
-    if (typeof window === 'undefined') return
-    if (localStorage.getItem('epda-param-tour-seen')) return
-    const id = window.setTimeout(() => setTourRun(true), 400)
-    return () => window.clearTimeout(id)
-  }, [isLoading])
-
-  const closeTour = () => {
-    setTourRun(false)
-    try {
-      localStorage.setItem('epda-param-tour-seen', '1')
-    } catch {
-      /* ignore storage errors (private mode) */
-    }
-  }
 
   const variant = AREA_TO_VARIANT[area]
   const areaSet = useMemo<EpdaParameterSet | undefined>(
@@ -1946,13 +1918,9 @@ export default function Page() {
       <Main>
         <div className='flex flex-wrap items-end justify-between gap-2'>
           <div className='space-y-1.5'>
-            <h2 className='text-3xl font-bold tracking-tight'>{t('param.title')}</h2>
+            <h2 className='text-2xl font-bold tracking-tight sm:text-3xl'>{t('param.title')}</h2>
             <p className='max-w-2xl text-base text-muted-foreground'>{t('param.subtitle')}</p>
           </div>
-          <Button variant='outline' size='sm' className='gap-2' onClick={() => setTourRun(true)}>
-            <HelpCircle className='h-4 w-4' />
-            {t('tour.start')}
-          </Button>
         </div>
 
         {isLoading ? (
@@ -1964,10 +1932,9 @@ export default function Page() {
             {/* Area selector — pinned under the header on mobile (compact) so you
                 can switch area without scrolling back up; static on desktop. */}
             <Tabs
-              data-tour='area-tabs'
               value={area}
               onValueChange={(v) => handleAreaChange(v as AreaOption)}
-              className='sticky top-16 z-30 -mx-4 border-b bg-background/95 px-4 py-2 backdrop-blur supports-[backdrop-filter]:bg-background/80 lg:static lg:mx-0 lg:border-0 lg:bg-transparent lg:px-0 lg:py-0 lg:backdrop-blur-none'
+              className='sticky top-[var(--header-height,4rem)] z-30 -mx-4 border-b bg-background/95 px-4 py-2 max-md:backdrop-blur-none md:backdrop-blur supports-[backdrop-filter]:bg-background/80 lg:static lg:mx-0 lg:border-0 lg:bg-transparent lg:px-0 lg:py-0 lg:backdrop-blur-none'
             >
               <TabsList className='h-auto w-full lg:w-auto'>
                 {VISIBLE_AREA_OPTIONS.map((a) => (
@@ -1982,7 +1949,7 @@ export default function Page() {
               </TabsList>
             </Tabs>
 
-            <Card data-tour='area-set'>
+            <Card>
               <CardHeader className='flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between'>
                 <div>
                   <CardTitle className='text-xl'>
@@ -1993,7 +1960,6 @@ export default function Page() {
                 <div className='flex flex-col gap-2 sm:flex-row sm:w-auto sm:items-center [&>*]:w-full sm:[&>*]:w-auto'>
                   <ParamHistoryButton area={area} />
                   <Button
-                    data-tour='save-area'
                     onClick={() => saveArea.mutate()}
                     disabled={!isDirty || saveArea.isPending}
                   >
@@ -2012,7 +1978,7 @@ export default function Page() {
               </CardContent>
             </Card>
 
-            <div data-tour='overrides'>
+            <div>
               <PortOverridesCard
                 area={area}
                 variant={variant}
@@ -2024,19 +1990,6 @@ export default function Page() {
           </div>
         )}
       </Main>
-
-      <GuidedTour
-        steps={tourSteps}
-        run={tourRun}
-        onClose={closeTour}
-        labels={{
-          next: t('tour.next'),
-          back: t('tour.back'),
-          done: t('tour.done'),
-          skip: t('tour.skip'),
-          step: (i, n) => `${i} / ${n}`,
-        }}
-      />
 
       <AlertDialog
         open={leaveHref !== null || pendingArea !== null}

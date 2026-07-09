@@ -59,6 +59,8 @@ export interface InquiryDataTableProps<TData extends { id: number }> {
   searchPlaceholder?: string
   onDelete?: (ids: number[], mode: InquiryDeleteMode) => Promise<void>
   canHardDelete?: boolean
+  /** Initial column visibility (e.g. hide port/date on small screens). */
+  initialColumnVisibility?: VisibilityState
 }
 
 export function InquiryDataTable<TData extends { id: number }>({
@@ -68,10 +70,13 @@ export function InquiryDataTable<TData extends { id: number }>({
   searchPlaceholder = "Search...",
   onDelete,
   canHardDelete = false,
+  initialColumnVisibility,
 }: InquiryDataTableProps<TData>) {
   const [sorting, setSorting] = React.useState<SortingState>([])
   const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>([])
-  const [columnVisibility, setColumnVisibility] = React.useState<VisibilityState>({})
+  const [columnVisibility, setColumnVisibility] = React.useState<VisibilityState>(
+    () => initialColumnVisibility ?? {},
+  )
   const [rowSelection, setRowSelection] = React.useState({})
   
   const [dateFrom, setDateFrom] = React.useState<Date>()
@@ -173,23 +178,25 @@ export function InquiryDataTable<TData extends { id: number }>({
   return (
     <>
       <div className="w-full">
-        {/* Toolbar - following table-09 pattern */}
-        <div className="flex items-center gap-2 py-4">
-          {searchKey && (
-            <Input
-              placeholder={searchPlaceholder}
-              value={(table.getColumn(searchKey)?.getFilterValue() as string) ?? ""}
-              onChange={(event) =>
-                table.getColumn(searchKey)?.setFilterValue(event.target.value)
-              }
-              className="max-w-sm"
-            />
-          )}
-          
+        {/* Toolbar — stacks on mobile; filters grouped to avoid horizontal overflow */}
+        <div className="flex flex-col gap-3 py-4 sm:flex-row sm:flex-wrap sm:items-center">
+          <div className="flex w-full min-w-0 flex-col gap-2 sm:flex-1 sm:flex-row sm:flex-wrap sm:items-center">
+            {searchKey && (
+              <Input
+                placeholder={searchPlaceholder}
+                value={(table.getColumn(searchKey)?.getFilterValue() as string) ?? ""}
+                onChange={(event) =>
+                  table.getColumn(searchKey)?.setFilterValue(event.target.value)
+                }
+                className="w-full sm:max-w-sm"
+              />
+            )}
+
+            <div className="flex flex-wrap items-center gap-2">
           {/* Date filters */}
           <Popover>
             <PopoverTrigger asChild>
-              <Button variant="outline" className="gap-2">
+              <Button variant="outline" className="h-10 gap-2 active:scale-[0.98] sm:h-9">
                 <Calendar className="h-4 w-4" />
                 {dateFrom ? format(dateFrom, "PP") : "From date"}
               </Button>
@@ -206,7 +213,7 @@ export function InquiryDataTable<TData extends { id: number }>({
           
           <Popover>
             <PopoverTrigger asChild>
-              <Button variant="outline" className="gap-2">
+              <Button variant="outline" className="h-10 gap-2 active:scale-[0.98] sm:h-9">
                 <Calendar className="h-4 w-4" />
                 {dateTo ? format(dateTo, "PP") : "To date"}
               </Button>
@@ -228,12 +235,15 @@ export function InquiryDataTable<TData extends { id: number }>({
                 setDateFrom(undefined)
                 setDateTo(undefined)
               }}
-              className="h-8 px-2"
+              className="h-10 px-2 active:scale-[0.98] sm:h-8"
             >
               Clear
             </Button>
           )}
+            </div>
+          </div>
 
+          <div className="flex flex-wrap items-center gap-2 sm:ml-auto">
           {/* Delete / archive button */}
           {onDelete && selectedCount > 0 && (
             <>
@@ -242,7 +252,7 @@ export function InquiryDataTable<TData extends { id: number }>({
                   variant="outline"
                   size="sm"
                   onClick={() => openDeleteDialog('soft')}
-                  className="gap-2 ml-auto"
+                  className="h-10 gap-2 active:scale-[0.98] sm:h-9"
                 >
                   <Trash2 className="h-4 w-4" />
                   Archive ({selectedCount})
@@ -253,7 +263,7 @@ export function InquiryDataTable<TData extends { id: number }>({
                   variant="destructive"
                   size="sm"
                   onClick={() => openDeleteDialog('hard')}
-                  className="gap-2 ml-auto"
+                  className="h-10 gap-2 active:scale-[0.98] sm:h-9"
                 >
                   <Trash2 className="h-4 w-4" />
                   Delete permanently ({selectedCount})
@@ -265,7 +275,7 @@ export function InquiryDataTable<TData extends { id: number }>({
           {/* Column visibility toggle */}
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="outline" className={selectedCount > 0 ? "" : "ml-auto"}>
+              <Button variant="outline" className="h-10 active:scale-[0.98] sm:h-9">
                 Columns <ChevronDown className="ml-2 h-4 w-4" />
               </Button>
             </DropdownMenuTrigger>
@@ -289,6 +299,7 @@ export function InquiryDataTable<TData extends { id: number }>({
                 })}
             </DropdownMenuContent>
           </DropdownMenu>
+          </div>
         </div>
 
         {/* Table - following table-09 pattern */}
@@ -343,17 +354,18 @@ export function InquiryDataTable<TData extends { id: number }>({
           </Table>
         </div>
 
-        {/* Pagination - following table-09 pattern */}
-        <div className="flex items-center justify-end space-x-2 py-4">
-          <div className="flex-1 text-sm text-muted-foreground">
+        {/* Pagination */}
+        <div className="flex flex-col gap-3 py-4 sm:flex-row sm:items-center sm:justify-end">
+          <div className="text-sm text-muted-foreground sm:flex-1">
             {selectedCount} of {table.getFilteredRowModel().rows.length} row(s) selected.
           </div>
-          <div className="space-x-2">
+          <div className="flex gap-2">
             <Button
               variant="outline"
               size="sm"
               onClick={() => table.previousPage()}
               disabled={!table.getCanPreviousPage()}
+              className="h-10 flex-1 active:scale-[0.98] sm:h-9 sm:flex-none"
             >
               Previous
             </Button>
@@ -362,6 +374,7 @@ export function InquiryDataTable<TData extends { id: number }>({
               size="sm"
               onClick={() => table.nextPage()}
               disabled={!table.getCanNextPage()}
+              className="h-10 flex-1 active:scale-[0.98] sm:h-9 sm:flex-none"
             >
               Next
             </Button>

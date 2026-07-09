@@ -47,7 +47,7 @@ export function ConfigDrawer() {
           size='icon'
           variant='ghost'
           aria-label='Open theme settings'
-          className='rounded-full'
+          className='min-h-11 min-w-11 rounded-full active:scale-[0.98] md:min-h-8 md:min-w-8'
         >
           <Settings aria-hidden='true' />
         </Button>

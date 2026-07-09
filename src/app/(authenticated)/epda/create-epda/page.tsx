@@ -22,7 +22,7 @@ export default function Page() {
       </Header>
       <Main>
         <div className='mb-4 space-y-1.5'>
-          <h2 className='text-3xl font-bold tracking-tight'>{t('epda.pageTitle')}</h2>
+          <h2 className='text-2xl font-bold tracking-tight sm:text-3xl'>{t('epda.pageTitle')}</h2>
           <p className='max-w-2xl text-base text-muted-foreground'>{t('epda.pageSubtitle')}</p>
         </div>
         <CreateInvoiceTab flow='create' />
