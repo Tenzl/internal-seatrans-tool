@@ -24,15 +24,20 @@ export { defaultParameterValues }
 
 /** Port areas. The EPDA template variant follows the area (no manual HCM/QN pick). */
 export const AREA_OPTIONS = [
-  { value: '1', label: 'Area 1' },
-  { value: '2', label: 'Area 2' },
-  { value: '3', label: 'Area 3' },
+  { value: '1', label: 'Ports of the area 1', shortLabel: 'Area 1' },
+  { value: '2', label: 'Ports of the area 2', shortLabel: 'Area 2' },
+  { value: '3', label: 'Ports of the area 3', shortLabel: 'Area 3' },
 ] as const
 export type AreaOption = (typeof AREA_OPTIONS)[number]['value']
 
-/** Area → quote template variant (see quoteFormFromArea). */
-export const AREA_TO_VARIANT: Record<AreaOption, 'HCM' | 'QN'> = {
-  '1': 'HCM',
+export function getAreaShortLabel(value: AreaOption | string): string {
+  const item = AREA_OPTIONS.find((area) => area.value === value)
+  return item?.shortLabel ?? String(value)
+}
+
+/** Area → dedicated worksheet variant (see quoteFormFromArea). */
+export const AREA_TO_VARIANT: Record<AreaOption, 'HCM' | 'QN' | 'HN'> = {
+  '1': 'HN',
   '2': 'QN',
   '3': 'HCM',
 }

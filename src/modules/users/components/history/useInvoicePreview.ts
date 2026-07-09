@@ -5,15 +5,19 @@ import {
   type QuoteRow as HcmQuoteRow,
 } from '@/modules/inquiries/components/common/Quote-hcm'
 import {
+  renderQuoteHtml as renderQuoteHtmlHn,
+} from '@/modules/inquiries/components/common/Quote-hn'
+import {
   renderQuoteHtml as renderQuoteHtmlQn,
   type QuoteData as QnQuoteData,
   type QuoteRow as QnQuoteRow,
 } from '@/modules/inquiries/components/common/Quote-qn'
 import { formatInvoiceDate, formatCheckMark, formatCargoDescription } from '@/shared/utils/invoiceFormatters'
 import { resolveEffectiveParams } from '@/features/admin/components/invoice/resolveEffectiveParams'
+import { quoteFormFromStored, usesQnPilotage } from '@/features/admin/components/invoice/epda/quoteFormFromArea'
 import { extractParamsSnapshot } from '@/modules/inquiries/components/common/quoteParameters'
 
-// Use a unified type compatible with both quote renderers
+// Use a unified type compatible with all quote renderers
 type QuoteRow = HcmQuoteRow & QnQuoteRow
 type QuoteData = HcmQuoteData & QnQuoteData
 
@@ -53,7 +57,6 @@ export function useInvoicePreview() {
     if (!Array.isArray(value)) return [] as QuoteRow[]
 
     return value.map((row: any) => {
-      // Normalize legacy { name, price } shape into quote row fields
       if (row && typeof row === 'object') {
         const item = row.item ?? row.name
         const amount = row.amount ?? row.price
@@ -67,9 +70,20 @@ export function useInvoicePreview() {
     })
   }
 
+  const mergeSnapshotPilotage = (data: QuoteData, snap: Record<string, unknown> | null | undefined): QuoteData => {
+    if (!snap) return data
+    if (snap.pilotage_miles != null && snap.pilotage_miles !== '') {
+      return { ...data, pilotage_miles: snap.pilotage_miles as number | string, pilotage_third_miles: undefined }
+    }
+    if (snap.pilotage_third_miles != null && snap.pilotage_third_miles !== '') {
+      return { ...data, pilotage_third_miles: snap.pilotage_third_miles as number | string }
+    }
+    return data
+  }
+
   const buildQuoteData = (inquiry: any): QuoteData => {
     const map = normalizeDetails(inquiry.details)
-    const isQnForm = (inquiry.quoteForm || '').toUpperCase() === 'QN'
+    const quoteForm = quoteFormFromStored(inquiry.quoteForm)
 
     const data: QuoteData = {
       to_shipowner: inquiry.toName || inquiry.fullName,
@@ -101,8 +115,8 @@ export function useInvoicePreview() {
       BB_ROWS: buildRows(map['bb_rows']),
       berth_hours: inquiry.berthHours ?? 96,
       anchorage_hours: inquiry.anchorageHours ?? 24,
-      pilotage_miles: isQnForm ? inquiry.pilotage3rdMiles ?? 1 : undefined,
-      pilotage_third_miles: isQnForm ? undefined : inquiry.pilotage3rdMiles ?? 17,
+      pilotage_miles: usesQnPilotage(quoteForm) ? inquiry.pilotage3rdMiles ?? 5 : undefined,
+      pilotage_third_miles: usesQnPilotage(quoteForm) ? undefined : inquiry.pilotage3rdMiles ?? 17,
     }
 
     return data
@@ -110,7 +124,7 @@ export function useInvoicePreview() {
 
   const ensureQuoteTemplate = async () => {
     if (quoteTemplate) return quoteTemplate
-    
+
     const res = await fetch('/templates/quote.html')
     if (!res.ok) throw new Error('Template not found')
     const text = await res.text()
@@ -121,25 +135,31 @@ export function useInvoicePreview() {
   const generateInvoicePreview = useCallback(async (inquiry: any) => {
     setIsLoading(true)
     setError(null)
-    
+
     try {
       const template = await ensureQuoteTemplate()
-      
-      // Choose renderer based on quoteForm
-      const isQn = (inquiry.quoteForm || '').toUpperCase() === 'QN'
-      const renderer = isQn ? renderQuoteHtmlQn : renderQuoteHtmlHcm
 
-      // Prefer the frozen snapshot stored on the EPDA; fall back to live values for old records.
+      const quoteForm = quoteFormFromStored(inquiry.quoteForm)
+      const renderer =
+        quoteForm === 'QN'
+          ? renderQuoteHtmlQn
+          : quoteForm === 'HN'
+            ? renderQuoteHtmlHn
+            : renderQuoteHtmlHcm
+
+      const snap = inquiry.epdaSnapshot as Record<string, unknown> | null | undefined
+      const quoteData = mergeSnapshotPilotage(buildQuoteData(inquiry), snap)
+
       const params =
         extractParamsSnapshot(inquiry.epdaSnapshot) ??
         (await resolveEffectiveParams(
-          isQn ? 'QN' : 'HCM',
+          quoteForm === 'QN' ? 'QN' : 'HCM',
           inquiry.portOfCall || inquiry.loadingPort || inquiry.dischargingPort,
         ))
 
-      const html = renderer(template, { ...buildQuoteData(inquiry), params })
+      const html = renderer(template, { ...quoteData, params })
       setQuoteHtml(html)
-      
+
       return html
     } catch (err) {
       console.error('Failed to generate invoice preview:', err)

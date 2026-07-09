@@ -15,7 +15,7 @@ interface QuarantineCargoOptionConfig {
 }
 
 export interface BuildInvoiceQuoteDataParams {
-  quoteForm: 'HCM' | 'QN'
+  quoteForm: 'HCM' | 'QN' | 'HN'
   formCreatedDate: string
   toShipowner: string
   mv: string
@@ -68,6 +68,7 @@ function getCargoTypeLabel(value: string, options: CargoTypeCatalogItem[]): stri
 export function buildInvoiceQuoteData(params: BuildInvoiceQuoteDataParams): InvoiceQuoteData {
   const selectedCargo = params.filteredCargoNames.find((item) => item.name === params.cargoName)
   const cargoDisplayName = (selectedCargo?.displayName || params.cargoName || '').trim()
+  const usesQnPilotageField = params.quoteForm === 'QN' || params.quoteForm === 'HN'
 
   return {
     to_shipowner: params.toShipowner,
@@ -118,7 +119,7 @@ export function buildInvoiceQuoteData(params: BuildInvoiceQuoteDataParams): Invo
     berth_hours: Number(params.berthHours),
     buoy_due_hours: Number(params.buoyDueHours),
     anchorage_hours: Number(params.anchorageHours),
-    pilotage_miles: params.quoteForm === 'QN' ? Number(params.qnPilotageMiles || '5') : undefined,
+    pilotage_miles: usesQnPilotageField ? Number(params.qnPilotageMiles || '5') : undefined,
     pilotage_third_miles: params.quoteForm === 'HCM' ? Number(params.pilotageThirdMiles) : undefined,
     params: params.params,
   }

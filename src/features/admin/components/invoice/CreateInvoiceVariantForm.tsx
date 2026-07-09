@@ -26,8 +26,9 @@ import {
   type EpdaParameterValues,
 } from '@/modules/inquiries/components/common/quoteParameters'
 import { useI18n } from '@/shared/i18n/I18nProvider'
+import { isHcmWorksheet, usesQnPilotage } from './epda/quoteFormFromArea'
 
-export type FormVariant = 'QN' | 'HCM'
+export type FormVariant = 'QN' | 'HCM' | 'HN'
 
 export type PurposeOption =
   | 'NHAP_XUAT'
@@ -169,7 +170,7 @@ export function CreateInvoiceVariantForm({
       getCustomerFieldClass?.(field) ? 'text-emerald-700 dark:text-emerald-400' : '',
     )
   const isBoatHireForAgencyEnabled = values.dischargeLoadingLocation === 'Anchorage'
-  const isHcmAnchorage = variant === 'HCM' && values.dischargeLoadingLocation === 'Anchorage'
+  const isHcmAnchorage = isHcmWorksheet(variant) && values.dischargeLoadingLocation === 'Anchorage'
   const grtNumeric = Number(values.grt)
   const cargoQtyNumeric = Number(values.cargoQty)
   const discountNumeric = Number(values.agencyDiscountPercent)
@@ -533,7 +534,7 @@ export function CreateInvoiceVariantForm({
             />
           </div>
 
-          {variant === 'QN' ? (
+          {usesQnPilotage(variant) ? (
             <div className="grid gap-2">
               <Label htmlFor="qnPilotageMiles">{t('epda.buoyPosition')}</Label>
               <Input

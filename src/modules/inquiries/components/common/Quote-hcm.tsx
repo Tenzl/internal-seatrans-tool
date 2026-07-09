@@ -60,6 +60,8 @@ export type QuoteData = {
   tally_fee?: string | number
   /** Manual tug-assistance amount — used when LOA is above the highest tug band. */
   tug_assistance?: string | number
+  /** QN-style single-rate pilotage miles (Area 1 hybrid + QN worksheet). */
+  pilotage_miles?: string | number
   pilotage_third_miles?: string | number
   /** Resolved EPDA parameter set for the selected area/port. Falls back to HCM defaults. */
   params?: EpdaParameterValues
@@ -220,6 +222,7 @@ const buildAARows = (
     loa?: string | number
     mooringLocation?: 'berth' | 'anchorage'
     pilotageThirdMiles?: string | number
+    pilotageMiles?: string | number
     cargoQtyMt?: string | number
     quarantineCargoTrips?: string | number
     oceanFrtRateUsdPerMt?: string | number
@@ -282,7 +285,10 @@ const buildAARows = (
     const navigationDue =
       navigationDueValue === null ? `${P.coeff.navigationPerGrt}*${grtDisplay}*2` : formatAmount(navigationDueValue)
 
-    // Admin enters the total distance to the buoy/berth position.
+    const pilotageMilesNumeric = toNumber(options?.pilotageMiles)
+    const useQnPilotage = pilotageMilesNumeric !== null
+
+    // Admin enters the total distance to the buoy/berth position (HCM 3-leg pilotage).
     // Legs 1 & 2 are flat tariff bands: each charges its full miles once the
     // position reaches into it (not prorated). Leg 3 is the remainder beyond
     // (leg1 + leg2). E.g. position 17 → leg1 (10) + leg2 (20); position 37 →
@@ -316,6 +322,24 @@ const buildAARows = (
       pilotageThirdValue === null
         ? `${P.coeff.pilotageLeg3Rate}*${grtDisplay}*2*${pilotageThirdMiles}`
         : formatAmount(pilotageThirdValue)
+
+    const qnPilotageMultiplier =
+      useQnPilotage
+        ? pilotageMilesNumeric !== null && pilotageMilesNumeric > 1
+          ? pilotageMilesNumeric
+          : 1
+        : 0
+    const qnPilotageMinAmount = P.coeff.pilotageMinAmount
+    const qnPilotageValue =
+      !useQnPilotage || grtNumeric === null
+        ? null
+        : Math.max(
+            P.coeff.pilotageSingleRate * grtNumeric * 2 * qnPilotageMultiplier * shipRateFactor,
+            qnPilotageMinAmount,
+          )
+    const qnPilotage =
+      qnPilotageValue === null ? `${P.coeff.pilotageSingleRate}*${grtDisplay}*2` : formatAmount(qnPilotageValue)
+    const qnPilotageMilesText = useQnPilotage && qnPilotageMultiplier >= 2 ? `${qnPilotageMultiplier} miles` : ''
 
     const loaNumeric = toNumber(options?.loa)
     const tugRate = resolveLoaTier(loaNumeric, P.tugTiers)
@@ -442,27 +466,37 @@ const buildAARows = (
       remark: tankerRemark,
       amount: navigationDue,
     })
-    pushNumbered({
-      item: 'Pilotage',
-      details: `USD${P.coeff.pilotageLeg1Rate} / GRT (in+out)`,
-      add: `${pilotageFirstMiles} miles`,
-      remark: tankerRemark || `1st ${pilotageFirstMiles} miles`,
-      amount: pilotageFirst,
-    })
-    pushUnnumbered({
-      item: '',
-      details: `USD${P.coeff.pilotageLeg2Rate} / GRT (in+out)`,
-      add: `${pilotageSecondMiles} miles`,
-      remark: tankerRemark || `2nd ${pilotageSecondMiles} miles`,
-      amount: pilotageSecond,
-    })
-    pushUnnumbered({
-      item: '',
-      details: `USD${P.coeff.pilotageLeg3Rate} / GRT (in+out)`,
-      add: `${pilotageThirdMiles} miles`,
-      remark: tankerRemark || `3rd ${pilotageThirdMiles} miles`,
-      amount: pilotageThird,
-    })
+    if (useQnPilotage) {
+      pushNumbered({
+        item: 'Pilotage',
+        details: `USD${P.coeff.pilotageSingleRate} / GRT x 2 (in & out)`,
+        add: qnPilotageMilesText,
+        remark: tankerRemark,
+        amount: qnPilotage,
+      })
+    } else {
+      pushNumbered({
+        item: 'Pilotage',
+        details: `USD${P.coeff.pilotageLeg1Rate} / GRT (in+out)`,
+        add: `${pilotageFirstMiles} miles`,
+        remark: tankerRemark || `1st ${pilotageFirstMiles} miles`,
+        amount: pilotageFirst,
+      })
+      pushUnnumbered({
+        item: '',
+        details: `USD${P.coeff.pilotageLeg2Rate} / GRT (in+out)`,
+        add: `${pilotageSecondMiles} miles`,
+        remark: tankerRemark || `2nd ${pilotageSecondMiles} miles`,
+        amount: pilotageSecond,
+      })
+      pushUnnumbered({
+        item: '',
+        details: `USD${P.coeff.pilotageLeg3Rate} / GRT (in+out)`,
+        add: `${pilotageThirdMiles} miles`,
+        remark: tankerRemark || `3rd ${pilotageThirdMiles} miles`,
+        amount: pilotageThird,
+      })
+    }
     pushNumbered({ item: 'Tug assistance charge', details: '(in & out)', amount: tugAssistance })
     pushNumbered({ item: 'Moor / Unmooring', details: '', amount: moorUnmoor })
 
@@ -749,6 +783,7 @@ export const renderQuoteHtml = (template: string, data: QuoteData) => {
     loa: normalizedData.loa,
     mooringLocation: (normalizedData.at_anchorage || '').trim() ? 'anchorage' : 'berth',
     pilotageThirdMiles: normalizedData.pilotage_third_miles,
+    pilotageMiles: normalizedData.pilotage_miles,
     cargoQtyMt: normalizedData.cargo_qty_mt,
     quarantineCargoTrips: normalizedData.quarantine_cargo_trips,
     oceanFrtRateUsdPerMt: normalizedData.ocean_frt_rate_usd_per_mt,

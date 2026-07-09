@@ -60,8 +60,10 @@ import {
   AREA_OPTIONS,
   AREA_TO_VARIANT,
   QUARANTINE_CARGO_OPTIONS,
+  getAreaShortLabel,
   type AreaOption,
 } from '@/features/admin/components/invoice/epdaFormParameters'
+import { isHcmWorksheet, usesQnPilotage } from '@/features/admin/components/invoice/epda/quoteFormFromArea'
 import { PURPOSE_OF_CALLING_OPTIONS } from '@/modules/inquiries/constants/shippingAgencyInquiryOptions'
 import {
   defaultParameterValues,
@@ -83,8 +85,31 @@ import { useI18n } from '@/shared/i18n/I18nProvider'
 
 const VISIBLE_AREA_OPTIONS = AREA_OPTIONS
 
-const getAreaLabel = (area: AreaOption) =>
-  VISIBLE_AREA_OPTIONS.find((item) => item.value === area)?.label ?? area
+const getAreaLabel = (area: AreaOption) => getAreaShortLabel(area)
+
+/** Canonical section order used for 01–06 numbering in the parameter editor. */
+const LEAD_PARAMETER_SECTION_ORDER = [
+  'tonnage',
+  'pilotage',
+  'tug',
+  'moor',
+  'berth-dues',
+  'quarantine',
+] as const
+
+/** Hidden in General port charges; configured per-port in Port overrides instead. */
+const AREA_SET_HIDDEN_SECTION_IDS = ['pilotage', 'tug', 'moor'] as const
+const PORT_OVERRIDE_VISIBLE_SECTION_IDS = ['pilotage', 'tug', 'moor'] as const
+
+function getSectionDisplayNumber(sectionId: string, index: number, useGlobalSectionNumbers: boolean): number {
+  if (useGlobalSectionNumbers) {
+    const globalIndex = LEAD_PARAMETER_SECTION_ORDER.indexOf(
+      sectionId as (typeof LEAD_PARAMETER_SECTION_ORDER)[number],
+    )
+    if (globalIndex >= 0) return globalIndex + 1
+  }
+  return index + 1
+}
 
 // ---------- value helpers ----------
 function clone(v: EpdaParameterValues): EpdaParameterValues {
@@ -610,7 +635,7 @@ function GarbageCalculator({
   const buoyBlocks = Math.ceil(buoyDays / 2)
   const berth = garbage.atBerthUsd * berthBlocks * cbm
   const buoy = garbage.atBuoyUsd * buoyBlocks * cbm
-  const total = berth + (variant === 'HCM' ? buoy : 0) + clearanceFee
+  const total = berth + (isHcmWorksheet(variant) ? buoy : 0) + clearanceFee
 
   const inputField = (label: string, value: string, onChange: (v: string) => void) => (
     <div className='grid gap-2'>
@@ -633,7 +658,7 @@ function GarbageCalculator({
       {/* Inputs (days) */}
       <div className='grid gap-3 sm:max-w-md sm:grid-cols-2'>
         {inputField(t('garbageCalc.berthDays'), berthDaysText, setBerthDaysText)}
-        {variant === 'HCM' && inputField(t('garbageCalc.buoyDays'), buoyDaysText, setBuoyDaysText)}
+        {isHcmWorksheet(variant) && inputField(t('garbageCalc.buoyDays'), buoyDaysText, setBuoyDaysText)}
       </div>
 
       {/* Detail below */}
@@ -644,7 +669,7 @@ function GarbageCalculator({
             label={boldNumbers(t('garbageEx.berth', { days: fmtNum(berthDays), blocks: berthBlocks, rate: fmtNum(garbage.atBerthUsd), cbm: fmtNum(cbm) }))}
             test={boldNumbers(`= USD ${fmtNum(berth)}`)}
           />
-          {variant === 'HCM' && (
+          {isHcmWorksheet(variant) && (
             <ScanRow
               label={boldNumbers(t('garbageEx.buoy', { days: fmtNum(buoyDays), blocks: buoyBlocks, rate: fmtNum(garbage.atBuoyUsd), cbm: fmtNum(cbm) }))}
               test={boldNumbers(`= USD ${fmtNum(buoy)}`)}
@@ -745,7 +770,7 @@ function PilotageCalculator({
         </div>
         <div className='grid gap-2'>
           <Label className='text-sm font-medium text-muted-foreground'>
-            {variant === 'HCM' ? t('pilotageCalc.positionLabel') : t('pilotageCalc.milesLabel')}
+            {usesQnPilotage(variant) ? t('pilotageCalc.milesLabel') : t('pilotageCalc.positionLabel')}
           </Label>
           <Input
             type='number'
@@ -761,7 +786,7 @@ function PilotageCalculator({
       {/* Detail — recomputes live from the inputs above */}
       <div className='space-y-2'>
         <p className='text-sm font-medium uppercase tracking-wide text-muted-foreground'>{t('tonnageCalc.detail')}</p>
-        {variant === 'HCM' ? (
+        {!usesQnPilotage(variant) ? (
           (() => {
             const leg1Width = coeff.pilotageLeg1Miles
             const leg2Width = coeff.pilotageLeg2Miles
@@ -872,7 +897,7 @@ function MoorCalculator({
       {/* Result(s) — empty state mirrors the tug calculator's row style */}
       {!hasInput ? (
         resultRow(t('moorCalc.enterGrt'), undefined)
-      ) : variant === 'HCM' ? (
+      ) : isHcmWorksheet(variant) ? (
         <div className='grid gap-2 sm:grid-cols-2'>
           {resultRow(t('tbl.atBerth'), berth)}
           {resultRow(t('tbl.atBuoy'), buoy)}
@@ -943,7 +968,7 @@ function BerthDuesCalculator({
             label={boldNumbers(t('berthDuesCalc.berthLine', { rate: coeff.berthDuePerGrtHour, hours: fmtNum(berthHours), grt: fmtNum(grt) }))}
             test={boldNumbers(`= USD ${fmtNum(berth)}`)}
           />
-          {variant === 'HCM' && (
+          {isHcmWorksheet(variant) && (
             <ScanRow
               label={boldNumbers(t('berthDuesCalc.buoyLine', { rate: coeff.buoyDuePerGrtHour, hours: fmtNum(anchorageHours), grt: fmtNum(grt) }))}
               test={boldNumbers(`= USD ${fmtNum(buoy)}`)}
@@ -1128,11 +1153,15 @@ function ValuesEditor({
   values,
   onChange,
   visibleSectionIds,
+  hiddenSectionIds,
+  useGlobalSectionNumbers = false,
 }: {
   variant: QuoteVariant
   values: EpdaParameterValues
   onChange: (v: EpdaParameterValues) => void
   visibleSectionIds?: string[]
+  hiddenSectionIds?: string[]
+  useGlobalSectionNumbers?: boolean
 }) {
   const { t } = useI18n()
   const setGarbage = (k: keyof EpdaParameterValues['garbage'], n: number) =>
@@ -1167,7 +1196,7 @@ function ValuesEditor({
         <div className='space-y-6'>
           <div className='grid grid-cols-2 gap-4 sm:grid-cols-3'>
             <NumberField label={t('f.garbageBerth')} value={values.garbage.atBerthUsd} onChange={(n) => setGarbage('atBerthUsd', n)} />
-            {variant === 'HCM' && (
+            {isHcmWorksheet(variant) && (
               <NumberField label={t('f.garbageBuoy')} value={values.garbage.atBuoyUsd} onChange={(n) => setGarbage('atBuoyUsd', n)} />
             )}
             <NumberField label={t('f.garbageCbm')} value={values.garbage.cbmAmount} onChange={(n) => setGarbage('cbmAmount', n)} />
@@ -1227,7 +1256,7 @@ function ValuesEditor({
             <div className='grid gap-4 lg:grid-cols-2'>
               {/* Left: editable inputs */}
               <div className='grid grid-cols-2 gap-4'>
-                {variant === 'HCM' ? (
+                {!usesQnPilotage(variant) ? (
                   <>
                     <NumberField label={t('f.pilotageLeg1Rate')} value={values.coeff.pilotageLeg1Rate} onChange={(n) => setCoeff('pilotageLeg1Rate', n)} />
                     <NumberField label={t('f.pilotageLeg1Miles')} value={values.coeff.pilotageLeg1Miles} onChange={(n) => setCoeff('pilotageLeg1Miles', n)} />
@@ -1244,7 +1273,7 @@ function ValuesEditor({
               </div>
               {/* Right: worked example — one line per leg */}
               <div className='rounded-md border bg-muted/20 p-3'>
-                {variant === 'HCM' ? (
+                {!usesQnPilotage(variant) ? (
                   <div className='space-y-0.5 text-sm leading-relaxed text-foreground'>
                     <p>{t('f.pilotageLeg1Ex', { rate: values.coeff.pilotageLeg1Rate, miles: values.coeff.pilotageLeg1Miles })}</p>
                     <p>{t('f.pilotageLeg2Ex', { rate: values.coeff.pilotageLeg2Rate, miles: values.coeff.pilotageLeg2Miles, after: values.coeff.pilotageLeg1Miles })}</p>
@@ -1282,15 +1311,15 @@ function ValuesEditor({
     {
       id: 'moor',
       title: t('sec.moor.title'),
-      desc: variant === 'HCM' ? t('sec.moor.descHcm') : t('sec.moor.descQn'),
+      desc: isHcmWorksheet(variant) ? t('sec.moor.descHcm') : t('sec.moor.descQn'),
       body: (
         <div className='space-y-8'>
           <GrtTierTable
-            title={variant === 'HCM' ? t('tbl.atBerth') : ''}
+            title={isHcmWorksheet(variant) ? t('tbl.atBerth') : ''}
             tiers={values.moorUnmoorBerthTiers}
             onChange={(rows) => onChange({ ...values, moorUnmoorBerthTiers: rows })}
           />
-          {variant === 'HCM' && (
+          {isHcmWorksheet(variant) && (
             <GrtTierTable
               title={t('tbl.atBuoy')}
               tiers={values.moorUnmoorBuoyTiers}
@@ -1314,7 +1343,7 @@ function ValuesEditor({
           {/* Rate parameters (per GRT / hour) */}
           <div className='grid grid-cols-2 gap-4 sm:grid-cols-3'>
             <NumberField label={t('f.berthDue')} value={values.coeff.berthDuePerGrtHour} onChange={(n) => setCoeff('berthDuePerGrtHour', n)} />
-            {variant === 'HCM' && (
+            {isHcmWorksheet(variant) && (
               <NumberField label={t('f.buoyDue')} value={values.coeff.buoyDuePerGrtHour} onChange={(n) => setCoeff('buoyDuePerGrtHour', n)} />
             )}
             <NumberField label={t('f.anchorageDue')} value={values.coeff.anchoragePerGrtHour} onChange={(n) => setCoeff('anchoragePerGrtHour', n)} />
@@ -1344,19 +1373,29 @@ function ValuesEditor({
   // Pin the lead sections in a fixed order for every template (QN + HCM):
   // 01 tonnage · 02 pilotage · 03 tug · 04 moor · 05 berth/anchorage dues · 06 quarantine · rest.
   const orderedSections = useMemo(() => {
-    const lead = ['tonnage', 'pilotage', 'tug', 'moor', 'berth-dues', 'quarantine']
+    const lead = [...LEAD_PARAMETER_SECTION_ORDER]
     const picked = lead
       .map((id) => sections.find((s) => s.id === id))
       .filter((s): s is (typeof sections)[number] => Boolean(s))
     const rest = sections.filter((s) => !lead.includes(s.id))
-    const all = [...picked, ...rest]
-    if (!visibleSectionIds?.length) return all
-    return all.filter((section) => visibleSectionIds.includes(section.id))
+    let filtered = [...picked, ...rest]
+    if (hiddenSectionIds?.length) {
+      filtered = filtered.filter((section) => !hiddenSectionIds.includes(section.id))
+    } else if (visibleSectionIds?.length) {
+      filtered = filtered.filter((section) => visibleSectionIds.includes(section.id))
+    }
+    return filtered
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [sections, variant, visibleSectionIds])
+  }, [sections, variant, visibleSectionIds, hiddenSectionIds])
 
   const [active, setActive] = useState(0)
+  useEffect(() => {
+    setActive(0)
+  }, [visibleSectionIds, hiddenSectionIds, variant])
   const current = orderedSections[Math.min(active, orderedSections.length - 1)]
+  const currentNumber = current
+    ? getSectionDisplayNumber(current.id, active, useGlobalSectionNumbers)
+    : 1
 
   return (
     <div className='grid gap-4 lg:grid-cols-[15rem_1fr] lg:gap-8'>
@@ -1366,6 +1405,7 @@ function ValuesEditor({
         <ol className='flex min-w-0 gap-2 overflow-x-auto pb-1 lg:flex-col lg:gap-1 lg:overflow-visible lg:pb-0'>
           {orderedSections.map((s, i) => {
             const isActive = i === active
+            const sectionNumber = getSectionDisplayNumber(s.id, i, useGlobalSectionNumbers)
             return (
               <li key={s.id} className='shrink-0 lg:shrink'>
                 <button
@@ -1383,7 +1423,7 @@ function ValuesEditor({
                       isActive ? 'text-primary' : 'text-muted-foreground/70'
                     }`}
                   >
-                    {String(i + 1).padStart(2, '0')}
+                    {String(sectionNumber).padStart(2, '0')}
                   </span>
                   <span
                     className={`text-sm lg:text-base ${
@@ -1403,7 +1443,7 @@ function ValuesEditor({
       <section className='min-w-0'>
         <header className='mb-6 flex items-baseline gap-4'>
           <span className='text-4xl font-bold tabular-nums leading-none text-primary/30'>
-            {String(active + 1).padStart(2, '0')}
+            {String(currentNumber).padStart(2, '0')}
           </span>
           <div className='space-y-1'>
             <h3 className='text-2xl font-semibold tracking-tight'>{current.title}</h3>
@@ -1432,7 +1472,14 @@ function ValuesEditor({
                   {t('epda.previous')}
                 </span>
                 <span className='block truncate text-sm font-medium'>
-                  {String(active).padStart(2, '0')} {orderedSections[active - 1].title}
+                  {String(
+                    getSectionDisplayNumber(
+                      orderedSections[active - 1].id,
+                      active - 1,
+                      useGlobalSectionNumbers,
+                    ),
+                  ).padStart(2, '0')}{' '}
+                  {orderedSections[active - 1].title}
                 </span>
               </span>
             </button>
@@ -1454,7 +1501,14 @@ function ValuesEditor({
                   {t('epda.next')}
                 </span>
                 <span className='block truncate text-sm font-medium'>
-                  {String(active + 2).padStart(2, '0')} {orderedSections[active + 1].title}
+                  {String(
+                    getSectionDisplayNumber(
+                      orderedSections[active + 1].id,
+                      active + 1,
+                      useGlobalSectionNumbers,
+                    ),
+                  ).padStart(2, '0')}{' '}
+                  {orderedSections[active + 1].title}
                 </span>
               </span>
               <ChevronRight className='h-5 w-5 shrink-0 text-primary' />
@@ -1763,11 +1817,6 @@ export default function Page() {
       { target: '[data-tour="area-set"]', title: t('tour.areaSet.title'), body: t('tour.areaSet.body') },
       { target: '[data-tour="save-area"]', title: t('tour.save.title'), body: t('tour.save.body') },
       { target: '[data-tour="history"]', title: t('tour.history.title'), body: t('tour.history.body') },
-      { target: '[data-tour="groups"]', title: t('tour.groups.title'), body: t('tour.groups.body') },
-      { target: '[data-tour="group-create"]', title: t('tour.groupCreate.title'), body: t('tour.groupCreate.body') },
-      { target: '[data-tour="group-members"]', title: t('tour.groupMembers.title'), body: t('tour.groupMembers.body') },
-      { target: '[data-tour="group-params"]', title: t('tour.groupParams.title'), body: t('tour.groupParams.body') },
-      { target: '[data-tour="group-delete"]', title: t('tour.groupDelete.title'), body: t('tour.groupDelete.body') },
       { target: '[data-tour="overrides"]', title: t('tour.overrides.title'), body: t('tour.overrides.body') },
     ],
     [t]
@@ -1927,7 +1976,7 @@ export default function Page() {
                     value={a.value}
                     className='flex-1 px-3 py-1.5 text-sm font-medium lg:flex-none lg:px-5 lg:py-2 lg:text-base'
                   >
-                    {a.label}
+                    {a.shortLabel}
                   </TabsTrigger>
                 ))}
               </TabsList>
@@ -1937,10 +1986,7 @@ export default function Page() {
               <CardHeader className='flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between'>
                 <div>
                   <CardTitle className='text-xl'>
-                    {t('param.areaSet', { area: getAreaLabel(area) })}{' '}
-                    <span className='text-base font-normal text-muted-foreground'>
-                      ({t('param.template', { variant })})
-                    </span>
+                    {t('param.areaSet', { area: getAreaLabel(area) })}
                   </CardTitle>
                   <CardDescription className='text-base'>{t('param.areaDesc')}</CardDescription>
                 </div>
@@ -1957,18 +2003,14 @@ export default function Page() {
                 </div>
               </CardHeader>
               <CardContent>
-                <ValuesEditor variant={variant} values={draft} onChange={setDraft} />
+                <ValuesEditor
+                  variant={variant}
+                  values={draft}
+                  onChange={setDraft}
+                  hiddenSectionIds={[...AREA_SET_HIDDEN_SECTION_IDS]}
+                />
               </CardContent>
             </Card>
-
-            <div data-tour='groups'>
-              <PortGroupsCard
-                area={area}
-                variant={variant}
-                areaValues={areaValues}
-                groups={(sets ?? []).filter((s) => s.scope === 'GROUP' && s.area === area)}
-              />
-            </div>
 
             <div data-tour='overrides'>
               <PortOverridesCard
@@ -1976,7 +2018,7 @@ export default function Page() {
                 variant={variant}
                 areaValues={areaValues}
                 overrides={(sets ?? []).filter((s) => s.scope === 'PORT' && s.area === area)}
-                groups={(sets ?? []).filter((s) => s.scope === 'GROUP' && s.area === area)}
+                groups={[]}
               />
             </div>
           </div>
@@ -2085,7 +2127,7 @@ function PortOverridesCard({
     mutationFn: () =>
       epdaParametersService.upsertPort(editingPortId!, diffValues(baselineForPort(editingPortId!), draft)),
     onSuccess: () => {
-      toast.success('Port override saved')
+      toast.success('Port-specific dues saved')
       qc.invalidateQueries({ queryKey: ['epda-parameters'] })
       qc.invalidateQueries({ queryKey: ['epda-param-logs'] })
       setEditingPortId(null)
@@ -2096,7 +2138,7 @@ function PortOverridesCard({
   const remove = useMutation({
     mutationFn: (portId: number) => epdaParametersService.deletePort(portId),
     onSuccess: () => {
-      toast.success('Override removed (port now inherits area)')
+      toast.success('Removed port-specific dues (port now inherits area)')
       qc.invalidateQueries({ queryKey: ['epda-parameters'] })
       qc.invalidateQueries({ queryKey: ['epda-param-logs'] })
       setEditingPortId(null)
@@ -2187,7 +2229,7 @@ function PortOverridesCard({
                 variant={variant}
                 values={draft}
                 onChange={setDraft}
-                visibleSectionIds={['pilotage', 'tug', 'moor']}
+                visibleSectionIds={[...PORT_OVERRIDE_VISIBLE_SECTION_IDS]}
               />
             </CardContent>
           </Card>

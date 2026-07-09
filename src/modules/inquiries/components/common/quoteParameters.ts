@@ -17,7 +17,7 @@
  * The superset below carries fields for both; each variant reads what it needs.
  */
 
-export type QuoteVariant = 'HCM' | 'QN'
+export type QuoteVariant = 'HCM' | 'QN' | 'HN'
 
 /** A GRT-banded rate. `maxGrt: null` = the catch-all top band (no upper bound). */
 export interface GrtTier {
@@ -219,7 +219,9 @@ function qnDefaults(): EpdaParameterValues {
 
 /** Built-in defaults for a variant (mirror the previously hardcoded values). */
 export function defaultParameterValues(variant: QuoteVariant = 'HCM'): EpdaParameterValues {
-  return variant === 'QN' ? qnDefaults() : hcmDefaults()
+  if (variant === 'QN') return qnDefaults()
+  // HN (Area 1) uses the HCM parameter set; pilotage calc follows the QN formula.
+  return hcmDefaults()
 }
 
 /** Resolve a GRT-banded amount. Returns `undefined` for a null/empty tier list or GRT. */

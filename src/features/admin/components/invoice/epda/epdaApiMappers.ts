@@ -4,7 +4,7 @@ import {
   getDefaultGarbageUsdRate,
   resolveGarbageUsdRate,
 } from '@/features/admin/components/invoice/garbageFeeDefaults'
-import { quoteFormFromStored } from '@/features/admin/components/invoice/epda/quoteFormFromArea'
+import { quoteFormFromStored, usesQnPilotage } from '@/features/admin/components/invoice/epda/quoteFormFromArea'
 
 /** Admin inquiry row from GET /admin/inquiries/shipping-agency/:id */
 export type ShippingAgencyAdminInquiry = {
@@ -128,8 +128,7 @@ export function buildEpdaPatchPayload(
     quoteForm: params.quoteForm,
     berthHours: toNum(params.berthHours),
     anchorageHours: toNum(params.anchorageHours),
-    pilotage3rdMiles:
-      params.quoteForm === 'QN'
+    pilotage3rdMiles: usesQnPilotage(params.quoteForm)
         ? toNum(params.qnPilotageMiles)
         : toNum(params.pilotageThirdMiles),
     epdaDocumentDate: params.formCreatedDate,
@@ -183,8 +182,7 @@ export function buildInternalCreatePayload(
     shipType: params.shipType,
     berthHours: toNum(params.berthHours) ?? 96,
     anchorageHours: toNum(params.anchorageHours) ?? 24,
-    pilotage3rdMiles:
-      params.quoteForm === 'QN'
+    pilotage3rdMiles: usesQnPilotage(params.quoteForm)
         ? toNum(params.qnPilotageMiles) ?? 5
         : toNum(params.pilotageThirdMiles) ?? 17,
     oceanFrtRateUsdPerMt: toNum(params.oceanFrtRateUsdPerMt),
@@ -255,7 +253,7 @@ export function applyAdminInquiryToForm(
   setters.setPurposeOfCalling(toStr(inquiry.purposeOfCalling) ?? '')
   setters.setBerthHours(toNumStr(inquiry.berthHours) ?? '96')
   setters.setAnchorageHours(toNumStr(inquiry.anchorageHours) ?? '24')
-  const pilotage = toNumStr(inquiry.pilotage3rdMiles) ?? (form === 'QN' ? '5' : '47')
+  const pilotage = toNumStr(inquiry.pilotage3rdMiles) ?? (usesQnPilotage(form) ? '5' : '47')
   setters.setPilotageThirdMiles(pilotage)
   setters.setQnPilotageMiles(pilotage)
   setters.setShipType(toStr(inquiry.shipType) ?? 'BULK_SHIP')

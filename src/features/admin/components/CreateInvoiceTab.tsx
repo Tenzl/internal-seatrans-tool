@@ -11,6 +11,7 @@ import { usePathname, useRouter } from 'next/navigation'
 import { buildDashboardUrl } from '@/shared/utils/dashboardNavigation'
 import { AdminSection } from '@/shared/components/layout/dashboard/admin'
 import { renderQuoteHtml as renderQuoteHtmlHcm } from '@/modules/inquiries/components/common/Quote-hcm'
+import { renderQuoteHtml as renderQuoteHtmlHn } from '@/modules/inquiries/components/common/Quote-hn'
 import { renderQuoteHtml as renderQuoteHtmlQn } from '@/modules/inquiries/components/common/Quote-qn'
 import { commodityService, type CargoType, type CargoTypeCatalogItem, type Commodity } from '@/modules/gallery/services/commodityService'
 import { serviceTypeService } from '@/modules/service-types/services/serviceTypeService'
@@ -25,6 +26,7 @@ import {
   SelectValue,
 } from '@/shared/components/ui/select'
 import { CreateInvoiceQnForm } from '@/features/admin/components/invoice/CreateInvoiceQnForm'
+import { CreateInvoiceHnForm } from '@/features/admin/components/invoice/CreateInvoiceHnForm'
 import { CreateInvoiceHcmForm } from '@/features/admin/components/invoice/CreateInvoiceHcmForm'
 import type { AgencyFeeModeOption } from '@/features/admin/components/invoice/CreateInvoiceVariantForm'
 import {
@@ -67,6 +69,7 @@ import {
 import {
   quoteFormFromArea,
   quoteFormFromStored,
+  isHcmWorksheet,
 } from '@/features/admin/components/invoice/epda/quoteFormFromArea'
 import {
   DEFAULT_GARBAGE_CBM_AMOUNT,
@@ -95,7 +98,9 @@ import { extractParamsSnapshot } from '@/modules/inquiries/components/common/quo
 type EpdaCargoType = CargoType
 
 type AreaOption = (typeof AREA_OPTIONS)[number]['value']
-const AREA_LABELS = Object.fromEntries(AREA_OPTIONS.map((item) => [item.value, item.label])) as Record<string, string>
+const AREA_LABELS = Object.fromEntries(
+  AREA_OPTIONS.map((item) => [item.value, item.shortLabel]),
+) as Record<string, string>
 
 const PURPOSE_OPTIONS = PURPOSE_OF_CALLING_OPTIONS
 type PurposeOption = (typeof PURPOSE_OPTIONS)[number]['value']
@@ -210,7 +215,7 @@ export function CreateInvoiceTab({
   // Form fields
   const [formCreatedDate, setFormCreatedDate] = useState(() => new Date().toISOString().split('T')[0])
   const [selectedArea, setSelectedArea] = useState<AreaOption | ''>('')
-  const [loadedInquiryQuoteForm, setLoadedInquiryQuoteForm] = useState<'HCM' | 'QN' | null>(null)
+  const [loadedInquiryQuoteForm, setLoadedInquiryQuoteForm] = useState<'HCM' | 'QN' | 'HN' | null>(null)
   const [viewInquiryMeta, setViewInquiryMeta] = useState<ShippingAgencyAdminInquiry | null>(null)
   // Confirm dialog when saving a draft that still has empty required fields.
   const [incompleteSaveDialogOpen, setIncompleteSaveDialogOpen] = useState(false)
@@ -407,7 +412,7 @@ export function CreateInvoiceTab({
     void loadCargoTypeCatalog()
   }, [])
 
-  const quoteForm = useMemo<'HCM' | 'QN'>(() => {
+  const quoteForm = useMemo<'HCM' | 'QN' | 'HN'>(() => {
     if (selectedArea) return quoteFormFromArea(selectedArea)
     if (loadedInquiryQuoteForm) return loadedInquiryQuoteForm
     return 'HCM'
@@ -670,7 +675,7 @@ export function CreateInvoiceTab({
     isLoaOverTugMax,
     tugAssistanceAmount,
     berthHours,
-    buoyDueHours: quoteForm === 'HCM' && dischargeLoadingLocation === 'Anchorage' ? berthHours : '',
+    buoyDueHours: isHcmWorksheet(quoteForm) && dischargeLoadingLocation === 'Anchorage' ? berthHours : '',
     anchorageHours,
     qnPilotageMiles,
     pilotageThirdMiles,
@@ -730,6 +735,18 @@ export function CreateInvoiceTab({
           cargoName: inquiry.cargoName,
           cargoNameOther: inquiry.cargoNameOther,
         })
+        if (inquiry.portOfCall?.trim()) {
+          const selection = await findPortSelectionFromInquiry(inquiry.portOfCall)
+          if (cancelled) return
+          pendingPortOfCallRef.current = selection.portOfCall
+          if (selection.area) {
+            setSelectedArea(selection.area)
+            setPorts(selection.ports)
+          } else {
+            setPort(selection.portOfCall)
+            pendingPortOfCallRef.current = null
+          }
+        }
         applyAdminInquiryToForm(inquiry, {
           setFormCreatedDate,
           setToShipowner,
@@ -761,18 +778,6 @@ export function CreateInvoiceTab({
           setTugAssistanceAmount,
           setTransportLs,
         })
-        if (inquiry.portOfCall?.trim()) {
-          const selection = await findPortSelectionFromInquiry(inquiry.portOfCall)
-          if (cancelled) return
-          pendingPortOfCallRef.current = selection.portOfCall
-          if (selection.area) {
-            setSelectedArea(selection.area)
-            setPorts(selection.ports)
-          } else {
-            setPort(selection.portOfCall)
-            pendingPortOfCallRef.current = null
-          }
-        }
         if (inquiry.userId) {
           setCustomerUserId(inquiry.userId)
           const label =
@@ -906,7 +911,12 @@ export function CreateInvoiceTab({
       const template = await res.text()
 
       const quoteData = buildQuoteParams()
-      const renderer = quoteForm === 'QN' ? renderQuoteHtmlQn : renderQuoteHtmlHcm
+      const renderer =
+        quoteForm === 'QN'
+          ? renderQuoteHtmlQn
+          : quoteForm === 'HN'
+            ? renderQuoteHtmlHn
+            : renderQuoteHtmlHcm
       const html = renderer(template, quoteData)
 
       const filename = linkedInquiryId
@@ -1372,6 +1382,16 @@ export function CreateInvoiceTab({
 
             {quoteForm === 'QN' ? (
               <CreateInvoiceQnForm
+                values={formValues}
+                handlers={formHandlers}
+                options={formOptions}
+                computed={formComputed}
+                params={effectiveParams}
+                activeSection={activeSection}
+                getRequiredState={getRequiredState}
+              />
+            ) : quoteForm === 'HN' ? (
+              <CreateInvoiceHnForm
                 values={formValues}
                 handlers={formHandlers}
                 options={formOptions}
