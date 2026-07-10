@@ -755,15 +755,22 @@ function TonnageDuesCalculator({ coeff }: { coeff: EpdaParameterValues['coeff'] 
 function PilotageCalculator({
   variant,
   coeff,
+  hours,
 }: {
   variant: QuoteVariant
   coeff: EpdaParameterValues['coeff']
+  hours: EpdaParameterValues['hours']
 }) {
   const { t } = useI18n()
+  const defaultMiles = usesQnPilotage(variant) ? hours.qnPilotageMiles : hours.pilotageThirdMiles
   const [grtText, setGrtText] = useState('')
-  const [milesText, setMilesText] = useState('')
+  const [milesText, setMilesText] = useState(() => formatDecimalValue(defaultMiles))
   const grt = Number(grtText) || 0
   const miles = Number(milesText) || 0
+
+  useEffect(() => {
+    setMilesText(formatDecimalValue(defaultMiles))
+  }, [defaultMiles])
 
   return (
     <div className='space-y-4 rounded-lg border bg-muted/20 p-4'>
@@ -1184,6 +1191,8 @@ function ValuesEditor({
     onChange({ ...values, quarantine: { ...values.quarantine, [k]: n } })
   const setCoeff = (k: keyof EpdaParameterValues['coeff'], n: number) =>
     onChange({ ...values, coeff: { ...values.coeff, [k]: n } })
+  const setHours = (k: keyof EpdaParameterValues['hours'], n: number) =>
+    onChange({ ...values, hours: { ...values.hours, [k]: n } })
 
   const sections: { id: string; title: string; desc: string; body: ReactNode }[] = [
     {
@@ -1266,44 +1275,25 @@ function ValuesEditor({
       desc: t('sec.pilotage.desc'),
       body: (
         <div className='space-y-4'>
-          <div>
-            <div className='grid gap-4 lg:grid-cols-2'>
-              {/* Left: editable inputs */}
-              <div className='grid grid-cols-2 gap-4'>
-                {!usesQnPilotage(variant) ? (
-                  <>
-                    <NumberField label={t('f.pilotageLeg1Rate')} value={values.coeff.pilotageLeg1Rate} onChange={(n) => setCoeff('pilotageLeg1Rate', n)} />
-                    <NumberField label={t('f.pilotageLeg1Miles')} value={values.coeff.pilotageLeg1Miles} onChange={(n) => setCoeff('pilotageLeg1Miles', n)} />
-                    <NumberField label={t('f.pilotageLeg2Rate')} value={values.coeff.pilotageLeg2Rate} onChange={(n) => setCoeff('pilotageLeg2Rate', n)} />
-                    <NumberField label={t('f.pilotageLeg2Miles')} value={values.coeff.pilotageLeg2Miles} onChange={(n) => setCoeff('pilotageLeg2Miles', n)} />
-                    <NumberField label={t('f.pilotageLeg3Rate')} value={values.coeff.pilotageLeg3Rate} onChange={(n) => setCoeff('pilotageLeg3Rate', n)} />
-                  </>
-                ) : (
-                  <>
-                    <NumberField label={t('f.pilotageSingleRate')} value={values.coeff.pilotageSingleRate} onChange={(n) => setCoeff('pilotageSingleRate', n)} />
-                    <NumberField label={t('f.pilotageMin')} value={values.coeff.pilotageMinAmount} onChange={(n) => setCoeff('pilotageMinAmount', n)} />
-                  </>
-                )}
-              </div>
-              {/* Right: worked example — one line per leg */}
-              <div className='rounded-md border bg-muted/20 p-3'>
-                {!usesQnPilotage(variant) ? (
-                  <div className='space-y-0.5 text-sm leading-relaxed text-foreground'>
-                    <p>{t('f.pilotageLeg1Ex', { rate: values.coeff.pilotageLeg1Rate, miles: values.coeff.pilotageLeg1Miles })}</p>
-                    <p>{t('f.pilotageLeg2Ex', { rate: values.coeff.pilotageLeg2Rate, miles: values.coeff.pilotageLeg2Miles, after: values.coeff.pilotageLeg1Miles })}</p>
-                    <p>{t('f.pilotageLeg3Ex', { rate: values.coeff.pilotageLeg3Rate, after: values.coeff.pilotageLeg1Miles + values.coeff.pilotageLeg2Miles })}</p>
-                    <p className='font-medium'>{t('f.pilotageTotalEx')}</p>
-                  </div>
-                ) : (
-                  <div className='space-y-0.5 text-sm leading-relaxed text-foreground'>
-                    <p>{t('f.pilotageQnEx', { rate: values.coeff.pilotageSingleRate })}</p>
-                    <p className='font-medium'>{t('f.pilotageQnMin', { min: values.coeff.pilotageMinAmount })}</p>
-                  </div>
-                )}
-              </div>
-            </div>
+          <div className='grid grid-cols-1 gap-4 sm:max-w-2xl sm:grid-cols-2'>
+            {!usesQnPilotage(variant) ? (
+              <>
+                <NumberField label={t('f.pilotageLeg1Rate')} value={values.coeff.pilotageLeg1Rate} onChange={(n) => setCoeff('pilotageLeg1Rate', n)} />
+                <NumberField label={t('f.pilotageLeg1Miles')} value={values.coeff.pilotageLeg1Miles} onChange={(n) => setCoeff('pilotageLeg1Miles', n)} />
+                <NumberField label={t('f.pilotageLeg2Rate')} value={values.coeff.pilotageLeg2Rate} onChange={(n) => setCoeff('pilotageLeg2Rate', n)} />
+                <NumberField label={t('f.pilotageLeg2Miles')} value={values.coeff.pilotageLeg2Miles} onChange={(n) => setCoeff('pilotageLeg2Miles', n)} />
+                <NumberField label={t('f.pilotageLeg3Rate')} value={values.coeff.pilotageLeg3Rate} onChange={(n) => setCoeff('pilotageLeg3Rate', n)} />
+                <NumberField label={t('f.pilotage3rdMiles')} value={values.hours.pilotageThirdMiles} onChange={(n) => setHours('pilotageThirdMiles', n)} />
+              </>
+            ) : (
+              <>
+                <NumberField label={t('f.pilotageSingleRate')} value={values.coeff.pilotageSingleRate} onChange={(n) => setCoeff('pilotageSingleRate', n)} />
+                <NumberField label={t('f.pilotageMin')} value={values.coeff.pilotageMinAmount} onChange={(n) => setCoeff('pilotageMinAmount', n)} />
+                <NumberField label={t('f.pilotageMiles')} value={values.hours.qnPilotageMiles} onChange={(n) => setHours('qnPilotageMiles', n)} />
+              </>
+            )}
           </div>
-          <PilotageCalculator variant={variant} coeff={values.coeff} />
+          <PilotageCalculator variant={variant} coeff={values.coeff} hours={values.hours} />
         </div>
       ),
     },

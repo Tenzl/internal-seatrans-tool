@@ -551,6 +551,8 @@ export function CreateInvoiceVariantForm({
                 value={values.qnPilotageMiles}
                 onChange={(e) => handlers.setQnPilotageMiles(e.target.value)}
                 min="0"
+                disabled
+                className={disabledFieldTextClass}
               />
             </div>
           ) : (
@@ -562,10 +564,9 @@ export function CreateInvoiceVariantForm({
                 value={values.pilotageThirdMiles}
                 onChange={(e) => handlers.setPilotageThirdMiles(e.target.value)}
                 min="0"
+                disabled
+                className={disabledFieldTextClass}
               />
-              <p className="text-xs leading-relaxed text-muted-foreground">
-                {t('epda.buoyHintHcm')}
-              </p>
             </div>
           )}
 
