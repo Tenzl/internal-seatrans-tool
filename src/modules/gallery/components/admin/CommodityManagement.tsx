@@ -23,6 +23,9 @@ import {
   CreateCommodityRequest,
 } from '@/modules/gallery/services/commodityService'
 import { SHIPPING_AGENCY_CARGO_TYPES } from '@/modules/gallery/shippingAgencyCargoCatalog'
+import { useCurrentUser } from '@/hooks/use-current-user'
+import { isAdminRole } from '@/config/section-catalog'
+import { getRoleGroup } from '@/shared/utils/auth'
 import { toast } from '@/shared/utils/toast'
 
 const getCargoTypeLabel = (cargoType: CargoType, options: { value: CargoType; label: string }[]): string => {
@@ -44,6 +47,11 @@ const FIXED_CARGO_TYPE_OPTIONS: CargoTypeOption[] = SHIPPING_AGENCY_CARGO_TYPES.
 }))
 
 export function ManageCommodities() {
+  const currentUser = useCurrentUser()
+  const isInternal = getRoleGroup(currentUser) === 'INTERNAL'
+  const canAddCargo = isInternal
+  const canEditCargo = isAdminRole(currentUser?.role) || canAddCargo
+
   const [serviceTypes, setServiceTypes] = useState<ServiceType[]>([])
   const [selectedServiceType, setSelectedServiceType] = useState<number | null>(null)
   const [commodities, setCommodities] = useState<Commodity[]>([])
@@ -281,23 +289,27 @@ export function ManageCommodities() {
             </select>
           </div>
 
-          <div>
-            <label className="block text-sm font-medium mb-2">Cargo Name *</label>
-            <input
-              type="text"
-              value={newCommodity.displayName}
-              onChange={(e) => setNewCommodity({ displayName: e.target.value })}
-              placeholder="e.g., Bulk Carrier"
-              className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
-            />
-          </div>
+          {canAddCargo && (
+            <>
+              <div>
+                <label className="block text-sm font-medium mb-2">Cargo Name *</label>
+                <input
+                  type="text"
+                  value={newCommodity.displayName}
+                  onChange={(e) => setNewCommodity({ displayName: e.target.value })}
+                  placeholder="e.g., Bulk Carrier"
+                  className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
+                />
+              </div>
 
-          <div>
-            <Button onClick={handleAddCommodity} className="w-full md:w-auto">
-              <Plus className="mr-2 h-4 w-4" />
-              Add Cargo
-            </Button>
-          </div>
+              <div>
+                <Button onClick={handleAddCommodity} className="w-full md:w-auto">
+                  <Plus className="mr-2 h-4 w-4" />
+                  Add Cargo
+                </Button>
+              </div>
+            </>
+          )}
         </div>
       </div>
 
@@ -345,7 +357,9 @@ export function ManageCommodities() {
                       <th className="text-left py-3 px-4 font-medium">Cargo Name</th>
                       <th className="text-left py-3 px-4 font-medium">Required Count</th>
                       <th className="text-left py-3 px-4 font-medium">Cargo Type</th>
-                      <th className="text-right py-3 px-4 font-medium w-32">Actions</th>
+                      {canEditCargo && (
+                        <th className="text-right py-3 px-4 font-medium w-32">Actions</th>
+                      )}
                     </tr>
                   </thead>
                   <tbody>
@@ -388,49 +402,51 @@ export function ManageCommodities() {
                         <td className="py-3 px-4">
                           <Badge variant="outline">{getCargoTypeLabel(type.cargoType, cargoTypeOptions)}</Badge>
                         </td>
-                        <td className="py-3 px-4">
-                          <div className="flex gap-2 justify-end">
-                            {editingTypeId === type.id ? (
-                              <>
-                                <Button
-                                  variant="ghost"
-                                  size="sm"
-                                  onClick={() => handleSaveCommodity(type.id)}
-                                  className="text-success hover:text-success/80 hover:bg-success/10"
-                                >
-                                  <Save className="h-4 w-4" />
-                                </Button>
-                                <Button
-                                  variant="ghost"
-                                  size="sm"
-                                  onClick={handleCancelEdit}
-                                  className="text-muted-foreground hover:text-foreground hover:bg-muted"
-                                >
-                                  <X className="h-4 w-4" />
-                                </Button>
-                              </>
-                            ) : (
-                              <>
-                                <Button
-                                  variant="ghost"
-                                  size="sm"
-                                  onClick={() => handleEditCommodity(type)}
-                                  className="text-primary hover:text-primary/90 hover:bg-primary/10"
-                                >
-                                  <Edit2 className="h-4 w-4" />
-                                </Button>
-                                <Button
-                                  variant="ghost"
-                                  size="sm"
-                                  onClick={() => handleDeleteCommodity(type)}
-                                  className="text-red-600 hover:text-red-700 hover:bg-red-50"
-                                >
-                                  <Trash2 className="h-4 w-4" />
-                                </Button>
-                              </>
-                            )}
-                          </div>
-                        </td>
+                        {canEditCargo && (
+                          <td className="py-3 px-4">
+                            <div className="flex gap-2 justify-end">
+                              {editingTypeId === type.id ? (
+                                <>
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={() => handleSaveCommodity(type.id)}
+                                    className="text-success hover:text-success/80 hover:bg-success/10"
+                                  >
+                                    <Save className="h-4 w-4" />
+                                  </Button>
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={handleCancelEdit}
+                                    className="text-muted-foreground hover:text-foreground hover:bg-muted"
+                                  >
+                                    <X className="h-4 w-4" />
+                                  </Button>
+                                </>
+                              ) : (
+                                <>
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={() => handleEditCommodity(type)}
+                                    className="text-primary hover:text-primary/90 hover:bg-primary/10"
+                                  >
+                                    <Edit2 className="h-4 w-4" />
+                                  </Button>
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={() => handleDeleteCommodity(type)}
+                                    className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                                  >
+                                    <Trash2 className="h-4 w-4" />
+                                  </Button>
+                                </>
+                              )}
+                            </div>
+                          </td>
+                        )}
                       </tr>
                     ))}
                   </tbody>

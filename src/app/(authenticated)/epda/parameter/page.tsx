@@ -99,8 +99,12 @@ const LEAD_PARAMETER_SECTION_ORDER = [
 ] as const
 
 /** Hidden in General port charges; configured per-port in Port overrides instead. */
-const AREA_SET_HIDDEN_SECTION_IDS = ['pilotage', 'tug', 'moor'] as const
-const PORT_OVERRIDE_VISIBLE_SECTION_IDS = ['pilotage', 'tug', 'moor'] as const
+const AREA_SET_HIDDEN_SECTION_IDS: readonly string[] = ['pilotage', 'tug', 'moor']
+const PORT_OVERRIDE_VISIBLE_SECTION_IDS: readonly string[] = ['pilotage', 'tug', 'moor']
+
+function sectionFilterKey(ids?: readonly string[]): string {
+  return ids?.join('\0') ?? ''
+}
 
 function getSectionDisplayNumber(sectionId: string, index: number, useGlobalSectionNumbers: boolean): number {
   if (useGlobalSectionNumbers) {
@@ -1376,6 +1380,9 @@ function ValuesEditor({
 
   // Pin the lead sections in a fixed order for every template (QN + HCM):
   // 01 tonnage · 02 pilotage · 03 tug · 04 moor · 05 berth/anchorage dues · 06 quarantine · rest.
+  const visibleSectionKey = sectionFilterKey(visibleSectionIds)
+  const hiddenSectionKey = sectionFilterKey(hiddenSectionIds)
+
   const orderedSections = useMemo(() => {
     const lead = [...LEAD_PARAMETER_SECTION_ORDER]
     const picked = lead
@@ -1390,12 +1397,12 @@ function ValuesEditor({
     }
     return filtered
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [sections, variant, visibleSectionIds, hiddenSectionIds])
+  }, [sections, variant, visibleSectionKey, hiddenSectionKey])
 
   const [active, setActive] = useState(0)
   useEffect(() => {
     setActive(0)
-  }, [visibleSectionIds, hiddenSectionIds, variant])
+  }, [visibleSectionKey, hiddenSectionKey, variant])
   const current = orderedSections[Math.min(active, orderedSections.length - 1)]
   const currentNumber = current
     ? getSectionDisplayNumber(current.id, active, useGlobalSectionNumbers)
@@ -1976,7 +1983,7 @@ export default function Page() {
                   variant={variant}
                   values={draft}
                   onChange={setDraft}
-                  hiddenSectionIds={[...AREA_SET_HIDDEN_SECTION_IDS]}
+                  hiddenSectionIds={AREA_SET_HIDDEN_SECTION_IDS}
                 />
               </CardContent>
             </Card>
@@ -2185,7 +2192,7 @@ function PortOverridesCard({
                 variant={variant}
                 values={draft}
                 onChange={setDraft}
-                visibleSectionIds={[...PORT_OVERRIDE_VISIBLE_SECTION_IDS]}
+                visibleSectionIds={PORT_OVERRIDE_VISIBLE_SECTION_IDS}
               />
             </CardContent>
           </Card>
