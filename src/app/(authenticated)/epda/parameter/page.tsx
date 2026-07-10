@@ -122,11 +122,19 @@ const num = (v: string): number => {
   return Number.isFinite(n) ? n : 0
 }
 
+const formatDecimalValue = (value: number) => (Number.isFinite(value) ? String(value) : '')
+
+const parseDecimalText = (raw: string): number | null => {
+  const trimmed = raw.trim()
+  if (trimmed === '' || trimmed === '-' || trimmed === '.' || trimmed === '-.') return 0
+  const n = Number(trimmed)
+  return Number.isFinite(n) ? n : null
+}
+
 /**
  * Number input that keeps its own text buffer so decimals can be typed freely.
  * A plain controlled `value={String(n)}` reformats mid-entry — typing "0." snaps
- * back to "0" and the decimal point can never be entered. We only re-sync from the
- * prop when the external value actually diverges (e.g. switching area/port).
+ * back to "0" and values like 0.0034 cannot be entered digit-by-digit.
  */
 function DecimalInput({
   value,
@@ -139,23 +147,38 @@ function DecimalInput({
   className?: string
   placeholder?: string
 }) {
-  const [text, setText] = useState(value ? String(value) : '')
+  const [text, setText] = useState(() => formatDecimalValue(value))
+  const [focused, setFocused] = useState(false)
+
   useEffect(() => {
-    if (Number(text || '0') !== value) setText(value ? String(value) : '')
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [value])
+    if (!focused) setText(formatDecimalValue(value))
+  }, [value, focused])
+
   return (
     <Input
-      type='number'
-      step='any'
+      type='text'
       inputMode='decimal'
       className={className}
       placeholder={placeholder}
       value={text}
+      onFocus={() => setFocused(true)}
+      onBlur={() => {
+        setFocused(false)
+        const parsed = parseDecimalText(text)
+        if (parsed !== null) {
+          onChange(parsed)
+          setText(formatDecimalValue(parsed))
+        } else {
+          setText(formatDecimalValue(value))
+        }
+      }}
       onChange={(e) => {
-        setText(e.target.value)
-        const n = Number(e.target.value)
-        onChange(Number.isFinite(n) ? n : 0)
+        const raw = e.target.value
+        if (raw === '' || /^-?\d*\.?\d*$/.test(raw)) {
+          setText(raw)
+          const parsed = parseDecimalText(raw)
+          if (parsed !== null) onChange(parsed)
+        }
       }}
     />
   )
@@ -235,24 +258,16 @@ function getCurrentOverrideSectionLabels(
 function NumberField({
   label,
   value,
-  step,
   onChange,
 }: {
   label: string
   value: number
-  step?: string
   onChange: (n: number) => void
 }) {
   return (
     <div className='grid gap-2'>
       <Label className='text-sm font-medium text-muted-foreground'>{label}</Label>
-      <Input
-        type='number'
-        step={step ?? 'any'}
-        value={String(value)}
-        onChange={(e) => onChange(num(e.target.value))}
-        className='h-11 text-base tabular-nums'
-      />
+      <DecimalInput value={value} onChange={onChange} className='h-11 text-base tabular-nums' />
     </div>
   )
 }
@@ -315,11 +330,10 @@ function GrtTierTable({
                 />
               </TableCell>
               <TableCell>
-                <Input
-                  type='number'
+                <DecimalInput
                   className='text-base tabular-nums'
-                  value={String(row.amount)}
-                  onChange={(e) => setTier(i, { amount: num(e.target.value) })}
+                  value={row.amount}
+                  onChange={(n) => setTier(i, { amount: n })}
                 />
               </TableCell>
               <TableCell>
@@ -388,11 +402,10 @@ function LoaTierTable({
                 />
               </TableCell>
               <TableCell>
-                <Input
-                  type='number'
+                <DecimalInput
                   className='text-base tabular-nums'
-                  value={String(row.amount)}
-                  onChange={(e) => setTier(i, { amount: num(e.target.value) })}
+                  value={row.amount}
+                  onChange={(n) => setTier(i, { amount: n })}
                 />
               </TableCell>
               <TableCell>
