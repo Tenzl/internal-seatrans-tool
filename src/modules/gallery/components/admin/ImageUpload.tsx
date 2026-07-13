@@ -1,14 +1,19 @@
-import { useState, useEffect } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { Upload, X, MapPin, Anchor, Briefcase, Image as ImageIcon, AlertCircle } from 'lucide-react'
 import { Button } from '@/shared/components/ui/button'
 import { ImageDropzone } from '@/components/ui/file-upload'
-import { portService, Port, type PortArea } from '@/modules/logistics/services/portService'
-import { serviceTypeService, ServiceType } from '@/modules/service-types/services/serviceTypeService'
-import { commodityService, Commodity, CommodityImageCount } from '@/modules/gallery/services/commodityService'
+import { portService, type Port } from '@/modules/logistics/services/portService'
+import { serviceTypeService, type ServiceType } from '@/modules/service-types/services/serviceTypeService'
+import {
+  commodityService,
+  type Commodity,
+  type CommodityImageCount,
+} from '@/modules/gallery/services/commodityService'
 import { galleryService } from '@/modules/gallery/services/galleryService'
+import { toast } from '@/shared/utils/toast'
 import { useGalleryManageFilters } from './galleryManageContext'
 
-const AREA_OPTIONS: PortArea[] = ['NORTHERN', 'MIDDLE', 'SOUTHERN']
+const AREA_OPTIONS = ['NORTHERN', 'MIDDLE', 'SOUTHERN'] as const
 
 export interface AddImageTabProps {
   /** When true, omits page-level chrome (used inside GalleryImageHub). */
@@ -85,7 +90,6 @@ function AddImageUploadPanel({
         failedCount++
         const errorMsg = error instanceof Error ? error.message : 'Unknown error'
         errors.push(`${file.name}: ${errorMsg}`)
-        console.error('Error uploading file:', file.name, error)
       }
     }
 
@@ -227,11 +231,9 @@ function UploadResultBanner({
   )
 }
 
-export function AddImageTab({ embedded = false, onUploadSuccess }: AddImageTabProps = {}) {
-  if (embedded) {
-    return <AddImageUploadPanel onUploadSuccess={onUploadSuccess} />
-  }
-
+function StandaloneAddImageTab({
+  onUploadSuccess,
+}: Pick<AddImageTabProps, 'onUploadSuccess'>) {
   const [serviceTypes, setServiceTypes] = useState<ServiceType[]>([])
   
   const [selectedArea, setSelectedArea] = useState<string>('')
@@ -249,95 +251,101 @@ export function AddImageTab({ embedded = false, onUploadSuccess }: AddImageTabPr
   const selectedPortData = selectedPort ? availablePorts.find((port) => port.id === selectedPort) : null
   const selectedProvinceId = selectedPortData?.provinceId ?? null
 
+  const loadCommodityCount = useCallback(
+    async (
+      commodityId: number,
+      provinceId?: number,
+      portId?: number,
+      serviceTypeId?: number,
+    ) => {
+      try {
+        const countData = await commodityService.getImageCount(
+          commodityId,
+          provinceId,
+          portId,
+          serviceTypeId,
+        )
+        const key = `${provinceId || 0}_${portId || 0}_${serviceTypeId || 0}_${commodityId}`
+        setCommodityCounts((prev) => ({ ...prev, [key]: countData }))
+      } catch (error) {
+        toast.error('Failed to load image count', error)
+      }
+    },
+    [],
+  )
+
   useEffect(() => {
-    loadServiceTypes()
+    void serviceTypeService
+      .getAllServiceTypes()
+      .then(setServiceTypes)
+      .catch((error) => toast.error('Failed to load service types', error))
   }, [])
 
-  // Fetch data only after area is selected, then reset dependent fields.
   useEffect(() => {
-    if (!selectedArea) {
-      setAvailablePorts([])
-      setSelectedPort(null)
-      setSelectedServiceType(null)
-      setSelectedCommodity(null)
-      return
-    }
+    if (!selectedArea) return
 
-    const loadAreaData = async () => {
-      try {
-        setLoading(true)
-        const portData = await portService.getPortsByArea(selectedArea)
-        setAvailablePorts(portData)
-      } catch (error) {
-        console.error('Error loading ports for area:', error)
-        setAvailablePorts([])
-      } finally {
-        setSelectedPort(null)
-        setSelectedServiceType(null)
-        setSelectedCommodity(null)
-        setLoading(false)
-      }
-    }
+    let cancelled = false
+    void portService
+      .getPortsByArea(selectedArea)
+      .then((portData) => {
+        if (!cancelled) setAvailablePorts(portData)
+      })
+      .catch((error) => {
+        if (!cancelled) setAvailablePorts([])
+        toast.error('Failed to load ports for area', error)
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false)
+      })
 
-    void loadAreaData()
+    return () => {
+      cancelled = true
+    }
   }, [selectedArea])
 
-  // Reset dependent fields when service type changes
   useEffect(() => {
-    if (selectedServiceType) {
-      loadCommodities(selectedServiceType)
-    } else {
-      setAvailableCommodities([])
-      setSelectedCommodity(null)
+    if (!selectedServiceType) return
+
+    let cancelled = false
+    void commodityService
+      .getCommoditiesByServiceType(selectedServiceType)
+      .then((data) => {
+        if (!cancelled) setAvailableCommodities(data)
+      })
+      .catch((error) => toast.error('Failed to load image types', error))
+      .finally(() => {
+        if (!cancelled) setLoading(false)
+      })
+
+    return () => {
+      cancelled = true
     }
   }, [selectedServiceType])
 
   // Load counts for all image types when all required fields are selected
   useEffect(() => {
     if (selectedProvinceId && selectedPort && selectedServiceType && availableCommodities.length > 0) {
-      availableCommodities.forEach(type => {
-        loadCommodityCount(type.id, selectedProvinceId, selectedPort, selectedServiceType)
+      availableCommodities.forEach((type) => {
+        void loadCommodityCount(type.id, selectedProvinceId, selectedPort, selectedServiceType)
       })
     }
-  }, [selectedProvinceId, selectedPort, selectedServiceType, availableCommodities])
+  }, [selectedProvinceId, selectedPort, selectedServiceType, availableCommodities, loadCommodityCount])
 
-  // Load image count when image type is selected
-  useEffect(() => {
-    if (selectedCommodity && selectedProvinceId && selectedPort && selectedServiceType) {
-      loadCommodityCount(selectedCommodity, selectedProvinceId, selectedPort, selectedServiceType)
-    }
-  }, [selectedCommodity, selectedProvinceId, selectedPort, selectedServiceType])
-
-  const loadServiceTypes = async () => {
-    try {
-      const data = await serviceTypeService.getAllServiceTypes()
-      setServiceTypes(data)
-    } catch (error) {
-      console.error('Error loading service types:', error)
-    }
+  const handleAreaChange = (area: string) => {
+    setSelectedArea(area)
+    setAvailablePorts([])
+    setSelectedPort(null)
+    setSelectedServiceType(null)
+    setAvailableCommodities([])
+    setSelectedCommodity(null)
+    setLoading(Boolean(area))
   }
 
-  const loadCommodities = async (serviceTypeId: number) => {
-    try {
-      setLoading(true)
-      const data = await commodityService.getCommoditiesByServiceType(serviceTypeId)
-      setAvailableCommodities(data)
-      setSelectedCommodity(null)
-    } catch (error) {
-      console.error('Error loading image types:', error)
-    } finally {
-      setLoading(false)
-    }
-  }
-
-  const loadCommodityCount = async (commodityId: number, provinceId?: number, portId?: number, serviceTypeId?: number) => {
-    try {
-      const countData = await commodityService.getImageCount(commodityId, provinceId, portId, serviceTypeId)
-      const key = `${provinceId || 0}_${portId || 0}_${serviceTypeId || 0}_${commodityId}`
-      setCommodityCounts(prev => ({ ...prev, [key]: countData }))
-    } catch (error) {
-      console.error('Error loading image count:', error)
-    }
+  const handleServiceTypeChange = (serviceTypeId: number | null) => {
+    setSelectedServiceType(serviceTypeId)
+    setAvailableCommodities([])
+    setSelectedCommodity(null)
+    setLoading(serviceTypeId !== null)
   }
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -375,11 +383,10 @@ export function AddImageTab({ embedded = false, onUploadSuccess }: AddImageTabPr
           selectedCommodity
         )
         successCount++
-      } catch (error: any) {
+      } catch (error: unknown) {
         failedCount++
-        const errorMsg = error.message || 'Unknown error'
+        const errorMsg = error instanceof Error ? error.message : 'Unknown error'
         errors.push(`${file.name}: ${errorMsg}`)
-        console.error('Error uploading file:', file.name, error)
       }
     }
 
@@ -393,7 +400,7 @@ export function AddImageTab({ embedded = false, onUploadSuccess }: AddImageTabPr
     // Reload all image type counts if successful
     if (successCount > 0 && selectedProvinceId && selectedPort && selectedServiceType) {
       availableCommodities.forEach(type => {
-        loadCommodityCount(type.id, selectedProvinceId, selectedPort, selectedServiceType)
+        void loadCommodityCount(type.id, selectedProvinceId, selectedPort, selectedServiceType)
       })
     }
 
@@ -423,7 +430,7 @@ export function AddImageTab({ embedded = false, onUploadSuccess }: AddImageTabPr
               </label>
               <select
                 value={selectedArea}
-                onChange={(e) => setSelectedArea(e.target.value)}
+                onChange={(e) => handleAreaChange(e.target.value)}
                 title="Select area"
                 aria-label="Select area"
                 className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
@@ -475,7 +482,9 @@ export function AddImageTab({ embedded = false, onUploadSuccess }: AddImageTabPr
               </label>
               <select
                 value={selectedServiceType || ''}
-                onChange={(e) => setSelectedServiceType(e.target.value ? Number(e.target.value) : null)}
+                onChange={(e) =>
+                  handleServiceTypeChange(e.target.value ? Number(e.target.value) : null)
+                }
                 disabled={!selectedPort}
                 title="Select service type"
                 aria-label="Select service type"
@@ -629,5 +638,13 @@ export function AddImageTab({ embedded = false, onUploadSuccess }: AddImageTabPr
         <div className="space-y-6">{formBody}</div>
       </div>
     </div>
+  )
+}
+
+export function AddImageTab({ embedded = false, onUploadSuccess }: AddImageTabProps = {}) {
+  return embedded ? (
+    <AddImageUploadPanel onUploadSuccess={onUploadSuccess} />
+  ) : (
+    <StandaloneAddImageTab onUploadSuccess={onUploadSuccess} />
   )
 }

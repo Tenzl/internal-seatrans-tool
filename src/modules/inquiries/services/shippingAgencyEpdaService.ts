@@ -1,6 +1,8 @@
 import { API_CONFIG } from '@/shared/config/api.config'
-import type { EpdaApiPayload } from '@/features/admin/components/invoice/epda/epdaApiMappers'
-import type { ShippingAgencyAdminInquiry } from '@/features/admin/components/invoice/epda/epdaApiMappers'
+import type {
+  EpdaApiPayload,
+  ShippingAgencyAdminInquiry,
+} from '@/features/admin/components/invoice/epda/epdaApiMappers'
 import type { InquiryFieldChangeLogEntry } from '@/features/admin/components/invoice/epda/epdaCustomerFieldTracking'
 import type { PageResponse } from '@/shared/types/api.types'
 import { apiClient } from '@/shared/utils/apiClient'
@@ -48,6 +50,17 @@ export const shippingAgencyEpdaService = {
         internalNotes: options?.internalNotes,
         confirmedCustomerFieldChanges: options?.confirmedCustomerFieldChanges,
       },
+    )
+    return unwrapApiResponse<ShippingAgencyAdminInquiry>(response)
+  },
+
+  async lockEpda(
+    inquiryId: number,
+    epdaSnapshot: Record<string, unknown>,
+  ): Promise<ShippingAgencyAdminInquiry> {
+    const response = await apiClient.post(
+      API_CONFIG.INQUIRIES.ADMIN_SHIPPING_AGENCY_EPDA_LOCK(inquiryId),
+      { epdaSnapshot },
     )
     return unwrapApiResponse<ShippingAgencyAdminInquiry>(response)
   },

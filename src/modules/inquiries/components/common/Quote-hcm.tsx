@@ -1,7 +1,6 @@
 import React from 'react'
 import { formatCargoNameWithType, normalizeInvoiceNumericFields } from '@/shared/utils/invoiceFormatters'
 import { legacyCargoTypeToCode } from '@/modules/gallery/shippingAgencyCargoCatalog'
-import { parseFiniteNumber } from '@/shared/utils/parseNumber'
 import {
   defaultParameterValues,
   normalizeParameterValues,
@@ -16,197 +15,31 @@ import {
   shipownerVatRemark,
 } from './shipownerVat'
 
-export type QuoteRow = {
-  no?: string | number
-  item?: string
-  details?: string
-  add?: string
-  remark?: string
-  amount?: string | number
-  mergeItemDetails?: boolean
-}
+import {
+  applyQuoteReplacements,
+  escapeHtml,
+  formatAmount,
+  formatCbm,
+  formatLoaDisplay,
+  getShipQuarantineTrips,
+  isExportPlsAdviseMode,
+  isMeaningfulQuoteRow,
+  isTallyFeeEligibleCargo,
+  isTankerShip,
+  normalizeAgencyFeeMode,
+  normalizeCargoType,
+  normalizeCustomRows,
+  normalizePurpose,
+  reindexNumberedRows,
+  resolveQuoteTotals,
+  shouldIncludeFeeRow,
+  shouldShowOceanFrtTax,
+  toNumber,
+  type QuoteData,
+  type QuoteRow,
+} from './quoteCommon'
 
-export type QuoteData = {
-  to_shipowner?: string
-  shipowner_nationality?: string
-  date?: string
-  ref?: string
-  mv?: string
-  dwt?: string
-  grt?: string
-  loa?: string
-  eta?: string
-  cargo_qty_mt?: string
-  cargo_name_upper?: string
-  cargo_type?: string
-  ship_type?: string
-  purpose_of_calling?: string
-  port_upper?: string
-  loading_term?: string
-  ocean_frt_rate_usd_per_mt?: string | number
-  garbage_usd_rate?: string | number
-  garbage_cbm_amount?: string | number
-  at_anchorage?: string
-  at_berth?: string
-  total_a?: string
-  total_b?: string
-  grand_total?: string
-  bank_name?: string
-  bank_address?: string
-  beneficiary?: string
-  usd_account?: string
-  swift?: string
-  berth_hours?: string | number
-  buoy_due_hours?: string | number
-  anchorage_hours?: string | number
-  transport_quarantine?: string | number
-  quarantine_cargo_trips?: string | number
-  transport_ls?: string | number
-  boat_hire_entry?: string | number
-  agency_fee_mode?: string
-  agency_discount_percent?: string | number
-  agency_lumpsum_amount?: string | number
-  tally_fee?: string | number
-  /** Manual tug-assistance amount — used when LOA is above the highest tug band. */
-  tug_assistance?: string | number
-  /** Shorecrane-hire rate USD/mt — amount = rate × cargo qty (AA bottom). */
-  shorecrane_hire_usd_per_mt?: string | number
-  /** QN-style single-rate pilotage miles (Area 1 hybrid + QN worksheet). */
-  pilotage_miles?: string | number
-  pilotage_third_miles?: string | number
-  /** Resolved EPDA parameter set for the selected area/port. Falls back to HCM defaults. */
-  params?: EpdaParameterValues
-  AA_ROWS?: QuoteRow[]
-  BB_ROWS?: QuoteRow[]
-}
-
-const escapeHtml = (value: unknown) => {
-  const raw = value === undefined || value === null || value === '' ? '' : String(value)
-  return raw
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
-    .replace(/'/g, '&#39;')
-}
-
-const toNumber = parseFiniteNumber
-
-const formatAmount = (value: unknown) => {
-  const num = toNumber(value)
-  if (num === null) return escapeHtml(value)
-  const rounded = Math.ceil(num * 100) / 100
-  return rounded.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
-}
-
-const formatCbm = (value: number) =>
-  value.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 2 })
-
-const formatLoaDisplay = (value: unknown) => {
-  const raw = String(value || '').trim()
-  if (!raw) return ''
-  if (/[a-zA-Z]$/.test(raw)) return raw.toUpperCase()
-  return `${raw}M`
-}
-
-const hasText = (value: unknown) => {
-  if (value === undefined || value === null) return false
-  return String(value).trim() !== ''
-}
-
-const isMeaningfulQuoteRow = (row: QuoteRow) => {
-  return [row.item, row.details, row.add, row.remark, row.amount].some(hasText)
-}
-
-const shouldIncludeFeeRow = (row: QuoteRow) => {
-  const amountNumeric = toNumber(row.amount)
-  if (amountNumeric !== null && amountNumeric <= 0) return false
-  return true
-}
-
-const normalizeCustomRows = (rows: QuoteRow[]) => {
-  return rows
-    .filter(isMeaningfulQuoteRow)
-    .filter(shouldIncludeFeeRow)
-    .map((row, index) => ({ ...row, no: index + 1 }))
-}
-
-const reindexNumberedRows = (rows: QuoteRow[]) => {
-  let currentNo = 1
-  return rows.map((row) => {
-    if (row.no === '') return row
-    return { ...row, no: currentNo++ }
-  })
-}
-
-const normalizePurpose = (value: unknown) =>
-  String(value || '')
-    .trim()
-    .toUpperCase()
-    .replace(/[\s-]+/g, '_')
-
-const normalizeFrtTaxType = (value: unknown) =>
-  String(value || '')
-    .trim()
-    .toUpperCase()
-    .replace(/[\s-]+/g, '_')
-
-const normalizeAgencyFeeMode = (value: unknown) =>
-  String(value || '')
-    .trim()
-    .toUpperCase()
-    .replace(/[\s-]+/g, '_')
-
-const isExportPlsAdviseMode = (frtTaxType?: string) => normalizeFrtTaxType(frtTaxType) === 'EXPORT_PLS_ADVISE'
-
-const isExportTotalAmountMode = (frtTaxType?: string) => {
-  const normalized = normalizeFrtTaxType(frtTaxType)
-  return (
-    normalized === 'EXPORT' ||
-    normalized === 'EXPORT_FREIGHT_RATE_DECLARATION'
-  )
-}
-
-const shouldShowOceanFrtTax = (purposeOfCalling?: string, frtTaxType?: string) => {
-  const normalizedFrtTaxType = normalizeFrtTaxType(frtTaxType)
-  if (normalizedFrtTaxType === 'IMPORT') return false
-
-  const normalizedPurpose = normalizePurpose(purposeOfCalling)
-  if (normalizedPurpose === 'NHAP_XUAT' || normalizedPurpose === 'CHUYEN_CANG_XUAT') {
-    return true
-  }
-  return isExportTotalAmountMode(frtTaxType) || isExportPlsAdviseMode(frtTaxType)
-}
-
-const normalizeCargoType = (value: unknown) =>
-  String(value || '')
-    .trim()
-    .toUpperCase()
-    .replace(/[\s-]+/g, '_')
-
-const isTallyFeeEligibleCargo = (cargoType?: string) => {
-  // Bag/Pack and Equipment incur a tally fee; Bulk does not. Canonicalize first so
-  // both legacy ("IN_BAGS", "EQUIPMENT") and current codes (IN_BAG_PACK / IN_EQUIPMENT)
-  // match — the canonical bag code IN_BAG_PACK does NOT contain the substring "IN_BAGS".
-  const code = legacyCargoTypeToCode(cargoType)
-  return code === 'IN_BAG_PACK' || code === 'IN_EQUIPMENT'
-}
-
-const isTankerShip = (value?: string) => {
-  const normalized = String(value || '')
-    .trim()
-    .toUpperCase()
-    .replace(/[\s-]+/g, '_')
-  return normalized === 'TANKER_SHIP'
-}
-
-const getShipQuarantineTrips = (purposeOfCalling?: string) => {
-  const normalized = normalizePurpose(purposeOfCalling)
-  if (normalized === 'NHAP_XUAT') return 2
-  if (normalized === 'NHAP_CHUYEN_CANG' || normalized === 'CHUYEN_CANG_XUAT') return 1
-  return 0
-}
-
+export type { QuoteData, QuoteRow } from './quoteCommon'
 const buildAARows = (
   rows: QuoteRow[],
   grt?: string | number,
@@ -235,7 +68,7 @@ const buildAARows = (
     params?: EpdaParameterValues
   },
 ): { html: string; total?: string } => {
-  const customRows = normalizeCustomRows(rows)
+  const customRows = normalizeCustomRows(rows, true)
   const P = options?.params ?? defaultParameterValues('HCM')
   const nationality = options?.shipownerNationality
   const vatRemark = shipownerVatRemark(nationality)
@@ -820,6 +653,8 @@ const buildBBRows = (
   return { html: finalRows.map(renderRow).join('\n'), total: totalNumeric ? formatAmount(totalNumeric) : undefined }
 }
 
+// Pure renderer intentionally coexists with the iframe component for compatibility.
+// eslint-disable-next-line react-refresh/only-export-components
 export const renderQuoteHtml = (template: string, data: QuoteData) => {
   // Format display strings only — keep raw `loa` / `params` for numeric calc so
   // decimals (e.g. 99.93) and tariff amounts are not corrupted by locale formatting.
@@ -865,13 +700,11 @@ export const renderQuoteHtml = (template: string, data: QuoteData) => {
     params,
   )
 
-  const totalAValue = escapeHtml(normalizedData.total_a || aa.total)
-  const totalBValue = escapeHtml(normalizedData.total_b || bb.total)
-  const totalANum = toNumber(normalizedData.total_a || aa.total)
-  const totalBNum = toNumber(normalizedData.total_b || bb.total)
-  const grandNumeric =
-    totalANum !== null && totalBNum !== null ? totalANum + totalBNum : totalANum !== null ? totalANum : totalBNum
-  const grandTotal = normalizedData.grand_total || (grandNumeric ? formatAmount(grandNumeric) : undefined)
+  const totals = resolveQuoteTotals(
+    normalizedData.total_a || aa.total,
+    normalizedData.total_b || bb.total,
+    normalizedData.grand_total,
+  )
 
   const replacements: Record<string, string> = {
     to_shipowner: escapeHtml(normalizedData.to_shipowner),
@@ -890,9 +723,9 @@ export const renderQuoteHtml = (template: string, data: QuoteData) => {
     loading_term: escapeHtml(normalizedData.loading_term),
     at_anchorage: escapeHtml(normalizedData.at_anchorage),
     at_berth: escapeHtml(normalizedData.at_berth),
-    total_a: totalAValue,
-    total_b: totalBValue,
-    grand_total: escapeHtml(grandTotal),
+    total_a: totals.totalA,
+    total_b: totals.totalB,
+    grand_total: escapeHtml(totals.grandTotal),
     bank_name: escapeHtml(normalizedData.bank_name),
     bank_address: escapeHtml(normalizedData.bank_address),
     beneficiary: escapeHtml(normalizedData.beneficiary),
@@ -902,10 +735,7 @@ export const renderQuoteHtml = (template: string, data: QuoteData) => {
     BB_ROWS: bb.html,
   }
 
-  return template.replace(/{{\s*([A-Za-z0-9_]+)\s*}}/g, (match, key) => {
-    const value = replacements[key]
-    return value === undefined ? '—' : value
-  })
+  return applyQuoteReplacements(template, replacements)
 }
 
 interface QuotePreviewProps {

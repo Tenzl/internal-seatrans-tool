@@ -23,11 +23,6 @@ const nextConfig = {
     // Lint is run separately; don't block builds during the migration.
     ignoreDuringBuilds: true,
   },
-  typescript: {
-    // The ported legacy code is large; surface type errors via `tsc` rather than
-    // blocking the dev/build loop while the migration settles.
-    ignoreBuildErrors: true,
-  },
   images: {
     formats: ['image/avif', 'image/webp'],
     minimumCacheTTL: 2592000,

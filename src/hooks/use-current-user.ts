@@ -10,22 +10,22 @@ import type { User } from '@/shared/types/dashboard'
  * they don't deny access before the role is known.
  */
 export function useAuthUser(): { user: User | null; loading: boolean } {
-  const [user, setUser] = useState<User | null>(null)
-  const [loading, setLoading] = useState(true)
-  useEffect(() => {
+  const [state, setState] = useState<{ user: User | null; loading: boolean }>(() => {
     const cached = authService.getUser()
-    if (cached) {
-      setUser(cached)
-      setLoading(false)
-    }
+    return { user: cached, loading: !cached }
+  })
+  useEffect(() => {
     void authService
       .getCurrentUser()
       .then((res) => {
-        if (res.data) setUser(res.data)
+        setState((current) => ({
+          user: res.data ?? current.user,
+          loading: false,
+        }))
       })
-      .finally(() => setLoading(false))
+      .catch(() => setState((current) => ({ ...current, loading: false })))
   }, [])
-  return { user, loading }
+  return state
 }
 
 /** The signed-in user, loaded from storage and refreshed from /auth/me. */

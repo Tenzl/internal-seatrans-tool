@@ -28,7 +28,7 @@ import { toast } from '@/shared/utils/toast'
 import { apiClient } from '@/shared/utils/apiClient'
 import { API_CONFIG } from '@/shared/config/api.config'
 import { portService, PORTS_ADMIN_LIST_SIZE } from '@/modules/logistics/services/portService'
-import { provinceService, type Province } from '@/modules/logistics/services/provinceService'
+import { provinceService } from '@/modules/logistics/services/provinceService'
 import type { ApiResponse } from '@/shared/types/api.types'
 import {
   Select,
@@ -214,7 +214,7 @@ export function ManagePorts() {
     },
   })
 
-  const ports = portsPage?.content ?? []
+  const ports = useMemo(() => portsPage?.content ?? [], [portsPage?.content])
   const totalElements = portsPage?.totalElements ?? 0
   const serverPageCount = Math.max(1, portsPage?.totalPages ?? 1)
 
@@ -379,7 +379,7 @@ export function ManagePorts() {
 
       invalidatePortsList()
       toast.success('Port deleted successfully')
-    } catch (error) {
+    } catch {
       toast.error('Failed to delete port')
     } finally {
       setIsBusy(false)
@@ -403,7 +403,7 @@ export function ManagePorts() {
       await response.json()
       invalidatePortsList()
       toast.success(`Has info set to ${nextHasInfo === 1 ? 'Active' : 'Inactive'}`)
-    } catch (error) {
+    } catch {
       toast.error('Failed to update has info')
     } finally {
       setIsBusy(false)

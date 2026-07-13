@@ -1,13 +1,13 @@
-import type { QuoteData as HcmQuoteData } from '@/modules/inquiries/components/common/Quote-hcm'
-import type { QuoteData as QnQuoteData } from '@/modules/inquiries/components/common/Quote-qn'
+import type { QuoteData } from '@/modules/inquiries/components/common/quoteCommon'
 import type { EpdaParameterValues } from '@/modules/inquiries/components/common/quoteParameters'
 import {
   DEFAULT_GARBAGE_CBM_AMOUNT,
   resolveGarbageUsdRate,
 } from '@/features/admin/components/invoice/garbageFeeDefaults'
 import type { CargoTypeCatalogItem, Commodity } from '@/modules/gallery/services/commodityService'
+import { getEpdaVariantConfig } from './epda/quoteFormFromArea'
 
-type InvoiceQuoteData = HcmQuoteData & QnQuoteData
+type InvoiceQuoteData = QuoteData
 
 interface QuarantineCargoOptionConfig {
   value: string
@@ -72,7 +72,8 @@ function getCargoTypeLabel(value: string, options: CargoTypeCatalogItem[]): stri
 export function buildInvoiceQuoteData(params: BuildInvoiceQuoteDataParams): InvoiceQuoteData {
   const selectedCargo = params.filteredCargoNames.find((item) => item.name === params.cargoName)
   const cargoDisplayName = (selectedCargo?.displayName || params.cargoName || '').trim()
-  const usesQnPilotageField = params.quoteForm === 'QN' || params.quoteForm === 'HN'
+  const variantConfig = getEpdaVariantConfig(params.quoteForm)
+  const usesQnPilotageField = variantConfig.pilotageMode === 'SINGLE_RATE'
 
   return {
     to_shipowner: params.toShipowner,
@@ -133,7 +134,9 @@ export function buildInvoiceQuoteData(params: BuildInvoiceQuoteDataParams): Invo
     berth_hours: parseFiniteNumberOrUndefined(params.berthHours),
     buoy_due_hours: parseFiniteNumberOrUndefined(params.buoyDueHours),
     anchorage_hours: parseFiniteNumberOrUndefined(params.anchorageHours),
-    pilotage_miles: usesQnPilotageField ? parseFiniteNumberOrUndefined(params.qnPilotageMiles) ?? 5 : undefined,
+    pilotage_miles: usesQnPilotageField
+      ? parseFiniteNumberOrUndefined(params.qnPilotageMiles) ?? variantConfig.defaultPilotageMiles
+      : undefined,
     pilotage_third_miles: params.quoteForm === 'HCM' ? parseFiniteNumberOrUndefined(params.pilotageThirdMiles) : undefined,
     params: params.params,
   }

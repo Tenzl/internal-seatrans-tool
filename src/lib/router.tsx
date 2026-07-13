@@ -171,15 +171,6 @@ export function useRouter() {
   }
 }
 
-/** Mirrors `getRouteApi(id)` — returns `{ useSearch, useNavigate }` bound to the route. */
-export function getRouteApi(id: string) {
-  return {
-    id,
-    useSearch: <T = SearchRecord,>() => useSearch<T>({ from: id }),
-    useNavigate,
-  }
-}
-
 export type LinkProps = {
   to?: string
   params?: Record<string, string | number>

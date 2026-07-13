@@ -12,6 +12,31 @@ interface PageResponse<T> {
   number: number
 }
 
+export type InquiryRecord = Record<string, unknown> & {
+  id: number
+  status?: string
+  isArchived?: boolean
+  deletedAt?: string | null
+  deletedById?: number | null
+}
+
+interface InquiryPageEnvelope {
+  data?: PageResponse<InquiryRecord> | InquiryRecord[]
+}
+
+interface ApiErrorBody {
+  error?: { message?: string }
+  message?: string
+}
+
+function extractInquiries(
+  value: PageResponse<InquiryRecord> | InquiryRecord[] | InquiryPageEnvelope,
+): InquiryRecord[] {
+  if (Array.isArray(value)) return value
+  if ('data' in value && value.data) return extractInquiries(value.data)
+  return 'content' in value ? value.content : []
+}
+
 interface UseInquiryDataOptions {
   serviceType?: string
   isAdmin?: boolean
@@ -42,7 +67,7 @@ function shouldUseAdminInquiryApi(isAdmin: boolean): boolean {
 export function useInquiryData(options: UseInquiryDataOptions = {}) {
   const { serviceType, isAdmin = false } = options
 
-  const [inquiries, setInquiries] = useState<any[]>([])
+  const [inquiries, setInquiries] = useState<InquiryRecord[]>([])
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [archivedFilter, setArchivedFilter] = useState<AdminArchivedFilter>('all')
@@ -90,7 +115,7 @@ export function useInquiryData(options: UseInquiryDataOptions = {}) {
           params.append('serviceSlug', serviceType.trim())
         }
 
-        const response = await apiClient.get<PageResponse<any>>(
+        const response = await apiClient.get<PageResponse<InquiryRecord>>(
           `${API_CONFIG.INQUIRIES.USER_HISTORY(user.id)}?${params.toString()}`
         )
 
@@ -102,11 +127,11 @@ export function useInquiryData(options: UseInquiryDataOptions = {}) {
           throw new Error('Failed to fetch inquiries')
         }
 
-        const data: PageResponse<any> = await response.json()
-        const payload = (data as any).data || data
-        const inquiriesData = payload.content || payload || []
-        console.log('[useInquiryData] User inquiries fetched:', { serviceType, count: inquiriesData.length, data: inquiriesData })
-        setInquiries(inquiriesData)
+        const data = (await response.json()) as
+          | PageResponse<InquiryRecord>
+          | InquiryRecord[]
+          | InquiryPageEnvelope
+        setInquiries(extractInquiries(data))
       } else {
         // Admin endpoint - can see all inquiries
         const params = new URLSearchParams({ page: '0', size: '100' })
@@ -117,7 +142,7 @@ export function useInquiryData(options: UseInquiryDataOptions = {}) {
           params.append('archived', archivedFilter)
         }
 
-        const response = await apiClient.get<PageResponse<any>>(
+        const response = await apiClient.get<PageResponse<InquiryRecord>>(
           `${API_CONFIG.INQUIRIES.ADMIN_BASE}?${params.toString()}`
         )
 
@@ -125,12 +150,13 @@ export function useInquiryData(options: UseInquiryDataOptions = {}) {
           throw new Error('Failed to fetch inquiries')
         }
 
-        const data: PageResponse<any> = await response.json()
-        const payload = (data as any).data || data
-        setInquiries(payload.content || payload || [])
+        const data = (await response.json()) as
+          | PageResponse<InquiryRecord>
+          | InquiryRecord[]
+          | InquiryPageEnvelope
+        setInquiries(extractInquiries(data))
       }
     } catch (err) {
-      console.error('Error fetching inquiries:', err)
       const errorMessage = err instanceof Error ? err.message : 'Could not load inquiries'
       setError(errorMessage)
     } finally {
@@ -139,30 +165,25 @@ export function useInquiryData(options: UseInquiryDataOptions = {}) {
   }, [serviceType, isAdmin, archivedFilter])
 
   const deleteInquiries = useCallback(async (ids: number[], mode: 'soft' | 'hard' = 'soft') => {
-    try {
-      const useAdminApi = shouldUseAdminInquiryApi(isAdmin)
-      const endpoint = useAdminApi
-        ? API_CONFIG.INQUIRIES.ADMIN_BATCH_DELETE(mode, serviceType)
-        : API_CONFIG.INQUIRIES.USER_BATCH_DELETE
-      
-      const response = await apiClient.delete(endpoint, {
-        body: JSON.stringify({ ids }),
-      })
-      
-      if (!response.ok) {
-        const body = await response.json().catch(() => null)
-        throw new Error(
-          body?.error?.message || body?.message || 'Failed to delete inquiries',
-        )
-      }
-      
-      setInquiries(prev => prev.filter(inq => !ids.includes(inq.id)))
-      
-      return { success: true }
-    } catch (err) {
-      console.error('Error deleting inquiries:', err)
-      throw err
+    const useAdminApi = shouldUseAdminInquiryApi(isAdmin)
+    const endpoint = useAdminApi
+      ? API_CONFIG.INQUIRIES.ADMIN_BATCH_DELETE(mode, serviceType)
+      : API_CONFIG.INQUIRIES.USER_BATCH_DELETE
+
+    const response = await apiClient.delete(endpoint, {
+      body: JSON.stringify({ ids }),
+    })
+
+    if (!response.ok) {
+      const body = (await response.json().catch(() => null)) as ApiErrorBody | null
+      throw new Error(
+        body?.error?.message || body?.message || 'Failed to delete inquiries',
+      )
     }
+
+    setInquiries(prev => prev.filter(inq => !ids.includes(inq.id)))
+
+    return { success: true }
   }, [isAdmin, serviceType])
 
   const restoreInquiries = useCallback(async (ids: number[]) => {
@@ -170,7 +191,7 @@ export function useInquiryData(options: UseInquiryDataOptions = {}) {
     const response = await apiClient.post(endpoint, { ids })
 
     if (!response.ok) {
-      const body = await response.json().catch(() => null)
+      const body = (await response.json().catch(() => null)) as ApiErrorBody | null
       throw new Error(body?.error?.message || body?.message || 'Failed to restore inquiries')
     }
 

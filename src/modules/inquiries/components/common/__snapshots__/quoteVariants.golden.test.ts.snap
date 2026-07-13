@@ -1,0 +1,85 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`EPDA quote variant golden output > HCM preserves formula totals and row numbering 1`] = `
+{
+  "rowOrder": [
+    "Tonnage",
+    "Navigation due",
+    "Pilotage",
+    "Tug assistance charge",
+    "Moor / Unmooring",
+    "Berth due",
+    "Anchorage fees if any",
+    "Quarantine fee",
+    "Ocean Frt Tax",
+    "Clearance fees",
+    "Garbage removal fee",
+    "On GRT: 6,001 - 10,000: USD 700 x 90%(sub-agency)",
+    "On cargo: 15,000mts x 90%(sub-agency)",
+    "Taxi/Courrier/Communication for agency service",
+    "Boat-hire for agency service",
+  ],
+  "sha256": "58b569ee414e2678fab3742c4971873372cc55ab02988e5616804abbd06bcbab",
+  "totals": {
+    "A": "12,890.80",
+    "B": "980.00",
+    "G": "13,870.80",
+  },
+}
+`;
+
+exports[`EPDA quote variant golden output > HN preserves formula totals and row numbering 1`] = `
+{
+  "rowOrder": [
+    "Tonnage",
+    "Navigation due",
+    "Pilotage",
+    "Tug assistance charge",
+    "Moor / Unmooring",
+    "Berth due",
+    "Anchorage fees if any",
+    "Quarantine fee",
+    "Ocean Frt Tax",
+    "Clearance fees",
+    "Garbage removal fee",
+    "On GRT: 6,001 - 10,000: USD 700 x 90%(sub-agency)",
+    "On cargo: 15,000mts x 90%(sub-agency)",
+    "Taxi/Courrier/Communication for agency service",
+    "Boat-hire for agency service",
+  ],
+  "sha256": "58b569ee414e2678fab3742c4971873372cc55ab02988e5616804abbd06bcbab",
+  "totals": {
+    "A": "12,890.80",
+    "B": "980.00",
+    "G": "13,870.80",
+  },
+}
+`;
+
+exports[`EPDA quote variant golden output > QN preserves formula totals and row numbering 1`] = `
+{
+  "rowOrder": [
+    "Tonnage",
+    "Navigation due",
+    "Pilotage",
+    "Tug assistance charge",
+    "Moor / Unmooring",
+    "Berth due",
+    "Anchorage fees if any",
+    "Quarantine fee",
+    "Ocean Frt Tax",
+    "Clearance fees",
+    "Garbage removal fee",
+    "On GRT: 6,001 - 10,000: USD 700 x 90%(sub-agency)",
+    "On cargo: 15,000mts x 90%(sub-agency)",
+    "Taxi/Courrier/Communication for agency service",
+    "Boat-hire for agency service",
+  ],
+  "sha256": "b763be00b510bfaf7f8bc843858801f967f3ff3843ebc32f51a544727d367122",
+  "totals": {
+    "A": "14,854.80",
+    "B": "980.00",
+    "G": "15,834.80",
+  },
+}
+`;

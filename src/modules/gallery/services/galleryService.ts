@@ -88,8 +88,6 @@ export const galleryService = {
     )
 
     if (!response.ok) {
-      const errorText = await response.text()
-      console.error('Failed to load gallery images', response.status, errorText)
       throw new Error(`Failed to load gallery images: ${response.status} ${response.statusText}`)
     }
 
@@ -97,7 +95,6 @@ export const galleryService = {
     const content = result?.data?.content
 
     if (!Array.isArray(content)) {
-      console.error('Invalid gallery images response', result)
       return []
     }
 

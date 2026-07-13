@@ -20,15 +20,3 @@ export interface PageMeta {
 export interface PageResponse<T> extends PageMeta {
   content: T[]
 }
-
-export interface PaginatedRequest {
-  page?: number
-  size?: number
-  sort?: string
-}
-
-export interface UploadResponse {
-  id: number | string
-  url: string
-  filename?: string
-}

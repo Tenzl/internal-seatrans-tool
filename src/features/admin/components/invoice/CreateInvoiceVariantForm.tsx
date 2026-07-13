@@ -13,12 +13,16 @@ import { legacyCargoTypeToCode } from '@/modules/gallery/shippingAgencyCargoCata
 import {
   EpdaComputedSummary,
   EpdaFormSection,
-  epdaFieldGridClass,
-  type EpdaSectionId,
   type EpdaSummaryItem,
 } from './EpdaFormLayout'
-import type { EpdaCustomerTrackedField } from './epda/epdaCustomerFieldTracking'
-import { mergeEpdaFieldClasses } from './epda/epdaCustomerFieldTracking'
+import {
+  epdaFieldGridClass,
+  type EpdaSectionId,
+} from './epdaFormLayout.config'
+import {
+  mergeEpdaFieldClasses,
+  type EpdaCustomerTrackedField,
+} from './epda/epdaCustomerFieldTracking'
 import { DEFAULT_GARBAGE_CBM_AMOUNT } from './garbageFeeDefaults'
 import {
   getAgencyFeeByGrt,
@@ -32,7 +36,7 @@ import {
   type EpdaParameterValues,
 } from '@/modules/inquiries/components/common/quoteParameters'
 import { useI18n } from '@/shared/i18n/I18nProvider'
-import { isHcmWorksheet, usesQnPilotage } from './epda/quoteFormFromArea'
+import { getEpdaVariantConfig } from './epda/quoteFormFromArea'
 import { cn } from '@/shared/lib/utils'
 import type { ComponentProps } from 'react'
 
@@ -176,6 +180,7 @@ export function CreateInvoiceVariantForm({
 }: InvoiceVariantFormProps) {
   const { t } = useI18n()
   const resolvedParams = params ?? defaultParameterValues(variant)
+  const variantConfig = getEpdaVariantConfig(variant)
   const disabledFieldTextClass = 'disabled:text-muted-foreground disabled:placeholder:text-muted-foreground'
   const customerClass = (field: EpdaCustomerTrackedField, value: string | null | undefined) =>
     mergeEpdaFieldClasses(
@@ -188,7 +193,7 @@ export function CreateInvoiceVariantForm({
       getCustomerFieldClass?.(field) ? 'text-emerald-700 dark:text-emerald-400' : '',
     )
   const isBoatHireForAgencyEnabled = values.dischargeLoadingLocation === 'Anchorage'
-  const isHcmAnchorage = isHcmWorksheet(variant) && values.dischargeLoadingLocation === 'Anchorage'
+  const isHcmAnchorage = variantConfig.chargeLayout === 'HCM' && values.dischargeLoadingLocation === 'Anchorage'
   const grtNumeric = Number(values.grt)
   const cargoQtyNumeric = Number(values.cargoQty)
   const discountNumeric = Number(values.agencyDiscountPercent)
@@ -583,7 +588,7 @@ export function CreateInvoiceVariantForm({
             />
           </div>
 
-          {usesQnPilotage(variant) ? (
+          {variantConfig.pilotageMode === 'SINGLE_RATE' ? (
             <div className="grid gap-2">
               <FieldLabel htmlFor="qnPilotageMiles">{t('epda.buoyPosition')}</FieldLabel>
               <Input

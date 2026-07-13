@@ -139,6 +139,8 @@ export const API_CONFIG = {
       `/admin/inquiries/shipping-agency/${id}/epda`,
     ADMIN_SHIPPING_AGENCY_EPDA_ISSUE: (id: number) =>
       `/admin/inquiries/shipping-agency/${id}/epda/issue`,
+    ADMIN_SHIPPING_AGENCY_EPDA_LOCK: (id: number) =>
+      `/admin/inquiries/shipping-agency/${id}/epda/lock`,
     ADMIN_SHIPPING_AGENCY_FIELD_CHANGES: (id: number, page = 0, size = 6) =>
       `/admin/inquiries/shipping-agency/${id}/epda/field-changes?page=${page}&size=${size}`,
     ADMIN_SHIPPING_AGENCY_CUSTOMER_FIELD_CHANGES: (id: number) =>
@@ -184,8 +186,10 @@ export const API_CONFIG = {
   EPDA_PARAMETERS: {
     LIST: '/admin/epda-parameters',
     EFFECTIVE: (area: string, portId?: number) => {
-      const qs = new URLSearchParams({ area })
-      if (portId != null) qs.set('portId', String(portId))
+      const qs = new URLSearchParams({ area: String(area) })
+      if (portId != null && Number.isFinite(portId) && portId > 0) {
+        qs.set('portId', String(portId))
+      }
       return `/admin/epda-parameters/effective?${qs.toString()}`
     },
     AREA: (area: string) => `/admin/epda-parameters/area/${encodeURIComponent(area)}`,
@@ -233,5 +237,3 @@ export const API_CONFIG = {
       `/admin/storage/download-url?${new URLSearchParams({ key }).toString()}`,
   },
 } as const
-
-export type ApiConfig = typeof API_CONFIG

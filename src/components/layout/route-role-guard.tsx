@@ -10,7 +10,8 @@ import { canAccessPath } from '@/config/section-catalog'
 /**
  * Real route-level access gate. Blocks pages whose section the user's role was
  * not granted — even when reached by typing the URL directly. Admins and
- * unmapped routes render instantly. The backend enforces the same per section,
+ * unmapped authenticated routes deny by default. The backend enforces the same
+ * per section,
  * so this is the UX layer on top.
  */
 export function RouteRoleGuard({ children }: { children: ReactNode }) {

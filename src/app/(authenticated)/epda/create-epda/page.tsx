@@ -6,12 +6,10 @@ import { Main } from '@/components/layout/main'
 import { ProfileDropdown } from '@/components/profile-dropdown'
 import { Search } from '@/components/search'
 import { ThemeSwitch } from '@/components/theme-switch'
-import { useI18n } from '@/shared/i18n/I18nProvider'
-import { CreateInvoiceTab } from '@/features/admin/components/CreateInvoiceTab'
+import { CreateEpdaScreen } from '@/features/admin/epda-create/CreateEpdaScreen'
 
 /** Dedicated EPDA screen — create a new EPDA from scratch (legacy "create" flow). */
 export default function Page() {
-  const { t } = useI18n()
   return (
     <>
       <Header fixed>
@@ -21,11 +19,7 @@ export default function Page() {
         <ProfileDropdown />
       </Header>
       <Main>
-        <div className='mb-4 space-y-1.5'>
-          <h2 className='text-2xl font-bold tracking-tight sm:text-3xl'>{t('epda.pageTitle')}</h2>
-          <p className='max-w-2xl text-base text-muted-foreground'>{t('epda.pageSubtitle')}</p>
-        </div>
-        <CreateInvoiceTab flow='create' />
+        <CreateEpdaScreen />
       </Main>
     </>
   )

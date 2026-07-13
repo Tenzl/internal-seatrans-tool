@@ -1,19 +1,11 @@
 export type InquiryStatus = 'PENDING' | 'PROCESSING' | 'QUOTED' | 'COMPLETED' | 'CANCELLED'
 
 // Individual status constants
-export const STATUS_PENDING: InquiryStatus = 'PENDING'
-export const STATUS_PROCESSING: InquiryStatus = 'PROCESSING'
+const STATUS_PENDING: InquiryStatus = 'PENDING'
+const STATUS_PROCESSING: InquiryStatus = 'PROCESSING'
 export const STATUS_QUOTED: InquiryStatus = 'QUOTED'
 export const STATUS_COMPLETED: InquiryStatus = 'COMPLETED'
-export const STATUS_CANCELLED: InquiryStatus = 'CANCELLED'
-
-export const INQUIRY_STATUS_OPTIONS: InquiryStatus[] = [
-  STATUS_PENDING,
-  STATUS_PROCESSING,
-  STATUS_QUOTED,
-  STATUS_COMPLETED,
-  STATUS_CANCELLED,
-]
+const STATUS_CANCELLED: InquiryStatus = 'CANCELLED'
 
 export interface StatusBadgeConfig {
   variant: 'default' | 'secondary' | 'destructive' | 'outline'

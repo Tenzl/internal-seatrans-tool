@@ -5,9 +5,7 @@ import {
   BadgeCheck,
   Bell,
   ChevronsUpDown,
-  CreditCard,
   LogOut,
-  Sparkles,
 } from 'lucide-react'
 import useDialogState from '@/hooks/use-dialog-state'
 import { useCurrentUser, userDisplay } from '@/hooks/use-current-user'
@@ -29,15 +27,7 @@ import {
 } from '@/components/ui/sidebar'
 import { SignOutDialog } from '@/components/sign-out-dialog'
 
-type NavUserProps = {
-  user: {
-    name: string
-    email: string
-    avatar: string
-  }
-}
-
-export function NavUser(_props: NavUserProps) {
+export function NavUser() {
   const { isMobile } = useSidebar()
   const [open, setOpen] = useDialogState()
   const { name, email, initials } = userDisplay(useCurrentUser())
@@ -81,23 +71,10 @@ export function NavUser(_props: NavUserProps) {
               </DropdownMenuLabel>
               <DropdownMenuSeparator />
               <DropdownMenuGroup>
-                <DropdownMenuItem>
-                  <Sparkles />
-                  Upgrade to Pro
-                </DropdownMenuItem>
-              </DropdownMenuGroup>
-              <DropdownMenuSeparator />
-              <DropdownMenuGroup>
                 <DropdownMenuItem asChild>
                   <Link to='/settings/account'>
                     <BadgeCheck />
                     Account
-                  </Link>
-                </DropdownMenuItem>
-                <DropdownMenuItem asChild>
-                  <Link to='/settings'>
-                    <CreditCard />
-                    Billing
                   </Link>
                 </DropdownMenuItem>
                 <DropdownMenuItem asChild>

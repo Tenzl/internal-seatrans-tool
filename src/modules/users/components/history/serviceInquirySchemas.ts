@@ -12,33 +12,29 @@ export interface InquiryFieldSchema {
   key: string
   label: string
   type: 'text' | 'number' | 'date' | 'boolean'
-  format?: (value: any) => string
+  format?: (value: unknown) => string
 }
 
 /**
  * Format helper functions
  */
-const formatDate = (value: any): string => {
-  if (!value) return ''
+const formatDate = (value: unknown): string => {
+  if (
+    typeof value !== 'string' &&
+    typeof value !== 'number' &&
+    !(value instanceof Date)
+  ) return ''
   return new Date(value).toLocaleDateString()
 }
 
-const formatNumber = (value: any): string => {
+const formatNumber = (value: unknown): string => {
   if (value === undefined || value === null) return ''
   return String(value)
 }
 
-const formatText = (value: any): string => {
+const formatText = (value: unknown): string => {
   if (!value) return ''
   return String(value)
-}
-
-const formatBoolean = (value: any): string => {
-  if (typeof value === 'boolean') return value ? 'Yes' : 'No'
-  const normalized = typeof value === 'string' ? value.trim().toLowerCase() : ''
-  if (['yes', 'y', 'true', '1'].includes(normalized)) return 'Yes'
-  if (['no', 'n', 'false', '0'].includes(normalized)) return 'No'
-  return value ? String(value) : ''
 }
 
 /**
@@ -58,8 +54,8 @@ export const SERVICE_SCHEMAS: Record<string, InquiryFieldSchema[]> = {
     { key: 'cargoNameOther', label: 'Cargo Name (other)', type: 'text', format: formatText },
     { key: 'cargoQuantity', label: 'Cargo Quantity (MT)', type: 'number', format: formatNumber },
     { key: 'portOfCall', label: 'Port of Call', type: 'text', format: formatText },
-    { key: 'frtTaxType', label: 'Freight Tax', type: 'text', format: formatPublicFrtTaxType },
-    { key: 'purposeOfCalling', label: 'Purpose of Calling', type: 'text', format: formatPurposeOfCalling },
+    { key: 'frtTaxType', label: 'Freight Tax', type: 'text', format: (value) => formatPublicFrtTaxType(typeof value === 'string' ? value : undefined) },
+    { key: 'purposeOfCalling', label: 'Purpose of Calling', type: 'text', format: (value) => formatPurposeOfCalling(typeof value === 'string' ? value : undefined) },
     { key: 'dischargeLoadingLocation', label: 'Operation at', type: 'text', format: formatText },
     { key: 'transportLs', label: 'Transport L/S', type: 'text', format: formatText },
     { key: 'transportQuarantine', label: 'Transport (quarantine)', type: 'number', format: formatNumber },
@@ -149,7 +145,10 @@ export const getServiceSlugFromInquiry = (inquiry: {
 /**
  * Extract field value from inquiry object using dot notation key
  */
-export const getFieldValue = (inquiry: any, key: string): any => {
+export const getFieldValue = (
+  inquiry: Record<string, unknown> | null | undefined,
+  key: string,
+): unknown => {
   if (!inquiry) return undefined
   
   if (key === 'cargoQuantity') {
@@ -165,14 +164,14 @@ export const getFieldValue = (inquiry: any, key: string): any => {
   // Check in details JSON if exists
   if (inquiry.details) {
     try {
-      const details = typeof inquiry.details === 'string' 
-        ? JSON.parse(inquiry.details) 
+      const details: unknown = typeof inquiry.details === 'string'
+        ? JSON.parse(inquiry.details) as unknown
         : inquiry.details
       
-      if (key in details) {
-        return details[key]
+      if (typeof details === 'object' && details !== null && key in details) {
+        return (details as Record<string, unknown>)[key]
       }
-    } catch (err) {
+    } catch {
       // Ignore parse errors
     }
   }

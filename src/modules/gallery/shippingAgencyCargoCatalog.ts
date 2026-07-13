@@ -1,7 +1,5 @@
 import type { CargoTypeCatalogItem, Commodity } from '@/modules/gallery/services/commodityService'
 
-export type CargoSelectOption = { label: string; value: string }
-
 export const CARGO_NAME_OTHER = 'OTHER'
 
 /**
@@ -29,35 +27,6 @@ export function isTallyFeeEligibleCargoType(cargoType?: string | null): boolean 
   const key = normalizeKey(cargoType)
   // Bag/Pack and Equipment incur a tally fee; Bulk does not.
   return key === 'IN_BAG_PACK' || key === 'IN_EQUIPMENT' || key.includes('IN_BAG')
-}
-
-export function buildCargoTypeSelectOptions(catalog: Commodity[]): CargoSelectOption[] {
-  const seen = new Map<string, CargoSelectOption>()
-  for (const item of catalog) {
-    const code = (item.cargoType || 'IN_BULK').toUpperCase()
-    if (!seen.has(code)) {
-      seen.set(code, {
-        value: code,
-        label: code.replace(/_/g, ' '),
-      })
-    }
-  }
-  return Array.from(seen.values()).sort((a, b) => a.label.localeCompare(b.label))
-}
-
-export function buildCargoNameSelectOptions(
-  catalog: Commodity[],
-  cargoTypeCode: string,
-): CargoSelectOption[] {
-  if (!cargoTypeCode) return []
-  const code = cargoTypeCode.toUpperCase()
-  return catalog
-    .filter((item) => (item.cargoType || 'IN_BULK').toUpperCase() === code)
-    .map((item) => ({
-      value: item.name,
-      label: item.displayName || item.name,
-    }))
-    .sort((a, b) => a.label.localeCompare(b.label))
 }
 
 export function legacyCargoTypeToCode(stored?: string | null): string {

@@ -11,8 +11,7 @@ type BadgeButtonComboProps = {
   badgeClassName?: string
   variant?: ButtonProps["variant"]
   size?: ButtonProps["size"]
-} & Omit<ButtonProps, "children" | "variant" | "size"> &
-  React.HTMLAttributes<HTMLDivElement>
+} & Omit<ButtonProps, "children" | "variant" | "size">
 
 export default function BadgeButtonCombo({
   label,

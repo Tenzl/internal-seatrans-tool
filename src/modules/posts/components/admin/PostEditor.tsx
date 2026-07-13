@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect, useRef } from 'react'
+import type { Editor as TinyMCEEditor } from 'tinymce'
 import { useRouter } from 'next/navigation'
 import dynamic from 'next/dynamic'
 import { Button } from '@/shared/components/ui/button'
@@ -8,14 +9,15 @@ import { Input } from '@/shared/components/ui/input'
 import { Label } from '@/shared/components/ui/label'
 import { Badge } from '@/shared/components/ui/badge'
 import { ImageWithFallback } from '@/shared/components/ImageWithFallback'
-import { postService, PostRequest } from '@/modules/posts/services/postService'
-import { categoryService, Category } from '@/modules/categories/services/categoryService'
+import { postService, type PostRequest } from '@/modules/posts/services/postService'
+import { categoryService, type Category } from '@/modules/categories/services/categoryService'
 import { toast } from '@/shared/utils/toast'
 import { Save, X, ChevronDown, Plus } from 'lucide-react'
 import { API_CONFIG } from '@/shared/config/api.config'
+import { TINYMCE_PLUGINS, TINYMCE_SCRIPT_SRC } from '@/modules/posts/tinymce-config'
 
-const Editor = dynamic<any>(
-  () => import('@tinymce/tinymce-react').then((mod) => mod.Editor as any),
+const Editor = dynamic(
+  () => import('@tinymce/tinymce-react').then((mod) => mod.Editor),
   { ssr: false, loading: () => <div className="text-sm text-muted-foreground">Loading editor...</div> }
 )
 
@@ -34,7 +36,7 @@ interface PostEditorPageProps {
 
 export function PostEditorPage({ postId }: PostEditorPageProps) {
   const router = useRouter()
-  const [loading, setLoading] = useState(false)
+  const [loading, setLoading] = useState(Boolean(postId))
   const [formData, setFormData] = useState<PostRequest>({
     title: '',
     content: '',
@@ -46,22 +48,42 @@ export function PostEditorPage({ postId }: PostEditorPageProps) {
   const [availableCategories, setAvailableCategories] = useState<Category[]>([])
   const [categoryDropdownOpen, setCategoryDropdownOpen] = useState(false)
   const categoryDropdownRef = useRef<HTMLDivElement>(null)
-  const editorRef = useRef<any>(null)
+  const editorRef = useRef<TinyMCEEditor | null>(null)
 
-  const handleImageUpload = async (blobInfo: any, _progress: any) => {
-    try {
-      const url = await postService.uploadImage(blobInfo.blob())
-      return url
-    } catch (error) {
-      console.error('Image upload failed:', error)
-      throw error
-    }
-  }
+  const handleImageUpload = (blobInfo: { blob: () => Blob }, _progress: (percent: number) => void) =>
+    postService.uploadImage(blobInfo.blob() as File)
 
   useEffect(() => {
-    loadCategories()
+    let cancelled = false
+    void categoryService
+      .getAllCategories()
+      .then((categories) => {
+        if (!cancelled) setAvailableCategories(categories)
+      })
+      .catch((error) => toast.error('Failed to load categories', error))
+
     if (postId) {
-      loadPost(postId)
+      void postService
+        .getPostById(postId)
+        .then((post) => {
+          if (cancelled) return
+          setFormData({
+            title: post.title,
+            content: post.content,
+            categoryIds: post.categories?.map((category) => category.id) || [],
+            thumbnailUrl: post.thumbnailUrl || '',
+            thumbnailPublicId: post.thumbnailPublicId || '',
+            isPublished: post.isPublished,
+          })
+        })
+        .catch((error) => toast.error('Failed to load post data', error))
+        .finally(() => {
+          if (!cancelled) setLoading(false)
+        })
+    }
+
+    return () => {
+      cancelled = true
     }
   }, [postId])
 
@@ -78,35 +100,6 @@ export function PostEditorPage({ postId }: PostEditorPageProps) {
       document.removeEventListener('mousedown', handleClickOutside)
     }
   }, [])
-
-  const loadCategories = async () => {
-    try {
-      const cats = await categoryService.getAllCategories()
-      setAvailableCategories(cats)
-    } catch (error) {
-      console.error('Error loading categories:', error)
-    }
-  }
-
-  const loadPost = async (id: number) => {
-    try {
-      setLoading(true)
-      const post = await postService.getPostById(id)
-      setFormData({
-        title: post.title,
-        content: post.content,
-        categoryIds: post.categories?.map(cat => cat.id) || [],
-        thumbnailUrl: post.thumbnailUrl || '',
-        thumbnailPublicId: post.thumbnailPublicId || '',
-        isPublished: post.isPublished,
-      })
-    } catch (error) {
-      console.error('Error loading post:', error)
-      toast.error("Failed to load post data")
-    } finally {
-      setLoading(false)
-    }
-  }
 
   const handleAddCategory = (categoryId: number) => {
     if (!formData.categoryIds?.includes(categoryId)) {
@@ -140,7 +133,7 @@ export function PostEditorPage({ postId }: PostEditorPageProps) {
         toast.success("Post updated successfully! Returning to posts...")
       } else {
         // Create new post as draft first to get ID
-        const newPost = await postService.createPost({
+        await postService.createPost({
           ...formData,
           isPublished: false // Force draft on creation
         })
@@ -150,9 +143,8 @@ export function PostEditorPage({ postId }: PostEditorPageProps) {
       setTimeout(() => {
         router.push('/content/posts')
       }, 600)
-    } catch (error: any) {
-      console.error('Error saving post:', error)
-      toast.error(error.message || "Failed to save post")
+    } catch (error: unknown) {
+      toast.error(error instanceof Error ? error.message : 'Failed to save post')
       setLoading(false)
     }
   }
@@ -292,19 +284,15 @@ export function PostEditorPage({ postId }: PostEditorPageProps) {
               <Label className="mb-2 block">Content *</Label>
               <div className="border rounded-md overflow-hidden">
                 <Editor
-                  tinymceScriptSrc="/tinymce/tinymce.min.js"
+                  tinymceScriptSrc={TINYMCE_SCRIPT_SRC}
                   licenseKey='gpl'
-                  onInit={(_evt: any, editor: any) => (editorRef.current = editor)}
+                  onInit={(_evt, editor) => (editorRef.current = editor)}
                   value={formData.content}
                   onEditorChange={(content: string) => setFormData({ ...formData, content })}
                   init={{
                     height: 600,
                     menubar: true,
-                    plugins: [
-                      'advlist', 'autolink', 'lists', 'link', 'image', 'charmap', 'preview',
-                      'anchor', 'searchreplace', 'visualblocks', 'code', 'fullscreen',
-                      'insertdatetime', 'media', 'table', 'code', 'help', 'wordcount', 'image'
-                    ],
+                    plugins: [...TINYMCE_PLUGINS],
                     toolbar: 'undo redo | blocks | ' +
                       'bold italic forecolor backcolor | alignleft aligncenter ' +
                       'alignright alignjustify | bullist numlist outdent indent | ' +

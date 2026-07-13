@@ -10,12 +10,11 @@ export const toast = {
     duration: 3000,
     style: toastSurface('--success', '--success-foreground'),
   }),
-  error: (message: string, error?: unknown) => {
+  error: (message: string, _error?: unknown) => {
     sonnerToast.error(message, { 
       duration: 5000,
       style: toastSurface('--destructive', '--destructive-foreground'),
     })
-    if (error) console.error(message, error)
   },
   info: (message: string) => sonnerToast(message, { duration: 3000 }),
   loading: (message: string) => sonnerToast.loading(message),

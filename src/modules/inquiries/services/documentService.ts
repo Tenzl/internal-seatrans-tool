@@ -1,4 +1,4 @@
-import axios, { AxiosProgressEvent } from 'axios'
+import axios, { type AxiosProgressEvent } from 'axios'
 import { API_CONFIG } from '@/shared/config/api.config'
 import { authService } from '@/modules/auth/services/authService'
 
@@ -88,7 +88,7 @@ export const documentService = {
       return response.data.data
     } catch (error) {
       if (axios.isAxiosError(error)) {
-        throw new Error(error.response?.data?.message || 'Failed to upload document')
+        throw new Error(error.response?.data?.message || 'Failed to upload document', { cause: error })
       }
       throw error
     }
@@ -113,7 +113,7 @@ export const documentService = {
       return response.data.data
     } catch (error) {
       if (axios.isAxiosError(error)) {
-        throw new Error(error.response?.data?.message || 'Failed to fetch documents')
+        throw new Error(error.response?.data?.message || 'Failed to fetch documents', { cause: error })
       }
       throw error
     }
@@ -139,7 +139,7 @@ export const documentService = {
       return response.data.data
     } catch (error) {
       if (axios.isAxiosError(error)) {
-        throw new Error(error.response?.data?.message || 'Failed to fetch documents')
+        throw new Error(error.response?.data?.message || 'Failed to fetch documents', { cause: error })
       }
       throw error
     }
@@ -172,7 +172,7 @@ export const documentService = {
       return response.data
     } catch (error) {
       if (axios.isAxiosError(error)) {
-        throw new Error(error.response?.data?.message || 'Failed to download document')
+        throw new Error(error.response?.data?.message || 'Failed to download document', { cause: error })
       }
       throw error
     }
@@ -195,7 +195,7 @@ export const documentService = {
       }
     } catch (error) {
       if (axios.isAxiosError(error)) {
-        throw new Error(error.response?.data?.message || 'Failed to delete document')
+        throw new Error(error.response?.data?.message || 'Failed to delete document', { cause: error })
       }
       throw error
     }

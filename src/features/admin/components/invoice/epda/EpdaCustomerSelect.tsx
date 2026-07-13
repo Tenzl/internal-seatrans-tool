@@ -1,6 +1,6 @@
 'use client'
 
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import React, { useCallback, useEffect, useMemo, useState } from 'react'
 import { Check, ChevronsUpDown, Loader2, UserPlus } from 'lucide-react'
 import { toast } from 'sonner'
 
@@ -30,6 +30,9 @@ type EpdaCustomerSelectProps = {
   disabled?: boolean
   /** Prefill search when opening (e.g. shipowner name). */
   suggestName?: string
+  id?: string
+  required?: boolean
+  error?: string
 }
 
 export function EpdaCustomerSelect({
@@ -38,6 +41,9 @@ export function EpdaCustomerSelect({
   onChange,
   disabled,
   suggestName,
+  id = 'customerUserId',
+  required = false,
+  error,
 }: EpdaCustomerSelectProps) {
   const [open, setOpen] = useState(false)
   const [search, setSearch] = useState('')
@@ -51,8 +57,7 @@ export function EpdaCustomerSelect({
     try {
       const rows = await externalCustomerService.list(q, 100)
       setOptions(rows)
-    } catch (err) {
-      console.error('Failed to load external customers:', err)
+    } catch {
       toast.error('Could not load customer list')
       setOptions([])
     } finally {
@@ -62,14 +67,11 @@ export function EpdaCustomerSelect({
 
   useEffect(() => {
     if (!open) return
-    void loadOptions(debouncedSearch)
+    const timer = window.setTimeout(() => {
+      void loadOptions(debouncedSearch)
+    }, 0)
+    return () => window.clearTimeout(timer)
   }, [open, debouncedSearch, loadOptions])
-
-  useEffect(() => {
-    if (open && suggestName?.trim() && !search) {
-      setSearch(suggestName.trim())
-    }
-  }, [open, suggestName, search])
 
   const displayLabel = useMemo(() => {
     if (selectedLabel) return selectedLabel
@@ -98,7 +100,6 @@ export function EpdaCustomerSelect({
       setSearch('')
       toast.success(`Customer "${created.fullName}" created`)
     } catch (err) {
-      console.error('Failed to create external customer:', err)
       toast.error(err instanceof Error ? err.message : 'Failed to create customer')
     } finally {
       setIsCreating(false)
@@ -107,20 +108,28 @@ export function EpdaCustomerSelect({
 
   return (
     <div className="space-y-1.5">
-      <Label className="text-xs font-medium text-muted-foreground">Customer</Label>
+      <Label htmlFor={id} className="text-xs font-medium text-muted-foreground">
+        Customer {required ? <span aria-hidden="true">*</span> : null}
+      </Label>
       <Popover
         open={open}
         onOpenChange={(next) => {
           setOpen(next)
+          if (next && suggestName?.trim() && !search) setSearch(suggestName.trim())
           if (!next) setSearch('')
         }}
       >
         <PopoverTrigger asChild>
           <Button
+            id={id}
+            name={id}
             type="button"
             variant="outline"
             role="combobox"
             aria-expanded={open}
+            aria-required={required}
+            aria-invalid={error ? true : undefined}
+            aria-describedby={error ? `${id}-error` : `${id}-hint`}
             disabled={disabled}
             className="h-9 w-full justify-between bg-background font-normal active:scale-[0.99]"
           >
@@ -202,7 +211,8 @@ export function EpdaCustomerSelect({
           </Command>
         </PopoverContent>
       </Popover>
-      <p className="text-xs text-muted-foreground">
+      {error ? <p id={`${id}-error`} className="text-xs text-destructive">{error}</p> : null}
+      <p id={`${id}-hint`} className="text-xs text-muted-foreground">
         External customers only. Pick an existing name or create a new account for this EPDA.
       </p>
     </div>

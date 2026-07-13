@@ -25,14 +25,12 @@ export const categoryService = {
       )
 
       if (!response.ok) {
-        console.warn('Categories endpoint not available:', response.status)
         return []
       }
 
       const result: ApiResponse<Category[]> = await response.json()
       return result.data
-    } catch (error) {
-      console.warn('Failed to fetch categories, using empty list')
+    } catch {
       return []
     }
   },
@@ -47,10 +45,8 @@ export const categoryService = {
         return result.data
       }
       
-      console.log('Admin categories endpoint not available, trying public endpoint')
       return await categoryService.getAllCategories()
-    } catch (error) {
-      console.log('Error fetching admin categories, using fallback')
+    } catch {
       return await categoryService.getAllCategories()
     }
   },

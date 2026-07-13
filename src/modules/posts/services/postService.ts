@@ -38,7 +38,9 @@ export interface PostRequest {
   isPublished?: boolean
 }
 
-const mapPost = (raw: any): Post => {
+type PostApiDto = Post & { authorFullName?: string }
+
+const mapPost = (raw: PostApiDto): Post => {
   const words = typeof raw?.content === 'string' ? raw.content.split(/\s+/).length : 0
   const readingTime = raw?.readingTime ?? Math.max(1, Math.round(words / 200))
   return {
@@ -153,8 +155,6 @@ export const postService = {
     >(url, { skipAuth: true })
 
     if (!response.ok) {
-      const errorText = await response.text()
-      console.error('Failed to fetch posts:', errorText)
       throw new Error(`Failed to fetch published posts: ${response.status} ${response.statusText}`)
     }
 

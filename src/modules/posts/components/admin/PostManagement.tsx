@@ -14,7 +14,7 @@ import {
   getSortedRowModel,
   useReactTable,
 } from '@tanstack/react-table'
-import { ChevronDown, Pencil, Trash2, Eye, Plus, BookOpen, MoreVertical } from 'lucide-react'
+import { ChevronDown, Pencil, Trash2, Eye, Plus, MoreVertical } from 'lucide-react'
 
 import { Button } from '@/shared/components/ui/button'
 import { Badge } from '@/shared/components/ui/badge'
@@ -53,7 +53,7 @@ import {
   AlertDialogTitle,
 } from '@/shared/components/ui/alert-dialog'
 import { useTableSortHeader } from '@/features/admin/hooks/useTableSortHeader'
-import { postService, Post } from '@/modules/posts/services/postService'
+import { postService, type Post } from '@/modules/posts/services/postService'
 import { toast } from '@/shared/utils/toast'
 
 const POSTS_PAGE_SIZE = 10
@@ -89,7 +89,6 @@ export function ManagePosts() {
       const sortedByIdAsc = [...data].sort((a, b) => a.id - b.id)
       setPosts(sortedByIdAsc)
     } catch (error) {
-      console.error('Error loading posts:', error)
       const errorMessage = error instanceof Error ? error.message : 'Failed to load posts'
       toast.error(errorMessage)
     } finally {
@@ -116,8 +115,7 @@ export function ManagePosts() {
       }
 
       loadPosts()
-    } catch (error) {
-      console.error('Error toggling publish status:', error)
+    } catch {
       toast.error("Failed to update publish status")
     }
   }
@@ -133,8 +131,7 @@ export function ManagePosts() {
       await postService.deletePost(deleteDialog.post.id)
       toast.success("Post deleted successfully")
       loadPosts()
-    } catch (error) {
-      console.error('Error deleting post:', error)
+    } catch {
       toast.error("Failed to delete post")
     } finally {
       setDeleteDialog({ isOpen: false, post: null })

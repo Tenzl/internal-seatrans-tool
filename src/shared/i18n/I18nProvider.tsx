@@ -1,6 +1,6 @@
 'use client'
 
-import { createContext, useCallback, useContext, useEffect, useState, type ReactNode } from 'react'
+import { createContext, useCallback, useContext, useState, type ReactNode } from 'react'
 import { messages, type Lang } from './messages'
 
 const STORAGE_KEY = 'epda-lang'
@@ -17,14 +17,11 @@ interface I18nContextValue {
 const I18nContext = createContext<I18nContextValue | null>(null)
 
 export function I18nProvider({ children }: { children: ReactNode }) {
-  const [lang, setLangState] = useState<Lang>(DEFAULT_LANG)
-
-  useEffect(() => {
-    if (typeof window !== 'undefined') {
-      window.localStorage.setItem(STORAGE_KEY, DEFAULT_LANG)
-      setLangState(DEFAULT_LANG)
-    }
-  }, [])
+  const [lang, setLangState] = useState<Lang>(() => {
+    if (typeof window === 'undefined') return DEFAULT_LANG
+    const stored = window.localStorage.getItem(STORAGE_KEY)
+    return stored === 'vi' || stored === 'en' ? stored : DEFAULT_LANG
+  })
 
   const setLang = useCallback((next: Lang) => {
     setLangState(next)

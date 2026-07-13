@@ -1,18 +1,15 @@
 "use client"
 
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { useSearchParams } from 'next/navigation'
+import { usePathname, useRouter, useSearchParams } from 'next/navigation'
 import { Button } from '@/shared/components/ui/button'
 import { Label } from '@/shared/components/ui/label'
 import { Badge } from '@/shared/components/ui/badge'
 import { toast } from '@/shared/utils/toast'
-import { Loader2, Eye, Save, Send, ArrowLeft, ArrowRight, Pencil, ChevronDown, ChevronUp } from 'lucide-react'
-import { usePathname, useRouter } from 'next/navigation'
+import { Loader2, Eye, Save, Send, ArrowLeft, ArrowRight, ChevronDown, ChevronUp, Lock } from 'lucide-react'
 import { buildDashboardUrl } from '@/shared/utils/dashboardNavigation'
 import { AdminSection } from '@/shared/components/layout/dashboard/admin'
-import { renderQuoteHtml as renderQuoteHtmlHcm } from '@/modules/inquiries/components/common/Quote-hcm'
-import { renderQuoteHtml as renderQuoteHtmlHn } from '@/modules/inquiries/components/common/Quote-hn'
-import { renderQuoteHtml as renderQuoteHtmlQn } from '@/modules/inquiries/components/common/Quote-qn'
+import { renderQuoteHtmlForVariant } from '@/modules/inquiries/components/common/quoteVariantRenderer'
 import { commodityService, type CargoType, type CargoTypeCatalogItem, type Commodity } from '@/modules/gallery/services/commodityService'
 import { serviceTypeService } from '@/modules/service-types/services/serviceTypeService'
 import { portService, type Port as LogisticsPort } from '@/modules/logistics/services/portService'
@@ -25,10 +22,10 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/shared/components/ui/select'
-import { CreateInvoiceQnForm } from '@/features/admin/components/invoice/CreateInvoiceQnForm'
-import { CreateInvoiceHnForm } from '@/features/admin/components/invoice/CreateInvoiceHnForm'
-import { CreateInvoiceHcmForm } from '@/features/admin/components/invoice/CreateInvoiceHcmForm'
-import type { AgencyFeeModeOption } from '@/features/admin/components/invoice/CreateInvoiceVariantForm'
+import {
+  CreateInvoiceVariantForm,
+  type AgencyFeeModeOption,
+} from '@/features/admin/components/invoice/CreateInvoiceVariantForm'
 import {
   buildRequiredFields,
   getMissingRequiredFields,
@@ -37,7 +34,12 @@ import {
 } from '@/features/admin/components/invoice/invoiceValidation'
 import { parseFiniteNumber } from '@/shared/utils/parseNumber'
 import { buildInvoiceQuoteData } from '@/features/admin/components/invoice/buildInvoiceQuoteData'
-import { EpdaFormSection, EpdaFormSkeleton, EpdaSectionRail, EPDA_SECTIONS, EPDA_CUSTOMER_SECTION, type EpdaSectionId } from '@/features/admin/components/invoice/EpdaFormLayout'
+import { EpdaFormSection, EpdaFormSkeleton, EpdaSectionRail } from '@/features/admin/components/invoice/EpdaFormLayout'
+import {
+  EPDA_CUSTOMER_SECTION,
+  EPDA_SECTIONS,
+  type EpdaSectionId,
+} from '@/features/admin/components/invoice/epdaFormLayout.config'
 import {
   applyAdminInquiryToForm,
   buildEpdaPatchPayload,
@@ -84,9 +86,9 @@ import {
   AREA_OPTIONS,
   getAreaLabel,
   SHIP_TYPE_OPTIONS,
-  SHIPOWNER_NATIONALITY_OPTIONS,
+  type SHIPOWNER_NATIONALITY_OPTIONS,
   DEFAULT_SHIPOWNER_NATIONALITY,
-  OTHER_EXPENSE_OPTIONS,
+  type OTHER_EXPENSE_OPTIONS,
   FRT_TAX_TYPE_OPTIONS,
   AGENCY_FEE_MODE_OPTIONS,
   QUARANTINE_CARGO_OPTIONS,
@@ -123,6 +125,19 @@ const isTallyFeeEligibleCargo = (value: string) => {
 
 const parseNumeric = parseFiniteNumber
 
+const isLoaAtOrAboveTugMaximum = (
+  value: string,
+  params: EpdaParameterValues,
+): boolean => {
+  const loaNumber = parseNumeric(value)
+  const activeMinLoas = (params.tugTiers ?? [])
+    .filter((tier) => (parseFiniteNumber(tier.amount) ?? 0) > 0)
+    .map((tier) => parseFiniteNumber(tier.minLoa))
+    .filter((number): number is number => number !== null)
+  if (loaNumber === null || activeMinLoas.length === 0) return false
+  return loaNumber >= Math.max(...activeMinLoas)
+}
+
 const normalizePurpose = (value: string) => value.trim().toUpperCase().replace(/[\s-]+/g, '_')
 
 const canEnableFreightTaxByPurpose = (purpose: string) => {
@@ -150,6 +165,28 @@ const isExportTotalAmountMode = (value: string) => {
 const isExportPlsAdviseMode = (value: string) => normalizeFrtTaxType(value) === 'EXPORT_PLS_ADVISE'
 
 const isImportFrtTaxType = (value: string) => normalizeFrtTaxType(value) === 'IMPORT'
+
+function useLatest<T>(value: T) {
+  const ref = useRef(value)
+  useEffect(() => {
+    ref.current = value
+  }, [value])
+  return ref
+}
+
+const resolveInquiryCargo = (
+  inquiryCargo: InquiryCargoFields,
+  catalog: Commodity[],
+) => {
+  const { cargoType, cargoName } = readInquiryCargoForEpda(inquiryCargo, catalog)
+  const hasCargoNames = cargoType
+    ? catalog.some((item) => legacyCargoTypeToCode(item.cargoType) === cargoType)
+    : false
+  return {
+    cargoType: cargoType as EpdaCargoType | '',
+    cargoName: hasCargoNames ? cargoName : '',
+  }
+}
 
 /** EPDA change-history panel (full field audit). */
 const CUSTOMER_FIELD_HISTORY_ENABLED = true
@@ -196,12 +233,15 @@ export function CreateInvoiceTab({
 
   const formNavRef = useRef<HTMLDivElement | null>(null)
   const autoPreviewTriggeredRef = useRef(false)
-  const [linkedInquiryId, setLinkedInquiryId] = useState<number | null>(resolvedInquiryId ?? null)
+  const [createdInquiryId, setCreatedInquiryId] = useState<number | null>(null)
+  const linkedInquiryId = resolvedInquiryId ?? createdInquiryId
   const [customerUserId, setCustomerUserId] = useState<number | null>(null)
   const [customerLabel, setCustomerLabel] = useState<string | null>(null)
   const [isLoadingInquiry, setIsLoadingInquiry] = useState(false)
   const [isSavingDraft, setIsSavingDraft] = useState(false)
   const [isIssuing, setIsIssuing] = useState(false)
+  /** When set, EPDA is frozen — quote uses snapshot params and Edit is hidden. */
+  const [epdaLockedAt, setEpdaLockedAt] = useState<string | null>(null)
   const [isLoading, setIsLoading] = useState(false)
   const [showValidationErrors, setShowValidationErrors] = useState(false)
   const [previewHtml, setPreviewHtml] = useState<string | null>(null)
@@ -224,6 +264,8 @@ export function CreateInvoiceTab({
   const [incompleteSaveDialogOpen, setIncompleteSaveDialogOpen] = useState(false)
   const [fieldChangeHistoryKey, setFieldChangeHistoryKey] = useState(0)
   const [pendingInquiryCargo, setPendingInquiryCargo] = useState<InquiryCargoFields | null>(null)
+  const pendingInquiryCargoRef = useRef<InquiryCargoFields | null>(null)
+  const cargoTypeCatalogRef = useRef<Commodity[]>([])
   const [toShipowner, setToShipowner] = useState('')
   const [shipownerNationality, setShipownerNationality] =
     useState<ShipownerNationalityOption>(DEFAULT_SHIPOWNER_NATIONALITY)
@@ -269,11 +311,6 @@ export function CreateInvoiceTab({
   // Mobile only: collapse the Port area / Port of call pickers into a one-line
   // summary once both are chosen, so the pinned header stays compact.
   const [portPickerCollapsed, setPortPickerCollapsed] = useState(false)
-  useEffect(() => {
-    // Collapse once a port is picked; re-open automatically when the area
-    // changes (which clears the port). Tapping "Change" expands it manually.
-    setPortPickerCollapsed(Boolean(selectedArea && port))
-  }, [selectedArea, port])
 
   // A brand-new EPDA (not opened from a customer inquiry) belongs to the signed-in
   // creator. There is no separate customer picker; the owner is the person creating it.
@@ -310,18 +347,11 @@ export function CreateInvoiceTab({
     return !cargoTypeCatalog.some((item) => legacyCargoTypeToCode(item.cargoType) === cargoType)
   }, [cargoType, cargoTypeCatalog, isLoadingCargoCatalog])
 
-  const tugTiers = effectiveParams.tugTiers ?? []
-
   // Above the highest tug band's Min LOA, the tug charge is negotiable → entered manually.
-  const isLoaOverTugMax = useMemo(() => {
-    const loaNum = parseNumeric(loa)
-    const activeMinLoas = tugTiers
-      .filter((tier) => (parseFiniteNumber(tier.amount) ?? 0) > 0)
-      .map((tier) => parseFiniteNumber(tier.minLoa))
-      .filter((n): n is number => n !== null)
-    if (loaNum === null || !activeMinLoas.length) return false
-    return loaNum >= Math.max(...activeMinLoas)
-  }, [loa, tugTiers])
+  const isLoaOverTugMax = useMemo(
+    () => isLoaAtOrAboveTugMaximum(loa, effectiveParams),
+    [loa, effectiveParams],
+  )
 
   const requiredFields = useMemo(
     () =>
@@ -338,7 +368,7 @@ export function CreateInvoiceTab({
         purposeOfCalling,
         frtTaxType,
       }, { requireFrtTaxType: canEnableFreightTaxDeclaration, requireCargoName: !cargoNameDisabled }),
-    [toShipowner, mv, dischargeLoadingLocation, dwt, grt, loa, cargoQty, cargoType, cargoName, purposeOfCalling, frtTaxType, cargoNameDisabled]
+    [toShipowner, mv, dischargeLoadingLocation, dwt, grt, loa, cargoQty, cargoType, cargoName, purposeOfCalling, frtTaxType, cargoNameDisabled, canEnableFreightTaxDeclaration]
   )
 
   const missingRequiredFields = useMemo(
@@ -409,10 +439,21 @@ export function CreateInvoiceTab({
         // Cargo TYPES are a fixed 3-value enum; only cargo NAMES come from the DB.
         const commodities = await commodityService.getCommoditiesByServiceType(shippingAgency.id)
 
+        const catalog = Array.isArray(commodities) ? commodities : []
+        cargoTypeCatalogRef.current = catalog
         setCargoTypeOptions(SHIPPING_AGENCY_CARGO_TYPES)
-        setCargoTypeCatalog(Array.isArray(commodities) ? commodities : [])
-      } catch (error) {
-        console.error('Failed to load cargo type catalog for EPDA:', error)
+        setCargoTypeCatalog(catalog)
+
+        const pending = pendingInquiryCargoRef.current
+        if (pending) {
+          const resolved = resolveInquiryCargo(pending, catalog)
+          if (resolved.cargoType) setCargoType(resolved.cargoType)
+          setCargoName(resolved.cargoName)
+          if (!isTallyFeeEligibleCargo(resolved.cargoType)) setTallyFeeAmount('')
+          pendingInquiryCargoRef.current = null
+          setPendingInquiryCargo(null)
+        }
+      } catch {
         toast.error('Failed to load cargo names from database')
         setCargoTypeOptions([])
         setCargoTypeCatalog([])
@@ -435,59 +476,55 @@ export function CreateInvoiceTab({
   useEffect(() => {
     // A saved EPDA carries its own frozen parameters; never override them with live values.
     if (frozenParams) return
-    if (!selectedArea) {
-      setEffectiveParams(defaultParameterValues(quoteForm))
-      return
-    }
+    if (!selectedArea) return
+    // Wait until the area port list is ready so Chan May (etc.) resolve to a real portId.
+    if (isLoadingPorts) return
+
     // The port <Select> uses `portOfCall` as its value, so match on that (fall back to name).
-    const target = (port ?? '').trim()
+    const target = (port ?? '').trim().toLowerCase()
     const portId = target
-      ? ports.find((p) => p.portOfCall?.trim() === target || p.name?.trim() === target)?.id
+      ? ports.find((p) => {
+          const call = p.portOfCall?.trim().toLowerCase() ?? ''
+          const name = p.name?.trim().toLowerCase() ?? ''
+          return call === target || name === target
+        })?.id
       : undefined
     let cancelled = false
     epdaParametersService
       .getEffective(selectedArea, portId)
       .then((v) => {
-        if (!cancelled) setEffectiveParams(v)
+        if (cancelled) return
+        setEffectiveParams(v)
+        if (!linkedInquiryId) {
+          const garbageRate =
+            dischargeLoadingLocation === 'Anchorage'
+              ? v.garbage.atBuoyUsd
+              : v.garbage.atBerthUsd
+          setGarbageUsdRate(String(garbageRate))
+          setGarbageCbmAmount(String(v.garbage.cbmAmount))
+          setBerthHours(String(v.hours.berthHours))
+          setAnchorageHours(String(v.hours.anchorageHours))
+          setPilotageThirdMiles(String(v.hours.pilotageThirdMiles))
+          setQnPilotageMiles(String(v.hours.qnPilotageMiles))
+        }
       })
-      .catch(() => {
-        if (!cancelled) setEffectiveParams(defaultParameterValues(quoteForm))
+      .catch((error) => {
+        if (!cancelled) {
+          const detail = error instanceof Error ? error.message : 'Request failed'
+          toast.error(`Could not load port tariff parameters (${detail}). Using built-in defaults.`)
+          setEffectiveParams(defaultParameterValues(quoteForm))
+        }
       })
     return () => {
       cancelled = true
     }
-  }, [selectedArea, port, ports, quoteForm, frozenParams])
-
-  // Seed the editable fields from the resolved parameters (unless editing a saved inquiry).
-  // Garbage uses the at-buoy rate when discharging/loading at anchorage, else the at-berth rate.
-  useEffect(() => {
-    if (linkedInquiryId) return
-    const garbageRate =
-      dischargeLoadingLocation === 'Anchorage'
-        ? effectiveParams.garbage.atBuoyUsd
-        : effectiveParams.garbage.atBerthUsd
-    setGarbageUsdRate(String(garbageRate))
-    setGarbageCbmAmount(String(effectiveParams.garbage.cbmAmount))
-    setBerthHours(String(effectiveParams.hours.berthHours))
-    setAnchorageHours(String(effectiveParams.hours.anchorageHours))
-    setPilotageThirdMiles(String(effectiveParams.hours.pilotageThirdMiles))
-    setQnPilotageMiles(String(effectiveParams.hours.qnPilotageMiles))
-  }, [effectiveParams, linkedInquiryId, dischargeLoadingLocation])
+  }, [selectedArea, port, ports, quoteForm, frozenParams, isLoadingPorts, linkedInquiryId, dischargeLoadingLocation])
 
   useEffect(() => {
-    if (!selectedArea) {
-      setPort('')
-      setPorts([])
-      return
-    }
+    if (!selectedArea) return
 
     const restorePort = pendingPortOfCallRef.current
-    if (!restorePort) {
-      setPort('')
-    }
-
     let cancelled = false
-    setIsLoadingPorts(true)
     void portService
       .getPortsByArea(selectedArea)
       .then((portData) => {
@@ -501,8 +538,7 @@ export function CreateInvoiceTab({
           }
         }
       })
-      .catch((error) => {
-        console.error('Failed to load ports for area:', error)
+      .catch(() => {
         if (!cancelled) {
           toast.error('Failed to load port list by area')
           setPorts([])
@@ -557,99 +593,18 @@ export function CreateInvoiceTab({
     return base
   }, [cargoType, cargoTypeCatalog, cargoName])
 
-  useEffect(() => {
-    if (!pendingInquiryCargo) return
-    if (isLoadingCargoCatalog || cargoTypeCatalog.length === 0) return
-
-    const { cargoType: mappedType, cargoName: mappedName } = readInquiryCargoForEpda(
-      pendingInquiryCargo,
-      cargoTypeCatalog,
-    )
-    if (mappedType) setCargoType(mappedType as EpdaCargoType)
-    if (mappedName) setCargoName(mappedName)
-    setPendingInquiryCargo(null)
-  }, [pendingInquiryCargo, cargoTypeCatalog, isLoadingCargoCatalog])
-
-  useEffect(() => {
-    if (isLoadingCargoCatalog || pendingInquiryCargo) return
-    if (!cargoType) {
-      setCargoName('')
-      return
-    }
-
-    const stillValid = filteredCargoNames.some((item) => item.name === cargoName)
-    if (!stillValid && cargoName) return
-    if (!stillValid) {
-      setCargoName('')
-    }
-  }, [cargoType, cargoName, filteredCargoNames, isLoadingCargoCatalog, pendingInquiryCargo])
-
-  useEffect(() => {
-    if (cargoNameDisabled && cargoName) {
-      setCargoName('')
-    }
-  }, [cargoNameDisabled, cargoName])
-
-  useEffect(() => {
-    if (!cargoType || !isTallyFeeEligibleCargo(cargoType)) {
-      setTallyFeeAmount('')
-    }
-  }, [cargoType])
-
-  useEffect(() => {
-    if (!isLoaOverTugMax) setTugAssistanceAmount('')
-  }, [isLoaOverTugMax])
-
-  useEffect(() => {
-    if (dischargeLoadingLocation !== 'Anchorage') {
-      setBoatHireAmount('')
-    }
-  }, [dischargeLoadingLocation])
-
-  useEffect(() => {
-    if (agencyFeeMode === 'AGENCY_IN_LUMPSUM') {
-      setTransportLs('')
-      setBoatHireAmount('')
-      return
-    }
-
-    setAgencyLumpsumAmount('')
-  }, [agencyFeeMode])
-
-  useEffect(() => {
-    if (isLoadingCargoCatalog || pendingInquiryCargo) return
-    if (!cargoType) return
-    const stillValid = cargoTypeOptions.some((item) => item.code === cargoType)
-    if (!stillValid) {
-      setCargoType('')
-    }
-  }, [cargoType, cargoTypeOptions, isLoadingCargoCatalog, pendingInquiryCargo])
-
-  useEffect(() => {
-    if (!canEnableFreightTaxDeclaration) {
-      setFrtTaxType('')
-      setOceanFrtRateUsdPerMt('')
-    }
-  }, [canEnableFreightTaxDeclaration])
-
-  useEffect(() => {
-    if (!frtTaxType) {
-      setOceanFrtRateUsdPerMt('')
-      return
-    }
-
-    if (isImportFrtTaxType(frtTaxType)) {
-      setOceanFrtRateUsdPerMt('')
-      return
-    }
-
-    if (isExportPlsAdviseMode(frtTaxType)) {
-      setOceanFrtRateUsdPerMt('')
-    }
-  }, [frtTaxType])
 
   const isFormBusy =
-    isLoading || isLoadingCargoCatalog || isLoadingPorts || isSavingDraft || isIssuing || isLoadingInquiry
+    isLoading ||
+    isLoadingCargoCatalog ||
+    isLoadingPorts ||
+    isSavingDraft ||
+    isIssuing ||
+    isLoadingInquiry
+
+  const isEpdaLocked = Boolean(epdaLockedAt)
+  /** Locked EPDAs are always read-only, even if the URL has mode=edit. */
+  const isFormReadOnly = readOnly || isEpdaLocked
 
   const buildQuoteParamsInput = () => ({
     quoteForm,
@@ -697,11 +652,9 @@ export function CreateInvoiceTab({
     params: effectiveParams,
   })
 
-  const buildQuoteParams = () => buildInvoiceQuoteData(buildQuoteParamsInput())
-
   // Order creator panel is intentionally hidden on create/edit EPDA.
   const showCreatorSection = false
-  const showSaveDraftButton = !readOnly
+  const showSaveDraftButton = !isFormReadOnly
 
   // Ordered section ids (matches the rail), used by the mobile Next / Done button.
   const orderedSectionIds = useMemo<EpdaSectionId[]>(() => {
@@ -720,10 +673,6 @@ export function CreateInvoiceTab({
   }
 
   useEffect(() => {
-    setLinkedInquiryId(resolvedInquiryId ?? null)
-  }, [resolvedInquiryId])
-
-  useEffect(() => {
     if (!linkedInquiryId) return
 
     // Allow auto-preview to fire again for each newly-loaded inquiry.
@@ -738,17 +687,36 @@ export function CreateInvoiceTab({
         )
         if (cancelled) return
         setViewInquiryMeta(inquiry)
-        // Use the frozen parameter snapshot if the record has one (immune to later
-        // Parameter edits); older records without a snapshot fall back to live values.
+        // Freeze params only when EPDA is locked. Unlocked drafts always follow live
+        // area/port tariff overrides.
         const snap = extractParamsSnapshot(inquiry.epdaSnapshot)
-        setFrozenParams(snap)
-        if (snap) setEffectiveParams(snap)
+        const lockedAt = inquiry.epdaLockedAt ? String(inquiry.epdaLockedAt) : null
+        setEpdaLockedAt(lockedAt)
+        if (lockedAt && snap) {
+          setFrozenParams(snap)
+          setEffectiveParams(snap)
+        } else {
+          setFrozenParams(null)
+          if (snap) setEffectiveParams(snap)
+        }
         setLoadedInquiryQuoteForm(quoteFormFromStored(inquiry.quoteForm))
-        setPendingInquiryCargo({
+        const inquiryCargo = {
           cargoType: inquiry.cargoType,
           cargoName: inquiry.cargoName,
           cargoNameOther: inquiry.cargoNameOther,
-        })
+        }
+        const loadedCargoCatalog = cargoTypeCatalogRef.current
+        if (loadedCargoCatalog.length > 0) {
+          const resolved = resolveInquiryCargo(inquiryCargo, loadedCargoCatalog)
+          if (resolved.cargoType) setCargoType(resolved.cargoType)
+          setCargoName(resolved.cargoName)
+          if (!isTallyFeeEligibleCargo(resolved.cargoType)) setTallyFeeAmount('')
+          pendingInquiryCargoRef.current = null
+          setPendingInquiryCargo(null)
+        } else {
+          pendingInquiryCargoRef.current = inquiryCargo
+          setPendingInquiryCargo(inquiryCargo)
+        }
         if (inquiry.portOfCall?.trim()) {
           const selection = await findPortSelectionFromInquiry(inquiry.portOfCall)
           if (cancelled) return
@@ -807,8 +775,7 @@ export function CreateInvoiceTab({
             (inquiry.company ? `${inquiry.toName ?? inquiry.fullName ?? 'Customer'} — ${inquiry.company}` : null)
           setCustomerLabel(label)
         }
-      } catch (err) {
-        console.error('Failed to load inquiry for EPDA:', err)
+      } catch {
         toast.error('Could not load inquiry EPDA data')
       } finally {
         if (!cancelled) setIsLoadingInquiry(false)
@@ -819,7 +786,7 @@ export function CreateInvoiceTab({
     return () => {
       cancelled = true
     }
-  }, [linkedInquiryId])
+  }, [linkedInquiryId, readOnly])
 
   const handleSaveDraft = async () => {
     setShowValidationErrors(true)
@@ -844,9 +811,8 @@ export function CreateInvoiceTab({
     setIsSavingDraft(true)
     try {
       const input = buildQuoteParamsInput()
-      const snapshot = buildInvoiceQuoteData(input) as unknown as Record<string, unknown>
       const patchBody = buildEpdaPatchPayload(input)
-      patchBody.epdaSnapshot = snapshot
+      // Snapshot is persisted only when locking / issuing — drafts stay on live params.
       patchBody.isComplete = isComplete
 
       if (linkedInquiryId) {
@@ -861,16 +827,13 @@ export function CreateInvoiceTab({
         return
       }
 
-      // Freeze the parameter set on the new record so it survives later Parameter edits.
       const created = await shippingAgencyEpdaService.createInternalInquiry({
         ...buildInternalCreatePayload(customerUserId, input),
-        epdaSnapshot: snapshot,
         isComplete,
       })
-      setLinkedInquiryId(created.id)
+      setCreatedInquiryId(created.id)
       toast.success(`Inquiry #${created.id} created with EPDA draft`)
     } catch (err) {
-      console.error('Failed to save EPDA draft:', err)
       toast.error(err instanceof Error ? err.message : 'Failed to save EPDA draft')
     } finally {
       setIsSavingDraft(false)
@@ -900,17 +863,53 @@ export function CreateInvoiceTab({
     try {
       const input = buildQuoteParamsInput()
       const snapshot = buildInvoiceQuoteData(input) as unknown as Record<string, unknown>
-      const patchBody = buildEpdaPatchPayload(input)
-      await shippingAgencyEpdaService.updateEpda(linkedInquiryId, patchBody)
-      await shippingAgencyEpdaService.issueEpda(linkedInquiryId, snapshot)
+      if (!isEpdaLocked) {
+        const patchBody = buildEpdaPatchPayload(input)
+        await shippingAgencyEpdaService.updateEpda(linkedInquiryId, patchBody)
+      }
+      const saved = await shippingAgencyEpdaService.issueEpda(linkedInquiryId, snapshot)
+      setEpdaLockedAt(
+        saved.epdaLockedAt ? String(saved.epdaLockedAt) : new Date().toISOString(),
+      )
+      const snap = extractParamsSnapshot(snapshot)
+      if (snap) {
+        setFrozenParams(snap)
+        setEffectiveParams(snap)
+      }
+      setViewInquiryMeta((prev) =>
+        prev
+          ? {
+              ...prev,
+              status: saved.status ? String(saved.status) : prev.status,
+              epdaLockedAt: saved.epdaLockedAt
+                ? String(saved.epdaLockedAt)
+                : prev.epdaLockedAt,
+            }
+          : prev,
+      )
       toast.success('EPDA issued — customer can access the quote')
       setFieldChangeHistoryKey((key) => key + 1)
+      if (isInquiryDetailFlow) {
+        const params = new URLSearchParams(searchParams.toString())
+        params.delete('mode')
+        if (!params.get('preview')) params.set('preview', '1')
+        router.replace(`${pathname}?${params.toString()}`)
+      }
     } catch (err) {
-      console.error('Failed to issue EPDA:', err)
       toast.error(err instanceof Error ? err.message : 'Failed to issue EPDA')
     } finally {
       setIsIssuing(false)
     }
+  }
+
+  const resolvePortIdForParams = () => {
+    const target = (port ?? '').trim().toLowerCase()
+    if (!target) return undefined
+    return ports.find((p) => {
+      const call = p.portOfCall?.trim().toLowerCase() ?? ''
+      const name = p.name?.trim().toLowerCase() ?? ''
+      return call === target || name === target
+    })?.id
   }
 
   const handlePreview = async () => {
@@ -931,14 +930,27 @@ export function CreateInvoiceTab({
       if (!res.ok) throw new Error('Template not found')
       const template = await res.text()
 
-      const quoteData = buildQuoteParams()
-      const renderer =
-        quoteForm === 'QN'
-          ? renderQuoteHtmlQn
-          : quoteForm === 'HN'
-            ? renderQuoteHtmlHn
-            : renderQuoteHtmlHcm
-      const html = renderer(template, quoteData)
+      // Always re-resolve live port/area params before preview when unlocked so tug
+      // (and other) tiers match the Parameter screen, not a stale/default snapshot.
+      let paramsForQuote = effectiveParams
+      if (!isEpdaLocked && !frozenParams && selectedArea) {
+        try {
+          paramsForQuote = await epdaParametersService.getEffective(
+            selectedArea,
+            resolvePortIdForParams(),
+          )
+          setEffectiveParams(paramsForQuote)
+        } catch (error) {
+          const detail = error instanceof Error ? error.message : 'Request failed'
+          toast.error(`Could not refresh port tariff parameters (${detail}).`)
+        }
+      }
+
+      const quoteData = buildInvoiceQuoteData({
+        ...buildQuoteParamsInput(),
+        params: paramsForQuote,
+      })
+      const html = renderQuoteHtmlForVariant(quoteForm, template, quoteData)
 
       const filename = linkedInquiryId
         ? `EPDA_inquiry_${linkedInquiryId}.html`
@@ -948,8 +960,7 @@ export function CreateInvoiceTab({
 
       await delay(EPDA_PREVIEW_LOAD_DELAY_MS)
       setPreviewHtml(html)
-    } catch (err) {
-      console.error('Failed to generate preview:', err)
+    } catch {
       toast.error('Failed to generate invoice preview')
       setShowPreview(false)
     } finally {
@@ -966,6 +977,8 @@ export function CreateInvoiceTab({
     }
   }
 
+  const handlePreviewRef = useLatest(handlePreview)
+
   // Auto-open the EPDA quote preview when arriving with `preview=1`
   // (set by "view detail" for Completed/Quoted inquiries). We're already in the
   // edit screen, so just pop the preview once all data has loaded.
@@ -978,14 +991,20 @@ export function CreateInvoiceTab({
     // resolve a tick after loading flags clear, so wait until nothing is missing.
     if (missingRequiredFields.length > 0) return
 
-    autoPreviewTriggeredRef.current = true
-    void handlePreview()
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isInquiryDetailFlow, searchParams, isLoadingInquiry, isLoadingCargoCatalog, pendingInquiryCargo, linkedInquiryId, missingRequiredFields.length])
+    const animationFrame = window.requestAnimationFrame(() => {
+      autoPreviewTriggeredRef.current = true
+      void handlePreviewRef.current()
+    })
+    return () => window.cancelAnimationFrame(animationFrame)
+  }, [isInquiryDetailFlow, searchParams, isLoadingInquiry, isLoadingCargoCatalog, pendingInquiryCargo, linkedInquiryId, missingRequiredFields.length, handlePreviewRef])
 
   const handleReset = () => {
     setShowValidationErrors(false)
     setSelectedArea('')
+    setPorts([])
+    setIsLoadingPorts(false)
+    setPortPickerCollapsed(false)
+    setEffectiveParams(defaultParameterValues('HCM'))
     setLoadedInquiryQuoteForm(null)
     setViewInquiryMeta(null)
     setPendingInquiryCargo(null)
@@ -1025,9 +1044,11 @@ export function CreateInvoiceTab({
     setAgencyLumpsumAmount('')
     setPreviewHtml(null)
     setShowPreview(false)
-    setLinkedInquiryId(resolvedInquiryId ?? null)
+    setCreatedInquiryId(null)
     setCustomerUserId(null)
     setCustomerLabel(null)
+    setEpdaLockedAt(null)
+    setFrozenParams(null)
   }
 
   const handleFormEnterNavigation = (event: React.KeyboardEvent<HTMLDivElement>) => {
@@ -1095,10 +1116,23 @@ export function CreateInvoiceTab({
     setShipownerNationality,
     setEta,
     setMv,
-    setDischargeLoadingLocation,
+    setDischargeLoadingLocation: (value: string) => {
+      setDischargeLoadingLocation(value)
+      const garbageRate =
+        value === 'Anchorage'
+          ? effectiveParams.garbage.atBuoyUsd
+          : effectiveParams.garbage.atBerthUsd
+      setGarbageUsdRate(String(garbageRate))
+      if (value !== 'Anchorage') setBoatHireAmount('')
+    },
     setDwt,
     setGrt,
-    setLoa,
+    setLoa: (value: string) => {
+      setLoa(value)
+      if (!isLoaAtOrAboveTugMaximum(value, effectiveParams)) {
+        setTugAssistanceAmount('')
+      }
+    },
     setCargoQty,
     // Manually switching cargo type clears the cargo name — names are type-specific,
     // and the synthetic fallback in filteredCargoNames would otherwise keep the stale
@@ -1106,6 +1140,7 @@ export function CreateInvoiceTab({
     setCargoType: (value: CargoType) => {
       setCargoType(value as EpdaCargoType)
       setCargoName('')
+      if (!isTallyFeeEligibleCargo(value)) setTallyFeeAmount('')
     },
     setCargoName,
     setShipType: (value: 'BULK_SHIP' | 'TANKER_SHIP') => setShipType(value),
@@ -1115,9 +1150,20 @@ export function CreateInvoiceTab({
     setPilotageThirdMiles,
     setGarbageUsdRate,
     setGarbageCbmAmount,
-    setPurposeOfCalling: (value: PurposeOption) => setPurposeOfCalling(value),
+    setPurposeOfCalling: (value: PurposeOption) => {
+      setPurposeOfCalling(value)
+      if (!canEnableFreightTaxByPurpose(value)) {
+        setFrtTaxType('')
+        setOceanFrtRateUsdPerMt('')
+      }
+    },
     setQuarantineCargoMode: (value: QuarantineCargoOption) => setQuarantineCargoMode(value),
-    setFrtTaxType: (value: FrtTaxTypeOption) => setFrtTaxType(value),
+    setFrtTaxType: (value: FrtTaxTypeOption) => {
+      setFrtTaxType(value)
+      if (!value || isImportFrtTaxType(value) || isExportPlsAdviseMode(value)) {
+        setOceanFrtRateUsdPerMt('')
+      }
+    },
     setTallyFeeAmount,
     setTugAssistanceAmount,
     setOtherExpenseType,
@@ -1126,7 +1172,15 @@ export function CreateInvoiceTab({
     setTransportLs,
     setBoatHireAmount,
     setBoatHireQuarantineAmount,
-    setAgencyFeeMode: (value: AgencyFeeModeOption) => setAgencyFeeMode(value),
+    setAgencyFeeMode: (value: AgencyFeeModeOption) => {
+      setAgencyFeeMode(value)
+      if (value === 'AGENCY_IN_LUMPSUM') {
+        setTransportLs('')
+        setBoatHireAmount('')
+      } else {
+        setAgencyLumpsumAmount('')
+      }
+    },
     setAgencyDiscountPercent,
     setAgencyLumpsumAmount,
   }
@@ -1191,6 +1245,12 @@ export function CreateInvoiceTab({
           <span className="sm:hidden">{t('epda.saveShort')}</span>
         </Button>
       ) : null}
+      {isEpdaLocked ? (
+        <span className="col-span-2 inline-flex h-11 items-center justify-center gap-2 rounded-md border border-amber-500/40 bg-amber-500/10 px-3 text-sm font-medium text-amber-800 dark:text-amber-200 sm:col-span-1 sm:h-9">
+          <Lock className="h-4 w-4 shrink-0" />
+          {t('epda.locked')}
+        </span>
+      ) : null}
       <Button
         variant="secondary"
         onClick={handleIssueToCustomer}
@@ -1240,11 +1300,66 @@ export function CreateInvoiceTab({
     </Button>
   ) : null
 
-  const epdaWorksheet = isInquiryDetailFlow && readOnly ? (
-    <div className="flex min-h-[240px] items-center justify-center">
+  const epdaWorksheet = isFormReadOnly && (isInquiryDetailFlow || isEpdaLocked) ? (
+    <div className="min-h-0 space-y-4">
+      {backToInquiries}
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        {linkedInquiryId ? (
+          <Badge variant="outline" className="w-fit font-mono text-xs">
+            {t('epda.inquiryNo', { id: linkedInquiryId })}
+          </Badge>
+        ) : (
+          <span />
+        )}
+        <div className="flex flex-wrap items-center justify-end gap-2">
+          {isEpdaLocked ? (
+            <span className="inline-flex h-11 items-center justify-center gap-2 rounded-md border border-amber-500/40 bg-amber-500/10 px-3 text-sm font-medium text-amber-800 dark:text-amber-200 sm:h-9">
+              <Lock className="h-4 w-4 shrink-0" />
+              {t('epda.locked')}
+            </span>
+          ) : null}
+          {canViewEditHistory && linkedInquiryId ? (
+            <EpdaFieldChangeHistory inquiryId={linkedInquiryId} refreshKey={fieldChangeHistoryKey} />
+          ) : null}
+          <Button
+            variant="secondary"
+            onClick={handleIssueToCustomer}
+            disabled={isFormBusy || !linkedInquiryId || viewInquiryMeta?.status === 'QUOTED'}
+            className="h-11 gap-2 active:scale-[0.98] sm:h-9"
+          >
+            {isIssuing ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : (
+              <Send className="h-4 w-4 shrink-0" />
+            )}
+            <span className="hidden sm:inline">{t('epda.issue')}</span>
+            <span className="sm:hidden">{t('epda.issueShort')}</span>
+          </Button>
+          <Button
+            onClick={handlePreview}
+            disabled={isFormBusy}
+            className="h-11 gap-2 active:scale-[0.98] sm:h-9"
+          >
+            {isLoading ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : (
+              <Eye className="h-4 w-4" />
+            )}
+            {t('epda.preview')}
+          </Button>
+        </div>
+      </div>
       {(isLoadingInquiry || isLoadingCargoCatalog) ? (
-        <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
-      ) : null}
+        <div className="flex min-h-[160px] items-center justify-center">
+          <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+        </div>
+      ) : (
+        <p className="text-sm text-muted-foreground">
+          {isEpdaLocked
+            ? 'EPDA is locked — tariff snapshot is frozen. Edit is disabled.'
+            : 'View-only EPDA. Open preview, or use Edit when unlocked.'}
+        </p>
+      )}
     </div>
   ) : (
     <div className="min-h-0">
@@ -1321,7 +1436,16 @@ export function CreateInvoiceTab({
             >
               <div className="grid gap-2">
                 <Label htmlFor="portArea" className="font-bold">{t('epda.portArea')}</Label>
-                <Select value={selectedArea} onValueChange={(value) => setSelectedArea(value as AreaOption)}>
+                <Select
+                  value={selectedArea}
+                  onValueChange={(value) => {
+                    setPort('')
+                    setPorts([])
+                    setPortPickerCollapsed(false)
+                    setIsLoadingPorts(true)
+                    setSelectedArea(value as AreaOption)
+                  }}
+                >
                   <SelectTrigger id="portArea">
                     <SelectValue placeholder={t('epda.selectArea')}>
                       {selectedArea ? getAreaLabel(selectedArea) : null}
@@ -1341,7 +1465,14 @@ export function CreateInvoiceTab({
                 <Label htmlFor="portOfCallSelect" className="font-bold">
                   {t('epda.portOfCall')}
                 </Label>
-                <Select value={port} onValueChange={setPort} disabled={!selectedArea || isLoadingPorts}>
+                <Select
+                  value={port}
+                  onValueChange={(value) => {
+                    setPort(value)
+                    setPortPickerCollapsed(true)
+                  }}
+                  disabled={!selectedArea || isLoadingPorts}
+                >
                   <SelectTrigger id="portOfCallSelect">
                     <SelectValue
                       placeholder={
@@ -1412,37 +1543,16 @@ export function CreateInvoiceTab({
               <EpdaFormSkeleton rows={4} />
             ) : null}
 
-            {quoteForm === 'QN' ? (
-              <CreateInvoiceQnForm
-                values={formValues}
-                handlers={formHandlers}
-                options={formOptions}
-                computed={formComputed}
-                params={effectiveParams}
-                activeSection={activeSection}
-                getRequiredState={getRequiredState}
-              />
-            ) : quoteForm === 'HN' ? (
-              <CreateInvoiceHnForm
-                values={formValues}
-                handlers={formHandlers}
-                options={formOptions}
-                computed={formComputed}
-                params={effectiveParams}
-                activeSection={activeSection}
-                getRequiredState={getRequiredState}
-              />
-            ) : (
-              <CreateInvoiceHcmForm
-                values={formValues}
-                handlers={formHandlers}
-                options={formOptions}
-                computed={formComputed}
-                params={effectiveParams}
-                activeSection={activeSection}
-                getRequiredState={getRequiredState}
-              />
-            )}
+            <CreateInvoiceVariantForm
+              variant={quoteForm}
+              values={formValues}
+              handlers={formHandlers}
+              options={formOptions}
+              computed={formComputed}
+              params={effectiveParams}
+              activeSection={activeSection}
+              getRequiredState={getRequiredState}
+            />
 
             {/* Mobile: advance through sections; "Done" on the last jumps back to
                 the pinned header (Save / Issue / Preview live there). */}
@@ -1470,7 +1580,7 @@ export function CreateInvoiceTab({
         </div>
         )}
 
-        {!readOnly && showValidationErrors && missingRequiredFields.length > 0 ? (
+        {!isFormReadOnly && showValidationErrors && missingRequiredFields.length > 0 ? (
           <p className="text-sm text-destructive" role="alert">
             {t('epda.requiredFields')}: {missingRequiredFields.map((field) => field.label).join(', ')}
           </p>
@@ -1479,14 +1589,15 @@ export function CreateInvoiceTab({
     </div>
   )
 
-  const handleEditFromPreview = (isInquiryDetailFlow && readOnly && linkedInquiryId)
-    ? () => {
-        setShowPreview(false)
-        const params = new URLSearchParams(searchParams.toString())
-        params.set('mode', 'edit')
-        router.push(`${pathname}?${params.toString()}`)
-      }
-    : undefined
+  const handleEditFromPreview =
+    isInquiryDetailFlow && isFormReadOnly && linkedInquiryId && !isEpdaLocked
+      ? () => {
+          setShowPreview(false)
+          const params = new URLSearchParams(searchParams.toString())
+          params.set('mode', 'edit')
+          router.push(`${pathname}?${params.toString()}`)
+        }
+      : undefined
 
   const pdfPreview = (
     <PdfPreviewDialog
@@ -1549,4 +1660,3 @@ export function CreateInvoiceTab({
     </>
   )
 }
-

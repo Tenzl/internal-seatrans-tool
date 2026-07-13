@@ -359,6 +359,14 @@ const enMessages: Record<string, string> = {
     // create epda — buttons & misc
     'epda.saveDraft': 'Save draft',
     'epda.saveShort': 'Save',
+    'epda.lock': 'Lock edit',
+    'epda.lockShort': 'Lock',
+    'epda.locked': 'Locked',
+    'epda.lockConfirmTitle': 'Lock this EPDA?',
+    'epda.lockConfirmBody':
+      'After locking, you will no longer be able to edit this EPDA. Tariff rates will be frozen in a snapshot. This cannot be undone.',
+    'epda.lockConfirmAction': 'Lock edit',
+    'epda.lockConfirmCancel': 'Cancel',
     'epda.issue': 'Issue to customer',
     'epda.issueShort': 'Issue',
     'epda.reset': 'Reset form',

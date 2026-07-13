@@ -2,8 +2,8 @@
 
 import { useMemo, useState } from "react"
 import {
-  ColumnDef,
-  VisibilityState,
+  type ColumnDef,
+  type VisibilityState,
   flexRender,
   getCoreRowModel,
   useReactTable,
@@ -238,9 +238,8 @@ export function PartnerImportDialog({ open, onOpenChange, onImported }: PartnerI
       try {
         const preview = await partnerManagementService.previewImport(file)
         setServerPreview(preview)
-      } catch (serverPreviewError) {
+      } catch {
         toast.info("Backend preview is not available yet. Showing local preview.")
-        console.warn("Partner import backend preview is unavailable", serverPreviewError)
       }
     } catch (error) {
       toast.error("Please choose a valid .xlsx or .csv file", error)

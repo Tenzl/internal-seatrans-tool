@@ -9,7 +9,7 @@ import {
   DialogDescription,
 } from '@/shared/components/ui/dialog'
 import { Button } from '@/shared/components/ui/button'
-import { useRef, useState, useEffect } from 'react'
+import { useRef, useState } from 'react'
 import { Loader2, Pencil, Printer, X } from 'lucide-react'
 import { toast } from '@/shared/utils/toast'
 
@@ -30,15 +30,8 @@ export function PdfPreviewDialog({
   isGenerating = false,
   onEdit,
 }: PdfPreviewDialogProps) {
-  const [iframeKey, setIframeKey] = useState(0)
   const [isExporting, setIsExporting] = useState(false)
   const iframeRef = useRef<HTMLIFrameElement | null>(null)
-
-  useEffect(() => {
-    if (open && html) {
-      setIframeKey((k) => k + 1)
-    }
-  }, [open, html])
 
   const showGenerating = isGenerating || !html
 
@@ -61,7 +54,6 @@ export function PdfPreviewDialog({
       // Close the preview right after triggering print dialog.
       window.setTimeout(() => onOpenChange(false), 150)
     } catch (err) {
-      console.error('Failed to print EPDA:', err)
       toast.error(err instanceof Error ? err.message : 'Failed to open print dialog')
     } finally {
       setIsExporting(false)
@@ -125,7 +117,6 @@ export function PdfPreviewDialog({
             </div>
           ) : (
             <iframe
-              key={iframeKey}
               ref={iframeRef}
               srcDoc={html ?? ''}
               title={fileName}

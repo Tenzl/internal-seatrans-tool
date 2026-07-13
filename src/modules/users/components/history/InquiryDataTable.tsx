@@ -2,10 +2,10 @@
 
 import * as React from "react"
 import {
-  ColumnDef,
-  ColumnFiltersState,
-  SortingState,
-  VisibilityState,
+  type ColumnDef,
+  type ColumnFiltersState,
+  type SortingState,
+  type VisibilityState,
   flexRender,
   getCoreRowModel,
   getFilteredRowModel,
@@ -53,7 +53,7 @@ import {
 export type InquiryDeleteMode = 'soft' | 'hard'
 
 export interface InquiryDataTableProps<TData extends { id: number }> {
-  columns: ColumnDef<TData, any>[]
+  columns: ColumnDef<TData, unknown>[]
   data: TData[]
   searchKey?: string
   searchPlaceholder?: string
@@ -86,40 +86,49 @@ export function InquiryDataTable<TData extends { id: number }>({
   const [isDeleting, setIsDeleting] = React.useState(false)
 
   // Define select column (from table-09 pattern)
-  const selectColumn: ColumnDef<TData> = {
-    id: "select",
-    header: ({ table }) => (
-      <Checkbox
-        checked={
-          table.getIsAllPageRowsSelected() ||
-          (table.getIsSomePageRowsSelected() && "indeterminate")
-        }
-        onCheckedChange={(value) => table.toggleAllPageRowsSelected(!!value)}
-        aria-label="Select all"
-      />
-    ),
-    cell: ({ row }) => (
-      <Checkbox
-        checked={row.getIsSelected()}
-        onCheckedChange={(value) => row.toggleSelected(!!value)}
-        aria-label="Select row"
-      />
-    ),
-    enableSorting: false,
-    enableHiding: false,
-  }
+  const selectColumn = React.useMemo<ColumnDef<TData>>(
+    () => ({
+      id: "select",
+      header: ({ table }) => (
+        <Checkbox
+          checked={
+            table.getIsAllPageRowsSelected() ||
+            (table.getIsSomePageRowsSelected() && "indeterminate")
+          }
+          onCheckedChange={(value) => table.toggleAllPageRowsSelected(!!value)}
+          aria-label="Select all"
+        />
+      ),
+      cell: ({ row }) => (
+        <Checkbox
+          checked={row.getIsSelected()}
+          onCheckedChange={(value) => row.toggleSelected(!!value)}
+          aria-label="Select row"
+        />
+      ),
+      enableSorting: false,
+      enableHiding: false,
+    }),
+    [],
+  )
 
   const columnsWithSelect = React.useMemo(
     () => (onDelete ? [selectColumn, ...columns] : columns),
-    [columns, onDelete],
+    [columns, onDelete, selectColumn],
   )
 
   // Filter data by date range
   const filteredData = React.useMemo(() => {
     if (!dateFrom && !dateTo) return data
     
-    return data.filter((row: any) => {
-      const submittedAt = row.submittedAt ? new Date(row.submittedAt) : null
+    return data.filter((row) => {
+      const rawSubmittedAt = 'submittedAt' in row ? row.submittedAt : null
+      const submittedAt =
+        typeof rawSubmittedAt === 'string' ||
+        typeof rawSubmittedAt === 'number' ||
+        rawSubmittedAt instanceof Date
+          ? new Date(rawSubmittedAt)
+          : null
       if (!submittedAt) return true
       
       const from = dateFrom ? new Date(dateFrom.setHours(0, 0, 0, 0)) : null
@@ -163,8 +172,8 @@ export function InquiryDataTable<TData extends { id: number }>({
       await onDelete(ids, mode)
       setRowSelection({})
       setShowDeleteDialog(false)
-    } catch (error) {
-      console.error('Failed to delete inquiries:', error)
+    } catch {
+      // The caller owns user-facing error reporting for archive/delete failures.
     } finally {
       setIsDeleting(false)
     }
@@ -418,4 +427,3 @@ export function InquiryDataTable<TData extends { id: number }>({
     </>
   )
 }
-

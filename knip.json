@@ -1,0 +1,10 @@
+{
+  "$schema": "https://unpkg.com/knip@6/schema.json",
+  "project": ["src/**/*.{ts,tsx}"],
+  "ignoreDependencies": ["postcss", "tailwindcss", "tw-animate-css"],
+  "ignoreIssues": {
+    "src/components/ui/**": ["exports", "types"],
+    "src/shared/components/ui/**": ["exports", "types"]
+  },
+  "ignoreExportsUsedInFile": true
+}

@@ -15,12 +15,12 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/shared/components/ui/alert-dialog'
-import { serviceTypeService, ServiceType } from '@/modules/service-types/services/serviceTypeService'
+import { serviceTypeService, type ServiceType } from '@/modules/service-types/services/serviceTypeService'
 import {
   commodityService,
-  CargoType,
-  Commodity,
-  CreateCommodityRequest,
+  type CargoType,
+  type Commodity,
+  type CreateCommodityRequest,
 } from '@/modules/gallery/services/commodityService'
 import { SHIPPING_AGENCY_CARGO_TYPES } from '@/modules/gallery/shippingAgencyCargoCatalog'
 import { useCurrentUser } from '@/hooks/use-current-user'
@@ -45,6 +45,13 @@ const FIXED_CARGO_TYPE_OPTIONS: CargoTypeOption[] = SHIPPING_AGENCY_CARGO_TYPES.
   value: t.code,
   label: t.displayLabel,
 }))
+
+const sanitizeCommodities = (
+  data: (Commodity | null | undefined)[] | null | undefined,
+): Commodity[] => {
+  if (!Array.isArray(data)) return []
+  return data.filter((item): item is Commodity => Boolean(item))
+}
 
 export function ManageCommodities() {
   const currentUser = useCurrentUser()
@@ -86,39 +93,36 @@ export function ManageCommodities() {
   }, {} as Record<CargoType, number>)
 
   useEffect(() => {
-    loadServiceTypes()
+    void serviceTypeService
+      .getAllServiceTypes()
+      .then(setServiceTypes)
+      .catch((error) => toast.error('Failed to load service types', error))
   }, [])
 
   useEffect(() => {
-    if (selectedServiceType) {
-      loadCommodities(selectedServiceType)
-    } else {
-      setCommodities([])
-      setSelectedCargoType('IN_BULK')
+    if (!selectedServiceType) return
+
+    let cancelled = false
+    void commodityService
+      .getCommoditiesByServiceType(selectedServiceType)
+      .then((data) => {
+        if (!cancelled) setCommodities(sanitizeCommodities(data))
+      })
+      .catch((error) => toast.error('Failed to load image types', error))
+      .finally(() => {
+        if (!cancelled) setLoading(false)
+      })
+
+    return () => {
+      cancelled = true
     }
   }, [selectedServiceType])
 
-  const loadServiceTypes = async () => {
-    try {
-      const data = await serviceTypeService.getAllServiceTypes()
-      setServiceTypes(data)
-    } catch (error) {
-      console.error('Error loading service types:', error)
-      toast.error('Failed to load service types', error)
-    }
-  }
-
-  const loadCommodities = async (serviceTypeId: number) => {
-    try {
-      setLoading(true)
-      const data = await commodityService.getCommoditiesByServiceType(serviceTypeId)
-      setCommodities(sanitizeCommodities(data))
-    } catch (error) {
-      console.error('Error loading image types:', error)
-      toast.error('Failed to load image types', error)
-    } finally {
-      setLoading(false)
-    }
+  const handleServiceTypeChange = (serviceTypeId: number | null) => {
+    setSelectedServiceType(serviceTypeId)
+    setCommodities([])
+    setSelectedCargoType('IN_BULK')
+    setLoading(serviceTypeId !== null)
   }
 
   const showToast = (type: 'success' | 'error', message: string) => {
@@ -131,12 +135,6 @@ export function ManageCommodities() {
 
   const deriveCommodityName = (displayName: string): string => {
     return displayName.trim().replace(/\s+/g, '_').toUpperCase()
-  }
-
-  // Avoid null entries from API responses to keep rendering safe
-  const sanitizeCommodities = (data: (Commodity | null | undefined)[] | null | undefined): Commodity[] => {
-    if (!Array.isArray(data)) return []
-    return data.filter((item): item is Commodity => Boolean(item))
   }
 
   const handleAddCommodity = async () => {
@@ -177,8 +175,7 @@ export function ManageCommodities() {
       setCommodities(sanitizeCommodities([...commodities, newType]))
       setNewCommodity({ displayName: '' })
       showToast('success', `Cargo "${newType.displayName}" added successfully`)
-    } catch (error) {
-      console.error('Error adding cargo name:', error)
+    } catch {
       showToast('error', 'Failed to add cargo')
     } finally {
       setLoading(false)
@@ -231,8 +228,7 @@ export function ManageCommodities() {
       )
       setEditingTypeId(null)
       showToast('success', 'Cargo type updated successfully')
-    } catch (error) {
-      console.error('Error updating image type:', error)
+    } catch {
       showToast('error', 'Failed to update cargo type')
     } finally {
       setLoading(false)
@@ -257,7 +253,6 @@ export function ManageCommodities() {
       setCommodities(commodities.filter(t => t.id !== deleteDialog.type!.id))
       showToast('success', `Cargo type "${deleteDialog.type.displayName}" deleted successfully`)
     } catch (error) {
-      console.error('Error deleting image type:', error)
       const message =
         error instanceof Error && /constraint|foreign key/i.test(error.message)
           ? 'Cannot delete this cargo type because images are using it. Remove those images first.'
@@ -278,7 +273,9 @@ export function ManageCommodities() {
             <label className="block text-sm font-medium mb-2">Select Service Type</label>
             <select
               value={selectedServiceType || ''}
-              onChange={(e) => setSelectedServiceType(e.target.value ? Number(e.target.value) : null)}
+              onChange={(e) =>
+                handleServiceTypeChange(e.target.value ? Number(e.target.value) : null)
+              }
               aria-label="Select service type"
               className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
             >

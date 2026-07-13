@@ -6,7 +6,6 @@ export const PURPOSE_OF_CALLING_OPTIONS = [
   { value: 'MUC_DICH_KHAC', label: 'Other purpose' },
 ] as const
 
-export type PurposeOfCallingValue = (typeof PURPOSE_OF_CALLING_OPTIONS)[number]['value']
 
 /** Customer inquiry form — simplified import/export choice (values unchanged for API). */
 export const PUBLIC_FRT_TAX_TYPE_OPTIONS = [

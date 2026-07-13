@@ -1,8 +1,5 @@
 import {
   FileText,
-  AudioWaveform,
-  Command,
-  GalleryVerticalEnd,
   Users,
   BriefcaseBusiness,
   Ship,
@@ -19,33 +16,10 @@ import {
 import { type SidebarData } from '../types'
 
 export const sidebarData: SidebarData = {
-  user: {
-    name: 'satnaing',
-    email: 'satnaingdev@gmail.com',
-    avatar: '/avatars/shadcn.jpg',
-  },
-  teams: [
-    {
-      name: 'Seatrans',
-      logo: Command,
-      plan: 'Admin Dashboard',
-    },
-    {
-      name: 'Acme Inc',
-      logo: GalleryVerticalEnd,
-      plan: 'Enterprise',
-    },
-    {
-      name: 'Acme Corp.',
-      logo: AudioWaveform,
-      plan: 'Startup',
-    },
-  ],
   navGroups: [
     {
       title: 'General',
       items: [
-        // Template demo items temporarily disabled (Dashboard, Tasks, Apps, Chats, Users).
         {
           title: 'EPDA',
           icon: FileText,

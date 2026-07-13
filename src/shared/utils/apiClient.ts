@@ -11,6 +11,10 @@ export interface ApiClientConfig extends RequestInit {
   timeout?: number
 }
 
+type TypedResponse<T> = Response & {
+  readonly __responseType?: T
+}
+
 class ApiClient {
   private static instance: ApiClient
 
@@ -62,16 +66,6 @@ class ApiClient {
     return controller.signal
   }
 
-  private logRequest(method: string | undefined, url: string, body?: any) {
-    if (!API_CONFIG.ENABLE_LOGS) return
-    console.log(`[API Request] ${method?.toUpperCase() || 'GET'} ${url}`, body)
-  }
-
-  private logResponse(url: string, data: any) {
-    if (!API_CONFIG.ENABLE_LOGS) return
-    console.log(`[API Response] ${url}`, data)
-  }
-
   async fetch(endpoint: string, config: ApiClientConfig = {}): Promise<Response> {
     const { skipAuth, timeout, headers, signal, ...restConfig } = config
 
@@ -81,8 +75,6 @@ class ApiClient {
     }
 
     const url = this.buildUrl(endpoint)
-
-    this.logRequest(restConfig.method, url, restConfig.body)
 
     try {
       const isFormData = restConfig.body instanceof FormData
@@ -101,54 +93,51 @@ class ApiClient {
 
       // Handle 401 Unauthorized - token expired or invalid
       if (response.status === 401 && !skipAuth) {
-        console.warn('Received 401 Unauthorized - logging out user')
         this.clearAuth()
         throw new Error('Session expired. Please login again.')
       }
-
-      this.logResponse(url, response.clone())
 
       return response
     } catch (error) {
       // Network errors or other fetch errors
       if (error instanceof TypeError && error.message.includes('Failed to fetch')) {
-        throw new Error('Network error. Please check your connection.')
+        throw new Error('Network error. Please check your connection.', { cause: error })
       }
       throw error
     }
   }
 
-  async get<T = unknown>(endpoint: string, config?: ApiClientConfig): Promise<Response> {
-    return this.fetch(endpoint, { ...config, method: 'GET' })
+  async get<T = unknown>(endpoint: string, config?: ApiClientConfig): Promise<TypedResponse<T>> {
+    return this.fetch(endpoint, { ...config, method: 'GET' }) as Promise<TypedResponse<T>>
   }
 
-  async post<T = unknown>(endpoint: string, body?: any, config?: ApiClientConfig): Promise<Response> {
+  async post<T = unknown>(endpoint: string, body?: unknown, config?: ApiClientConfig): Promise<TypedResponse<T>> {
     return this.fetch(endpoint, {
       ...config,
       method: 'POST',
       body: body instanceof FormData ? body : JSON.stringify(body),
       headers: body instanceof FormData ? {} : config?.headers,
-    })
+    }) as Promise<TypedResponse<T>>
   }
 
-  async put<T = unknown>(endpoint: string, body?: any, config?: ApiClientConfig): Promise<Response> {
+  async put<T = unknown>(endpoint: string, body?: unknown, config?: ApiClientConfig): Promise<TypedResponse<T>> {
     return this.fetch(endpoint, {
       ...config,
       method: 'PUT',
       body: JSON.stringify(body),
-    })
+    }) as Promise<TypedResponse<T>>
   }
 
-  async patch<T = unknown>(endpoint: string, body?: any, config?: ApiClientConfig): Promise<Response> {
+  async patch<T = unknown>(endpoint: string, body?: unknown, config?: ApiClientConfig): Promise<TypedResponse<T>> {
     return this.fetch(endpoint, {
       ...config,
       method: 'PATCH',
       body: JSON.stringify(body),
-    })
+    }) as Promise<TypedResponse<T>>
   }
 
-  async delete<T = unknown>(endpoint: string, config?: ApiClientConfig): Promise<Response> {
-    return this.fetch(endpoint, { ...config, method: 'DELETE' })
+  async delete<T = unknown>(endpoint: string, config?: ApiClientConfig): Promise<TypedResponse<T>> {
+    return this.fetch(endpoint, { ...config, method: 'DELETE' }) as Promise<TypedResponse<T>>
   }
 }
 

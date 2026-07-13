@@ -164,18 +164,17 @@ function DecimalInput({
   const [text, setText] = useState(() => formatDecimalValue(value))
   const [focused, setFocused] = useState(false)
 
-  useEffect(() => {
-    if (!focused) setText(formatDecimalValue(value))
-  }, [value, focused])
-
   return (
     <Input
       type='text'
       inputMode='decimal'
       className={className}
       placeholder={placeholder}
-      value={text}
-      onFocus={() => setFocused(true)}
+      value={focused ? text : formatDecimalValue(value)}
+      onFocus={() => {
+        setText(formatDecimalValue(value))
+        setFocused(true)
+      }}
       onBlur={() => {
         setFocused(false)
         const parsed = parseDecimalText(text)
@@ -469,7 +468,7 @@ function CargoAgencyRateTable({
     rates.find((r) => normalizeCargoTypeCode(r.code) === normalizeCargoTypeCode(code))?.rate ?? 0
 
   // Always emit exactly the 3 fixed types, in enum order, with the edited rate.
-  const setRate = (code: string, label: string, rate: number) => {
+  const setRate = (code: string, rate: number) => {
     const edited = new Map(rates.map((r) => [normalizeCargoTypeCode(r.code), r.rate]))
     edited.set(normalizeCargoTypeCode(code), rate)
     onChange(
@@ -498,7 +497,7 @@ function CargoAgencyRateTable({
                 <DecimalInput
                   className='text-base tabular-nums'
                   value={rateFor(ct.code)}
-                  onChange={(n) => setRate(ct.code, ct.displayLabel, n)}
+                  onChange={(n) => setRate(ct.code, n)}
                 />
               </TableCell>
             </TableRow>
@@ -794,10 +793,6 @@ function PilotageCalculator({
   const [milesText, setMilesText] = useState(() => formatDecimalValue(defaultMiles))
   const grt = parseFiniteNumber(grtText) ?? 0
   const miles = parseFiniteNumber(milesText) ?? 0
-
-  useEffect(() => {
-    setMilesText(formatDecimalValue(defaultMiles))
-  }, [defaultMiles])
 
   return (
     <div className='space-y-4 rounded-lg border bg-muted/20 p-4'>
@@ -1227,8 +1222,8 @@ function ValuesEditor({
   variant: QuoteVariant
   values: EpdaParameterValues
   onChange: (v: EpdaParameterValues) => void
-  visibleSectionIds?: string[]
-  hiddenSectionIds?: string[]
+  visibleSectionIds?: readonly string[]
+  hiddenSectionIds?: readonly string[]
   useGlobalSectionNumbers?: boolean
 }) {
   const { t } = useI18n()
@@ -1340,7 +1335,12 @@ function ValuesEditor({
               </>
             )}
           </div>
-          <PilotageCalculator variant={variant} coeff={values.coeff} hours={values.hours} />
+          <PilotageCalculator
+            key={`${variant}:${values.hours.qnPilotageMiles}:${values.hours.pilotageThirdMiles}`}
+            variant={variant}
+            coeff={values.coeff}
+            hours={values.hours}
+          />
         </div>
       ),
     },
@@ -1429,7 +1429,7 @@ function ValuesEditor({
   const hiddenSectionKey = sectionFilterKey(hiddenSectionIds)
 
   const orderedSections = useMemo(() => {
-    const lead = [...LEAD_PARAMETER_SECTION_ORDER]
+    const lead: readonly string[] = LEAD_PARAMETER_SECTION_ORDER
     const picked = lead
       .map((id) => sections.find((s) => s.id === id))
       .filter((s): s is (typeof sections)[number] => Boolean(s))
@@ -1444,10 +1444,15 @@ function ValuesEditor({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [sections, variant, visibleSectionKey, hiddenSectionKey])
 
-  const [active, setActive] = useState(0)
-  useEffect(() => {
-    setActive(0)
-  }, [visibleSectionKey, hiddenSectionKey, variant])
+  const sectionSelectionKey = `${variant}:${visibleSectionKey}:${hiddenSectionKey}`
+  const [activeSelection, setActiveSelection] = useState({
+    key: sectionSelectionKey,
+    index: 0,
+  })
+  const active =
+    activeSelection.key === sectionSelectionKey ? activeSelection.index : 0
+  const selectSection = (index: number) =>
+    setActiveSelection({ key: sectionSelectionKey, index })
   const current = orderedSections[Math.min(active, orderedSections.length - 1)]
   const currentNumber = current
     ? getSectionDisplayNumber(current.id, active, useGlobalSectionNumbers)
@@ -1466,7 +1471,7 @@ function ValuesEditor({
               <li key={s.id} className='shrink-0 md:shrink'>
                 <button
                   type='button'
-                  onClick={() => setActive(i)}
+                  onClick={() => selectSection(i)}
                   aria-current={isActive ? 'true' : undefined}
                   className={`flex items-center gap-2 whitespace-nowrap rounded-lg border px-3 py-2 text-left transition-colors md:w-full md:gap-3 md:border-0 md:py-2.5 ${
                     isActive
@@ -1517,7 +1522,7 @@ function ValuesEditor({
             <button
               type='button'
               onClick={() => {
-                setActive(active - 1)
+                selectSection(active - 1)
                 window.scrollTo({ top: 0, behavior: 'smooth' })
               }}
               className='flex min-w-0 flex-1 items-center gap-2 rounded-lg border px-3 py-2 text-left transition-transform active:scale-[0.98]'
@@ -1547,7 +1552,7 @@ function ValuesEditor({
             <button
               type='button'
               onClick={() => {
-                setActive(active + 1)
+                selectSection(active + 1)
                 window.scrollTo({ top: 0, behavior: 'smooth' })
               }}
               className='flex min-w-0 flex-1 items-center justify-end gap-2 rounded-lg border border-primary/30 bg-primary/5 px-3 py-2 text-right transition-transform active:scale-[0.98]'
@@ -1877,8 +1882,15 @@ export default function Page() {
     [areaSet, variant]
   )
 
-  const [draft, setDraft] = useState<EpdaParameterValues>(areaValues)
-  useEffect(() => setDraft(clone(areaValues)), [areaValues])
+  const areaValuesKey = useMemo(() => JSON.stringify(areaValues), [areaValues])
+  const [draftState, setDraftState] = useState({
+    sourceKey: areaValuesKey,
+    value: clone(areaValues),
+  })
+  const draft =
+    draftState.sourceKey === areaValuesKey ? draftState.value : clone(areaValues)
+  const setDraft = (value: EpdaParameterValues) =>
+    setDraftState({ sourceKey: areaValuesKey, value })
 
   const saveArea = useMutation({
     mutationFn: () => epdaParametersService.upsertArea(area, draft),
@@ -2035,6 +2047,7 @@ export default function Page() {
 
             <div>
               <PortOverridesCard
+                key={`${area}:${areaValuesKey}`}
                 area={area}
                 variant={variant}
                 areaValues={areaValues}
@@ -2094,11 +2107,6 @@ function PortOverridesCard({
   const [editingPortId, setEditingPortId] = useState<number | null>(null)
   const [draft, setDraft] = useState<EpdaParameterValues>(areaValues)
   const editPanelRef = useRef<HTMLDivElement>(null)
-
-  useEffect(() => {
-    setEditingPortId(null)
-    setDraft(areaValues)
-  }, [area, areaValues])
 
   useEffect(() => {
     if (editingPortId == null) return
@@ -2245,281 +2253,6 @@ function PortOverridesCard({
                 onChange={setDraft}
                 visibleSectionIds={PORT_OVERRIDE_VISIBLE_SECTION_IDS}
               />
-            </CardContent>
-          </Card>
-        )}
-      </CardContent>
-    </Card>
-  )
-}
-
-/**
- * Port groups inside an area: a named set of ports that share one parameter override.
- * A group inherits the area set and stores only the fields it changes; member ports
- * resolve area → group → (their own) port override.
- */
-function PortGroupsCard({
-  area,
-  variant,
-  areaValues,
-  groups,
-}: {
-  area: AreaOption
-  variant: QuoteVariant
-  areaValues: EpdaParameterValues
-  groups: EpdaParameterSet[]
-}) {
-  const qc = useQueryClient()
-  const { t } = useI18n()
-  const [newName, setNewName] = useState('')
-  const [editingParamsId, setEditingParamsId] = useState<number | null>(null)
-  const [nameDraft, setNameDraft] = useState('')
-  const [paramsDraft, setParamsDraft] = useState<EpdaParameterValues>(areaValues)
-  const [editingMembersId, setEditingMembersId] = useState<number | null>(null)
-  const [memberDraft, setMemberDraft] = useState<number[]>([])
-  const paramsPanelRef = useRef<HTMLDivElement>(null)
-  const membersPanelRef = useRef<HTMLDivElement>(null)
-
-  useEffect(() => {
-    setEditingParamsId(null)
-    setEditingMembersId(null)
-    setNameDraft('')
-    setParamsDraft(areaValues)
-    setMemberDraft([])
-  }, [area, areaValues])
-
-  useEffect(() => {
-    if (editingParamsId == null) return
-    scrollEditPanelIntoView(paramsPanelRef.current)
-  }, [editingParamsId])
-
-  useEffect(() => {
-    if (editingMembersId == null) return
-    scrollEditPanelIntoView(membersPanelRef.current)
-  }, [editingMembersId])
-
-  const { data: ports } = useQuery({
-    queryKey: ['ports-by-area', area],
-    queryFn: () => portService.getPortsByArea(area),
-  })
-
-  const portName = (id: number) => {
-    const p = ports?.find((x) => x.id === id)
-    return p?.portOfCall?.trim() || p?.name || `Port #${id}`
-  }
-  const groupOfPort = (pid: number) => groups.find((g) => (g.memberPortIds ?? []).includes(pid))
-
-  const invalidate = () => {
-    qc.invalidateQueries({ queryKey: ['epda-parameters'] })
-    qc.invalidateQueries({ queryKey: ['epda-param-logs'] })
-  }
-  const onError = (e: unknown) => toast.error(e instanceof Error ? e.message : 'Failed')
-
-  const create = useMutation({
-    mutationFn: () => epdaParametersService.createGroup(area, newName.trim()),
-    onSuccess: () => {
-      toast.success('Group created')
-      setNewName('')
-      invalidate()
-    },
-    onError,
-  })
-
-  const saveParams = useMutation({
-    mutationFn: () =>
-      epdaParametersService.updateGroup(editingParamsId!, {
-        name: nameDraft.trim() || undefined,
-        values: diffValues(areaValues, paramsDraft),
-      }),
-    onSuccess: () => {
-      toast.success('Group saved')
-      setEditingParamsId(null)
-      invalidate()
-    },
-    onError,
-  })
-
-  const saveMembers = useMutation({
-    mutationFn: () => epdaParametersService.setGroupMembers(editingMembersId!, memberDraft),
-    onSuccess: () => {
-      toast.success('Ports updated')
-      setEditingMembersId(null)
-      invalidate()
-    },
-    onError,
-  })
-
-  const remove = useMutation({
-    mutationFn: (id: number) => epdaParametersService.deleteGroup(id),
-    onSuccess: () => {
-      toast.success('Group deleted')
-      invalidate()
-    },
-    onError,
-  })
-
-  const beginParams = (g: EpdaParameterSet) => {
-    setNameDraft(g.name ?? '')
-    setParamsDraft(mergeParameterValues(areaValues, g.values))
-    setEditingMembersId(null)
-    setEditingParamsId(g.id)
-  }
-  const beginMembers = (g: EpdaParameterSet) => {
-    setMemberDraft([...(g.memberPortIds ?? [])])
-    setEditingParamsId(null)
-    setEditingMembersId(g.id)
-  }
-  const toggleMember = (pid: number) =>
-    setMemberDraft((d) => (d.includes(pid) ? d.filter((x) => x !== pid) : [...d, pid]))
-
-  return (
-    <Card>
-      <CardHeader>
-        <CardTitle>{t('param.groups', { area: getAreaLabel(area) })}</CardTitle>
-        <CardDescription>{t('param.groupsDesc')}</CardDescription>
-      </CardHeader>
-      <CardContent className='space-y-4'>
-        {/* Create a group */}
-        <div data-tour='group-create' className='flex flex-col gap-2 sm:flex-row sm:items-end'>
-          <div className='grid flex-1 gap-1.5'>
-            <Label className='text-xs text-muted-foreground'>{t('param.newGroupName')}</Label>
-            <Input
-              value={newName}
-              onChange={(e) => setNewName(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter' && newName.trim() && !create.isPending) create.mutate()
-              }}
-              placeholder={t('param.newGroupName')}
-              className='w-full sm:max-w-xs'
-            />
-          </div>
-          <Button
-            className='w-full sm:w-auto'
-            onClick={() => create.mutate()}
-            disabled={!newName.trim() || create.isPending}
-          >
-            {create.isPending ? <Loader2 className='h-4 w-4 animate-spin' /> : <Plus className='h-4 w-4' />}
-            {t('param.addGroup')}
-          </Button>
-        </div>
-
-        {/* Existing groups — responsive panel list (tables overflow on mobile). */}
-        {groups.length === 0 ? (
-          <p className='rounded-lg border border-dashed px-4 py-6 text-center text-sm text-muted-foreground'>
-            {t('param.noGroups')}
-          </p>
-        ) : (
-          <ul className='grid gap-3'>
-            {groups.map((g) => {
-              const count = (g.memberPortIds ?? []).length
-              const isActive = editingMembersId === g.id || editingParamsId === g.id
-              return (
-                <li
-                  key={g.id}
-                  className={`rounded-xl border bg-card p-4 transition-colors ${
-                    isActive ? 'border-primary/50 ring-1 ring-primary/20' : 'hover:border-primary/30'
-                  }`}
-                >
-                  <div className='flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between'>
-                    <div className='min-w-0 space-y-2'>
-                      <div className='flex flex-wrap items-center gap-2'>
-                        <span className='truncate text-base font-semibold'>{g.name || `#${g.id}`}</span>
-                        <Badge variant='outline' className='shrink-0 font-normal text-muted-foreground'>
-                          {t('param.portCount', { count })}
-                        </Badge>
-                      </div>
-                      <OverriddenBadges labels={getCurrentOverrideSectionLabels(t, g.values)} />
-                    </div>
-                    <div className='flex shrink-0 flex-wrap items-center gap-1.5'>
-                      <Button data-tour='group-members' variant='outline' size='sm' onClick={() => beginMembers(g)}>
-                        {t('param.colMembers')}
-                      </Button>
-                      <Button data-tour='group-params' variant='outline' size='sm' onClick={() => beginParams(g)}>
-                        {t('param.editParams')}
-                      </Button>
-                      <Button
-                        data-tour='group-delete'
-                        variant='ghost'
-                        size='icon'
-                        aria-label={t('common.delete')}
-                        onClick={() => remove.mutate(g.id)}
-                      >
-                        <Trash2 className='h-4 w-4 text-destructive' />
-                      </Button>
-                    </div>
-                  </div>
-                </li>
-              )
-            })}
-          </ul>
-        )}
-
-        {/* Assign ports to a group */}
-        {editingMembersId && (
-          <Card ref={membersPanelRef} className='scroll-mt-24 border-primary/40'>
-            <CardHeader className='flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between'>
-              <CardTitle className='text-base'>
-                {t('param.assignPorts', { group: groups.find((g) => g.id === editingMembersId)?.name ?? '' })}
-              </CardTitle>
-              <div className='flex gap-2'>
-                <Button variant='outline' size='sm' onClick={() => setEditingMembersId(null)}>
-                  {t('common.cancel')}
-                </Button>
-                <Button size='sm' onClick={() => saveMembers.mutate()} disabled={saveMembers.isPending}>
-                  {saveMembers.isPending ? <Loader2 className='h-4 w-4 animate-spin' /> : <Save className='h-4 w-4' />}
-                  {t('param.saveMembers')}
-                </Button>
-              </div>
-            </CardHeader>
-            <CardContent>
-              <div className='flex flex-wrap gap-2'>
-                {(ports ?? []).map((p) => {
-                  const selected = memberDraft.includes(p.id)
-                  const other = groupOfPort(p.id)
-                  const inOther = other && other.id !== editingMembersId
-                  return (
-                    <button
-                      key={p.id}
-                      type='button'
-                      onClick={() => toggleMember(p.id)}
-                      className={`rounded-full border px-3 py-1.5 text-sm transition-colors ${
-                        selected
-                          ? 'border-primary bg-primary/10 font-medium text-foreground'
-                          : 'border-border text-muted-foreground hover:bg-muted/60'
-                      }`}
-                    >
-                      {p.portOfCall?.trim() || p.name}
-                      {inOther && !selected ? (
-                        <span className='ml-1 text-[11px] text-amber-600'>{t('param.inOtherGroup')}</span>
-                      ) : null}
-                    </button>
-                  )
-                })}
-              </div>
-            </CardContent>
-          </Card>
-        )}
-
-        {/* Edit a group's parameter set */}
-        {editingParamsId && (
-          <Card ref={paramsPanelRef} className='scroll-mt-24 border-primary/40'>
-            <CardHeader className='flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between'>
-              <div className='grid gap-1.5'>
-                <Label className='text-xs text-muted-foreground'>{t('param.groupName')}</Label>
-                <Input value={nameDraft} onChange={(e) => setNameDraft(e.target.value)} className='w-full sm:w-72' />
-              </div>
-              <div className='flex gap-2'>
-                <Button variant='outline' size='sm' onClick={() => setEditingParamsId(null)}>
-                  {t('common.cancel')}
-                </Button>
-                <Button size='sm' onClick={() => saveParams.mutate()} disabled={saveParams.isPending}>
-                  {saveParams.isPending ? <Loader2 className='h-4 w-4 animate-spin' /> : <Save className='h-4 w-4' />}
-                  {t('param.saveGroup')}
-                </Button>
-              </div>
-            </CardHeader>
-            <CardContent>
-              <ValuesEditor variant={variant} values={paramsDraft} onChange={setParamsDraft} />
             </CardContent>
           </Card>
         )}

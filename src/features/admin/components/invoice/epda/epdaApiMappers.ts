@@ -29,6 +29,7 @@ export type ShippingAgencyAdminInquiry = {
   cargoName?: string | null
   cargoNameOther?: string | null
   cargoQuantity?: string | number | null
+  portId?: number | null
   portOfCall?: string | null
   dischargeLoadingLocation?: string | null
   frtTaxType?: string | null
@@ -54,6 +55,8 @@ export type ShippingAgencyAdminInquiry = {
   agencyDiscountPercent?: string | number | null
   agencyLumpsumAmount?: string | number | null
   epdaSnapshot?: Record<string, unknown> | null
+  /** ISO timestamp — when set, EPDA edits are locked and quote uses snapshot params. */
+  epdaLockedAt?: string | null
   customerSubmittedSnapshot?: Record<string, string> | null
 }
 

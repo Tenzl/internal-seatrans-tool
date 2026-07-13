@@ -15,6 +15,7 @@ import { portService, type Port } from '@/modules/logistics/services/portService
 import { serviceTypeService, type ServiceType } from '@/modules/service-types/services/serviceTypeService'
 import { commodityService, type Commodity } from '@/modules/gallery/services/commodityService'
 import { cn } from '@/shared/lib/utils'
+import { toast } from '@/shared/utils/toast'
 
 export const GALLERY_AREA_OPTIONS = ['NORTHERN', 'MIDDLE', 'SOUTHERN'] as const
 
@@ -57,15 +58,14 @@ export function GalleryManageProvider({ children }: { children: ReactNode }) {
   const [commodityCounts, setCommodityCounts] = useState<Record<string, number>>({})
 
   useEffect(() => {
-    void serviceTypeService.getAllServiceTypes().then(setServiceTypes).catch(console.error)
+    void serviceTypeService
+      .getAllServiceTypes()
+      .then(setServiceTypes)
+      .catch((error) => toast.error('Failed to load service types', error))
   }, [])
 
   useEffect(() => {
-    if (!filterArea) {
-      setAvailablePorts([])
-      setFilterPort(null)
-      return
-    }
+    if (!filterArea) return
 
     let cancelled = false
     void portService
@@ -77,7 +77,7 @@ export function GalleryManageProvider({ children }: { children: ReactNode }) {
         }
       })
       .catch((error) => {
-        console.error('Error loading ports for area:', error)
+        toast.error('Failed to load ports for area', error)
         if (!cancelled) {
           setAvailablePorts([])
           setFilterPort(null)
@@ -90,11 +90,7 @@ export function GalleryManageProvider({ children }: { children: ReactNode }) {
   }, [filterArea])
 
   useEffect(() => {
-    if (!filterServiceType) {
-      setAvailableCommodities([])
-      setFilterCommodity(null)
-      return
-    }
+    if (!filterServiceType) return
 
     void commodityService
       .getCommoditiesByServiceType(filterServiceType)
@@ -102,7 +98,7 @@ export function GalleryManageProvider({ children }: { children: ReactNode }) {
         setAvailableCommodities(data)
         setFilterCommodity(null)
       })
-      .catch(console.error)
+      .catch((error) => toast.error('Failed to load cargo types', error))
   }, [filterServiceType])
 
   useEffect(() => {
@@ -128,7 +124,7 @@ export function GalleryManageProvider({ children }: { children: ReactNode }) {
           [filterCommodity]: countData.current,
         }))
       })
-      .catch(console.error)
+      .catch((error) => toast.error('Failed to load image count', error))
   }, [filterCommodity, filterPort, filterServiceType, availablePorts])
 
   useEffect(() => {
@@ -161,7 +157,7 @@ export function GalleryManageProvider({ children }: { children: ReactNode }) {
           return next
         })
       })
-      .catch(console.error)
+      .catch((error) => toast.error('Failed to load image counts', error))
   }, [availableCommodities, filterPort, filterServiceType, availablePorts])
 
   const selectedFilterPort = filterPort
@@ -175,19 +171,33 @@ export function GalleryManageProvider({ children }: { children: ReactNode }) {
 
   const handleClearAll = useCallback(() => {
     setFilterArea('')
+    setAvailablePorts([])
     setFilterPort(null)
     setFilterServiceType(null)
+    setAvailableCommodities([])
+    setFilterCommodity(null)
+  }, [])
+
+  const handleAreaChange = useCallback((value: string) => {
+    setFilterArea(value)
+    setAvailablePorts([])
+    setFilterPort(null)
+  }, [])
+
+  const handleServiceTypeChange = useCallback((value: number | null) => {
+    setFilterServiceType(value)
+    setAvailableCommodities([])
     setFilterCommodity(null)
   }, [])
 
   const value = useMemo<GalleryManageFilterState>(
     () => ({
       filterArea,
-      setFilterArea,
+      setFilterArea: handleAreaChange,
       filterPort,
       setFilterPort,
       filterServiceType,
-      setFilterServiceType,
+      setFilterServiceType: handleServiceTypeChange,
       filterCommodity,
       setFilterCommodity,
       availablePorts,
@@ -210,6 +220,8 @@ export function GalleryManageProvider({ children }: { children: ReactNode }) {
       filterProvinceId,
       hasActiveFilters,
       handleClearAll,
+      handleAreaChange,
+      handleServiceTypeChange,
     ],
   )
 

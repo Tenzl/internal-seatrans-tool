@@ -67,7 +67,8 @@ export function UserAuthForm({
         accountNo: String(u.id ?? ''),
         email: u.email ?? data.identifier,
         role: u.role ? [u.role] : [],
-        exp: Date.now() + 24 * 60 * 60 * 1000,
+        // Session expiry is enforced by the backend HttpOnly cookie.
+        exp: 0,
       })
       // Store only a placeholder, never the real JWT (the session is an HttpOnly
       // cookie). This keeps the token out of any JS-readable storage (XSS-safe).

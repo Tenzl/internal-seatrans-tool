@@ -1,13 +1,13 @@
 import { API_CONFIG } from '@/shared/config/api.config'
 import { apiClient } from '@/shared/utils/apiClient'
 import { unwrapApiResponse } from '@/shared/utils/apiUnwrap'
-import type {
-  EpdaParameterValues,
-  PartialEpdaParameterValues,
-  GrtTier,
-  LoaTier,
+import {
+  normalizeParameterValues,
+  type EpdaParameterValues,
+  type PartialEpdaParameterValues,
+  type GrtTier,
+  type LoaTier,
 } from '@/modules/inquiries/components/common/quoteParameters'
-import { normalizeParameterValues } from '@/modules/inquiries/components/common/quoteParameters'
 
 export type {
   EpdaParameterValues,
@@ -15,9 +15,6 @@ export type {
   GrtTier,
   LoaTier,
 }
-
-/** @deprecated use GrtTier — kept for backward-compatible imports. */
-export type AgencyFeeTier = GrtTier
 
 export type EpdaParameterScope = 'AREA' | 'GROUP' | 'PORT'
 
@@ -64,11 +61,16 @@ export const epdaParametersService = {
   async getEffective(
     area: '1' | '2' | '3',
     portId?: number,
+    signal?: AbortSignal,
   ): Promise<EpdaParameterValues> {
-    const res = await apiClient.get(
-      API_CONFIG.EPDA_PARAMETERS.EFFECTIVE(area, portId),
-    )
-    return normalizeParameterValues(unwrapApiResponse<EpdaParameterValues>(res))
+    const safePortId =
+      portId != null && Number.isFinite(portId) && portId > 0 ? portId : undefined
+    const endpoint = API_CONFIG.EPDA_PARAMETERS.EFFECTIVE(area, safePortId)
+    const res = signal
+      ? await apiClient.get(endpoint, { signal })
+      : await apiClient.get(endpoint)
+    const values = await unwrapApiResponse<EpdaParameterValues>(res)
+    return normalizeParameterValues(values)
   },
 
   async getArea(area: '1' | '2' | '3'): Promise<EpdaParameterSet | null> {

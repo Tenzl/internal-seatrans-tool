@@ -1,6 +1,6 @@
 import { apiClient } from '@/shared/utils/apiClient'
 import { API_CONFIG } from '@/shared/config/api.config'
-import { User } from '@/shared/types/dashboard'
+import type { User } from '@/shared/types/dashboard'
 
 interface LoginRequest {
   identifier: string

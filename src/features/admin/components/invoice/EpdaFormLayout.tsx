@@ -1,21 +1,16 @@
 'use client'
 
 import { cn } from '@/shared/lib/utils'
-import { Button } from '@/shared/components/ui/button'
 import { useI18n } from '@/shared/i18n/I18nProvider'
+import {
+  EPDA_CUSTOMER_SECTION,
+  EPDA_SECTIONS,
+  epdaSectionNumber,
+  type EpdaSectionId,
+} from './epdaFormLayout.config'
 
-export const EPDA_SECTIONS = [
-  { id: 'epda-general', label: 'General information' },
-  { id: 'epda-dues', label: 'Port dues and charges' },
-  { id: 'epda-agency', label: 'Agency fees' },
-] as const
 
 /** Optional leading section "00" — shown only for externally-created (customer) inquiries. */
-export const EPDA_CUSTOMER_SECTION = { id: 'epda-customer', label: 'Customer information' } as const
-
-export type EpdaSectionId =
-  | (typeof EPDA_SECTIONS)[number]['id']
-  | typeof EPDA_CUSTOMER_SECTION.id
 
 const SECTION_LABEL_KEY: Record<EpdaSectionId, string> = {
   'epda-customer': 'epda.secCustomer',
@@ -25,46 +20,6 @@ const SECTION_LABEL_KEY: Record<EpdaSectionId, string> = {
 }
 
 /** Display number for the rail/section badge: customer → "00", others → 1-based position. */
-export function epdaSectionNumber(id: EpdaSectionId): string {
-  if (id === EPDA_CUSTOMER_SECTION.id) return '00'
-  const index = EPDA_SECTIONS.findIndex((section) => section.id === id)
-  return index >= 0 ? String(index + 1).padStart(2, '0') : ''
-}
-
-const FIELD_GRID = 'grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3'
-
-export function epdaFieldGridClass(_columns?: 3 | 4): string {
-  // Capped at 3 fields per row across the EPDA form.
-  return FIELD_GRID
-}
-
-export function EpdaSectionNav({ className }: { className?: string }) {
-  const scrollToSection = (id: EpdaSectionId) => {
-    document.getElementById(id)?.scrollIntoView({ behavior: 'smooth', block: 'start' })
-  }
-
-  return (
-    <nav
-      className={cn('flex flex-wrap gap-2', className)}
-      aria-label="EPDA form sections"
-    >
-      {EPDA_SECTIONS.map((section, index) => (
-        <Button
-          key={section.id}
-          type="button"
-          variant="outline"
-          size="sm"
-          className="h-9 gap-2 rounded-full px-4 text-sm font-medium transition-transform active:scale-[0.98]"
-          onClick={() => scrollToSection(section.id)}
-        >
-          <span className="font-semibold tabular-nums text-muted-foreground">{index + 1}</span>
-          {section.label}
-        </Button>
-      ))}
-    </nav>
-  )
-}
-
 /** Numbered, click-to-select rail (one section at a time), styled like the EPDA parameter editor. */
 export function EpdaSectionRail({
   active,

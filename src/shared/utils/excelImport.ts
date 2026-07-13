@@ -1,5 +1,3 @@
-import * as XLSX from 'xlsx'
-
 export type HeaderAliasMap = Record<string, string[]>
 
 export interface ExcelImportSchema {
@@ -99,7 +97,7 @@ export const validateTemplateHeaders = (
   const allowed = new Set([...required, ...optional])
 
   const missingHeaders = required.filter((header) => !canonicalActual.includes(header))
-  const unknownHeaders = normalizedActual.filter((header, index) => !allowed.has(canonicalActual[index]))
+  const unknownHeaders = normalizedActual.filter((_, index) => !allowed.has(canonicalActual[index]))
 
   return {
     isValid: missingHeaders.length === 0,
@@ -139,41 +137,59 @@ export const parseExcelFile = async (file: File): Promise<ParsedExcelResult> => 
     throw new Error('Only .xlsx or .csv files are supported')
   }
 
-  const arrayBuffer = await file.arrayBuffer()
-  // SheetJS auto-detects the format, so the same path reads .xlsx and .csv.
-  const workbook = XLSX.read(arrayBuffer, { type: 'array' })
-  const firstSheetName = workbook.SheetNames[0]
-
-  if (!firstSheetName) {
-    return { headers: [], rows: [] }
-  }
-
-  const sheet = workbook.Sheets[firstSheetName]
-  const matrix = XLSX.utils.sheet_to_json<(string | number | boolean | null)[]>(sheet, {
-    header: 1,
-    raw: false,
-    blankrows: false,
-    defval: '',
-  })
+  const matrix: unknown[][] = isCsvFile(file)
+    ? await parseCsvFile(file)
+    : await parseXlsxFile(file)
 
   if (matrix.length === 0) {
     return { headers: [], rows: [] }
   }
 
-  const firstRow: (string | number | boolean | null)[] = matrix[0] ?? []
-  const headers = firstRow.map((cell: string | number | boolean | null) => String(cell ?? '').trim())
+  const firstRow = matrix[0] ?? []
+  const headers = firstRow.map((cell, index) => {
+    const header = stringifyImportCell(cell)
+    return index === 0 ? header.replace(/^\uFEFF/, '') : header
+  })
   const normalizedHeaders = headers.map(normalizeHeader)
 
   const rows = matrix
     .slice(1)
-    .map((row: (string | number | boolean | null)[]) => {
+    .map((row) => {
       const mapped: Record<string, string> = {}
-      normalizedHeaders.forEach((header: string, index: number) => {
-        mapped[header] = String(row[index] ?? '').trim()
+      normalizedHeaders.forEach((header, index) => {
+        mapped[header] = stringifyImportCell(row[index])
       })
       return mapped
     })
-    .filter((row: Record<string, string>) => Object.values(row).some((value: string) => value !== ''))
+    .filter((row) => Object.values(row).some((value) => value !== ''))
 
   return { headers, rows }
+}
+
+const stringifyImportCell = (value: unknown): string => {
+  if (value == null) return ''
+  if (value instanceof Date) return value.toISOString()
+  if (typeof value === 'string' || typeof value === 'number' || typeof value === 'boolean') {
+    return String(value).trim()
+  }
+  return ''
+}
+
+const parseCsvFile = async (file: File): Promise<unknown[][]> => {
+  const Papa = (await import('papaparse')).default
+  const result = Papa.parse<unknown[]>(await file.text(), {
+    skipEmptyLines: 'greedy',
+  })
+
+  if (result.errors.length > 0) {
+    throw new Error(`Invalid CSV at row ${result.errors[0].row ?? 1}: ${result.errors[0].message}`)
+  }
+
+  return result.data
+}
+
+const parseXlsxFile = async (file: File): Promise<unknown[][]> => {
+  const readXlsxFile = (await import('read-excel-file/browser')).default
+  const sheets = await readXlsxFile(file)
+  return sheets[0]?.data ?? []
 }

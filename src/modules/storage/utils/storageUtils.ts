@@ -12,19 +12,10 @@ import {
 } from 'lucide-react'
 import type { StorageObject } from '@/modules/storage/types/storage.types'
 
-const PATH_SEP = '/'
-
 /** Normalize prefix: no leading slash, trailing slash for non-empty folders. */
 export function normalizePrefix(prefix: string): string {
   const trimmed = prefix.replace(/^\/+/, '').replace(/\/+$/, '')
   return trimmed ? `${trimmed}/` : ''
-}
-
-/** Join a prefix and child name into a full key. */
-export function joinKey(prefix: string, name: string): string {
-  const base = normalizePrefix(prefix)
-  const child = name.replace(/^\/+/, '').replace(/\/+$/, '')
-  return base ? `${base}${child}` : child
 }
 
 /** Parent prefix of a key, or empty string at root level. */
@@ -113,5 +104,3 @@ export function prefixSegments(prefix: string): { label: string; prefix: string 
   }
   return segments
 }
-
-export { PATH_SEP }

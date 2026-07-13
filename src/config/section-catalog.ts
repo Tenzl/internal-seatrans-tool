@@ -5,9 +5,10 @@
  *
  * A page is visible/openable when its section key is in the user's granted
  * sections (from /auth/me). Admin roles implicitly hold every section. Routes
- * that don't map to any section stay open to everyone (e.g. home, settings).
+ * that don't map to any section are denied to non-admin users.
  */
 import type { NavGroup, NavItem } from '@/components/layout/types'
+import { CANONICAL_CREATE_EPDA_PATH } from '@/config/dashboard-routes'
 
 export interface SectionDef {
   key: string
@@ -18,7 +19,7 @@ export interface SectionDef {
 }
 
 export const SECTION_CATALOG: SectionDef[] = [
-  { key: 'epda-create', label: 'Create EPDA', group: 'EPDA', route: '/epda/create-epda' },
+  { key: 'epda-create', label: 'Create EPDA', group: 'EPDA', route: CANONICAL_CREATE_EPDA_PATH },
   { key: 'epda-inquiry', label: 'Inquiry', group: 'EPDA', route: '/epda/inquiry' },
   { key: 'epda-parameter', label: 'Parameter', group: 'EPDA', route: '/epda/parameter' },
   { key: 'booking-partner', label: 'Partner', group: 'Booking Management', route: '/booking/partner' },
@@ -41,7 +42,7 @@ export function isAdminRole(role?: string | null): boolean {
   return !!role && role.toUpperCase().includes('ADMIN')
 }
 
-/** The section that owns `pathname`, or null when the route is unmapped (open). */
+/** The section that owns `pathname`, or null when the route is unmapped. */
 export function sectionForPath(pathname: string): SectionDef | null {
   return (
     BY_ROUTE.find((s) => pathname === s.route || pathname.startsWith(s.route + '/')) ??
@@ -56,11 +57,11 @@ function sectionForUrl(url?: string): SectionDef | null {
 
 type GateUser = { role?: string | null; sections?: string[] | null } | null | undefined
 
-/** True if the user may open `pathname` (admins always; unmapped routes open). */
+/** True if the user may open `pathname` (admins always; unmapped routes deny). */
 export function canAccessPath(pathname: string, user: GateUser): boolean {
   if (isAdminRole(user?.role)) return true
   const section = sectionForPath(pathname)
-  if (!section) return true
+  if (!section) return false
   return (user?.sections ?? []).includes(section.key)
 }
 
@@ -68,7 +69,7 @@ export function canAccessPath(pathname: string, user: GateUser): boolean {
 function canAccessNavUrl(url: string | undefined, user: GateUser): boolean {
   if (isAdminRole(user?.role)) return true
   const section = sectionForUrl(url)
-  if (!section) return true
+  if (!section) return false
   return (user?.sections ?? []).includes(section.key)
 }
 

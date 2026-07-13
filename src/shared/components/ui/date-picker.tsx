@@ -29,7 +29,6 @@ export const DatePicker = React.memo(function DatePicker({
   onChange,
   placeholder = "Select date",
   disabled = false,
-  required = false,
   className,
 }: DatePickerProps) {
   const [open, setOpen] = React.useState(false)

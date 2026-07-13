@@ -314,19 +314,20 @@ export function withAutoLoaTierLabels(tiers: LoaTier[]): LoaTier[] {
 
 /** Normalize values loaded from API/DB so numeric comparisons work with decimals. */
 export function normalizeParameterValues(values: EpdaParameterValues): EpdaParameterValues {
+  const safe = values ?? defaultParameterValues('HCM')
   return {
-    hours: coerceScalars(values.hours),
-    garbage: coerceScalars(values.garbage),
-    quarantine: coerceScalars(values.quarantine),
-    coeff: coerceScalars(values.coeff),
-    agencyFeeTiers: values.agencyFeeTiers.map(coerceGrtTier),
-    moorUnmoorBerthTiers: withAutoGrtTierLabels(values.moorUnmoorBerthTiers),
-    moorUnmoorBuoyTiers: withAutoGrtTierLabels(values.moorUnmoorBuoyTiers),
+    hours: coerceScalars(safe.hours ?? defaultParameterValues('HCM').hours),
+    garbage: coerceScalars(safe.garbage ?? defaultParameterValues('HCM').garbage),
+    quarantine: coerceScalars(safe.quarantine ?? defaultParameterValues('HCM').quarantine),
+    coeff: coerceScalars(safe.coeff ?? defaultParameterValues('HCM').coeff),
+    agencyFeeTiers: (safe.agencyFeeTiers ?? []).map(coerceGrtTier),
+    moorUnmoorBerthTiers: withAutoGrtTierLabels(safe.moorUnmoorBerthTiers ?? []),
+    moorUnmoorBuoyTiers: withAutoGrtTierLabels(safe.moorUnmoorBuoyTiers ?? []),
     // Drop empty placeholder tug rows (amount 0); refresh labels from min LOA.
     tugTiers: withAutoLoaTierLabels(
-      values.tugTiers.map(coerceLoaTier).filter((tier) => tier.amount > 0),
+      (safe.tugTiers ?? []).map(coerceLoaTier).filter((tier) => tier.amount > 0),
     ),
-    cargoAgencyRates: values.cargoAgencyRates.map((row) => ({
+    cargoAgencyRates: (safe.cargoAgencyRates ?? []).map((row) => ({
       ...row,
       rate: parseFiniteNumber(row.rate) ?? 0,
     })),

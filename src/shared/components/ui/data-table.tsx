@@ -75,12 +75,12 @@ export function adminStickyColumnClass(
 // DataTableSortHeader — ghost-style sortable column header button
 // ---------------------------------------------------------------------------
 
-export function DataTableSortHeader({
+export function DataTableSortHeader<TData, TValue>({
    
   column,
   children,
 }: {
-  column: Column<any, any>
+  column: Column<TData, TValue>
   children: React.ReactNode
 }) {
   return (
@@ -233,8 +233,7 @@ export function DataTablePagination<TData>({
   const router = useRouter()
   const searchParams = useSearchParams()
 
-  const spRef = useRef(searchParams)
-  spRef.current = searchParams
+  const initialSearchParamsRef = useRef(searchParams)
 
   // Phase: "restoring" = waiting for data before applying URL page
   //        "syncing"   = normal operation, write pageIndex → URL
@@ -244,7 +243,7 @@ export function DataTablePagination<TData>({
   // On mount: read target page from URL
   useEffect(() => {
     if (!persistKey) return
-    const urlPage = parseInt(spRef.current.get(persistKey) ?? "0", 10)
+    const urlPage = parseInt(initialSearchParamsRef.current.get(persistKey) ?? "0", 10)
     if (Number.isFinite(urlPage) && urlPage > 0) {
       targetPageRef.current = urlPage
       table.setPageIndex(urlPage)
@@ -279,10 +278,10 @@ export function DataTablePagination<TData>({
   // SYNCING phase: write pageIndex → URL
   useEffect(() => {
     if (!persistKey || phaseRef.current !== "syncing") return
-    const currentUrlPage = parseInt(spRef.current.get(persistKey) ?? "0", 10)
+    const currentUrlPage = parseInt(searchParams.get(persistKey) ?? "0", 10)
     if (currentUrlPage === pageIndex) return
 
-    const params = new URLSearchParams(spRef.current.toString())
+    const params = new URLSearchParams(searchParams.toString())
     if (pageIndex === 0) {
       params.delete(persistKey)
     } else {
@@ -290,8 +289,7 @@ export function DataTablePagination<TData>({
     }
     const qs = params.toString()
     router.replace(qs ? `${pathname}?${qs}` : pathname, { scroll: false })
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [pageIndex, persistKey, pathname])
+  }, [pageIndex, persistKey, pathname, router, searchParams])
 
   // Manual navigation immediately switches to syncing phase
   const navigate = (action: () => void) => {

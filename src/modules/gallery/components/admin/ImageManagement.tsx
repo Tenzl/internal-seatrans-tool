@@ -1,7 +1,7 @@
-import { useState, useEffect } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import {
   type SortingState,
-  ColumnDef,
+  type ColumnDef,
   getFilteredRowModel,
   flexRender,
   getCoreRowModel,
@@ -29,15 +29,16 @@ import {
   AlertDialogTitle,
 } from '@/shared/components/ui/alert-dialog'
 import { ImageWithFallback } from '@/shared/components/ImageWithFallback'
-import { provinceService, Province } from '@/modules/logistics/services/provinceService'
-import { portService, Port } from '@/modules/logistics/services/portService'
-import { commodityService, Commodity } from '@/modules/gallery/services/commodityService'
-import { galleryService, GalleryImage } from '@/modules/gallery/services/galleryService'
+import { provinceService, type Province } from '@/modules/logistics/services/provinceService'
+import { portService, type Port } from '@/modules/logistics/services/portService'
+import { commodityService, type Commodity } from '@/modules/gallery/services/commodityService'
+import { galleryService, type GalleryImage } from '@/modules/gallery/services/galleryService'
 import { API_CONFIG } from '@/shared/config/api.config'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/shared/components/ui/table'
 import { Checkbox } from '@/shared/components/ui/checkbox'
 import { Card, CardContent, CardDescription, CardHeader } from '@/shared/components/ui/card'
 import { Input } from '@/shared/components/ui/input'
+import { toast } from '@/shared/utils/toast'
 
 // Helper function to construct proper image URL
 const getImageUrl = (url: string) => {
@@ -63,14 +64,14 @@ export interface ManageImagesTabProps {
 
 export function ManageImagesTab({ embedded = false, hideFilters = false }: ManageImagesTabProps = {}) {
   if (hideFilters) {
-    return <ManageImagesBody embedded />
+    return <ManageImagesBody embedded={embedded} />
   }
 
   return (
     <GalleryManageProvider>
       <div className="space-y-6">
         <GalleryImageFilters layout="bar" />
-        <ManageImagesBody embedded />
+        <ManageImagesBody embedded={embedded} />
       </div>
     </GalleryManageProvider>
   )
@@ -78,7 +79,6 @@ export function ManageImagesTab({ embedded = false, hideFilters = false }: Manag
 
 function ManageImagesBody({ embedded = false }: { embedded?: boolean }) {
   const {
-    filterArea,
     filterPort,
     filterServiceType,
     filterCommodity,
@@ -86,7 +86,6 @@ function ManageImagesBody({ embedded = false }: { embedded?: boolean }) {
     serviceTypes,
   } = useGalleryManageFilters()
 
-  const [provinces, setProvinces] = useState<Province[]>([])
   const [provincesWithPorts, setProvincesWithPorts] = useState<Province[]>([])
 
   const [images, setImages] = useState<GalleryImage[]>([])
@@ -122,11 +121,6 @@ function ManageImagesBody({ embedded = false }: { embedded?: boolean }) {
     loadProvinces()
   }, [])
 
-  // kick off initial load
-  useEffect(() => {
-    loadPage(0)
-  }, [])
-
   useEffect(() => {
     setRowSelection({})
   }, [images])
@@ -134,23 +128,21 @@ function ManageImagesBody({ embedded = false }: { embedded?: boolean }) {
   const loadProvinces = async () => {
     try {
       const data = await provinceService.getAllProvinces()
-      setProvinces(data)
       setProvincesWithPorts(data)
     } catch (error) {
-      console.error('Error loading provinces:', error)
+      toast.error('Failed to load provinces', error)
     }
   }
 
-  const loadCommodityCount = async (commodityId: number, provinceId?: number, portId?: number, serviceTypeId?: number) => {
+  const loadCommodityCount = useCallback(async (commodityId: number, provinceId?: number, portId?: number, serviceTypeId?: number) => {
     try {
       const countData = await commodityService.getImageCount(commodityId, provinceId, portId, serviceTypeId)
       const key = `${provinceId || 0}_${portId || 0}_${serviceTypeId || 0}_${commodityId}`
-      console.log('Loading count for key:', key, 'count:', countData.current, 'params:', { provinceId, portId, serviceTypeId, commodityId })
       setCommodityCounts(prev => ({ ...prev, [key]: countData.current }))
     } catch (error) {
-      console.error('Error loading image count:', error)
+      toast.error('Failed to load image count', error)
     }
-  }
+  }, [])
 
   const handleDeleteClick = (image: GalleryImage) => {
     setDeleteModalImage(image)
@@ -161,7 +153,7 @@ function ManageImagesBody({ embedded = false }: { embedded?: boolean }) {
       const data = await portService.getPortsByProvince(provinceId)
       setEditPorts(data)
     } catch (error) {
-      console.error('Error loading edit ports:', error)
+      toast.error('Failed to load ports', error)
       setEditPorts([])
     }
   }
@@ -171,7 +163,7 @@ function ManageImagesBody({ embedded = false }: { embedded?: boolean }) {
       const data = await commodityService.getCommoditiesByServiceType(serviceTypeId)
       setEditCommodities(data)
     } catch (error) {
-      console.error('Error loading edit image types:', error)
+      toast.error('Failed to load cargo types', error)
       setEditCommodities([])
     }
   }
@@ -214,8 +206,7 @@ function ManageImagesBody({ embedded = false }: { embedded?: boolean }) {
 
       setEditModalImage(null)
       await loadPage(currentPage)
-    } catch (error) {
-      console.error('Error updating image metadata:', error)
+    } catch {
       alert('Failed to update image information')
     } finally {
       setIsSavingEdit(false)
@@ -233,8 +224,7 @@ function ManageImagesBody({ embedded = false }: { embedded?: boolean }) {
       await Promise.allSettled(ids.map(id => galleryService.deleteImage(id)))
       setRowSelection({})
       await loadPage(currentPage)
-    } catch (error) {
-      console.error('Error deleting selected images:', error)
+    } catch {
       alert('Failed to delete some images')
     } finally {
       setIsTableLoading(false)
@@ -260,8 +250,7 @@ function ManageImagesBody({ embedded = false }: { embedded?: boolean }) {
       }
 
       setDeleteModalImage(null)
-    } catch (error) {
-      console.error('Error deleting image:', error)
+    } catch {
       alert('Failed to delete image')
     }
   }
@@ -274,12 +263,7 @@ function ManageImagesBody({ embedded = false }: { embedded?: boolean }) {
     return 'normal'
   }
 
-  // Load when filters or page changes (realtime)
-  useEffect(() => {
-    loadPage(currentPage)
-  }, [currentPage, filterArea, filterPort, filterServiceType, filterCommodity])
-
-  const loadPage = async (page: number) => {
+  const loadPage = useCallback(async (page: number) => {
     setIsTableLoading(true)
     try {
       const response = await galleryService.getAllImages(
@@ -307,11 +291,16 @@ function ManageImagesBody({ embedded = false }: { embedded?: boolean }) {
         }),
       )
     } catch (error) {
-      console.error('Error loading images:', error)
+      toast.error('Failed to load images', error)
     } finally {
       setIsTableLoading(false)
     }
-  }
+  }, [filterProvinceId, filterPort, filterServiceType, filterCommodity, loadCommodityCount])
+
+  // Load when filters or page changes (realtime).
+  useEffect(() => {
+    void loadPage(currentPage)
+  }, [currentPage, loadPage])
 
   const columns: ColumnDef<GalleryImage>[] = [
     {

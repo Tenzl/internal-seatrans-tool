@@ -12,24 +12,6 @@ export const INQUIRY_SERVICE_DISPLAY = {
   SPECIAL_REQUEST: 'SPECIAL REQUEST',
 } as const
 
-const SLUG_TO_DISPLAY: Record<string, string> = {
-  'shipping-agency': INQUIRY_SERVICE_DISPLAY.SHIPPING_AGENCY,
-  chartering: INQUIRY_SERVICE_DISPLAY.CHARTERING,
-  'chartering-ship-broking': INQUIRY_SERVICE_DISPLAY.CHARTERING,
-  'chartering-broking': INQUIRY_SERVICE_DISPLAY.CHARTERING,
-  'freight-forwarding': INQUIRY_SERVICE_DISPLAY.FREIGHT_FORWARDING,
-  'total-logistics': INQUIRY_SERVICE_DISPLAY.LOGISTICS,
-  'total-logistic': INQUIRY_SERVICE_DISPLAY.LOGISTICS,
-  logistics: INQUIRY_SERVICE_DISPLAY.LOGISTICS,
-  'special-request': INQUIRY_SERVICE_DISPLAY.SPECIAL_REQUEST,
-}
-
-export function inquiryServiceTypeFromSlug(slug?: string): string | undefined {
-  if (!slug?.trim()) return undefined
-  const key = slug.trim().toLowerCase()
-  return SLUG_TO_DISPLAY[key] ?? slug.trim()
-}
-
 export type InquiryListParams = {
   page?: number
   size?: number
@@ -120,7 +102,7 @@ export const inquiryService = {
 
   deleteBatch(ids: number[], asAdmin: boolean) {
     const endpoint = asAdmin
-      ? API_CONFIG.INQUIRIES.ADMIN_BATCH_DELETE
+      ? API_CONFIG.INQUIRIES.ADMIN_BATCH_DELETE()
       : API_CONFIG.INQUIRIES.USER_BATCH_DELETE
     return apiClient.delete(endpoint, { body: JSON.stringify({ ids }) })
   },

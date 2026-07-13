@@ -51,7 +51,11 @@ import {
   AlertDialogTitle,
 } from '@/shared/components/ui/alert-dialog'
 import { useTableSortHeader } from '@/features/admin/hooks/useTableSortHeader'
-import { categoryService, Category, CategoryRequest } from '@/modules/categories/services/categoryService'
+import {
+  categoryService,
+  type Category,
+  type CategoryRequest,
+} from '@/modules/categories/services/categoryService'
 
 const CATEGORIES_PAGE_SIZE = 10
 
@@ -105,12 +109,7 @@ export function ManageCategories() {
       const data = await categoryService.getAdminCategories()
       setCategories(data)
 
-      // Show info message if no categories loaded from backend
-      if (data.length === 0) {
-        console.log('No categories loaded. Backend endpoints may not be implemented yet.')
-      }
-    } catch (error) {
-      console.error('Error loading categories:', error)
+    } catch {
       // Don't show error to user, just use empty list
       setCategories([])
     } finally {
@@ -133,9 +132,8 @@ export function ManageCategories() {
       resetForm()
       loadCategories()
       setTimeout(() => setSuccessMessage(null), 3000)
-    } catch (error: any) {
-      console.error('Error saving category:', error)
-      setErrorMessage(error.message || 'Failed to save category')
+    } catch (error: unknown) {
+      setErrorMessage(error instanceof Error ? error.message : 'Failed to save category')
       setTimeout(() => setErrorMessage(null), 3000)
     }
   }
@@ -162,13 +160,13 @@ export function ManageCategories() {
       setSuccessMessage('Category deleted successfully')
       loadCategories()
       setTimeout(() => setSuccessMessage(null), 3000)
-    } catch (error: any) {
-      console.error('Error deleting category:', error)
+    } catch (error: unknown) {
       // Check if error is due to foreign key constraint
-      if (error.message && (error.message.includes('foreign key constraint') || error.message.includes('Cannot delete or update a parent row'))) {
+      const message = error instanceof Error ? error.message : ''
+      if (message.includes('foreign key constraint') || message.includes('Cannot delete or update a parent row')) {
         setErrorMessage(`Cannot delete "${deleteDialog.category.name}" - this category is being used by one or more posts. Please remove it from posts first.`)
       } else {
-        setErrorMessage(error.message || 'Failed to delete category')
+        setErrorMessage(message || 'Failed to delete category')
       }
       setTimeout(() => setErrorMessage(null), 5000)
     } finally {

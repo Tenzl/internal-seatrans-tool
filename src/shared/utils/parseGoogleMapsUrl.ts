@@ -110,9 +110,3 @@ export function parseGoogleMapsUrl(input: string): ParsedMapsResult | ParseMapsE
       'Could not find coordinates in this URL. Click on the place pin in Google Maps, then copy the full URL again.',
   }
 }
-
-const COORD_DECIMALS = 8
-
-export function formatCoordinate(value: number): string {
-  return value.toFixed(COORD_DECIMALS)
-}

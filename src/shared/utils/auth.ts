@@ -1,4 +1,4 @@
-import { RoleGroup, User } from "@/shared/types/dashboard"
+import type { RoleGroup, User } from "@/shared/types/dashboard"
 
 const INTERNAL_MARKERS = ["ADMIN", "EMPLOYEE"] as const
 const EXTERNAL_MARKERS = ["CUSTOMER"] as const

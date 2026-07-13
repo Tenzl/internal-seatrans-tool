@@ -11,6 +11,7 @@ import { API_CONFIG } from '@/shared/config/api.config'
 import { provinceService, type Province } from '@/modules/logistics/services/provinceService'
 import type { ApiResponse } from '@/shared/types/api.types'
 import { parseGoogleMapsUrl } from '@/shared/utils/parseGoogleMapsUrl'
+import { toast } from '@/shared/utils/toast'
 
 interface Office {
   id: number
@@ -59,31 +60,18 @@ export function ManageOffices() {
   const parsedMap = useMemo(() => parseGoogleMapsUrl(formData.mapUrl), [formData.mapUrl])
 
   useEffect(() => {
-    fetchOffices()
-    fetchProvinces()
+    void apiClient
+      .get<ApiResponse<Office[]>>(API_CONFIG.OFFICES.ADMIN_BASE)
+      .then(async (response) => (await response.json()) as ApiResponse<Office[]>)
+      .then((data) => setOffices(data.data))
+      .catch((error) => toast.error('Failed to load offices', error))
+      .finally(() => setLoading(false))
+
+    void provinceService
+      .getAllProvinces()
+      .then(setProvinces)
+      .catch((error) => toast.error('Failed to load provinces', error))
   }, [])
-
-  const fetchOffices = async () => {
-    try {
-      setLoading(true)
-      const response = await apiClient.get<ApiResponse<Office[]>>(API_CONFIG.OFFICES.ADMIN_BASE)
-      const data = await response.json()
-      setOffices(data.data)
-    } catch (error) {
-      console.error('Error fetching offices:', error)
-    } finally {
-      setLoading(false)
-    }
-  }
-
-  const fetchProvinces = async () => {
-    try {
-      const data = await provinceService.getAllProvinces()
-      setProvinces(data)
-    } catch (error) {
-      console.error('Error fetching provinces:', error)
-    }
-  }
 
   const handleAdd = () => {
     setAdding(true)
@@ -164,15 +152,13 @@ export function ManageOffices() {
         try {
           const errorData = await response.json()
           errorMessage = errorData.message || errorMessage
-        } catch (e) {
+        } catch {
           // Response body is empty or not JSON
         }
-        console.error('Error response:', errorMessage)
         alert(`Failed to save office: ${errorMessage}`)
       }
     } catch (error) {
-      console.error('Error saving office:', error)
-      alert('An error occurred while saving the office. Check console for details.')
+      toast.error('An error occurred while saving the office', error)
     }
   }
 
@@ -186,7 +172,7 @@ export function ManageOffices() {
         setOffices(prev => prev.filter(office => office.id !== id))
       }
     } catch (error) {
-      console.error('Error deleting office:', error)
+      toast.error('Failed to delete office', error)
     }
   }
 

@@ -2,11 +2,11 @@
 
 import { useEffect, useState } from 'react'
 import { usePathname, useRouter } from 'next/navigation'
-import { ColumnDef } from '@tanstack/react-table'
+import type { ColumnDef } from '@tanstack/react-table'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/shared/components/ui/card'
 import { Badge } from '@/shared/components/ui/badge'
 import { Alert, AlertDescription } from '@/shared/components/ui/alert'
-import { Loader2, AlertCircle, RefreshCw, FileText, ArrowUpDown, Trash2, Archive, RotateCcw, MoreHorizontal } from 'lucide-react'
+import { Loader2, AlertCircle, RefreshCw, FileText, ArrowUpDown, Trash2, Archive, RotateCcw, MoreHorizontal, Lock } from 'lucide-react'
 import { Button } from '@/shared/components/ui/button'
 import {
   DropdownMenu,
@@ -29,14 +29,31 @@ import { QuotePreview } from '@/modules/inquiries/components/common/Quote-hcm'
 import { InquiryDataTable, type InquiryDeleteMode } from './InquiryDataTable'
 import { InquiryDetailDrawer } from './InquiryDetailDrawer'
 import { buildDashboardUrl } from '@/shared/utils/dashboardNavigation'
-import { useInquiryData } from './useInquiryData'
+import { useInquiryData, type InquiryRecord } from './useInquiryData'
 import { useInvoicePreview } from './useInvoicePreview'
 import {
   getSchemaForService,
   getServiceSlugFromInquiry,
 } from './serviceInquirySchemas'
-import { STATUS_QUOTED, STATUS_COMPLETED, STATUS_BADGE_CONFIG, InquiryStatus } from '@/shared/constants/inquiry-status'
+import { STATUS_QUOTED, STATUS_COMPLETED, STATUS_BADGE_CONFIG, type InquiryStatus } from '@/shared/constants/inquiry-status'
 import { useIsMobile } from '@/hooks/use-mobile'
+import { toast } from '@/shared/utils/toast'
+import { inquiryService } from '@/modules/inquiries/services/inquiryService'
+import { shippingAgencyEpdaService } from '@/modules/inquiries/services/shippingAgencyEpdaService'
+import { resolveEffectiveParams } from '@/features/admin/components/invoice/resolveEffectiveParams'
+import { quoteFormFromStored } from '@/features/admin/components/invoice/epda/quoteFormFromArea'
+import { buildEpdaLockSnapshotFromAdminInquiry } from '@/features/admin/components/invoice/epda/buildEpdaLockSnapshot'
+import type { ShippingAgencyAdminInquiry } from '@/features/admin/components/invoice/epda/epdaApiMappers'
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/shared/components/ui/alert-dialog'
 
 interface BaseInquiryHistoryLayoutProps {
   serviceType?: string
@@ -44,6 +61,23 @@ interface BaseInquiryHistoryLayoutProps {
   isAdmin?: boolean
   title?: string
   description?: string
+}
+
+type InquiryHistoryRecord = InquiryRecord & {
+  status: string
+  submittedAt: string
+  serviceType?: { name?: string; displayName?: string }
+  code?: string
+  mv?: string
+  vesselName?: string
+  toName?: string
+  fullName?: string
+  name?: string
+  contactName?: string
+  loadingPort?: string
+  dischargingPort?: string
+  portOfCall?: string
+  epdaLockedAt?: string | null
 }
 
 export function BaseInquiryHistoryLayout({
@@ -75,13 +109,16 @@ export function BaseInquiryHistoryLayout({
   const canSoftDelete = isAdmin && !isAdminRole(currentUser?.role)
   const canHardDelete = isAdmin && isAdminRole(currentUser?.role)
 
-  const [detailInquiry, setDetailInquiry] = useState<any | null>(null)
-  const [quoteInquiry, setQuoteInquiry] = useState<any | null>(null)
-  const [deleteTarget, setDeleteTarget] = useState<any | null>(null)
+  const inquiryRows = inquiries as InquiryHistoryRecord[]
+  const [detailInquiry, setDetailInquiry] = useState<InquiryHistoryRecord | null>(null)
+  const [quoteInquiry, setQuoteInquiry] = useState<InquiryHistoryRecord | null>(null)
+  const [deleteTarget, setDeleteTarget] = useState<InquiryHistoryRecord | null>(null)
   const [deleteMode, setDeleteMode] = useState<InquiryDeleteMode>('soft')
-  const [restoreTarget, setRestoreTarget] = useState<any | null>(null)
+  const [restoreTarget, setRestoreTarget] = useState<InquiryHistoryRecord | null>(null)
+  const [lockTarget, setLockTarget] = useState<InquiryHistoryRecord | null>(null)
   const [isDeleting, setIsDeleting] = useState(false)
   const [isRestoring, setIsRestoring] = useState(false)
+  const [isLocking, setIsLocking] = useState(false)
 
   useEffect(() => {
     fetchInquiries()
@@ -92,7 +129,7 @@ export function BaseInquiryHistoryLayout({
     return <Badge variant={config.variant} className={config.className}>{config.label}</Badge>
   }
 
-  const getInquiryStatusBadge = (inquiry: any) => {
+  const getInquiryStatusBadge = (inquiry: InquiryHistoryRecord) => {
     if (inquiry?.isArchived) {
       return <Badge variant="secondary" className="bg-muted text-muted-foreground">Archived</Badge>
     }
@@ -101,28 +138,29 @@ export function BaseInquiryHistoryLayout({
 
   const formatDate = (value: string) => new Date(value).toLocaleString()
 
-  const renderService = (inquiry: any) => {
+  const renderService = (inquiry: InquiryHistoryRecord) => {
     const label = inquiry.serviceType?.displayName || inquiry.serviceType?.name || serviceLabel || 'Service'
     return <span className="font-medium">{label}</span>
   }
 
-  const handleViewQuote = async (inquiry: any) => {
+  const handleViewQuote = async (inquiry: InquiryHistoryRecord) => {
     setQuoteInquiry(inquiry)
     try {
       await generateInvoicePreview(inquiry)
-    } catch (err) {
-      console.error('Failed to load quote preview:', err)
+    } catch (error) {
+      toast.error('Failed to load quote preview', error)
     }
   }
 
-  const handleOpenDetail = (inquiry: any) => {
+  const handleOpenDetail = (inquiry: InquiryHistoryRecord) => {
     const slug = getServiceSlugFromInquiry(inquiry) || serviceType
     if (isAdmin && slug === 'shipping-agency') {
       const status = inquiry.status
-      // Always open straight into the EPDA edit screen. For a finalised EPDA
-      // (Completed / Quoted) also auto-open the quote preview (preview=1).
-      const wantPreview = status === STATUS_COMPLETED || status === STATUS_QUOTED
-      const extra: Record<string, string> = { inquiryId: String(inquiry.id), mode: 'edit' }
+      const isLocked = Boolean(inquiry.epdaLockedAt)
+      // Open edit only when unlocked. Locked EPDAs are view-only (snapshot frozen).
+      const wantPreview = status === STATUS_COMPLETED || status === STATUS_QUOTED || isLocked
+      const extra: Record<string, string> = { inquiryId: String(inquiry.id) }
+      if (!isLocked) extra.mode = 'edit'
       if (wantPreview) extra.preview = '1'
       router.push(buildDashboardUrl(pathname, 'shipping-agency-inquiry-detail', extra), {
         scroll: false,
@@ -133,15 +171,10 @@ export function BaseInquiryHistoryLayout({
   }
 
   const handleDeleteInquiries = async (ids: number[], mode: InquiryDeleteMode) => {
-    try {
-      await deleteInquiries(ids, mode)
-    } catch (error) {
-      console.error('Error deleting inquiries:', error)
-      throw error
-    }
+    await deleteInquiries(ids, mode)
   }
 
-  const openDeleteDialog = (inquiry: any, mode: InquiryDeleteMode) => {
+  const openDeleteDialog = (inquiry: InquiryHistoryRecord, mode: InquiryDeleteMode) => {
     setDeleteTarget(inquiry)
     setDeleteMode(mode)
   }
@@ -153,7 +186,7 @@ export function BaseInquiryHistoryLayout({
       await deleteInquiries([deleteTarget.id], deleteMode)
       setDeleteTarget(null)
     } catch (error) {
-      console.error('Error deleting inquiry:', error)
+      toast.error('Failed to delete inquiry', error)
     } finally {
       setIsDeleting(false)
     }
@@ -169,9 +202,42 @@ export function BaseInquiryHistoryLayout({
         await fetchInquiries()
       }
     } catch (error) {
-      console.error('Error restoring inquiry:', error)
+      toast.error('Failed to restore inquiry', error)
     } finally {
       setIsRestoring(false)
+    }
+  }
+
+  const canLockEpda = (inquiry: InquiryHistoryRecord) =>
+    isAdmin &&
+    (getServiceSlugFromInquiry(inquiry) || serviceType) === 'shipping-agency' &&
+    !inquiry?.isArchived &&
+    !inquiry?.epdaLockedAt
+
+  const confirmLockEpda = async () => {
+    if (!lockTarget) return
+    setIsLocking(true)
+    try {
+      const detail = await inquiryService.getShippingAgencyDetail<ShippingAgencyAdminInquiry>(
+        lockTarget.id,
+      )
+      if (detail.epdaLockedAt) {
+        toast.error('This EPDA is already locked.')
+        setLockTarget(null)
+        await fetchInquiries()
+        return
+      }
+      const quoteForm = quoteFormFromStored(detail.quoteForm)
+      const params = await resolveEffectiveParams(quoteForm, detail.portOfCall, detail.portId)
+      const snapshot = buildEpdaLockSnapshotFromAdminInquiry(detail, params)
+      await shippingAgencyEpdaService.lockEpda(lockTarget.id, snapshot)
+      toast.success('EPDA locked — snapshot saved. Edit is disabled.')
+      setLockTarget(null)
+      await fetchInquiries()
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Failed to lock EPDA')
+    } finally {
+      setIsLocking(false)
     }
   }
 
@@ -193,7 +259,7 @@ export function BaseInquiryHistoryLayout({
     ? { portOfCall: false, submittedAt: false }
     : undefined
 
-  const renderRowActions = (inq: any) => {
+  const renderRowActions = (inq: InquiryHistoryRecord) => {
     const slug = getServiceSlugFromInquiry(inq) || serviceType
     const isShippingAgency = slug === 'shipping-agency'
 
@@ -209,6 +275,26 @@ export function BaseInquiryHistoryLayout({
             >
               View Details
             </Button>
+            {canLockEpda(inq) ? (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setLockTarget(inq)}
+                className="gap-2"
+              >
+                <Lock className="h-4 w-4" />
+                Lock edit
+              </Button>
+            ) : null}
+            {isShippingAgency && inq.epdaLockedAt ? (
+              <Badge
+                variant="outline"
+                className="h-8 gap-1 border-amber-500/40 bg-amber-500/10 px-2 text-amber-800 dark:text-amber-200"
+              >
+                <Lock className="h-3.5 w-3.5" />
+                Locked
+              </Badge>
+            ) : null}
             {canSoftDelete && !inq.isArchived && (
               <Button
                 variant="outline"
@@ -315,6 +401,18 @@ export function BaseInquiryHistoryLayout({
           <DropdownMenuItem onClick={() => handleOpenDetail(inq)}>
             View Details
           </DropdownMenuItem>
+          {canLockEpda(inq) ? (
+            <DropdownMenuItem onClick={() => setLockTarget(inq)}>
+              <Lock className="mr-2 h-4 w-4" />
+              Lock edit
+            </DropdownMenuItem>
+          ) : null}
+          {isAdmin && isShippingAgency && inq.epdaLockedAt ? (
+            <DropdownMenuItem disabled>
+              <Lock className="mr-2 h-4 w-4" />
+              Locked
+            </DropdownMenuItem>
+          ) : null}
           {isAdmin && canSoftDelete && !inq.isArchived && (
             <DropdownMenuItem onClick={() => openDeleteDialog(inq, 'soft')}>
               <Archive className="mr-2 h-4 w-4" />
@@ -365,7 +463,7 @@ export function BaseInquiryHistoryLayout({
   }
 
   // Define columns
-  const columns: ColumnDef<any>[] = [
+  const columns: ColumnDef<InquiryHistoryRecord>[] = [
     {
       id: 'no',
       header: 'No.',
@@ -518,14 +616,14 @@ export function BaseInquiryHistoryLayout({
               <AlertCircle className="h-4 w-4" />
               <AlertDescription>{error}</AlertDescription>
             </Alert>
-          ) : inquiries.length === 0 ? (
+          ) : inquiryRows.length === 0 ? (
             <div className="text-center text-muted-foreground py-8">
               No inquiries yet.
             </div>
           ) : (
             <InquiryDataTable
               columns={columns}
-              data={inquiries}
+              data={inquiryRows}
               searchKey={isAdmin ? (isShippingAgencyHistory ? 'mv' : 'fullName') : undefined}
               searchPlaceholder={
                 isShippingAgencyHistory ? 'Search by vessel name...' : 'Search by name...'
@@ -701,6 +799,37 @@ export function BaseInquiryHistoryLayout({
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <AlertDialog
+        open={!!lockTarget}
+        onOpenChange={(open) => {
+          if (!open && !isLocking) setLockTarget(null)
+        }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Lock this EPDA?</AlertDialogTitle>
+            <AlertDialogDescription>
+              After locking inquiry #{lockTarget?.id}, you will no longer be able to edit this EPDA.
+              Tariff rates will be frozen in a snapshot. This cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isLocking}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              disabled={isLocking}
+              onClick={(event) => {
+                event.preventDefault()
+                void confirmLockEpda()
+              }}
+              className="gap-2"
+            >
+              {isLocking ? <Loader2 className="h-4 w-4 animate-spin" /> : <Lock className="h-4 w-4" />}
+              Lock edit
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </>
   )
 }

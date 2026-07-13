@@ -280,7 +280,6 @@ export function ManageUsers() {
       resetCreate()
       await queryClient.invalidateQueries({ queryKey: ['adminUsers'] })
     } catch (err) {
-      console.error('Failed to create user:', err)
       toast.error(err instanceof Error ? err.message : 'Failed to create user')
     } finally {
       setIsCreating(false)
@@ -300,7 +299,6 @@ export function ManageUsers() {
       setResetTarget(null)
       setResetPasswordValue('')
     } catch (err) {
-      console.error('Failed to reset password:', err)
       toast.error(err instanceof Error ? err.message : 'Failed to reset password')
     } finally {
       setIsResetting(false)
@@ -316,7 +314,6 @@ export function ManageUsers() {
       setDeleteTarget(null)
       await queryClient.invalidateQueries({ queryKey: ['adminUsers'] })
     } catch (err) {
-      console.error('Failed to deactivate user:', err)
       toast.error(err instanceof Error ? err.message : 'Failed to deactivate user')
     } finally {
       setIsDeleting(false)
@@ -332,7 +329,6 @@ export function ManageUsers() {
       setReactivateTarget(null)
       await queryClient.invalidateQueries({ queryKey: ['adminUsers'] })
     } catch (err) {
-      console.error('Failed to reactivate user:', err)
       toast.error(err instanceof Error ? err.message : 'Failed to reactivate user')
     } finally {
       setIsReactivating(false)
@@ -357,7 +353,6 @@ export function ManageUsers() {
       setRoleTarget(null)
       await queryClient.invalidateQueries({ queryKey: ['adminUsers'] })
     } catch (err) {
-      console.error('Failed to update role:', err)
       toast.error(err instanceof Error ? err.message : 'Failed to update role')
     } finally {
       setIsUpdatingRole(false)

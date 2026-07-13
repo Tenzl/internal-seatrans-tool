@@ -1,7 +1,7 @@
 "use client"
 
 import * as React from "react"
-import { Eye, X, Paperclip, FileText as FileTextIcon, Download, Loader2 } from "lucide-react"
+import { Eye, Paperclip, FileText as FileTextIcon, Download, Loader2 } from "lucide-react"
 import { Button } from "@/shared/components/ui/button"
 import {
   Sheet,
@@ -13,14 +13,26 @@ import {
 import { Badge } from "@/shared/components/ui/badge"
 import { Separator } from "@/shared/components/ui/separator"
 import {
-  InquiryFieldSchema,
+  type InquiryFieldSchema,
   getFieldValue,
 } from "./serviceInquirySchemas"
+import type { InquiryRecord } from './useInquiryData'
 import { documentService, type InquiryDocument } from "@/modules/inquiries/services/documentService"
-import { STATUS_QUOTED, STATUS_COMPLETED, STATUS_BADGE_CONFIG, InquiryStatus } from '@/shared/constants/inquiry-status'
+import { STATUS_QUOTED, STATUS_COMPLETED, STATUS_BADGE_CONFIG, type InquiryStatus } from '@/shared/constants/inquiry-status'
+import { toast } from '@/shared/utils/toast'
+
+type InquiryDetailRecord = InquiryRecord & {
+  status: string
+  submittedAt: string
+  serviceType?: { name?: string; displayName?: string }
+  fullName?: string
+  email?: string
+  phone?: string
+  company?: string
+}
 
 interface InquiryDetailDrawerProps {
-  inquiry: any | null
+  inquiry: InquiryDetailRecord | null
   schema: InquiryFieldSchema[]
   open: boolean
   onOpenChange: (open: boolean) => void
@@ -42,34 +54,36 @@ export function InquiryDetailDrawer({
   isAdmin = false,
   serviceSlug,
 }: InquiryDetailDrawerProps) {
-  const [documents, setDocuments] = React.useState<InquiryDocument[]>([])
-  const [loadingDocuments, setLoadingDocuments] = React.useState(false)
+  const documentSlug = serviceSlug || inquiry?.serviceType?.name
+  const documentKey = open && inquiry?.id && documentSlug
+    ? `${inquiry.id}:${documentSlug}`
+    : null
+  const [documentState, setDocumentState] = React.useState<{
+    key: string | null
+    documents: InquiryDocument[]
+  }>({ key: null, documents: [] })
+  const documents = documentState.key === documentKey ? documentState.documents : []
+  const loadingDocuments = documentKey !== null && documentState.key !== documentKey
 
   // Load documents when drawer opens
   React.useEffect(() => {
-    const slug = serviceSlug || inquiry?.serviceType?.name
-    if (open && inquiry?.id && slug) {
-      loadDocuments()
-    } else {
-      setDocuments([])
-    }
-  }, [open, inquiry?.id, inquiry?.serviceType?.name, serviceSlug])
+    if (!documentKey || !inquiry?.id || !documentSlug) return
 
-  const loadDocuments = async () => {
-    const slug = serviceSlug || inquiry?.serviceType?.name
-    if (!inquiry?.id || !slug) return
-    
-    setLoadingDocuments(true)
-    try {
-      const docs = await documentService.getDocuments(inquiry.id, slug)
-      setDocuments(docs)
-    } catch (error) {
-      console.error('Failed to load documents:', error)
-      setDocuments([])
-    } finally {
-      setLoadingDocuments(false)
+    let cancelled = false
+    void documentService
+      .getDocuments(inquiry.id, documentSlug)
+      .then((nextDocuments) => {
+        if (!cancelled) setDocumentState({ key: documentKey, documents: nextDocuments })
+      })
+      .catch((error) => {
+        toast.error('Failed to load documents', error)
+        if (!cancelled) setDocumentState({ key: documentKey, documents: [] })
+      })
+
+    return () => {
+      cancelled = true
     }
-  }
+  }, [documentKey, documentSlug, inquiry?.id])
 
   const handleDownloadDocument = async (doc: InquiryDocument) => {
     const slug = serviceSlug || inquiry?.serviceType?.name
@@ -89,8 +103,7 @@ export function InquiryDetailDrawer({
       a.click()
       document.body.removeChild(a)
       URL.revokeObjectURL(url)
-    } catch (error) {
-      console.error('Failed to download document:', error)
+    } catch {
       alert('Failed to download document')
     }
   }

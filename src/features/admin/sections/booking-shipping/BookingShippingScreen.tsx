@@ -153,7 +153,6 @@ export function BookingShippingScreen() {
   const [form, setForm] = useState<BookingShippingUpsertRequest>(emptyBookingShippingForm())
 
   const partnerCacheRef = useRef(new Map<number, PartnerOption>())
-  const portLabelCacheRef = useRef(new Map<number, string>())
 
   const debouncedPartnerSearch = useDebouncedValue(partnerSearch, 280)
   const debouncedPortSearch = useDebouncedValue(portSearch, 280)
@@ -178,6 +177,15 @@ export function BookingShippingScreen() {
     staleTime: BOOKING_SHIPPING_CACHE.shippingStaleMs,
     gcTime: BOOKING_SHIPPING_CACHE.gcMs,
   })
+  const [appliedShipping, setAppliedShipping] = useState(shippingQuery.data)
+  if (shippingQuery.data !== appliedShipping) {
+    setAppliedShipping(shippingQuery.data)
+    setForm(
+      shippingQuery.data
+        ? toBookingShippingForm(shippingQuery.data)
+        : emptyBookingShippingForm(),
+    )
+  }
 
   // Full partner record (for its contact persons) once one is selected.
   const partnerDetailQuery = useQuery({
@@ -214,16 +222,21 @@ export function BookingShippingScreen() {
 
   const portLabelsQuery = useQuery({
     queryKey: queryKeys.portOptionsByIds(portIdsKey),
-    queryFn: () => portService.listPortOptions({ ids: portIds, limit: 50 }),
+    queryFn: () =>
+      portService.listPortOptions({
+        ids: portIdsKey.split(',').filter(Boolean).map(Number),
+        limit: 50,
+      }),
     enabled: partnerId != null && portIds.length > 0,
     staleTime: BOOKING_SHIPPING_CACHE.portLabelsStaleMs,
     gcTime: BOOKING_SHIPPING_CACHE.gcMs,
   })
 
   const portLabelById = useMemo(() => {
-    mergePortLabels(portLabelCacheRef.current, portLabelsQuery.data)
-    mergePortLabels(portLabelCacheRef.current, portOptionsQuery.data)
-    return new Map(portLabelCacheRef.current)
+    const labels = new Map<number, string>()
+    mergePortLabels(labels, portLabelsQuery.data)
+    mergePortLabels(labels, portOptionsQuery.data)
+    return labels
   }, [portLabelsQuery.data, portOptionsQuery.data])
 
   const partnerOptions = useMemo(
@@ -251,20 +264,6 @@ export function BookingShippingScreen() {
       rememberPartnerOption(partnerCacheRef.current, partner),
     )
   }, [partnerOptionsQuery.data])
-
-  useEffect(() => {
-    if (shippingQuery.data) {
-      setForm(toBookingShippingForm(shippingQuery.data))
-      return
-    }
-    if (partnerId == null || shippingQuery.isPending) return
-    const cached = queryClient.getQueryData<BookingShippingResponse>(
-      queryKeys.bookingShipping(partnerId),
-    )
-    if (!cached) {
-      setForm(emptyBookingShippingForm())
-    }
-  }, [shippingQuery.data, shippingQuery.isPending, partnerId, queryClient])
 
   const saveMutation = useMutation({
     mutationFn: (body: BookingShippingUpsertRequest) =>
@@ -340,7 +339,7 @@ export function BookingShippingScreen() {
     setForm(cachedShipping ? toBookingShippingForm(cachedShipping) : emptyBookingShippingForm())
   }
 
-  const PortField = ({
+  const renderPortField = ({
     label,
     field,
     required,
@@ -519,11 +518,11 @@ export function BookingShippingScreen() {
 
               {activeSection === 'routing' && (
                 <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-                  <PortField label="Place of receipt" field="placeOfReceiptPortId" required />
-                  <PortField label="Port of loading" field="portOfLoadingPortId" />
-                  <PortField label="Port of discharge" field="portOfDischargePortId" />
-                  <PortField label="Place of delivery" field="placeOfDeliveryPortId" required />
-                  <PortField label="Final destination" field="finalDestinationPortId" />
+                  {renderPortField({ label: 'Place of receipt', field: 'placeOfReceiptPortId', required: true })}
+                  {renderPortField({ label: 'Port of loading', field: 'portOfLoadingPortId' })}
+                  {renderPortField({ label: 'Port of discharge', field: 'portOfDischargePortId' })}
+                  {renderPortField({ label: 'Place of delivery', field: 'placeOfDeliveryPortId', required: true })}
+                  {renderPortField({ label: 'Final destination', field: 'finalDestinationPortId' })}
                   <FormField label="ETD" value={form.etd} onChange={(v) => setField('etd', v)} type="datetime-local" />
                   <FormField label="ETA" value={form.eta} onChange={(v) => setField('eta', v)} type="datetime-local" />
                   <FormField label="Pick up" value={form.pickUp} onChange={(v) => setField('pickUp', v)} />

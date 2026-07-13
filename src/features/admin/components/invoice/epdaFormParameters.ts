@@ -17,8 +17,6 @@ import {
   DEFAULT_GARBAGE_USD_QN,
 } from './garbageFeeDefaults'
 
-/** @deprecated use GrtTier from quoteParameters. */
-export type AgencyFeeTier = GrtTier
 export type { EpdaParameterValues, GrtTier }
 export { defaultParameterValues }
 
@@ -53,7 +51,6 @@ export const SHIP_TYPE_OPTIONS = [
   { value: 'BULK_SHIP', label: 'Bulk-ship' },
   { value: 'TANKER_SHIP', label: 'Tanker ship' },
 ] as const
-export type ShipTypeOption = (typeof SHIP_TYPE_OPTIONS)[number]['value']
 
 /** Shipowner nationality — Vietnamese shipowners pay +8% VAT on selected tariff fees. */
 export const SHIPOWNER_NATIONALITY_OPTIONS = [
@@ -75,7 +72,6 @@ export const FRT_TAX_TYPE_OPTIONS = [
   { value: 'Export - Pls Advise', label: 'Export - Pls Advise' },
   { value: 'Export - Freight rate declaration', label: 'Export - Freight rate declaration' },
 ] as const
-export type FrtTaxTypeOption = (typeof FRT_TAX_TYPE_OPTIONS)[number]['value']
 
 export const AGENCY_FEE_MODE_OPTIONS = [
   { value: 'TARRIF_AGENCY', label: 'TARRIF AGENCY' },
@@ -87,7 +83,6 @@ export const QUARANTINE_CARGO_OPTIONS = [
   { value: 'BOTH_LEGS', label: 'Loading and discharging', fee: 200, trips: 2 },
   { value: 'OTHER', label: 'Other (water supply / repair / crew change ...)', fee: 0, trips: 0 },
 ] as const
-export type QuarantineCargoOption = (typeof QUARANTINE_CARGO_OPTIONS)[number]['value']
 
 /** Default port-stay hours used to seed the form. */
 export const DEFAULT_BERTH_HOURS = '96'

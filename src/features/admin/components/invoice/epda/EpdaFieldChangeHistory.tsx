@@ -1,6 +1,6 @@
 'use client'
 
-import { useCallback, useEffect, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { History } from 'lucide-react'
 import { shippingAgencyEpdaService } from '@/modules/inquiries/services/shippingAgencyEpdaService'
 import { Button } from '@/shared/components/ui/button'
@@ -25,32 +25,34 @@ interface EpdaFieldChangeHistoryProps {
 
 export function EpdaFieldChangeHistory({ inquiryId, refreshKey = 0 }: EpdaFieldChangeHistoryProps) {
   const { t } = useI18n()
-  const [entries, setEntries] = useState<InquiryFieldChangeLogEntry[]>([])
-  const [isLoading, setIsLoading] = useState(false)
-
-  const load = useCallback(async () => {
-    if (!inquiryId) {
-      setEntries([])
-      return
-    }
-    setIsLoading(true)
-    try {
-      const result = await shippingAgencyEpdaService.listFieldChanges(inquiryId, 0, 20)
-      setEntries(result.content ?? [])
-    } catch (error) {
-      console.error('Failed to load EPDA change history:', error)
-      setEntries([])
-    } finally {
-      setIsLoading(false)
-    }
-  }, [inquiryId])
+  const requestKey = `${inquiryId ?? 'none'}:${refreshKey}`
+  const [history, setHistory] = useState<{
+    requestKey: string
+    entries: InquiryFieldChangeLogEntry[]
+  }>({ requestKey: '', entries: [] })
 
   useEffect(() => {
-    void load()
-  }, [load, refreshKey])
+    if (!inquiryId) return
+
+    let active = true
+    void shippingAgencyEpdaService
+      .listFieldChanges(inquiryId, 0, 20)
+      .then((result) => {
+        if (active) setHistory({ requestKey, entries: result.content ?? [] })
+      })
+      .catch(() => {
+        if (active) setHistory({ requestKey, entries: [] })
+      })
+
+    return () => {
+      active = false
+    }
+  }, [inquiryId, requestKey])
+
+  const entries = history.requestKey === requestKey ? history.entries : []
 
   // Hide the button entirely when there is no history (and while first loading).
-  if (!inquiryId || isLoading || entries.length === 0) return null
+  if (!inquiryId || entries.length === 0) return null
 
   return (
     <Dialog>

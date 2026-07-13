@@ -3,7 +3,6 @@ import type { ApiResponse } from '@/shared/types/api.types'
 import { apiClient } from '@/shared/utils/apiClient'
 import type {
   BookingPartnerDetail,
-  BookingPartnerListItem,
   PartnerImportCommitData,
   PartnerImportMode,
   PartnerImportPreviewData,

@@ -1,5 +1,3 @@
-import { LucideIcon } from "lucide-react"
-
 export type RoleGroup = "INTERNAL" | "EXTERNAL"
 
 /** Dashboard section ids used to deep-link screens via the `?section=` query param. */
@@ -23,31 +21,6 @@ export type DashboardSection =
   | "booking-partners"
   | "booking-shipping"
   | "inquiry"
-
-export interface NavigationItem {
-  title: string
-  url: string
-  icon: LucideIcon
-  isActive?: boolean
-  items?: NavigationSubItem[]
-  badge?: string | number
-}
-
-export interface NavigationSubItem {
-  title: string
-  url: string
-}
-
-export interface DashboardConfig {
-  navigation: NavigationItem[]
-  projects?: ProjectItem[]
-}
-
-export interface ProjectItem {
-  name: string
-  url: string
-  icon: LucideIcon
-}
 
 export interface User {
   id: number

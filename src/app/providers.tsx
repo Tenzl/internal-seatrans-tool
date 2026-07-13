@@ -1,6 +1,6 @@
 'use client'
 
-import { Suspense, useEffect, useState, type ReactNode } from 'react'
+import { Suspense, useState, useSyncExternalStore, type ReactNode } from 'react'
 import { AxiosError } from 'axios'
 import {
   QueryCache,
@@ -71,8 +71,11 @@ export function Providers({ children }: { children: ReactNode }) {
   // The shadcn-admin template reads cookies / `window` during render
   // (theme, font, direction, sidebar state). Gate the tree behind a
   // client mount so the server never executes that browser-only code.
-  const [mounted, setMounted] = useState(false)
-  useEffect(() => setMounted(true), [])
+  const mounted = useSyncExternalStore(
+    () => () => undefined,
+    () => true,
+    () => false,
+  )
   if (!mounted) return null
 
   return (
