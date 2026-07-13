@@ -33,6 +33,12 @@ import {
 } from '@/modules/inquiries/components/common/quoteParameters'
 import { useI18n } from '@/shared/i18n/I18nProvider'
 import { isHcmWorksheet, usesQnPilotage } from './epda/quoteFormFromArea'
+import { cn } from '@/shared/lib/utils'
+import type { ComponentProps } from 'react'
+
+function FieldLabel({ className, ...props }: ComponentProps<typeof Label>) {
+  return <Label className={cn('font-bold', className)} {...props} />
+}
 
 export type FormVariant = 'QN' | 'HCM' | 'HN'
 
@@ -243,9 +249,9 @@ export function CreateInvoiceVariantForm({
       >
         <div className={epdaFieldGridClass()}>
           <div className="grid gap-2">
-            <Label htmlFor="toShipowner" className={customerLabelClass('toShipowner', values.toShipowner)}>
+            <FieldLabel htmlFor="toShipowner" className={customerLabelClass('toShipowner', values.toShipowner)}>
               {t('epda.toShipowner')}
-            </Label>
+            </FieldLabel>
             <Input
               id="toShipowner"
               value={values.toShipowner}
@@ -257,7 +263,7 @@ export function CreateInvoiceVariantForm({
           </div>
 
           <div className="grid gap-2">
-            <Label htmlFor="shipownerNationality">{t('epda.shipownerNationality')}</Label>
+            <FieldLabel htmlFor="shipownerNationality">{t('epda.shipownerNationality')}</FieldLabel>
             <Select
               value={values.shipownerNationality}
               onValueChange={(value) =>
@@ -282,9 +288,9 @@ export function CreateInvoiceVariantForm({
 
         <div className={epdaFieldGridClass()}>
           <div className="grid gap-2">
-            <Label htmlFor="mv" className={customerLabelClass('mv', values.mv)}>
+            <FieldLabel htmlFor="mv" className={customerLabelClass('mv', values.mv)}>
               {t('epda.mv')}
-</Label>
+            </FieldLabel>
             <Input
               id="mv"
               value={values.mv}
@@ -296,12 +302,12 @@ export function CreateInvoiceVariantForm({
           </div>
 
           <div className="grid gap-2">
-            <Label
+            <FieldLabel
               htmlFor="eta"
               className={getCustomerFieldClass?.('eta') ? 'text-emerald-700 dark:text-emerald-400' : undefined}
             >
               {t('epda.eta')}
-            </Label>
+            </FieldLabel>
             <DatePicker
               id="eta"
               value={values.eta}
@@ -312,7 +318,7 @@ export function CreateInvoiceVariantForm({
           </div>
 
           <div className="grid gap-2">
-            <Label htmlFor="shipType">{t('epda.shipType')}</Label>
+            <FieldLabel htmlFor="shipType">{t('epda.shipType')}</FieldLabel>
             <Select value={values.shipType} onValueChange={(value) => handlers.setShipType(value as ShipTypeOption)}>
               <SelectTrigger id="shipType">
                 <SelectValue placeholder={t('ph.shipType')} />
@@ -330,9 +336,9 @@ export function CreateInvoiceVariantForm({
 
         <div className={epdaFieldGridClass()}>
           <div className="grid gap-2">
-            <Label htmlFor="purposeOfCalling" className={customerLabelClass('purposeOfCalling', values.purposeOfCalling)}>
+            <FieldLabel htmlFor="purposeOfCalling" className={customerLabelClass('purposeOfCalling', values.purposeOfCalling)}>
               {t('epda.purpose')}
-            </Label>
+            </FieldLabel>
             <Select
               value={values.purposeOfCalling}
               onValueChange={(value) => handlers.setPurposeOfCalling(value as PurposeOption)}
@@ -351,7 +357,7 @@ export function CreateInvoiceVariantForm({
           </div>
 
           <div className="grid gap-2">
-            <Label htmlFor="quarantineCargoMode">{t('epda.quarantineCargo')}</Label>
+            <FieldLabel htmlFor="quarantineCargoMode">{t('epda.quarantineCargo')}</FieldLabel>
             <Select
               value={values.quarantineCargoMode}
               onValueChange={(value) => handlers.setQuarantineCargoMode(value as QuarantineCargoOption)}
@@ -370,12 +376,12 @@ export function CreateInvoiceVariantForm({
           </div>
 
           <div className="grid gap-2">
-            <Label
+            <FieldLabel
               htmlFor="dischargeLoadingLocation"
               className={customerLabelClass('dischargeLoadingLocation', values.dischargeLoadingLocation)}
             >
               {t('epda.discharge')}
-            </Label>
+            </FieldLabel>
             <Select value={values.dischargeLoadingLocation} onValueChange={handlers.setDischargeLoadingLocation}>
               <SelectTrigger
                 id="dischargeLoadingLocation"
@@ -393,9 +399,9 @@ export function CreateInvoiceVariantForm({
 
         <div className={epdaFieldGridClass()}>
           <div className="grid gap-2">
-            <Label htmlFor="dwt" className={customerLabelClass('dwt', values.dwt)}>
+            <FieldLabel htmlFor="dwt" className={customerLabelClass('dwt', values.dwt)}>
               {t('epda.dwt')}
-            </Label>
+            </FieldLabel>
             <Input
               id="dwt"
               type="number"
@@ -409,9 +415,9 @@ export function CreateInvoiceVariantForm({
           </div>
 
           <div className="grid gap-2">
-            <Label htmlFor="grt" className={customerLabelClass('grt', values.grt)}>
+            <FieldLabel htmlFor="grt" className={customerLabelClass('grt', values.grt)}>
               {t('epda.grt')}
-            </Label>
+            </FieldLabel>
             <Input
               id="grt"
               type="number"
@@ -425,9 +431,9 @@ export function CreateInvoiceVariantForm({
           </div>
 
           <div className="grid gap-2">
-            <Label htmlFor="loa" className={customerLabelClass('loa', values.loa)}>
+            <FieldLabel htmlFor="loa" className={customerLabelClass('loa', values.loa)}>
               {t('epda.loa')}
-            </Label>
+            </FieldLabel>
             <div className="relative">
               <Input
                 id="loa"
@@ -449,9 +455,9 @@ export function CreateInvoiceVariantForm({
 
         <div className={epdaFieldGridClass(3)}>
           <div className="grid gap-2">
-            <Label htmlFor="cargoType" className={customerLabelClass('cargoType', values.cargoType)}>
+            <FieldLabel htmlFor="cargoType" className={customerLabelClass('cargoType', values.cargoType)}>
               {t('epda.cargoType')}
-            </Label>
+            </FieldLabel>
             <Select
               value={values.cargoType}
               onValueChange={(value) => handlers.setCargoType(value as CargoType)}
@@ -485,7 +491,7 @@ export function CreateInvoiceVariantForm({
           </div>
 
           <div className="grid gap-2">
-            <Label
+            <FieldLabel
               htmlFor="cargoName"
               className={
                 computed.cargoNameDisabled
@@ -494,7 +500,7 @@ export function CreateInvoiceVariantForm({
               }
             >
               {t('epda.cargoName')}
-            </Label>
+            </FieldLabel>
             <Select
               value={values.cargoName}
               onValueChange={handlers.setCargoName}
@@ -530,9 +536,9 @@ export function CreateInvoiceVariantForm({
           </div>
 
           <div className="grid gap-2">
-            <Label htmlFor="cargoQty" className={customerLabelClass('cargoQty', values.cargoQty)}>
+            <FieldLabel htmlFor="cargoQty" className={customerLabelClass('cargoQty', values.cargoQty)}>
               {t('epda.qty')}
-            </Label>
+            </FieldLabel>
             <Input
               id="cargoQty"
               type="number"
@@ -556,7 +562,7 @@ export function CreateInvoiceVariantForm({
       >
         <div className={epdaFieldGridClass()}>
           <div className="grid gap-2">
-            <Label htmlFor="berthHours">{isHcmAnchorage ? t('epda.buoyHours') : t('epda.berthHours')}</Label>
+            <FieldLabel htmlFor="berthHours">{isHcmAnchorage ? t('epda.buoyHours') : t('epda.berthHours')}</FieldLabel>
             <Input
               id="berthHours"
               type="number"
@@ -567,7 +573,7 @@ export function CreateInvoiceVariantForm({
           </div>
 
           <div className="grid gap-2">
-            <Label htmlFor="anchorageHours">{t('epda.anchorageHours')}</Label>
+            <FieldLabel htmlFor="anchorageHours">{t('epda.anchorageHours')}</FieldLabel>
             <Input
               id="anchorageHours"
               type="number"
@@ -579,7 +585,7 @@ export function CreateInvoiceVariantForm({
 
           {usesQnPilotage(variant) ? (
             <div className="grid gap-2">
-              <Label htmlFor="qnPilotageMiles">{t('epda.buoyPosition')}</Label>
+              <FieldLabel htmlFor="qnPilotageMiles">{t('epda.buoyPosition')}</FieldLabel>
               <Input
                 id="qnPilotageMiles"
                 type="number"
@@ -592,7 +598,7 @@ export function CreateInvoiceVariantForm({
             </div>
           ) : (
             <div className="grid gap-2">
-              <Label htmlFor="pilotageThirdMiles">{t('epda.buoyPosition')}</Label>
+              <FieldLabel htmlFor="pilotageThirdMiles">{t('epda.buoyPosition')}</FieldLabel>
               <Input
                 id="pilotageThirdMiles"
                 type="number"
@@ -606,7 +612,7 @@ export function CreateInvoiceVariantForm({
           )}
 
           <div className="grid gap-2">
-            <Label htmlFor="garbageCbmAmount">{t('epda.garbageCbm')}</Label>
+            <FieldLabel htmlFor="garbageCbmAmount">{t('epda.garbageCbm')}</FieldLabel>
             <Input
               id="garbageCbmAmount"
               type="number"
@@ -618,7 +624,7 @@ export function CreateInvoiceVariantForm({
           </div>
 
           <div className="grid gap-2">
-            <Label
+            <FieldLabel
               htmlFor="frtTaxType"
               className={
                 computed.canEnableFreightTaxDeclaration
@@ -627,7 +633,7 @@ export function CreateInvoiceVariantForm({
               }
             >
               {t('epda.frtTax')}
-            </Label>
+            </FieldLabel>
             <Select
               value={values.frtTaxType}
               onValueChange={(value) => handlers.setFrtTaxType(value as FrtTaxTypeOption)}
@@ -661,7 +667,7 @@ export function CreateInvoiceVariantForm({
 
         <div className={epdaFieldGridClass(3)}>
           <div className="grid gap-2 sm:col-span-2 lg:col-span-1">
-            <Label htmlFor="oceanFrtRateUsdPerMt">{t('epda.oceanFrt')}</Label>
+            <FieldLabel htmlFor="oceanFrtRateUsdPerMt">{t('epda.oceanFrt')}</FieldLabel>
             <Input
               id="oceanFrtRateUsdPerMt"
               type="number"
@@ -682,7 +688,7 @@ export function CreateInvoiceVariantForm({
           </div>
 
           <div className="grid gap-2">
-            <Label htmlFor="boatHireQuarantineAmount">{t('epda.boatHireQuarantine')}</Label>
+            <FieldLabel htmlFor="boatHireQuarantineAmount">{t('epda.boatHireQuarantine')}</FieldLabel>
             <Input
               id="boatHireQuarantineAmount"
               type="number"
@@ -695,12 +701,12 @@ export function CreateInvoiceVariantForm({
           </div>
 
           <div className="grid gap-2">
-            <Label
+            <FieldLabel
               htmlFor="tallyFeeAmount"
               className={computed.isTallyFeeEligibleCargo ? '' : 'text-muted-foreground'}
             >
               {t('epda.tallyFee')}
-            </Label>
+            </FieldLabel>
             <Input
               id="tallyFeeAmount"
               type="number"
@@ -716,7 +722,7 @@ export function CreateInvoiceVariantForm({
 
           {computed.isLoaOverTugMax && (
             <div className="grid gap-2">
-              <Label htmlFor="tugAssistanceAmount">{t('epda.tugAssistance')}</Label>
+              <FieldLabel htmlFor="tugAssistanceAmount">{t('epda.tugAssistance')}</FieldLabel>
               <Input
                 id="tugAssistanceAmount"
                 type="number"
@@ -733,7 +739,7 @@ export function CreateInvoiceVariantForm({
 
         <div className={epdaFieldGridClass(3)}>
           <div className="grid gap-2">
-            <Label htmlFor="otherExpenseType">{t('epda.otherExpense')}</Label>
+            <FieldLabel htmlFor="otherExpenseType">{t('epda.otherExpense')}</FieldLabel>
             <Select
               value={values.otherExpenseType || 'NONE'}
               onValueChange={(value) => {
@@ -761,7 +767,7 @@ export function CreateInvoiceVariantForm({
 
           {values.otherExpenseType === 'SHORECRANE_HIRE' && (
             <div className="grid gap-2 sm:col-span-2">
-              <Label htmlFor="shorecraneHireUsdPerMt">{t('epda.shorecraneRate')}</Label>
+              <FieldLabel htmlFor="shorecraneHireUsdPerMt">{t('epda.shorecraneRate')}</FieldLabel>
               <Input
                 id="shorecraneHireUsdPerMt"
                 type="number"
@@ -785,7 +791,7 @@ export function CreateInvoiceVariantForm({
       >
         <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
           <div className="w-full sm:max-w-xs">
-            <Label htmlFor="agencyFeeMode">{t('epda.feeMode')}</Label>
+            <FieldLabel htmlFor="agencyFeeMode">{t('epda.feeMode')}</FieldLabel>
             <Select
               value={values.agencyFeeMode}
               onValueChange={(value) => handlers.setAgencyFeeMode(value as AgencyFeeModeOption)}
@@ -807,7 +813,7 @@ export function CreateInvoiceVariantForm({
         {values.agencyFeeMode === 'AGENCY_IN_LUMPSUM' ? (
           <div className={epdaFieldGridClass(3)}>
             <div className="grid gap-2 sm:col-span-2 lg:col-span-3">
-              <Label htmlFor="agencyLumpsumAmount">{t('epda.lumpsum')}</Label>
+              <FieldLabel htmlFor="agencyLumpsumAmount">{t('epda.lumpsum')}</FieldLabel>
               <Input
                 id="agencyLumpsumAmount"
                 type="number"
@@ -824,7 +830,7 @@ export function CreateInvoiceVariantForm({
             <EpdaComputedSummary items={agencySummaryItems} />
             <div className={epdaFieldGridClass(3)}>
               <div className="grid gap-2">
-                <Label htmlFor="agencyDiscountPercent">{t('epda.discount')}</Label>
+                <FieldLabel htmlFor="agencyDiscountPercent">{t('epda.discount')}</FieldLabel>
                 <Input
                   id="agencyDiscountPercent"
                   type="number"
@@ -838,12 +844,12 @@ export function CreateInvoiceVariantForm({
               </div>
 
               <div className="grid gap-2">
-                <Label
+                <FieldLabel
                   htmlFor="boatHireAmount"
                   className={isBoatHireForAgencyEnabled ? '' : 'text-muted-foreground'}
                 >
                   {t('epda.boatHireAgency')}
-                </Label>
+                </FieldLabel>
                 <Input
                   id="boatHireAmount"
                   type="number"
@@ -858,7 +864,7 @@ export function CreateInvoiceVariantForm({
               </div>
 
               <div className="grid gap-2">
-                <Label htmlFor="transportLs">{t('epda.transportLs')}</Label>
+                <FieldLabel htmlFor="transportLs">{t('epda.transportLs')}</FieldLabel>
                 <Input
                   id="transportLs"
                   type="number"

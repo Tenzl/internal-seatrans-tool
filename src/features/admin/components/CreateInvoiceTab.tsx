@@ -1320,7 +1320,7 @@ export function CreateInvoiceTab({
               )}
             >
               <div className="grid gap-2">
-                <Label htmlFor="portArea">{t('epda.portArea')}</Label>
+                <Label htmlFor="portArea" className="font-bold">{t('epda.portArea')}</Label>
                 <Select value={selectedArea} onValueChange={(value) => setSelectedArea(value as AreaOption)}>
                   <SelectTrigger id="portArea">
                     <SelectValue placeholder={t('epda.selectArea')}>
@@ -1338,7 +1338,7 @@ export function CreateInvoiceTab({
               </div>
 
               <div className="grid gap-2">
-                <Label htmlFor="portOfCallSelect">
+                <Label htmlFor="portOfCallSelect" className="font-bold">
                   {t('epda.portOfCall')}
                 </Label>
                 <Select value={port} onValueChange={setPort} disabled={!selectedArea || isLoadingPorts}>
