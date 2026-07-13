@@ -17,6 +17,8 @@
  * The superset below carries fields for both; each variant reads what it needs.
  */
 
+import { parseFiniteNumber } from '@/shared/utils/parseNumber'
+
 export type QuoteVariant = 'HCM' | 'QN' | 'HN'
 
 /** A GRT-banded rate. `maxGrt: null` = the catch-all top band (no upper bound). */
@@ -178,7 +180,7 @@ function hcmDefaults(): EpdaParameterValues {
       { minLoa: 160, amount: 2180, label: '160 - <175m' },
       { minLoa: 175, amount: 2400, label: '175 - <190m' },
       { minLoa: 190, amount: 2600, label: '190 - <205m' },
-      { minLoa: 205, amount: 2800, label: '205 - <225m' },
+      { minLoa: 205, amount: 2800, label: '≥ 205m' },
     ],
     // Empty by default → the calc falls back to coeff bag/equip/bulk rates until an
     // admin adds explicit per-cargo-type rates on the Parameter screen.
@@ -208,12 +210,126 @@ function qnDefaults(): EpdaParameterValues {
     ],
     moorUnmoorBuoyTiers: [],
     tugTiers: [
-      { minLoa: 0, amount: 1154, label: '80 - <90m' },
+      { minLoa: 0, amount: 1154, label: '0 - <90m' },
       { minLoa: 90, amount: 2308, label: '90 - <135m' },
       { minLoa: 135, amount: 3956, label: '135 - <175m' },
       { minLoa: 175, amount: 6792, label: '175 - <200m' },
-      { minLoa: 200, amount: 9916, label: 'over DWT' },
+      { minLoa: 200, amount: 9916, label: '≥ 200m' },
     ],
+  }
+}
+
+/** Coerce tier/scalar fields from API JSON (strings) into real numbers for comparisons. */
+function coerceScalars<T extends Record<string, number>>(obj: T): T {
+  const out = { ...obj }
+  for (const key of Object.keys(out) as (keyof T)[]) {
+    const n = parseFiniteNumber(out[key])
+    if (n !== null) out[key] = n as T[keyof T]
+  }
+  return out
+}
+
+function coerceGrtTier(tier: GrtTier): GrtTier {
+  return {
+    ...tier,
+    maxGrt: tier.maxGrt === null ? null : (parseFiniteNumber(tier.maxGrt) ?? 0),
+    amount: parseFiniteNumber(tier.amount) ?? 0,
+  }
+}
+
+function formatGrtNumber(n: number): string {
+  return n.toLocaleString('en-US', { maximumFractionDigits: 2 })
+}
+
+/**
+ * Auto-generate GRT tier labels from Max GRT values (moor / agency bands).
+ * Max GRT stays exactly as entered; label is derived from previous → this band.
+ */
+export function withAutoGrtTierLabels(tiers: GrtTier[]): GrtTier[] {
+  const coerced = tiers.map(coerceGrtTier)
+  const order = coerced
+    .map((tier, index) => ({ index, maxGrt: tier.maxGrt }))
+    .sort((a, b) => {
+      if (a.maxGrt === null && b.maxGrt === null) return a.index - b.index
+      if (a.maxGrt === null) return 1
+      if (b.maxGrt === null) return -1
+      return a.maxGrt - b.maxGrt || a.index - b.index
+    })
+
+  const labels = new Array<string>(coerced.length)
+  let prevMax: number | null = null
+  for (let i = 0; i < order.length; i += 1) {
+    const { index, maxGrt } = order[i]
+    if (maxGrt === null) {
+      labels[index] = prevMax === null ? '≥ 0' : `≥ ${formatGrtNumber(prevMax + 1)}`
+    } else if (prevMax === null) {
+      labels[index] = `≤ ${formatGrtNumber(maxGrt)}`
+    } else {
+      labels[index] = `${formatGrtNumber(prevMax + 1)} - <${formatGrtNumber(maxGrt + 1)}`
+    }
+    if (maxGrt !== null) prevMax = maxGrt
+  }
+
+  return coerced.map((tier, index) => ({ ...tier, label: labels[index] ?? tier.label }))
+}
+
+function coerceLoaTier(tier: LoaTier): LoaTier {
+  return {
+    ...tier,
+    minLoa: parseFiniteNumber(tier.minLoa) ?? 0,
+    amount: parseFiniteNumber(tier.amount) ?? 0,
+  }
+}
+
+/** Format a single tug-band label from its min LOA and the next higher band (if any). */
+export function formatLoaTierLabel(minLoa: number, nextMinLoa: number | null): string {
+  const fmt = (n: number) => {
+    if (Number.isInteger(n)) return String(n)
+    return String(n)
+  }
+  if (nextMinLoa === null) return `≥ ${fmt(minLoa)}m`
+  return `${fmt(minLoa)} - <${fmt(nextMinLoa)}m`
+}
+
+/**
+ * Auto-generate tug tier labels from Min LOA values.
+ * Min LOA stays exactly as entered; label is derived from this band → next higher band.
+ */
+export function withAutoLoaTierLabels(tiers: LoaTier[]): LoaTier[] {
+  const mins = tiers.map((tier) => parseFiniteNumber(tier.minLoa) ?? 0)
+  return tiers.map((tier, index) => {
+    const minLoa = mins[index]
+    const nextMinLoa =
+      mins
+        .filter((n) => n > minLoa)
+        .sort((a, b) => a - b)[0] ?? null
+    return {
+      ...tier,
+      minLoa,
+      amount: parseFiniteNumber(tier.amount) ?? 0,
+      label: formatLoaTierLabel(minLoa, nextMinLoa),
+    }
+  })
+}
+
+/** Normalize values loaded from API/DB so numeric comparisons work with decimals. */
+export function normalizeParameterValues(values: EpdaParameterValues): EpdaParameterValues {
+  return {
+    hours: coerceScalars(values.hours),
+    garbage: coerceScalars(values.garbage),
+    quarantine: coerceScalars(values.quarantine),
+    coeff: coerceScalars(values.coeff),
+    agencyFeeTiers: values.agencyFeeTiers.map(coerceGrtTier),
+    moorUnmoorBerthTiers: withAutoGrtTierLabels(values.moorUnmoorBerthTiers),
+    moorUnmoorBuoyTiers: withAutoGrtTierLabels(values.moorUnmoorBuoyTiers),
+    // Drop empty placeholder tug rows (amount 0); refresh labels from min LOA.
+    tugTiers: withAutoLoaTierLabels(
+      values.tugTiers.map(coerceLoaTier).filter((tier) => tier.amount > 0),
+    ),
+    cargoAgencyRates: values.cargoAgencyRates.map((row) => ({
+      ...row,
+      rate: parseFiniteNumber(row.rate) ?? 0,
+    })),
   }
 }
 
@@ -229,15 +345,16 @@ export function resolveGrtTier(
   grt: number | null | undefined,
   tiers: GrtTier[],
 ): { amount: number; label: string } | undefined {
-  if (grt === null || grt === undefined || !Number.isFinite(grt)) return undefined
-  if (!tiers.length) return undefined
+  const grtNum = parseFiniteNumber(grt)
+  if (grtNum === null || !tiers.length) return undefined
   for (const tier of tiers) {
-    if (tier.maxGrt === null || grt <= tier.maxGrt) {
-      return { amount: tier.amount, label: tier.label }
+    const maxGrt = tier.maxGrt === null ? null : parseFiniteNumber(tier.maxGrt)
+    if (maxGrt === null || grtNum <= maxGrt) {
+      return { amount: parseFiniteNumber(tier.amount) ?? 0, label: tier.label }
     }
   }
   const last = tiers[tiers.length - 1]
-  return { amount: last.amount, label: last.label }
+  return { amount: parseFiniteNumber(last.amount) ?? 0, label: last.label }
 }
 
 /** Resolve an LOA-banded amount (highest `minLoa <= loa` wins). */
@@ -245,15 +362,25 @@ export function resolveLoaTier(
   loa: number | null | undefined,
   tiers: LoaTier[],
 ): { amount: number; label: string } | undefined {
-  if (loa === null || loa === undefined || !Number.isFinite(loa)) return undefined
-  if (!tiers.length) return undefined
+  const loaNum = parseFiniteNumber(loa)
+  if (loaNum === null || !tiers.length) return undefined
   let match: LoaTier | undefined
+  let matchMinLoa = -Infinity
+  let matchAmount = -Infinity
   for (const tier of tiers) {
-    if (loa >= tier.minLoa && (!match || tier.minLoa >= match.minLoa)) {
+    const minLoa = parseFiniteNumber(tier.minLoa)
+    const amount = parseFiniteNumber(tier.amount) ?? 0
+    // Skip empty placeholder rows (Add tier defaults to amount 0).
+    if (minLoa === null || amount <= 0) continue
+    if (loaNum < minLoa) continue
+    // Highest minLoa wins; on a tie keep the row with the larger amount.
+    if (minLoa > matchMinLoa || (minLoa === matchMinLoa && amount >= matchAmount)) {
       match = tier
+      matchMinLoa = minLoa
+      matchAmount = amount
     }
   }
-  return match ? { amount: match.amount, label: match.label } : undefined
+  return match ? { amount: matchAmount, label: match.label } : undefined
 }
 
 /**
@@ -267,7 +394,7 @@ export function extractParamsSnapshot(snapshot: unknown): EpdaParameterValues | 
   if (!p || typeof p !== 'object') return null
   const v = p as Partial<EpdaParameterValues>
   if (!Array.isArray(v.agencyFeeTiers) || !v.coeff || !v.hours || !v.quarantine) return null
-  return p as EpdaParameterValues
+  return normalizeParameterValues(p as EpdaParameterValues)
 }
 
 /** Deep-merge a base set with a partial override (scalars override; arrays replace). */
@@ -275,8 +402,8 @@ export function mergeParameterValues(
   base: EpdaParameterValues,
   override?: PartialEpdaParameterValues | null,
 ): EpdaParameterValues {
-  if (!override) return base
-  return {
+  if (!override) return normalizeParameterValues(base)
+  return normalizeParameterValues({
     hours: { ...base.hours, ...override.hours },
     garbage: { ...base.garbage, ...override.garbage },
     quarantine: { ...base.quarantine, ...override.quarantine },
@@ -286,5 +413,5 @@ export function mergeParameterValues(
     moorUnmoorBuoyTiers: override.moorUnmoorBuoyTiers ?? base.moorUnmoorBuoyTiers,
     tugTiers: override.tugTiers ?? base.tugTiers,
     cargoAgencyRates: override.cargoAgencyRates ?? base.cargoAgencyRates,
-  }
+  })
 }

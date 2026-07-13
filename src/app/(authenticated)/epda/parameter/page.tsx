@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useMemo, useState, type ReactNode } from 'react'
+import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { ChevronLeft, ChevronRight, History, Loader2, Plus, Save, Trash2 } from 'lucide-react'
 import { toast } from 'sonner'
@@ -67,6 +67,8 @@ import { PURPOSE_OF_CALLING_OPTIONS } from '@/modules/inquiries/constants/shippi
 import {
   defaultParameterValues,
   mergeParameterValues,
+  withAutoGrtTierLabels,
+  withAutoLoaTierLabels,
   type CargoAgencyRate,
   type GrtTier,
   type LoaTier,
@@ -83,10 +85,22 @@ import { portService } from '@/modules/logistics/services/portService'
 import { useI18n } from '@/shared/i18n/I18nProvider'
 import { useCurrentUser } from '@/hooks/use-current-user'
 import { isAdminRole } from '@/config/section-catalog'
+import { parseFiniteNumber } from '@/shared/utils/parseNumber'
 
 const VISIBLE_AREA_OPTIONS = AREA_OPTIONS
 
 const getAreaLabel = (area: AreaOption) => getAreaShortLabel(area)
+
+/** Scroll the edit panel into view after it mounts (Edit / select port / group). */
+function scrollEditPanelIntoView(el: HTMLElement | null) {
+  if (!el) return
+  // Double rAF: wait until the conditional edit Card is painted.
+  requestAnimationFrame(() => {
+    requestAnimationFrame(() => {
+      el.scrollIntoView({ behavior: 'smooth', block: 'start' })
+    })
+  })
+}
 
 /** Canonical section order used for 01–06 numbering in the parameter editor. */
 const LEAD_PARAMETER_SECTION_ORDER = [
@@ -121,18 +135,14 @@ function clone(v: EpdaParameterValues): EpdaParameterValues {
   return JSON.parse(JSON.stringify(v))
 }
 
-const num = (v: string): number => {
-  const n = Number(v)
-  return Number.isFinite(n) ? n : 0
-}
+const num = (v: string): number => parseFiniteNumber(v) ?? 0
 
 const formatDecimalValue = (value: number) => (Number.isFinite(value) ? String(value) : '')
 
 const parseDecimalText = (raw: string): number | null => {
   const trimmed = raw.trim()
   if (trimmed === '' || trimmed === '-' || trimmed === '.' || trimmed === '-.') return 0
-  const n = Number(trimmed)
-  return Number.isFinite(n) ? n : null
+  return parseFiniteNumber(trimmed)
 }
 
 /**
@@ -280,17 +290,21 @@ function GrtTierTable({
   title,
   tiers,
   onChange,
+  autoLabels = false,
 }: {
   title: string
   tiers: GrtTier[]
   onChange: (tiers: GrtTier[]) => void
+  /** When true, labels are derived from Max GRT (moor/unmoor). */
+  autoLabels?: boolean
 }) {
   const { t } = useI18n()
+  const emit = (next: GrtTier[]) => onChange(autoLabels ? withAutoGrtTierLabels(next) : next)
   const setTier = (i: number, patch: Partial<GrtTier>) =>
-    onChange(tiers.map((row, idx) => (idx === i ? { ...row, ...patch } : row)))
-  const addTier = () =>
-    onChange([...tiers, { maxGrt: 0, amount: 0, label: '' }])
-  const removeTier = (i: number) => onChange(tiers.filter((_, idx) => idx !== i))
+    emit(tiers.map((row, idx) => (idx === i ? { ...row, ...patch } : row)))
+  const addTier = () => emit([...tiers, { maxGrt: 0, amount: 0, label: '' }])
+  const removeTier = (i: number) => emit(tiers.filter((_, idx) => idx !== i))
+  const displayTiers = autoLabels ? withAutoGrtTierLabels(tiers) : tiers
 
   return (
     <div>
@@ -315,10 +329,14 @@ function GrtTierTable({
           </TableRow>
         </TableHeader>
         <TableBody>
-          {tiers.map((row, i) => (
+          {displayTiers.map((row, i) => (
             <TableRow key={i}>
               <TableCell>
-                <Input className='text-base' value={row.label} onChange={(e) => setTier(i, { label: e.target.value })} />
+                {autoLabels ? (
+                  <span className='text-sm tabular-nums text-muted-foreground'>{row.label}</span>
+                ) : (
+                  <Input className='text-base' value={row.label} onChange={(e) => setTier(i, { label: e.target.value })} />
+                )}
               </TableCell>
               <TableCell>
                 <Input
@@ -364,10 +382,13 @@ function LoaTierTable({
   onChange: (tiers: LoaTier[]) => void
 }) {
   const { t } = useI18n()
+  const emit = (next: LoaTier[]) => onChange(withAutoLoaTierLabels(next))
   const setTier = (i: number, patch: Partial<LoaTier>) =>
-    onChange(tiers.map((row, idx) => (idx === i ? { ...row, ...patch } : row)))
-  const addTier = () => onChange([...tiers, { minLoa: 0, amount: 0, label: '' }])
-  const removeTier = (i: number) => onChange(tiers.filter((_, idx) => idx !== i))
+    emit(tiers.map((row, idx) => (idx === i ? { ...row, ...patch } : row)))
+  const addTier = () => emit([...tiers, { minLoa: 0, amount: 0, label: '' }])
+  const removeTier = (i: number) => emit(tiers.filter((_, idx) => idx !== i))
+  // Labels are derived from Min LOA — keep display in sync even if stored labels are stale.
+  const displayTiers = withAutoLoaTierLabels(tiers)
 
   return (
     <div>
@@ -392,10 +413,10 @@ function LoaTierTable({
           </TableRow>
         </TableHeader>
         <TableBody>
-          {tiers.map((row, i) => (
+          {displayTiers.map((row, i) => (
             <TableRow key={i}>
               <TableCell>
-                <Input className='text-base' value={row.label} onChange={(e) => setTier(i, { label: e.target.value })} />
+                <span className='text-sm tabular-nums text-muted-foreground'>{row.label}</span>
               </TableCell>
               <TableCell>
                 <Input
@@ -403,6 +424,8 @@ function LoaTierTable({
                   className='text-base tabular-nums'
                   value={String(row.minLoa)}
                   onChange={(e) => setTier(i, { minLoa: num(e.target.value) })}
+                  step='any'
+                  min='0'
                 />
               </TableCell>
               <TableCell>
@@ -494,7 +517,7 @@ function CargoAgencyCalculator({ rates }: { rates: CargoAgencyRate[] }) {
   const { t } = useI18n()
   const [code, setCode] = useState(SHIPPING_AGENCY_CARGO_TYPES[0]?.code ?? '')
   const [mtText, setMtText] = useState('')
-  const mt = Number(mtText) || 0
+  const mt = parseFiniteNumber(mtText) ?? 0
   const rate =
     rates.find((r) => normalizeCargoTypeCode(r.code) === normalizeCargoTypeCode(code))?.rate ?? 0
   const fee = rate * mt
@@ -554,7 +577,7 @@ function AgencyByGrtCalculator({ tiers }: { tiers: GrtTier[] }) {
   const { t } = useI18n()
   const [grtText, setGrtText] = useState('')
   const hasInput = grtText.trim() !== ''
-  const grt = Number(grtText) || 0
+  const grt = parseFiniteNumber(grtText) ?? 0
   const band = resolveGrtBand(tiers, grt)
 
   return (
@@ -647,8 +670,8 @@ function GarbageCalculator({
   const [berthDaysText, setBerthDaysText] = useState('')
   const [buoyDaysText, setBuoyDaysText] = useState('')
   const cbm = garbage.cbmAmount || 0
-  const berthDays = Number(berthDaysText) || 0
-  const buoyDays = Number(buoyDaysText) || 0
+  const berthDays = parseFiniteNumber(berthDaysText) ?? 0
+  const buoyDays = parseFiniteNumber(buoyDaysText) ?? 0
   const berthBlocks = Math.ceil(berthDays / 2)
   const buoyBlocks = Math.ceil(buoyDays / 2)
   const berth = garbage.atBerthUsd * berthBlocks * cbm
@@ -710,7 +733,7 @@ function GarbageCalculator({
 function TonnageDuesCalculator({ coeff }: { coeff: EpdaParameterValues['coeff'] }) {
   const { t } = useI18n()
   const [grtText, setGrtText] = useState('')
-  const grt = Number(grtText) || 0
+  const grt = parseFiniteNumber(grtText) ?? 0
   const tonnage = coeff.tonnagePerGrt * grt * 2
   const navigation = coeff.navigationPerGrt * grt * 2
 
@@ -769,8 +792,8 @@ function PilotageCalculator({
   const defaultMiles = usesQnPilotage(variant) ? hours.qnPilotageMiles : hours.pilotageThirdMiles
   const [grtText, setGrtText] = useState('')
   const [milesText, setMilesText] = useState(() => formatDecimalValue(defaultMiles))
-  const grt = Number(grtText) || 0
-  const miles = Number(milesText) || 0
+  const grt = parseFiniteNumber(grtText) ?? 0
+  const miles = parseFiniteNumber(milesText) ?? 0
 
   useEffect(() => {
     setMilesText(formatDecimalValue(defaultMiles))
@@ -868,7 +891,12 @@ function PilotageCalculator({
 /** Resolve a GRT tier: the first band whose Max GRT ≥ GRT (last band = the ∞ catch-all). */
 function resolveGrtBand(tiers: GrtTier[], grt: number): GrtTier | undefined {
   if (!tiers.length) return undefined
-  let i = tiers.findIndex((tr) => tr.maxGrt === null || grt <= tr.maxGrt)
+  const grtNum = parseFiniteNumber(grt)
+  if (grtNum === null) return undefined
+  let i = tiers.findIndex((tr) => {
+    const maxGrt = tr.maxGrt === null ? null : parseFiniteNumber(tr.maxGrt)
+    return maxGrt === null || grtNum <= maxGrt
+  })
   if (i < 0) i = tiers.length - 1
   return tiers[i]
 }
@@ -889,7 +917,7 @@ function MoorCalculator({
   const { t } = useI18n()
   const [grtText, setGrtText] = useState('')
   const hasInput = grtText.trim() !== ''
-  const grt = Number(grtText) || 0
+  const grt = parseFiniteNumber(grtText) ?? 0
   const berth = resolveGrtBand(berthTiers, grt)
   const buoy = resolveGrtBand(buoyTiers, grt)
 
@@ -951,9 +979,9 @@ function BerthDuesCalculator({
   const [grtText, setGrtText] = useState('')
   const [berthHoursText, setBerthHoursText] = useState('')
   const [anchorageHoursText, setAnchorageHoursText] = useState('')
-  const grt = Number(grtText) || 0
-  const berthHours = Number(berthHoursText) || 0
-  const anchorageHours = Number(anchorageHoursText) || 0
+  const grt = parseFiniteNumber(grtText) ?? 0
+  const berthHours = parseFiniteNumber(berthHoursText) ?? 0
+  const anchorageHours = parseFiniteNumber(anchorageHoursText) ?? 0
 
   // Each due = rate × hours × GRT.
   const berth = coeff.berthDuePerGrtHour * berthHours * grt
@@ -1026,7 +1054,7 @@ function QuarantineCalculator({ q }: { q: EpdaParameterValues['quarantine'] }) {
   const [grtText, setGrtText] = useState('')
   const [purpose, setPurpose] = useState('')
   const [cargoMode, setCargoMode] = useState('')
-  const grt = Number(grtText) || 0
+  const grt = parseFiniteNumber(grtText) ?? 0
 
   const shipTrips = shipQuarantineTrips(purpose)
   const cargoTrips = QUARANTINE_CARGO_OPTIONS.find((o) => o.value === cargoMode)?.trips ?? 0
@@ -1113,15 +1141,30 @@ function TugCalculator({ tiers }: { tiers: LoaTier[] }) {
   const [loaText, setLoaText] = useState('')
   const [customText, setCustomText] = useState('')
   const hasInput = loaText.trim() !== ''
-  const loa = Number(loaText) || 0
+  const loa = parseFiniteNumber(loaText) ?? 0
+  const labeledTiers = withAutoLoaTierLabels(tiers)
 
   let matched: LoaTier | undefined
-  tiers.forEach((tr) => {
-    if (loa >= tr.minLoa && (!matched || tr.minLoa >= matched.minLoa)) matched = tr
+  let matchedMinLoa = -Infinity
+  let matchedAmount = -Infinity
+  labeledTiers.forEach((tr) => {
+    const minLoa = parseFiniteNumber(tr.minLoa)
+    const amount = parseFiniteNumber(tr.amount) ?? 0
+    if (minLoa === null || amount <= 0) return
+    if (loa < minLoa) return
+    if (minLoa > matchedMinLoa || (minLoa === matchedMinLoa && amount >= matchedAmount)) {
+      matched = tr
+      matchedMinLoa = minLoa
+      matchedAmount = amount
+    }
   })
 
   // Above the highest band's Min LOA, the tug charge is negotiable → let the user type it.
-  const maxMinLoa = tiers.length ? Math.max(...tiers.map((tr) => tr.minLoa)) : 0
+  const activeMinLoas = labeledTiers
+    .filter((tr) => (parseFiniteNumber(tr.amount) ?? 0) > 0)
+    .map((tr) => parseFiniteNumber(tr.minLoa))
+    .filter((n): n is number => n !== null)
+  const maxMinLoa = activeMinLoas.length ? Math.max(...activeMinLoas) : 0
   const isOverLast = hasInput && matched !== undefined && loa >= maxMinLoa
 
   return (
@@ -1325,13 +1368,15 @@ function ValuesEditor({
           <GrtTierTable
             title={isHcmWorksheet(variant) ? t('tbl.atBerth') : ''}
             tiers={values.moorUnmoorBerthTiers}
-            onChange={(rows) => onChange({ ...values, moorUnmoorBerthTiers: rows })}
+            autoLabels
+            onChange={(rows) => onChange({ ...values, moorUnmoorBerthTiers: withAutoGrtTierLabels(rows) })}
           />
           {isHcmWorksheet(variant) && (
             <GrtTierTable
               title={t('tbl.atBuoy')}
               tiers={values.moorUnmoorBuoyTiers}
-              onChange={(rows) => onChange({ ...values, moorUnmoorBuoyTiers: rows })}
+              autoLabels
+              onChange={(rows) => onChange({ ...values, moorUnmoorBuoyTiers: withAutoGrtTierLabels(rows) })}
             />
           )}
           <MoorCalculator
@@ -1370,7 +1415,7 @@ function ValuesEditor({
           <LoaTierTable
             title=''
             tiers={values.tugTiers}
-            onChange={(rows) => onChange({ ...values, tugTiers: rows })}
+            onChange={(rows) => onChange({ ...values, tugTiers: withAutoLoaTierLabels(rows) })}
           />
           <TugCalculator tiers={values.tugTiers} />
         </div>
@@ -2048,11 +2093,17 @@ function PortOverridesCard({
   const { t } = useI18n()
   const [editingPortId, setEditingPortId] = useState<number | null>(null)
   const [draft, setDraft] = useState<EpdaParameterValues>(areaValues)
+  const editPanelRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
     setEditingPortId(null)
     setDraft(areaValues)
   }, [area, areaValues])
+
+  useEffect(() => {
+    if (editingPortId == null) return
+    scrollEditPanelIntoView(editPanelRef.current)
+  }, [editingPortId])
 
   const { data: ports } = useQuery({
     queryKey: ['ports-by-area', area],
@@ -2174,7 +2225,7 @@ function PortOverridesCard({
         )}
 
         {editingPortId && (
-          <Card className='border-primary/40'>
+          <Card ref={editPanelRef} className='scroll-mt-24 border-primary/40'>
             <CardHeader className='flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between'>
               <CardTitle className='text-base'>{t('param.overrideTitle', { port: portName(editingPortId) })}</CardTitle>
               <div className='flex gap-2'>
@@ -2226,6 +2277,8 @@ function PortGroupsCard({
   const [paramsDraft, setParamsDraft] = useState<EpdaParameterValues>(areaValues)
   const [editingMembersId, setEditingMembersId] = useState<number | null>(null)
   const [memberDraft, setMemberDraft] = useState<number[]>([])
+  const paramsPanelRef = useRef<HTMLDivElement>(null)
+  const membersPanelRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
     setEditingParamsId(null)
@@ -2234,6 +2287,16 @@ function PortGroupsCard({
     setParamsDraft(areaValues)
     setMemberDraft([])
   }, [area, areaValues])
+
+  useEffect(() => {
+    if (editingParamsId == null) return
+    scrollEditPanelIntoView(paramsPanelRef.current)
+  }, [editingParamsId])
+
+  useEffect(() => {
+    if (editingMembersId == null) return
+    scrollEditPanelIntoView(membersPanelRef.current)
+  }, [editingMembersId])
 
   const { data: ports } = useQuery({
     queryKey: ['ports-by-area', area],
@@ -2393,7 +2456,7 @@ function PortGroupsCard({
 
         {/* Assign ports to a group */}
         {editingMembersId && (
-          <Card className='border-primary/40'>
+          <Card ref={membersPanelRef} className='scroll-mt-24 border-primary/40'>
             <CardHeader className='flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between'>
               <CardTitle className='text-base'>
                 {t('param.assignPorts', { group: groups.find((g) => g.id === editingMembersId)?.name ?? '' })}
@@ -2439,7 +2502,7 @@ function PortGroupsCard({
 
         {/* Edit a group's parameter set */}
         {editingParamsId && (
-          <Card className='border-primary/40'>
+          <Card ref={paramsPanelRef} className='scroll-mt-24 border-primary/40'>
             <CardHeader className='flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between'>
               <div className='grid gap-1.5'>
                 <Label className='text-xs text-muted-foreground'>{t('param.groupName')}</Label>

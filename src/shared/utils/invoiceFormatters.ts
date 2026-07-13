@@ -89,8 +89,12 @@ const formatNumericText = (value: string): string => {
   })
 }
 
-const normalizeInvoiceNumericValue = (value: unknown): unknown => {
+const normalizeInvoiceNumericValue = (value: unknown, key?: string): unknown => {
   if (value === null || value === undefined) return value
+
+  // Keep EPDA tariff params numeric — locale-formatting amounts (e.g. 1020 → "1,020")
+  // would break tug/GRT calculations that multiply tier amounts.
+  if (key === 'params') return value
 
   if (typeof value === 'number') {
     if (!Number.isFinite(value)) return value
@@ -106,8 +110,8 @@ const normalizeInvoiceNumericValue = (value: unknown): unknown => {
   }
 
   if (typeof value === 'object') {
-    return Object.entries(value as Record<string, unknown>).reduce<Record<string, unknown>>((acc, [key, item]) => {
-      acc[key] = normalizeInvoiceNumericValue(item)
+    return Object.entries(value as Record<string, unknown>).reduce<Record<string, unknown>>((acc, [childKey, item]) => {
+      acc[childKey] = normalizeInvoiceNumericValue(item, childKey)
       return acc
     }, {})
   }

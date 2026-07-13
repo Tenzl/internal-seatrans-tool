@@ -55,6 +55,21 @@ export const SHIP_TYPE_OPTIONS = [
 ] as const
 export type ShipTypeOption = (typeof SHIP_TYPE_OPTIONS)[number]['value']
 
+/** Shipowner nationality — Vietnamese shipowners pay +8% VAT on selected tariff fees. */
+export const SHIPOWNER_NATIONALITY_OPTIONS = [
+  { value: 'OVERSEAS', label: 'OVERSEAS SHIPOWNER' },
+  { value: 'VIETNAMESE', label: 'VIETNAMESE SHIPOWNER' },
+] as const
+export type ShipownerNationalityOption = (typeof SHIPOWNER_NATIONALITY_OPTIONS)[number]['value']
+
+export const DEFAULT_SHIPOWNER_NATIONALITY: ShipownerNationalityOption = 'OVERSEAS'
+
+/** Optional AA “other expenses” selectable in EPDA section 2 (Port dues). */
+export const OTHER_EXPENSE_OPTIONS = [
+  { value: 'SHORECRANE_HIRE', label: 'Shorecrane-hire' },
+] as const
+export type OtherExpenseOption = (typeof OTHER_EXPENSE_OPTIONS)[number]['value']
+
 export const FRT_TAX_TYPE_OPTIONS = [
   { value: 'Import', label: 'Import - No freight tax' },
   { value: 'Export - Pls Advise', label: 'Export - Pls Advise' },

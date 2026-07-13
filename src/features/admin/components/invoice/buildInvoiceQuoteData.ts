@@ -18,6 +18,7 @@ export interface BuildInvoiceQuoteDataParams {
   quoteForm: 'HCM' | 'QN' | 'HN'
   formCreatedDate: string
   toShipowner: string
+  shipownerNationality: string
   mv: string
   dwt: string
   grt: string
@@ -50,6 +51,9 @@ export interface BuildInvoiceQuoteDataParams {
   /** LOA is above the highest tug band → tug charge is entered manually. */
   isLoaOverTugMax: boolean
   tugAssistanceAmount: string
+  /** Other expense picker — currently Shorecrane-hire. */
+  otherExpenseType: string
+  shorecraneHireUsdPerMt: string
   berthHours: string
   buoyDueHours: string
   anchorageHours: string
@@ -59,7 +63,7 @@ export interface BuildInvoiceQuoteDataParams {
   params?: EpdaParameterValues
 }
 
-const toNumberOrUndefined = (value: string) => (value ? Number(value) : undefined)
+import { parseFiniteNumberOrUndefined } from '@/shared/utils/parseNumber'
 
 function getCargoTypeLabel(value: string, options: CargoTypeCatalogItem[]): string {
   return options.find((option) => option.code === value)?.displayLabel ?? value
@@ -72,6 +76,7 @@ export function buildInvoiceQuoteData(params: BuildInvoiceQuoteDataParams): Invo
 
   return {
     to_shipowner: params.toShipowner,
+    shipowner_nationality: params.shipownerNationality,
     date: params.formCreatedDate,
     ref: undefined,
     mv: params.mv,
@@ -87,25 +92,34 @@ export function buildInvoiceQuoteData(params: BuildInvoiceQuoteDataParams): Invo
     loading_term: params.frtTaxType,
     ocean_frt_rate_usd_per_mt:
       params.shouldIncludeOceanFrtRate && params.oceanFrtRateUsdPerMt
-        ? Number(params.oceanFrtRateUsdPerMt)
+        ? parseFiniteNumberOrUndefined(params.oceanFrtRateUsdPerMt)
         : undefined,
     garbage_usd_rate: resolveGarbageUsdRate(params.quoteForm, params.garbageUsdRate),
     garbage_cbm_amount:
-      toNumberOrUndefined(params.garbageCbmAmount) ?? Number(DEFAULT_GARBAGE_CBM_AMOUNT),
+      parseFiniteNumberOrUndefined(params.garbageCbmAmount) ?? Number(DEFAULT_GARBAGE_CBM_AMOUNT),
     purpose_of_calling: params.purposeOfCalling,
     at_berth: params.dischargeLoadingLocation === 'Berth' ? 'X' : undefined,
     at_anchorage: params.dischargeLoadingLocation === 'Anchorage' ? 'X' : undefined,
-    transport_ls: toNumberOrUndefined(params.transportLs),
-    transport_quarantine: toNumberOrUndefined(params.boatHireQuarantineAmount),
+    transport_ls: parseFiniteNumberOrUndefined(params.transportLs),
+    transport_quarantine: parseFiniteNumberOrUndefined(params.boatHireQuarantineAmount),
     quarantine_cargo_trips:
       params.quarantineCargoOptions.find((option) => option.value === params.quarantineCargoMode)?.trips ?? 1,
-    boat_hire_entry: toNumberOrUndefined(params.boatHireAmount),
+    boat_hire_entry: parseFiniteNumberOrUndefined(params.boatHireAmount),
     agency_fee_mode: params.agencyFeeMode,
-    agency_discount_percent: toNumberOrUndefined(params.agencyDiscountPercent),
-    agency_lumpsum_amount: toNumberOrUndefined(params.agencyLumpsumAmount),
-    tally_fee: params.isTallyFeeEligible && params.tallyFeeAmount ? Number(params.tallyFeeAmount) : undefined,
+    agency_discount_percent: parseFiniteNumberOrUndefined(params.agencyDiscountPercent),
+    agency_lumpsum_amount: parseFiniteNumberOrUndefined(params.agencyLumpsumAmount),
+    tally_fee:
+      params.isTallyFeeEligible
+        ? parseFiniteNumberOrUndefined(params.tallyFeeAmount)
+        : undefined,
     tug_assistance:
-      params.isLoaOverTugMax && params.tugAssistanceAmount ? Number(params.tugAssistanceAmount) : undefined,
+      params.isLoaOverTugMax
+        ? parseFiniteNumberOrUndefined(params.tugAssistanceAmount)
+        : undefined,
+    shorecrane_hire_usd_per_mt:
+      params.otherExpenseType === 'SHORECRANE_HIRE'
+        ? parseFiniteNumberOrUndefined(params.shorecraneHireUsdPerMt)
+        : undefined,
     total_a: undefined,
     total_b: undefined,
     grand_total: undefined,
@@ -116,11 +130,11 @@ export function buildInvoiceQuoteData(params: BuildInvoiceQuoteDataParams): Invo
     swift: undefined,
     AA_ROWS: [],
     BB_ROWS: [],
-    berth_hours: Number(params.berthHours),
-    buoy_due_hours: Number(params.buoyDueHours),
-    anchorage_hours: Number(params.anchorageHours),
-    pilotage_miles: usesQnPilotageField ? Number(params.qnPilotageMiles || '5') : undefined,
-    pilotage_third_miles: params.quoteForm === 'HCM' ? Number(params.pilotageThirdMiles) : undefined,
+    berth_hours: parseFiniteNumberOrUndefined(params.berthHours),
+    buoy_due_hours: parseFiniteNumberOrUndefined(params.buoyDueHours),
+    anchorage_hours: parseFiniteNumberOrUndefined(params.anchorageHours),
+    pilotage_miles: usesQnPilotageField ? parseFiniteNumberOrUndefined(params.qnPilotageMiles) ?? 5 : undefined,
+    pilotage_third_miles: params.quoteForm === 'HCM' ? parseFiniteNumberOrUndefined(params.pilotageThirdMiles) : undefined,
     params: params.params,
   }
 }

@@ -20,7 +20,13 @@ import {
 import type { EpdaCustomerTrackedField } from './epda/epdaCustomerFieldTracking'
 import { mergeEpdaFieldClasses } from './epda/epdaCustomerFieldTracking'
 import { DEFAULT_GARBAGE_CBM_AMOUNT } from './garbageFeeDefaults'
-import { getAgencyFeeByGrt } from './epdaFormParameters'
+import {
+  getAgencyFeeByGrt,
+  SHIPOWNER_NATIONALITY_OPTIONS,
+  OTHER_EXPENSE_OPTIONS,
+  type ShipownerNationalityOption,
+  type OtherExpenseOption,
+} from './epdaFormParameters'
 import {
   defaultParameterValues,
   type EpdaParameterValues,
@@ -53,6 +59,7 @@ export interface InvoiceVariantFormProps {
   variant: FormVariant
   values: {
     toShipowner: string
+    shipownerNationality: ShipownerNationalityOption
     eta: string
     mv: string
     dischargeLoadingLocation: string
@@ -74,6 +81,8 @@ export interface InvoiceVariantFormProps {
     frtTaxType: FrtTaxTypeOption | ''
     tallyFeeAmount: string
     tugAssistanceAmount: string
+    otherExpenseType: OtherExpenseOption | ''
+    shorecraneHireUsdPerMt: string
     oceanFrtRateUsdPerMt: string
     transportLs: string
     boatHireAmount: string
@@ -84,6 +93,7 @@ export interface InvoiceVariantFormProps {
   }
   handlers: {
     setToShipowner: (value: string) => void
+    setShipownerNationality: (value: ShipownerNationalityOption) => void
     setEta: (value: string) => void
     setMv: (value: string) => void
     setDischargeLoadingLocation: (value: string) => void
@@ -105,6 +115,8 @@ export interface InvoiceVariantFormProps {
     setFrtTaxType: (value: FrtTaxTypeOption) => void
     setTallyFeeAmount: (value: string) => void
     setTugAssistanceAmount: (value: string) => void
+    setOtherExpenseType: (value: OtherExpenseOption | '') => void
+    setShorecraneHireUsdPerMt: (value: string) => void
     setOceanFrtRateUsdPerMt: (value: string) => void
     setTransportLs: (value: string) => void
     setBoatHireAmount: (value: string) => void
@@ -242,6 +254,29 @@ export function CreateInvoiceVariantForm({
               className={customerClass('toShipowner', values.toShipowner)}
               required
             />
+          </div>
+
+          <div className="grid gap-2">
+            <Label htmlFor="shipownerNationality">{t('epda.shipownerNationality')}</Label>
+            <Select
+              value={values.shipownerNationality}
+              onValueChange={(value) =>
+                handlers.setShipownerNationality(value as ShipownerNationalityOption)
+              }
+            >
+              <SelectTrigger id="shipownerNationality">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {SHIPOWNER_NATIONALITY_OPTIONS.map((option) => (
+                  <SelectItem key={option.value} value={option.value}>
+                    {option.value === 'OVERSEAS'
+                      ? t('epda.shipownerOverseas')
+                      : t('epda.shipownerVietnamese')}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
         </div>
 
@@ -692,6 +727,50 @@ export function CreateInvoiceVariantForm({
                 step="any"
               />
               <p className="text-xs text-muted-foreground">{t('epda.tugAssistanceHint')}</p>
+            </div>
+          )}
+        </div>
+
+        <div className={epdaFieldGridClass(3)}>
+          <div className="grid gap-2">
+            <Label htmlFor="otherExpenseType">{t('epda.otherExpense')}</Label>
+            <Select
+              value={values.otherExpenseType || 'NONE'}
+              onValueChange={(value) => {
+                if (value === 'NONE') {
+                  handlers.setOtherExpenseType('')
+                  handlers.setShorecraneHireUsdPerMt('')
+                  return
+                }
+                handlers.setOtherExpenseType(value as OtherExpenseOption)
+              }}
+            >
+              <SelectTrigger id="otherExpenseType">
+                <SelectValue placeholder={t('epda.otherExpenseNone')} />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="NONE">{t('epda.otherExpenseNone')}</SelectItem>
+                {OTHER_EXPENSE_OPTIONS.map((option) => (
+                  <SelectItem key={option.value} value={option.value}>
+                    {option.value === 'SHORECRANE_HIRE' ? t('epda.shorecraneHire') : option.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          {values.otherExpenseType === 'SHORECRANE_HIRE' && (
+            <div className="grid gap-2 sm:col-span-2">
+              <Label htmlFor="shorecraneHireUsdPerMt">{t('epda.shorecraneRate')}</Label>
+              <Input
+                id="shorecraneHireUsdPerMt"
+                type="number"
+                value={values.shorecraneHireUsdPerMt}
+                onChange={(e) => handlers.setShorecraneHireUsdPerMt(e.target.value)}
+                placeholder="e.g. 2.5"
+                min="0"
+                step="any"
+              />
             </div>
           )}
         </div>

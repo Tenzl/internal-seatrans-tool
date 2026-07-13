@@ -272,7 +272,7 @@ const enMessages: Record<string, string> = {
     'guide.cmpSkip': 'skipped',
     'guide.loaTitle': 'LOA table — section 07 (Tug)',
     'guide.loaBody':
-      "Unlike 05/06, the system takes the band with the highest Min LOA that is still ≤ the ship's LOA (the highest band the ship qualifies for). If the ship's LOA is below every Min LOA, it is left blank (no tug charge). Row order is not required but ascending is easier to read.",
+      "Unlike 05/06, the system takes the band with the highest Min LOA that is still ≤ the ship's LOA (the highest band the ship qualifies for). If the ship's LOA is below every Min LOA, it is left blank (no tug charge). Labels are auto-generated from Min LOA; only Min LOA and Amount are editable.",
     'guide.loaExSummary': 'Example — ship LOA {loa}m (this area)',
     'guide.loaExResult':
       'Result: USD {amount} ({label}). A ship shorter than every Min LOA matches no row, so Tug is blank.',
@@ -312,6 +312,9 @@ const enMessages: Record<string, string> = {
     'epda.secAgencyDesc': 'Tariff agency or lumpsum, discount, and ancillary agency costs.',
     // create epda field labels
     'epda.toShipowner': 'To (shipowner / principal)',
+    'epda.shipownerNationality': 'Shipowner nationality',
+    'epda.shipownerOverseas': 'OVERSEAS SHIPOWNER',
+    'epda.shipownerVietnamese': 'VIETNAMESE SHIPOWNER',
     'epda.mv': 'M/V (vessel name)',
     'epda.eta': 'ETA (estimated arrival)',
     'epda.discharge': 'where to load/discharge cargo',
@@ -337,6 +340,10 @@ const enMessages: Record<string, string> = {
     'epda.oceanFrt': 'Ocean freight (USD/MT)',
     'epda.boatHireQuarantine': 'Boat hire — quarantine (USD)',
     'epda.tallyFee': 'Ship-side tally fee (USD)',
+    'epda.otherExpense': 'Other expense',
+    'epda.otherExpenseNone': 'None',
+    'epda.shorecraneHire': 'Shorecrane-hire',
+    'epda.shorecraneRate': 'Shorecrane-hire rate (USD/mt)',
     'epda.tugAssistance': 'Tug assistance charge (USD)',
     'epda.tugAssistanceHint': 'LOA is above the highest tug band — enter the tug charge manually.',
     'epda.feeMode': 'Fee calculation mode',

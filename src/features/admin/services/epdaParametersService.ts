@@ -7,6 +7,7 @@ import type {
   GrtTier,
   LoaTier,
 } from '@/modules/inquiries/components/common/quoteParameters'
+import { normalizeParameterValues } from '@/modules/inquiries/components/common/quoteParameters'
 
 export type {
   EpdaParameterValues,
@@ -67,7 +68,7 @@ export const epdaParametersService = {
     const res = await apiClient.get(
       API_CONFIG.EPDA_PARAMETERS.EFFECTIVE(area, portId),
     )
-    return unwrapApiResponse<EpdaParameterValues>(res)
+    return normalizeParameterValues(unwrapApiResponse<EpdaParameterValues>(res))
   },
 
   async getArea(area: '1' | '2' | '3'): Promise<EpdaParameterSet | null> {

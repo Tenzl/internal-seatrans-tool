@@ -35,6 +35,7 @@ import {
   getRequiredFieldState,
   type RequiredFieldKey,
 } from '@/features/admin/components/invoice/invoiceValidation'
+import { parseFiniteNumber } from '@/shared/utils/parseNumber'
 import { buildInvoiceQuoteData } from '@/features/admin/components/invoice/buildInvoiceQuoteData'
 import { EpdaFormSection, EpdaFormSkeleton, EpdaSectionRail, EPDA_SECTIONS, EPDA_CUSTOMER_SECTION, type EpdaSectionId } from '@/features/admin/components/invoice/EpdaFormLayout'
 import {
@@ -83,6 +84,9 @@ import {
   AREA_OPTIONS,
   getAreaLabel,
   SHIP_TYPE_OPTIONS,
+  SHIPOWNER_NATIONALITY_OPTIONS,
+  DEFAULT_SHIPOWNER_NATIONALITY,
+  OTHER_EXPENSE_OPTIONS,
   FRT_TAX_TYPE_OPTIONS,
   AGENCY_FEE_MODE_OPTIONS,
   QUARANTINE_CARGO_OPTIONS,
@@ -105,6 +109,8 @@ type AreaOption = (typeof AREA_OPTIONS)[number]['value']
 const PURPOSE_OPTIONS = PURPOSE_OF_CALLING_OPTIONS
 type PurposeOption = (typeof PURPOSE_OPTIONS)[number]['value']
 type ShipTypeOption = (typeof SHIP_TYPE_OPTIONS)[number]['value']
+type ShipownerNationalityOption = (typeof SHIPOWNER_NATIONALITY_OPTIONS)[number]['value']
+type OtherExpenseOption = (typeof OTHER_EXPENSE_OPTIONS)[number]['value']
 type FrtTaxTypeOption = (typeof FRT_TAX_TYPE_OPTIONS)[number]['value']
 type QuarantineCargoOption = (typeof QUARANTINE_CARGO_OPTIONS)[number]['value']
 
@@ -115,10 +121,7 @@ const isTallyFeeEligibleCargo = (value: string) => {
   return code === 'IN_BAG_PACK' || code === 'IN_EQUIPMENT'
 }
 
-const parseNumeric = (value: string) => {
-  const num = Number(value)
-  return Number.isFinite(num) ? num : null
-}
+const parseNumeric = parseFiniteNumber
 
 const normalizePurpose = (value: string) => value.trim().toUpperCase().replace(/[\s-]+/g, '_')
 
@@ -222,6 +225,8 @@ export function CreateInvoiceTab({
   const [fieldChangeHistoryKey, setFieldChangeHistoryKey] = useState(0)
   const [pendingInquiryCargo, setPendingInquiryCargo] = useState<InquiryCargoFields | null>(null)
   const [toShipowner, setToShipowner] = useState('')
+  const [shipownerNationality, setShipownerNationality] =
+    useState<ShipownerNationalityOption>(DEFAULT_SHIPOWNER_NATIONALITY)
   const [mv, setMv] = useState('')
   const [dwt, setDwt] = useState('')
   const [grt, setGrt] = useState('')
@@ -253,6 +258,8 @@ export function CreateInvoiceTab({
   const [boatHireQuarantineAmount, setBoatHireQuarantineAmount] = useState('')
   const [tallyFeeAmount, setTallyFeeAmount] = useState('')
   const [tugAssistanceAmount, setTugAssistanceAmount] = useState('')
+  const [otherExpenseType, setOtherExpenseType] = useState<OtherExpenseOption | ''>('')
+  const [shorecraneHireUsdPerMt, setShorecraneHireUsdPerMt] = useState('')
   const [transportLs, setTransportLs] = useState('')
   const [quarantineCargoMode, setQuarantineCargoMode] = useState<QuarantineCargoOption>('ONE_LEG')
   const [agencyFeeMode, setAgencyFeeMode] = useState<AgencyFeeModeOption>('TARRIF_AGENCY')
@@ -303,13 +310,18 @@ export function CreateInvoiceTab({
     return !cargoTypeCatalog.some((item) => legacyCargoTypeToCode(item.cargoType) === cargoType)
   }, [cargoType, cargoTypeCatalog, isLoadingCargoCatalog])
 
+  const tugTiers = effectiveParams.tugTiers ?? []
+
   // Above the highest tug band's Min LOA, the tug charge is negotiable → entered manually.
   const isLoaOverTugMax = useMemo(() => {
     const loaNum = parseNumeric(loa)
-    const tiers = effectiveParams.tugTiers ?? []
-    if (loaNum === null || !tiers.length) return false
-    return loaNum >= Math.max(...tiers.map((tier) => tier.minLoa))
-  }, [loa, effectiveParams])
+    const activeMinLoas = tugTiers
+      .filter((tier) => (parseFiniteNumber(tier.amount) ?? 0) > 0)
+      .map((tier) => parseFiniteNumber(tier.minLoa))
+      .filter((n): n is number => n !== null)
+    if (loaNum === null || !activeMinLoas.length) return false
+    return loaNum >= Math.max(...activeMinLoas)
+  }, [loa, tugTiers])
 
   const requiredFields = useMemo(
     () =>
@@ -643,6 +655,7 @@ export function CreateInvoiceTab({
     quoteForm,
     formCreatedDate,
     toShipowner,
+    shipownerNationality,
     mv,
     dwt,
     grt,
@@ -674,6 +687,8 @@ export function CreateInvoiceTab({
     tallyFeeAmount,
     isLoaOverTugMax,
     tugAssistanceAmount,
+    otherExpenseType,
+    shorecraneHireUsdPerMt,
     berthHours,
     buoyDueHours: isHcmWorksheet(quoteForm) && dischargeLoadingLocation === 'Anchorage' ? berthHours : '',
     anchorageHours,
@@ -684,9 +699,8 @@ export function CreateInvoiceTab({
 
   const buildQuoteParams = () => buildInvoiceQuoteData(buildQuoteParamsInput())
 
-  // "00 Order creator" section: show whenever we have a saved inquiry to describe,
-  // for BOTH internal and external — it surfaces who created the order.
-  const showCreatorSection = Boolean(viewInquiryMeta && linkedInquiryId)
+  // Order creator panel is intentionally hidden on create/edit EPDA.
+  const showCreatorSection = false
   const showSaveDraftButton = !readOnly
 
   // Ordered section ids (matches the rail), used by the mobile Next / Done button.
@@ -750,6 +764,10 @@ export function CreateInvoiceTab({
         applyAdminInquiryToForm(inquiry, {
           setFormCreatedDate,
           setToShipowner,
+          setShipownerNationality: (v) =>
+            setShipownerNationality(
+              (v === 'VIETNAMESE' ? 'VIETNAMESE' : 'OVERSEAS') as ShipownerNationalityOption,
+            ),
           setMv,
           setDwt,
           setGrt,
@@ -776,6 +794,9 @@ export function CreateInvoiceTab({
           setBoatHireQuarantineAmount,
           setTallyFeeAmount,
           setTugAssistanceAmount,
+          setOtherExpenseType: (v) =>
+            setOtherExpenseType(v === 'SHORECRANE_HIRE' ? 'SHORECRANE_HIRE' : ''),
+          setShorecraneHireUsdPerMt,
           setTransportLs,
         })
         if (inquiry.userId) {
@@ -970,6 +991,7 @@ export function CreateInvoiceTab({
     setPendingInquiryCargo(null)
     setFormCreatedDate(new Date().toISOString().split('T')[0])
     setToShipowner('')
+    setShipownerNationality(DEFAULT_SHIPOWNER_NATIONALITY)
     setMv('')
     setDwt('')
     setGrt('')
@@ -994,6 +1016,8 @@ export function CreateInvoiceTab({
     setBoatHireQuarantineAmount('')
     setTallyFeeAmount('')
     setTugAssistanceAmount('')
+    setOtherExpenseType('')
+    setShorecraneHireUsdPerMt('')
     setTransportLs('')
     setQuarantineCargoMode('ONE_LEG')
     setAgencyFeeMode('TARRIF_AGENCY')
@@ -1033,6 +1057,7 @@ export function CreateInvoiceTab({
 
   const formValues = {
     toShipowner,
+    shipownerNationality,
     eta,
     mv,
     dischargeLoadingLocation,
@@ -1054,6 +1079,8 @@ export function CreateInvoiceTab({
     frtTaxType,
     tallyFeeAmount,
     tugAssistanceAmount,
+    otherExpenseType,
+    shorecraneHireUsdPerMt,
     oceanFrtRateUsdPerMt,
     transportLs,
     boatHireAmount,
@@ -1065,6 +1092,7 @@ export function CreateInvoiceTab({
 
   const formHandlers = {
     setToShipowner,
+    setShipownerNationality,
     setEta,
     setMv,
     setDischargeLoadingLocation,
@@ -1092,6 +1120,8 @@ export function CreateInvoiceTab({
     setFrtTaxType: (value: FrtTaxTypeOption) => setFrtTaxType(value),
     setTallyFeeAmount,
     setTugAssistanceAmount,
+    setOtherExpenseType,
+    setShorecraneHireUsdPerMt,
     setOceanFrtRateUsdPerMt,
     setTransportLs,
     setBoatHireAmount,

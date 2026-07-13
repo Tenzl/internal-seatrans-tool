@@ -1,12 +1,20 @@
 import React from 'react'
 import { formatCargoNameWithType, normalizeInvoiceNumericFields } from '@/shared/utils/invoiceFormatters'
 import { legacyCargoTypeToCode } from '@/modules/gallery/shippingAgencyCargoCatalog'
+import { parseFiniteNumber } from '@/shared/utils/parseNumber'
 import {
   defaultParameterValues,
+  normalizeParameterValues,
   resolveGrtTier,
   resolveLoaTier,
   type EpdaParameterValues,
 } from './quoteParameters'
+import {
+  applyShipownerVat,
+  formatFeeWithShipownerVat,
+  joinFeeRemarks,
+  shipownerVatRemark,
+} from './shipownerVat'
 
 export type QuoteRow = {
   item?: string
@@ -19,6 +27,7 @@ export type QuoteRow = {
 
 export type QuoteData = {
   to_shipowner?: string
+  shipowner_nationality?: string
   date?: string
   ref?: string
   mv?: string
@@ -59,6 +68,8 @@ export type QuoteData = {
   tally_fee?: string | number
   /** Manual tug-assistance amount — used when LOA is above the highest tug band. */
   tug_assistance?: string | number
+  /** Shorecrane-hire rate USD/mt — amount = rate × cargo qty (AA bottom). */
+  shorecrane_hire_usd_per_mt?: string | number
   pilotage_miles?: string | number
   pilotage_third_miles?: string | number
   /** Resolved EPDA parameter set for the selected area/port. Falls back to QN defaults. */
@@ -77,16 +88,7 @@ const escapeHtml = (value: unknown) => {
     .replace(/'/g, '&#39;')
 }
 
-const toNumber = (value: unknown) => {
-  if (typeof value === 'number' && Number.isFinite(value)) return value
-  if (typeof value === 'string') {
-    const cleaned = value.replace(/,/g, '')
-    const parsed = Number(cleaned)
-    return Number.isFinite(parsed) ? parsed : null
-  }
-  const parsed = Number(value)
-  return Number.isFinite(parsed) ? parsed : null
-}
+const toNumber = parseFiniteNumber
 
 const formatAmount = (value: unknown) => {
   const num = toNumber(value)
@@ -199,6 +201,7 @@ const buildAARows = (
     frtTaxType?: string
     purposeOfCalling?: string
     shipType?: string
+    shipownerNationality?: string
     transportQuarantine?: string | number
     tallyFee?: string | number
     tugAssistanceOverride?: string | number
@@ -211,11 +214,17 @@ const buildAARows = (
     oceanFrtRateUsdPerMt?: string | number
     garbageUsdRate?: string | number
     garbageCbmAmount?: string | number
+    shorecraneHireUsdPerMt?: string | number
     params?: EpdaParameterValues
   },
 ): { html: string; total?: string } => {
   const customRows = normalizeCustomRows(rows)
   const P = options?.params ?? defaultParameterValues('QN')
+  const nationality = options?.shipownerNationality
+  const vatRemark = shipownerVatRemark(nationality)
+  const withVatAmount = (value: number | null, formula: string) =>
+    formatFeeWithShipownerVat(value, formula, nationality, formatAmount)
+  const withVatNumber = (value: number) => applyShipownerVat(value, nationality)
 
   const renderRow = (row: QuoteRow, index: number) => {
     if (row.mergeItemDetails) {
@@ -275,7 +284,7 @@ const buildAARows = (
       grtNumeric === null
         ? null
         : Math.max(P.coeff.pilotageSingleRate * grtNumeric * 2 * pilotageMultiplier * shipRateFactor, pilotageMinAmount)
-    const pilotage = pilotageValue === null ? `${P.coeff.pilotageSingleRate}*${grtDisplay}*2` : formatAmount(pilotageValue)
+    const pilotage = withVatAmount(pilotageValue, `${P.coeff.pilotageSingleRate}*${grtDisplay}*2`)
     const pilotageMilesText = pilotageMultiplier >= 2 ? `${pilotageMultiplier} miles` : ''
 
     const loaNumeric = toNumber(options?.loa)
@@ -284,18 +293,21 @@ const buildAARows = (
     const tugOverride = toNumber(options?.tugAssistanceOverride)
     const tugAssistance =
       tugOverride !== null
-        ? formatAmount(tugOverride)
+        ? formatAmount(withVatNumber(tugOverride))
         : tugRate === undefined
           ? ''
-          : formatAmount(tugRate.amount * 2)
+          : formatAmount(withVatNumber(tugRate.amount * 2))
 
     const moorUnmoorRate = resolveGrtTier(grtNumeric, P.moorUnmoorBerthTiers)
-    const moorUnmoor = moorUnmoorRate === undefined ? '' : formatAmount(moorUnmoorRate.amount)
+    const moorUnmoor =
+      moorUnmoorRate === undefined ? '' : formatAmount(withVatNumber(moorUnmoorRate.amount))
 
     const berthDueValue =
       grtNumeric === null ? null : P.coeff.berthDuePerGrtHour * berthHoursValue * grtNumeric * shipRateFactor
-    const berthDue =
-      berthDueValue === null ? `${P.coeff.berthDuePerGrtHour}*${grtDisplay}*${berthHoursValue}` : formatAmount(berthDueValue)
+    const berthDue = withVatAmount(
+      berthDueValue,
+      `${P.coeff.berthDuePerGrtHour}*${grtDisplay}*${berthHoursValue}`,
+    )
 
     const anchorageFeesValue =
       grtNumeric === null ? null : P.coeff.anchoragePerGrtHour * anchorageHoursValue * grtNumeric * shipRateFactor
@@ -375,16 +387,16 @@ const buildAARows = (
         item: 'Pilotage',
         details: `USD${P.coeff.pilotageSingleRate} / GRT x 2 (in & out)`,
         add: pilotageMilesText,
-        remark: tankerRemark,
+        remark: joinFeeRemarks(tankerRemark, vatRemark),
         amount: pilotage,
       },
-      { item: 'Tug assistance charge', details: '(in & out)', amount: tugAssistance },
-      { item: 'Moor / Unmooring', details: '', amount: moorUnmoor },
+      { item: 'Tug assistance charge', details: '(in & out)', remark: vatRemark, amount: tugAssistance },
+      { item: 'Moor / Unmooring', details: '', remark: vatRemark, amount: moorUnmoor },
       {
         item: 'Berth due',
         details: 'USD 0.0031 / GRT / hour x',
         add: berthHoursText,
-        remark: tankerRemark || berthRemark,
+        remark: joinFeeRemarks(tankerRemark || berthRemark, vatRemark),
         amount: berthDue,
       },
       {
@@ -423,13 +435,41 @@ const buildAARows = (
       })
     }
 
-    defaultRows.push({ item: 'Clearance fees', details: '(In/Outward clearance)', amount: clearanceFees })
+    defaultRows.push({
+      item: 'Clearance fees',
+      details: '(In/Outward clearance)',
+      amount: clearanceFees,
+    })
     defaultRows.push({
       item: 'Garbage removal fee',
       details: `USD${garbageUsdRate}/cbm/2 days/time`,
       add: garbageCbmAddText,
       amount: garbageRemoval,
     })
+
+    const shorecraneRateNumeric = toNumber(options?.shorecraneHireUsdPerMt)
+    const shorecraneQty =
+      cargoQtyNumeric !== null && cargoQtyNumeric > 0 ? cargoQtyNumeric : null
+    if (
+      shorecraneRateNumeric !== null &&
+      shorecraneRateNumeric > 0 &&
+      shorecraneQty !== null
+    ) {
+      const shorecraneRateText = shorecraneRateNumeric.toLocaleString('en-US', {
+        minimumFractionDigits: 0,
+        maximumFractionDigits: 4,
+      })
+      const shorecraneQtyText = shorecraneQty.toLocaleString('en-US', {
+        minimumFractionDigits: 0,
+        maximumFractionDigits: 2,
+      })
+      defaultRows.push({
+        item: 'Shorecrane-hire',
+        details: `USD ${shorecraneRateText}/mt x ${shorecraneQtyText}mts`,
+        remark: vatRemark,
+        amount: formatAmount(withVatNumber(shorecraneRateNumeric * shorecraneQty)),
+      })
+    }
 
     const visibleRows = defaultRows.filter(shouldIncludeFeeRow)
 
@@ -632,8 +672,10 @@ const buildBBRows = (
 }
 
 export const renderQuoteHtml = (template: string, data: QuoteData) => {
+  // Format display strings only — keep raw `loa` / `params` for numeric calc so
+  // decimals (e.g. 99.93) and tariff amounts are not corrupted by locale formatting.
   const normalizedData = normalizeInvoiceNumericFields(data)
-  const params = data.params ?? defaultParameterValues('QN')
+  const params = normalizeParameterValues(data.params ?? defaultParameterValues('QN'))
 
   const aa = buildAARows(normalizedData.AA_ROWS || [], normalizedData.grt, {
     berthHours: normalizedData.berth_hours,
@@ -641,11 +683,12 @@ export const renderQuoteHtml = (template: string, data: QuoteData) => {
     frtTaxType: normalizedData.loading_term,
     purposeOfCalling: normalizedData.purpose_of_calling,
     shipType: normalizedData.ship_type,
+    shipownerNationality: normalizedData.shipowner_nationality,
     transportQuarantine: normalizedData.transport_quarantine,
     tallyFee: normalizedData.tally_fee,
     tugAssistanceOverride: normalizedData.tug_assistance,
     cargoType: normalizedData.cargo_type,
-    loa: normalizedData.loa,
+    loa: data.loa,
     pilotageMiles: normalizedData.pilotage_miles ?? normalizedData.pilotage_third_miles,
     mooringLocation: (normalizedData.at_anchorage || '').trim() ? 'anchorage' : 'berth',
     cargoQtyMt: normalizedData.cargo_qty_mt,
@@ -653,6 +696,7 @@ export const renderQuoteHtml = (template: string, data: QuoteData) => {
     oceanFrtRateUsdPerMt: normalizedData.ocean_frt_rate_usd_per_mt,
     garbageUsdRate: normalizedData.garbage_usd_rate,
     garbageCbmAmount: normalizedData.garbage_cbm_amount,
+    shorecraneHireUsdPerMt: normalizedData.shorecrane_hire_usd_per_mt,
     params,
   })
 
