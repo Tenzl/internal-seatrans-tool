@@ -113,8 +113,13 @@ const LEAD_PARAMETER_SECTION_ORDER = [
 ] as const
 
 /** Hidden in General port charges; configured per-port in Port overrides instead. */
-const AREA_SET_HIDDEN_SECTION_IDS: readonly string[] = ['pilotage', 'tug', 'moor']
-const PORT_OVERRIDE_VISIBLE_SECTION_IDS: readonly string[] = ['pilotage', 'tug', 'moor']
+const AREA_SET_HIDDEN_SECTION_IDS: readonly string[] = ['pilotage', 'tug', 'moor', 'garbage']
+const PORT_OVERRIDE_VISIBLE_SECTION_IDS: readonly string[] = [
+  'pilotage',
+  'tug',
+  'moor',
+  'garbage',
+]
 
 function sectionFilterKey(ids?: readonly string[]): string {
   return ids?.join('\0') ?? ''
@@ -256,7 +261,15 @@ function getCurrentOverrideSectionLabels(
 ): string[] {
   if (!values) return []
   const labels: string[] = []
-  if (values.coeff && Object.keys(values.coeff).length > 0) labels.push(t('sec.pilotage.title'))
+  const coeffKeys = values.coeff ? Object.keys(values.coeff) : []
+  const pilotageCoeffKeys = coeffKeys.filter((k) => k.startsWith('pilotage'))
+  if (pilotageCoeffKeys.length > 0) labels.push(t('sec.pilotage.title'))
+  if (
+    (values.garbage && Object.keys(values.garbage).length > 0) ||
+    coeffKeys.includes('clearanceFee')
+  ) {
+    labels.push(t('sec.garbage.title'))
+  }
   if (
     (values.moorUnmoorBerthTiers && values.moorUnmoorBerthTiers.length > 0) ||
     (values.moorUnmoorBuoyTiers && values.moorUnmoorBuoyTiers.length > 0)
@@ -654,9 +667,8 @@ function ScanRow({
 }
 
 /**
- * Live garbage calculator. Garbage = rate/cbm × ⌈days / 2⌉ × cbm (a block per 2 days).
- * Staff enter the days; cbm comes from the volume parameter above. HCM has berth + buoy,
- * QN berth only. Inputs on top, detail below.
+ * Live garbage calculator. Garbage = rate × ⌈days / 2⌉ (a block per 2 days).
+ * Staff enter the days. HCM has berth + buoy, QN berth only.
  */
 function GarbageCalculator({
   variant,
@@ -670,13 +682,12 @@ function GarbageCalculator({
   const { t } = useI18n()
   const [berthDaysText, setBerthDaysText] = useState('')
   const [buoyDaysText, setBuoyDaysText] = useState('')
-  const cbm = garbage.cbmAmount || 0
   const berthDays = parseFiniteNumber(berthDaysText) ?? 0
   const buoyDays = parseFiniteNumber(buoyDaysText) ?? 0
   const berthBlocks = Math.ceil(berthDays / 2)
   const buoyBlocks = Math.ceil(buoyDays / 2)
-  const berth = garbage.atBerthUsd * berthBlocks * cbm
-  const buoy = garbage.atBuoyUsd * buoyBlocks * cbm
+  const berth = garbage.atBerthUsd * berthBlocks
+  const buoy = garbage.atBuoyUsd * buoyBlocks
   const total = berth + (isHcmWorksheet(variant) ? buoy : 0) + clearanceFee
 
   const inputField = (label: string, value: string, onChange: (v: string) => void) => (
@@ -708,12 +719,12 @@ function GarbageCalculator({
         <p className='text-sm font-medium uppercase tracking-wide text-muted-foreground'>{t('tonnageCalc.detail')}</p>
         <div className='space-y-1'>
           <ScanRow
-            label={boldNumbers(t('garbageEx.berth', { days: fmtNum(berthDays), blocks: berthBlocks, rate: fmtNum(garbage.atBerthUsd), cbm: fmtNum(cbm) }))}
+            label={boldNumbers(t('garbageEx.berth', { days: fmtNum(berthDays), blocks: berthBlocks, rate: fmtNum(garbage.atBerthUsd) }))}
             test={boldNumbers(`= USD ${fmtNum(berth)}`)}
           />
           {isHcmWorksheet(variant) && (
             <ScanRow
-              label={boldNumbers(t('garbageEx.buoy', { days: fmtNum(buoyDays), blocks: buoyBlocks, rate: fmtNum(garbage.atBuoyUsd), cbm: fmtNum(cbm) }))}
+              label={boldNumbers(t('garbageEx.buoy', { days: fmtNum(buoyDays), blocks: buoyBlocks, rate: fmtNum(garbage.atBuoyUsd) }))}
               test={boldNumbers(`= USD ${fmtNum(buoy)}`)}
             />
           )}
@@ -1266,7 +1277,6 @@ function ValuesEditor({
             {isHcmWorksheet(variant) && (
               <NumberField label={t('f.garbageBuoy')} value={values.garbage.atBuoyUsd} onChange={(n) => setGarbage('atBuoyUsd', n)} />
             )}
-            <NumberField label={t('f.garbageCbm')} value={values.garbage.cbmAmount} onChange={(n) => setGarbage('cbmAmount', n)} />
             <NumberField label={t('f.clearance')} value={values.coeff.clearanceFee} onChange={(n) => setCoeff('clearanceFee', n)} />
           </div>
           <GarbageCalculator variant={variant} garbage={values.garbage} clearanceFee={values.coeff.clearanceFee} />
@@ -1620,7 +1630,6 @@ function ParamHistoryButton({ area }: { area: AreaOption }) {
       'hours.qnPilotageMiles': t('f.pilotageMiles'),
       'garbage.atBerthUsd': t('f.garbageBerth'),
       'garbage.atBuoyUsd': t('f.garbageBuoy'),
-      'garbage.cbmAmount': t('f.garbageCbm'),
       'quarantine.shipUnitLowGrt': t('q.shipSmall'),
       'quarantine.shipUnitHighGrt': t('q.shipLarge'),
       'quarantine.shipThresholdGrt': t('q.threshold'),

@@ -1,6 +1,5 @@
 import { buildInvoiceQuoteData } from '@/features/admin/components/invoice/buildInvoiceQuoteData'
 import {
-  DEFAULT_GARBAGE_CBM_AMOUNT,
   getDefaultGarbageUsdRate,
 } from '@/features/admin/components/invoice/garbageFeeDefaults'
 import {
@@ -97,7 +96,6 @@ export function buildEpdaLockSnapshotFromAdminInquiry(
     shouldIncludeOceanFrtRate: isExportFreightRateDeclaration(frtTaxType),
     oceanFrtRateUsdPerMt: toStr(inquiry.oceanFrtRateUsdPerMt),
     garbageUsdRate: toStr(inquiry.garbageUsdRate, String(getDefaultGarbageUsdRate(quoteForm))),
-    garbageCbmAmount: toStr(inquiry.garbageCbmAmount, DEFAULT_GARBAGE_CBM_AMOUNT),
     purposeOfCalling: toStr(inquiry.purposeOfCalling),
     dischargeLoadingLocation,
     transportLs: toStr(inquiry.transportLs),

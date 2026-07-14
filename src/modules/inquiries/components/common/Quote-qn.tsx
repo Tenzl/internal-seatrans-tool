@@ -18,7 +18,6 @@ import {
   applyQuoteReplacements,
   escapeHtml,
   formatAmount,
-  formatCbm,
   formatLoaDisplay,
   getShipQuarantineTrips,
   isExportPlsAdviseMode,
@@ -60,7 +59,6 @@ const buildAARows = (
     quarantineCargoTrips?: string | number
     oceanFrtRateUsdPerMt?: string | number
     garbageUsdRate?: string | number
-    garbageCbmAmount?: string | number
     shorecraneHireUsdPerMt?: string | number
     params?: EpdaParameterValues
   },
@@ -221,10 +219,7 @@ const buildAARows = (
     const garbageUsdNumeric = toNumber(options?.garbageUsdRate)
     const garbageUsdRate =
       garbageUsdNumeric !== null && garbageUsdNumeric > 0 ? garbageUsdNumeric : P.garbage.atBerthUsd
-    const garbageCbmNumeric = toNumber(options?.garbageCbmAmount)
-    const garbageCbmAmount = garbageCbmNumeric !== null && garbageCbmNumeric > 0 ? garbageCbmNumeric : 1
-    const garbageRemovalValue = Math.ceil(berthDaysNumeric / 2) * garbageUsdRate * garbageCbmAmount
-    const garbageCbmAddText = garbageCbmAmount > 1 ? `${formatCbm(garbageCbmAmount)} cbm` : ''
+    const garbageRemovalValue = Math.ceil(berthDaysNumeric / 2) * garbageUsdRate
     const garbageRemoval = formatAmount(garbageRemovalValue)
     
     const defaultRows: QuoteRow[] = [
@@ -289,8 +284,7 @@ const buildAARows = (
     })
     defaultRows.push({
       item: 'Garbage removal fee',
-      details: `USD${garbageUsdRate}/cbm/2 days/time`,
-      add: garbageCbmAddText,
+      details: `USD${garbageUsdRate}/2 days/time`,
       amount: garbageRemoval,
     })
 
@@ -540,7 +534,6 @@ export const renderQuoteHtml = (template: string, data: QuoteData) => {
     quarantineCargoTrips: normalizedData.quarantine_cargo_trips,
     oceanFrtRateUsdPerMt: normalizedData.ocean_frt_rate_usd_per_mt,
     garbageUsdRate: normalizedData.garbage_usd_rate,
-    garbageCbmAmount: normalizedData.garbage_cbm_amount,
     shorecraneHireUsdPerMt: normalizedData.shorecrane_hire_usd_per_mt,
     params,
   })

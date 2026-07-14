@@ -1,7 +1,6 @@
 import type { QuoteData } from '@/modules/inquiries/components/common/quoteCommon'
 import type { EpdaParameterValues } from '@/modules/inquiries/components/common/quoteParameters'
 import {
-  DEFAULT_GARBAGE_CBM_AMOUNT,
   resolveGarbageUsdRate,
 } from '@/features/admin/components/invoice/garbageFeeDefaults'
 import type { CargoTypeCatalogItem, Commodity } from '@/modules/gallery/services/commodityService'
@@ -37,7 +36,6 @@ export interface BuildInvoiceQuoteDataParams {
   shouldIncludeOceanFrtRate: boolean
   oceanFrtRateUsdPerMt: string
   garbageUsdRate: string
-  garbageCbmAmount: string
   purposeOfCalling: string
   dischargeLoadingLocation: string
   transportLs: string
@@ -100,8 +98,6 @@ export function buildInvoiceQuoteData(params: BuildInvoiceQuoteDataParams): Invo
         ? parseFiniteNumberOrUndefined(params.oceanFrtRateUsdPerMt)
         : undefined,
     garbage_usd_rate: resolveGarbageUsdRate(params.quoteForm, params.garbageUsdRate),
-    garbage_cbm_amount:
-      parseFiniteNumberOrUndefined(params.garbageCbmAmount) ?? Number(DEFAULT_GARBAGE_CBM_AMOUNT),
     purpose_of_calling: params.purposeOfCalling,
     at_berth: params.dischargeLoadingLocation === 'Berth' ? 'X' : undefined,
     at_anchorage: params.dischargeLoadingLocation === 'Anchorage' ? 'X' : undefined,

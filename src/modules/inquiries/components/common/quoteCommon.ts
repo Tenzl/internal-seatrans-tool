@@ -31,7 +31,6 @@ export interface QuoteData {
   loading_term?: string
   ocean_frt_rate_usd_per_mt?: string | number
   garbage_usd_rate?: string | number
-  garbage_cbm_amount?: string | number
   at_anchorage?: string
   at_berth?: string
   total_a?: string

@@ -18,7 +18,6 @@ import {
   type EpdaParameterValues,
 } from '@/modules/inquiries/components/common/quoteParameters'
 import {
-  DEFAULT_GARBAGE_CBM_AMOUNT,
   DEFAULT_GARBAGE_USD_HCM,
   DEFAULT_GARBAGE_USD_QN,
 } from './garbageFeeDefaults'
@@ -111,7 +110,6 @@ export function getAgencyFeeByGrt(
 }
 
 export {
-  DEFAULT_GARBAGE_CBM_AMOUNT,
   DEFAULT_GARBAGE_USD_HCM,
   DEFAULT_GARBAGE_USD_QN,
 }

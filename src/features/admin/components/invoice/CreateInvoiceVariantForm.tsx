@@ -22,7 +22,6 @@ import {
   mergeEpdaFieldClasses,
   type EpdaCustomerTrackedField,
 } from './epda/epdaCustomerFieldTracking'
-import { DEFAULT_GARBAGE_CBM_AMOUNT } from './garbageFeeDefaults'
 import {
   getAgencyFeeByGrt,
   SHIPOWNER_NATIONALITY_OPTIONS,
@@ -87,7 +86,6 @@ export interface InvoiceVariantFormProps {
     qnPilotageMiles: string
     pilotageThirdMiles: string
     garbageUsdRate: string
-    garbageCbmAmount: string
     purposeOfCalling: PurposeOption | ''
     quarantineCargoMode: QuarantineCargoOption
     frtTaxType: FrtTaxTypeOption | ''
@@ -122,7 +120,6 @@ export interface InvoiceVariantFormProps {
     setQnPilotageMiles: (value: string) => void
     setPilotageThirdMiles: (value: string) => void
     setGarbageUsdRate: (value: string) => void
-    setGarbageCbmAmount: (value: string) => void
     setPurposeOfCalling: (value: PurposeOption) => void
     setQuarantineCargoMode: (value: QuarantineCargoOption) => void
     setFrtTaxType: (value: FrtTaxTypeOption) => void
@@ -612,18 +609,6 @@ export function CreateInvoiceVariantForm({
               />
             </div>
           )}
-
-          <div className="grid gap-2">
-            <FieldLabel htmlFor="garbageCbmAmount">{t('epda.garbageCbm')}</FieldLabel>
-            <Input
-              id="garbageCbmAmount"
-              type="number"
-              value={values.garbageCbmAmount || DEFAULT_GARBAGE_CBM_AMOUNT}
-              onChange={(e) => handlers.setGarbageCbmAmount(e.target.value)}
-              min="1"
-              step="any"
-            />
-          </div>
 
           <div className="grid gap-2">
             <FieldLabel

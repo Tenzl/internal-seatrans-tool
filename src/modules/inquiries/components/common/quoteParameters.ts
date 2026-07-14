@@ -54,11 +54,10 @@ export interface EpdaParameterValues {
     qnPilotageMiles: number
   }
   garbage: {
-    /** USD/cbm/2days when vessel is at berth. */
+    /** USD every 2 days when vessel is at berth. */
     atBerthUsd: number
-    /** USD/cbm/2days when vessel is at buoy / anchorage. */
+    /** USD every 2 days when vessel is at buoy / anchorage. */
     atBuoyUsd: number
-    cbmAmount: number
   }
   quarantine: {
     /** Per-trip ship quarantine unit when GRT < threshold. */
@@ -134,7 +133,7 @@ function hcmDefaults(): EpdaParameterValues {
   return {
     // pilotageThirdMiles here = default buoy position (total miles); leg 3 = position − (leg1+leg2).
     hours: { berthHours: 96, anchorageHours: 24, pilotageThirdMiles: 47, qnPilotageMiles: 5 },
-    garbage: { atBerthUsd: 54, atBuoyUsd: 54, cbmAmount: 1 },
+    garbage: { atBerthUsd: 54, atBuoyUsd: 54 },
     quarantine: { shipUnitLowGrt: 95, shipUnitHighGrt: 110, shipThresholdGrt: 10000, cargoPerTrip: 100 },
     coeff: {
       tonnagePerGrt: 0.034,
@@ -193,7 +192,7 @@ function qnDefaults(): EpdaParameterValues {
   const hcm = hcmDefaults()
   return {
     ...hcm,
-    garbage: { atBerthUsd: 17, atBuoyUsd: 17, cbmAmount: 1 },
+    garbage: { atBerthUsd: 17, atBuoyUsd: 17 },
     coeff: {
       ...hcm.coeff,
       navigationPerGrt: 0.058,

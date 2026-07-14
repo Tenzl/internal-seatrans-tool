@@ -77,7 +77,6 @@ import {
   isHcmWorksheet,
 } from '@/features/admin/components/invoice/epda/quoteFormFromArea'
 import {
-  DEFAULT_GARBAGE_CBM_AMOUNT,
   getDefaultGarbageUsdRate,
 } from '@/features/admin/components/invoice/garbageFeeDefaults'
 import { cn } from '@/shared/lib/utils'
@@ -283,7 +282,6 @@ export function CreateInvoiceTab({
   const [frtTaxType, setFrtTaxType] = useState<FrtTaxTypeOption | ''>('')
   const [oceanFrtRateUsdPerMt, setOceanFrtRateUsdPerMt] = useState('')
   const [garbageUsdRate, setGarbageUsdRate] = useState(() => getDefaultGarbageUsdRate('HCM'))
-  const [garbageCbmAmount, setGarbageCbmAmount] = useState(DEFAULT_GARBAGE_CBM_AMOUNT)
   const [purposeOfCalling, setPurposeOfCalling] = useState<PurposeOption | ''>('')
   const [shipType, setShipType] = useState<ShipTypeOption>('BULK_SHIP')
   const [port, setPort] = useState('')
@@ -506,7 +504,6 @@ export function CreateInvoiceTab({
               ? v.garbage.atBuoyUsd
               : v.garbage.atBerthUsd
           setGarbageUsdRate(String(garbageRate))
-          setGarbageCbmAmount(String(v.garbage.cbmAmount))
           setBerthHours(String(v.hours.berthHours))
           setAnchorageHours(String(v.hours.anchorageHours))
           setPilotageThirdMiles(String(v.hours.pilotageThirdMiles))
@@ -634,7 +631,6 @@ export function CreateInvoiceTab({
     shouldIncludeOceanFrtRate: isExportTotalAmountMode(frtTaxType),
     oceanFrtRateUsdPerMt,
     garbageUsdRate: garbageUsdRate || getDefaultGarbageUsdRate(quoteForm),
-    garbageCbmAmount: garbageCbmAmount || DEFAULT_GARBAGE_CBM_AMOUNT,
     purposeOfCalling,
     dischargeLoadingLocation,
     transportLs,
@@ -762,7 +758,6 @@ export function CreateInvoiceTab({
           setShipType: (v) => setShipType(v as ShipTypeOption),
           setOceanFrtRateUsdPerMt,
           setGarbageUsdRate,
-          setGarbageCbmAmount,
           setQuarantineCargoMode: (v) => setQuarantineCargoMode(v as QuarantineCargoOption),
           setAgencyFeeMode: (v) => setAgencyFeeMode(v as AgencyFeeModeOption),
           setAgencyDiscountPercent,
@@ -1024,7 +1019,6 @@ export function CreateInvoiceTab({
     setFrtTaxType('')
     setOceanFrtRateUsdPerMt('')
     setGarbageUsdRate(getDefaultGarbageUsdRate(quoteForm))
-    setGarbageCbmAmount(DEFAULT_GARBAGE_CBM_AMOUNT)
     setPurposeOfCalling('')
     setShipType('BULK_SHIP')
     setPort('')
@@ -1097,7 +1091,6 @@ export function CreateInvoiceTab({
     qnPilotageMiles,
     pilotageThirdMiles,
     garbageUsdRate: garbageUsdRate || getDefaultGarbageUsdRate(quoteForm),
-    garbageCbmAmount: garbageCbmAmount || DEFAULT_GARBAGE_CBM_AMOUNT,
     purposeOfCalling,
     quarantineCargoMode,
     frtTaxType,
@@ -1153,7 +1146,6 @@ export function CreateInvoiceTab({
     setQnPilotageMiles,
     setPilotageThirdMiles,
     setGarbageUsdRate,
-    setGarbageCbmAmount,
     setPurposeOfCalling: (value: PurposeOption) => {
       setPurposeOfCalling(value)
       if (!canEnableFreightTaxByPurpose(value)) {

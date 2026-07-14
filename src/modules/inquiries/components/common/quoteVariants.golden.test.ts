@@ -16,7 +16,7 @@ const fixture: QuoteData = {
   berth_hours: 96, anchorage_hours: 24, pilotage_miles: 5, pilotage_third_miles: 47,
   quarantine_cargo_trips: 2, agency_fee_mode: 'TARRIF_AGENCY',
   agency_discount_percent: 10, transport_ls: 250, boat_hire_entry: 100,
-  garbage_usd_rate: 70, garbage_cbm_amount: 2, at_berth: 'X',
+  garbage_usd_rate: 70, at_berth: 'X',
 }
 
 function signature(html: string) {

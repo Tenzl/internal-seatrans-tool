@@ -19,7 +19,6 @@ import {
   applyQuoteReplacements,
   escapeHtml,
   formatAmount,
-  formatCbm,
   formatLoaDisplay,
   getShipQuarantineTrips,
   isExportPlsAdviseMode,
@@ -64,7 +63,6 @@ const buildAARows = (
     quarantineCargoTrips?: string | number
     oceanFrtRateUsdPerMt?: string | number
     garbageUsdRate?: string | number
-    garbageCbmAmount?: string | number
     shorecraneHireUsdPerMt?: string | number
     params?: EpdaParameterValues
   },
@@ -281,7 +279,7 @@ const buildAARows = (
     const clearanceFeesValue = P.coeff.clearanceFee
     const clearanceFees = formatAmount(clearanceFeesValue)
 
-    // Garbage = rate/cbm × ceil(days / 2) × cbm. Days follow the stay location:
+    // Garbage = rate × ceil(days / 2). Days follow the stay location:
     // at buoy/anchorage use buoy-due hours, otherwise berth-due hours.
     const garbageHoursValue = mooringLocation === 'anchorage' ? buoyDueHoursValue : berthHoursValue
     const garbageDaysNumeric = garbageHoursValue / 24
@@ -290,11 +288,8 @@ const buildAARows = (
       mooringLocation === 'anchorage' ? P.garbage.atBuoyUsd : P.garbage.atBerthUsd
     const garbageUsdRate =
       garbageUsdNumeric !== null && garbageUsdNumeric > 0 ? garbageUsdNumeric : garbageDefaultRate
-    const garbageCbmNumeric = toNumber(options?.garbageCbmAmount)
-    const garbageCbmAmount = garbageCbmNumeric !== null && garbageCbmNumeric > 0 ? garbageCbmNumeric : 1
     const garbageRemovalValueFinal =
-      garbageUsdRate * Math.ceil(garbageDaysNumeric / 2) * garbageCbmAmount
-    const garbageCbmAddText = garbageCbmAmount > 1 ? `${formatCbm(garbageCbmAmount)} cbm` : ''
+      garbageUsdRate * Math.ceil(garbageDaysNumeric / 2)
     const garbageRemoval = formatAmount(garbageRemovalValueFinal)
     
     const defaultRows: QuoteRow[] = []
@@ -424,8 +419,7 @@ const buildAARows = (
     })
     pushNumbered({
       item: 'Garbage removal fee',
-      details: `USD ${garbageUsdRate}/cbm/2 days/time`,
-      add: garbageCbmAddText,
+      details: `USD ${garbageUsdRate}/2 days/time`,
       amount: garbageRemoval,
     })
 
@@ -680,7 +674,6 @@ export const renderQuoteHtml = (template: string, data: QuoteData) => {
     quarantineCargoTrips: normalizedData.quarantine_cargo_trips,
     oceanFrtRateUsdPerMt: normalizedData.ocean_frt_rate_usd_per_mt,
     garbageUsdRate: normalizedData.garbage_usd_rate,
-    garbageCbmAmount: normalizedData.garbage_cbm_amount,
     shorecraneHireUsdPerMt: normalizedData.shorecrane_hire_usd_per_mt,
     params,
   })
