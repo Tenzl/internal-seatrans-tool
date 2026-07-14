@@ -30,6 +30,8 @@ export interface BuildInvoiceQuoteDataParams {
   cargoTypeOptions: CargoTypeCatalogItem[]
   filteredCargoNames: Commodity[]
   shipType: string
+  /** Canonical backend port identity; display text remains in `port`. */
+  portId?: number | null
   port: string
   frtTaxType: string
   shouldIncludeOceanFrtRate: boolean

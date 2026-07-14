@@ -99,11 +99,4 @@ export const inquiryService = {
       throw new Error((err as { message?: string }).message || 'Failed to update hours')
     }
   },
-
-  deleteBatch(ids: number[], asAdmin: boolean) {
-    const endpoint = asAdmin
-      ? API_CONFIG.INQUIRIES.ADMIN_BATCH_DELETE()
-      : API_CONFIG.INQUIRIES.USER_BATCH_DELETE
-    return apiClient.delete(endpoint, { body: JSON.stringify({ ids }) })
-  },
 }

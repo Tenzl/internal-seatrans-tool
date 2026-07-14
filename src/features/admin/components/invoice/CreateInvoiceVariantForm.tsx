@@ -9,7 +9,6 @@ import {
 } from '@/shared/components/ui/select'
 import { DatePicker } from '@/shared/components/ui/date-picker'
 import type { CargoType, CargoTypeCatalogItem, Commodity } from '@/modules/gallery/services/commodityService'
-import { legacyCargoTypeToCode } from '@/modules/gallery/shippingAgencyCargoCatalog'
 import {
   EpdaComputedSummary,
   EpdaFormSection,
@@ -33,6 +32,7 @@ import {
 } from './epdaFormParameters'
 import {
   defaultParameterValues,
+  resolveCargoAgencyRate,
   type EpdaParameterValues,
 } from '@/modules/inquiries/components/common/quoteParameters'
 import { useI18n } from '@/shared/i18n/I18nProvider'
@@ -214,15 +214,8 @@ export function CreateInvoiceVariantForm({
     ? getAgencyFeeByGrt(grtNumeric, resolvedParams.agencyFeeTiers)
     : { amount: 0, label: '0 - 1,000' }
   const cargoQtyForDisplay = Number.isFinite(cargoQtyNumeric) && cargoQtyNumeric > 0 ? cargoQtyNumeric : 0
-  // Agency fee on cargo comes only from the per-cargo-type rates (Parameter screen).
-  // Canonicalize both sides (same logic as the PDF) so the preview can't diverge.
-  const normalizedCargoType = legacyCargoTypeToCode(values.cargoType || '')
-  const onCargoRate =
-    normalizedCargoType === ''
-      ? 0
-      : (resolvedParams.cargoAgencyRates ?? []).find(
-          (r) => legacyCargoTypeToCode(r.code) === normalizedCargoType,
-        )?.rate ?? 0
+  // Use the same configured-rate-or-zero rule as the PDF renderer.
+  const onCargoRate = resolveCargoAgencyRate(values.cargoType, resolvedParams) ?? 0
   const onCargoBaseAmount = onCargoRate * cargoQtyForDisplay
 
   const onGrtLabel = t('sum.onGrt', { label: agencyFeeByGrt.label })

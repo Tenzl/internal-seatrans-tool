@@ -7,10 +7,9 @@ import {
 } from '@/modules/inquiries/components/common/quoteParameters'
 
 /**
- * Resolve the effective EPDA parameter set for a saved inquiry, given its quote
- * variant and port name. The variant maps to candidate areas (QN → 2/MIDDLE,
- * HCM → 3/SOUTHERN then 1/NORTHERN); the port name is matched within those areas
- * to find the owning area + port id, then the backend merges area + group + port.
+ * Resolve the effective EPDA parameter set for a saved inquiry. A canonical
+ * port id is authoritative; name lookup across area keys 1/2/3 exists only for
+ * records that predate numeric port identity.
  *
  * Falls back to the built-in defaults if the port can't be matched or the API is
  * unavailable, so rendering never breaks.
@@ -26,11 +25,13 @@ export async function resolveEffectiveParams(
       : variant === 'HN'
         ? ['1']
         : ['3', '1']
-  try {
-    if (portId != null && Number.isInteger(portId) && portId > 0) {
-      return await epdaParametersService.getEffective(areas[0], portId)
-    }
+  if (portId != null && Number.isInteger(portId) && portId > 0) {
+    // The canonical numeric identity is authoritative. The backend derives its
+    // area, so a legacy worksheet cannot create an area/port mismatch.
+    return epdaParametersService.getEffective(undefined, portId)
+  }
 
+  try {
     const target = (portName ?? '').trim().toLowerCase()
     if (target) {
       for (const area of areas) {

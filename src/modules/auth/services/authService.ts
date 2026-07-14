@@ -254,34 +254,5 @@ export const authService = {
       }
     }
   },
-
-  getGoogleAuthUrl: async (): Promise<{ success: boolean; authUrl?: string; message?: string }> => {
-    try {
-      const response = await apiClient.get(API_CONFIG.AUTH.GOOGLE_OAUTH, { skipAuth: true })
-      const data = await response.json()
-
-      if (!response.ok) {
-        return {
-          success: false,
-          message: data.message || 'Google login is unavailable',
-        }
-      }
-
-      const authUrl = data.data?.authUrl as string | undefined
-      if (!authUrl) {
-        return {
-          success: false,
-          message: 'Google login is not configured',
-        }
-      }
-
-      return { success: true, authUrl }
-    } catch (error) {
-      return {
-        success: false,
-        message: error instanceof Error ? error.message : 'Network error',
-      }
-    }
-  },
 }
  

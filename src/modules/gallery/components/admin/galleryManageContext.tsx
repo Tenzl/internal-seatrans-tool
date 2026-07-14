@@ -16,12 +16,15 @@ import { serviceTypeService, type ServiceType } from '@/modules/service-types/se
 import { commodityService, type Commodity } from '@/modules/gallery/services/commodityService'
 import { cn } from '@/shared/lib/utils'
 import { toast } from '@/shared/utils/toast'
-
-export const GALLERY_AREA_OPTIONS = ['NORTHERN', 'MIDDLE', 'SOUTHERN'] as const
+import {
+  PORT_AREA_OPTIONS,
+  isPortAreaCode,
+  type PortAreaCode,
+} from '@/shared/domain/portArea'
 
 export interface GalleryManageFilterState {
-  filterArea: string
-  setFilterArea: (value: string) => void
+  filterArea: PortAreaCode | ''
+  setFilterArea: (value: PortAreaCode | '') => void
   filterPort: number | null
   setFilterPort: (value: number | null) => void
   filterServiceType: number | null
@@ -49,7 +52,7 @@ export function useGalleryManageFilters(): GalleryManageFilterState {
 
 export function GalleryManageProvider({ children }: { children: ReactNode }) {
   const [serviceTypes, setServiceTypes] = useState<ServiceType[]>([])
-  const [filterArea, setFilterArea] = useState('')
+  const [filterArea, setFilterArea] = useState<PortAreaCode | ''>('')
   const [filterPort, setFilterPort] = useState<number | null>(null)
   const [filterServiceType, setFilterServiceType] = useState<number | null>(null)
   const [filterCommodity, setFilterCommodity] = useState<number | null>(null)
@@ -178,7 +181,7 @@ export function GalleryManageProvider({ children }: { children: ReactNode }) {
     setFilterCommodity(null)
   }, [])
 
-  const handleAreaChange = useCallback((value: string) => {
+  const handleAreaChange = useCallback((value: PortAreaCode | '') => {
     setFilterArea(value)
     setAvailablePorts([])
     setFilterPort(null)
@@ -304,15 +307,18 @@ export function GalleryImageFilters({
           <label className="text-xs font-medium text-muted-foreground">Area</label>
           <select
             value={filterArea}
-            onChange={(e) => setFilterArea(e.target.value)}
+            onChange={(e) => {
+              const value = e.target.value
+              setFilterArea(isPortAreaCode(value) ? value : '')
+            }}
             className={selectClassName}
             title="Area filter"
             aria-label="Area filter"
           >
             <option value="">{mode === 'add' ? 'Select area' : 'All areas'}</option>
-            {GALLERY_AREA_OPTIONS.map((area) => (
-              <option key={area} value={area}>
-                {area}
+            {PORT_AREA_OPTIONS.map((area) => (
+              <option key={area.value} value={area.value}>
+                {area.label}
               </option>
             ))}
           </select>

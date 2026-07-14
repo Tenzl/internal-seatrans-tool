@@ -33,6 +33,10 @@ function signature(html: string) {
 
 describe('EPDA quote variant golden output', () => {
   it.each(['HCM', 'HN', 'QN'] as const)('%s preserves formula totals and row numbering', (variant) => {
-    expect(signature(renderQuoteHtmlForVariant(variant, template, fixture))).toMatchSnapshot()
+    const html = renderQuoteHtmlForVariant(variant, template, fixture)
+
+    expect(html).toContain('On cargo: USD0.00/mt x 15,000mts x 90%(sub-agency)')
+    expect(html).toContain('<td class="bb-amount">0.00</td>')
+    expect(signature(html)).toMatchSnapshot()
   })
 })

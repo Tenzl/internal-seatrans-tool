@@ -6,6 +6,12 @@
  */
 import { PURPOSE_OF_CALLING_OPTIONS } from '@/modules/inquiries/constants/shippingAgencyInquiryOptions'
 import {
+  PORT_AREA_OPTIONS,
+  getPortAreaLabel,
+  getPortAreaShortLabel,
+  type PortAreaCode,
+} from '@/shared/domain/portArea'
+import {
   defaultParameterValues,
   resolveGrtTier,
   type GrtTier,
@@ -21,21 +27,15 @@ export type { EpdaParameterValues, GrtTier }
 export { defaultParameterValues }
 
 /** Port areas. The EPDA template variant follows the area (no manual HCM/QN pick). */
-export const AREA_OPTIONS = [
-  { value: '1', label: 'Ports of the area 1', shortLabel: 'Area 1' },
-  { value: '2', label: 'Ports of the area 2', shortLabel: 'Area 2' },
-  { value: '3', label: 'Ports of the area 3', shortLabel: 'Area 3' },
-] as const
-export type AreaOption = (typeof AREA_OPTIONS)[number]['value']
+export const AREA_OPTIONS = PORT_AREA_OPTIONS
+export type AreaOption = PortAreaCode
 
-export function getAreaShortLabel(value: AreaOption | string): string {
-  const item = AREA_OPTIONS.find((area) => area.value === value)
-  return item?.shortLabel ?? String(value)
+export function getAreaShortLabel(value: AreaOption): string {
+  return getPortAreaShortLabel(value)
 }
 
-export function getAreaLabel(value: AreaOption | string): string {
-  const item = AREA_OPTIONS.find((area) => area.value === value)
-  return item?.label ?? String(value)
+export function getAreaLabel(value: AreaOption): string {
+  return getPortAreaLabel(value)
 }
 
 /** Area → dedicated worksheet variant (see quoteFormFromArea). */

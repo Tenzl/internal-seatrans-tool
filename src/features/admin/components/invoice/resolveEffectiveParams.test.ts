@@ -25,7 +25,18 @@ describe('resolveEffectiveParams', () => {
   it('uses the canonical port override despite an exact-name miss and preserves the HN area', async () => {
     await resolveEffectiveParams('HN', 'legacy name that does not match the catalog', 38)
 
-    expect(getEffective).toHaveBeenCalledWith('1', 38)
+    expect(getEffective).toHaveBeenCalledWith(undefined, 38)
+    expect(getPortsByArea).not.toHaveBeenCalled()
+  })
+
+  it('surfaces a canonical port lookup failure instead of masking it with worksheet defaults', async () => {
+    getEffective.mockRejectedValueOnce(new Error('Port 38 is not assigned to an EPDA area'))
+
+    await expect(resolveEffectiveParams('HCM', 'legacy mismatched name', 38)).rejects.toThrow(
+      'Port 38 is not assigned to an EPDA area',
+    )
+
+    expect(getEffective).toHaveBeenCalledWith(undefined, 38)
     expect(getPortsByArea).not.toHaveBeenCalled()
   })
 

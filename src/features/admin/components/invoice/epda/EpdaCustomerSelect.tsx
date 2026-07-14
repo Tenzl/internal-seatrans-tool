@@ -129,15 +129,15 @@ export function EpdaCustomerSelect({
             aria-expanded={open}
             aria-required={required}
             aria-invalid={error ? true : undefined}
-            aria-describedby={error ? `${id}-error` : `${id}-hint`}
+            aria-describedby={error ? `${id}-error ${id}-hint` : `${id}-hint`}
             disabled={disabled}
             className="h-9 w-full justify-between bg-background font-normal active:scale-[0.99]"
           >
             <span className="truncate text-left">{displayLabel ?? 'Select customer…'}</span>
             {isLoading || isCreating ? (
-              <Loader2 className="ml-2 h-4 w-4 shrink-0 animate-spin opacity-60" />
+              <Loader2 aria-hidden="true" className="ml-2 h-4 w-4 shrink-0 animate-spin opacity-60" />
             ) : (
-              <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+              <ChevronsUpDown aria-hidden="true" className="ml-2 h-4 w-4 shrink-0 opacity-50" />
             )}
           </Button>
         </PopoverTrigger>
@@ -150,10 +150,14 @@ export function EpdaCustomerSelect({
             />
             <CommandList>
               {isLoading ? (
-                <div className="flex items-center gap-2 px-3 py-4 text-sm text-muted-foreground">
-                  <Loader2 className="h-4 w-4 animate-spin" />
+                <p
+                  aria-live="polite"
+                  className="flex items-center gap-2 px-3 py-4 text-sm text-muted-foreground"
+                  role="status"
+                >
+                  <Loader2 aria-hidden="true" className="h-4 w-4 animate-spin" />
                   Loading customers…
-                </div>
+                </p>
               ) : (
                 <>
                   <CommandEmpty>No matching customer.</CommandEmpty>
@@ -179,6 +183,7 @@ export function EpdaCustomerSelect({
                         }}
                       >
                         <Check
+                          aria-hidden="true"
                           className={cn(
                             'mr-2 h-4 w-4 shrink-0',
                             value === opt.id ? 'opacity-100' : 'opacity-0',
@@ -197,7 +202,7 @@ export function EpdaCustomerSelect({
                           disabled={isCreating}
                           onSelect={() => void handleCreate()}
                         >
-                          <UserPlus className="mr-2 h-4 w-4 shrink-0 opacity-70" />
+                          <UserPlus aria-hidden="true" className="mr-2 h-4 w-4 shrink-0 opacity-70" />
                           <span className="truncate">
                             Create customer &ldquo;{trimmedSearch}&rdquo;
                           </span>

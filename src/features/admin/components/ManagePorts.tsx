@@ -61,8 +61,12 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/shared/components/ui/dialog'
-import { AREA_OPTIONS as EPDA_AREA_OPTIONS, getAreaShortLabel } from '@/features/admin/components/invoice/epdaFormParameters'
-const AREA_OPTIONS = EPDA_AREA_OPTIONS
+import {
+  PORT_AREA_OPTIONS,
+  getPortAreaShortLabel,
+  isPortAreaCode,
+} from '@/shared/domain/portArea'
+const AREA_OPTIONS = PORT_AREA_OPTIONS
 const NONE_VALUE = '__NONE__'
 
 const getInitialPortsColumnVisibility = (): VisibilityState => {
@@ -132,7 +136,8 @@ interface PortFormState {
 const buildPortOfCall = (name: string): string => name.trim().toUpperCase()
 const getAreaLabel = (value?: number | string | null): string => {
   if (value === null || value === undefined || value === '' || value === NONE_VALUE) return 'UNKNOWN'
-  return getAreaShortLabel(String(value)) ?? 'UNKNOWN'
+  const area = String(value)
+  return isPortAreaCode(area) ? getPortAreaShortLabel(area) : 'UNKNOWN'
 }
 
 const emptyPortForm: PortFormState = {

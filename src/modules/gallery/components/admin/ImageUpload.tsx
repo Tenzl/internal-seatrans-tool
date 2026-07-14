@@ -12,8 +12,11 @@ import {
 import { galleryService } from '@/modules/gallery/services/galleryService'
 import { toast } from '@/shared/utils/toast'
 import { useGalleryManageFilters } from './galleryManageContext'
-
-const AREA_OPTIONS = ['NORTHERN', 'MIDDLE', 'SOUTHERN'] as const
+import {
+  PORT_AREA_OPTIONS,
+  isPortAreaCode,
+  type PortAreaCode,
+} from '@/shared/domain/portArea'
 
 export interface AddImageTabProps {
   /** When true, omits page-level chrome (used inside GalleryImageHub). */
@@ -236,7 +239,7 @@ function StandaloneAddImageTab({
 }: Pick<AddImageTabProps, 'onUploadSuccess'>) {
   const [serviceTypes, setServiceTypes] = useState<ServiceType[]>([])
   
-  const [selectedArea, setSelectedArea] = useState<string>('')
+  const [selectedArea, setSelectedArea] = useState<PortAreaCode | ''>('')
   const [selectedPort, setSelectedPort] = useState<number | null>(null)
   const [selectedServiceType, setSelectedServiceType] = useState<number | null>(null)
   const [selectedCommodity, setSelectedCommodity] = useState<number | null>(null)
@@ -332,13 +335,14 @@ function StandaloneAddImageTab({
   }, [selectedProvinceId, selectedPort, selectedServiceType, availableCommodities, loadCommodityCount])
 
   const handleAreaChange = (area: string) => {
-    setSelectedArea(area)
+    const canonicalArea = isPortAreaCode(area) ? area : ''
+    setSelectedArea(canonicalArea)
     setAvailablePorts([])
     setSelectedPort(null)
     setSelectedServiceType(null)
     setAvailableCommodities([])
     setSelectedCommodity(null)
-    setLoading(Boolean(area))
+    setLoading(Boolean(canonicalArea))
   }
 
   const handleServiceTypeChange = (serviceTypeId: number | null) => {
@@ -436,8 +440,8 @@ function StandaloneAddImageTab({
                 className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
               >
                 <option value="">-- Select Area --</option>
-                {AREA_OPTIONS.map((area) => (
-                  <option key={area} value={area}>{area}</option>
+                {PORT_AREA_OPTIONS.map((area) => (
+                  <option key={area.value} value={area.value}>{area.label}</option>
                 ))}
               </select>
               {!selectedArea && (

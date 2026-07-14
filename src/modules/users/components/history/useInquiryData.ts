@@ -3,6 +3,7 @@ import { authService } from '@/modules/auth/services/authService'
 import { apiClient } from '@/shared/utils/apiClient'
 import { API_CONFIG } from '@/shared/config/api.config'
 import { isInternalStaff } from '@/shared/utils/auth'
+import { toInquiryServiceSlug } from '@/shared/domain/inquiryService'
 
 interface PageResponse<T> {
   content: T[]
@@ -166,9 +167,13 @@ export function useInquiryData(options: UseInquiryDataOptions = {}) {
 
   const deleteInquiries = useCallback(async (ids: number[], mode: 'soft' | 'hard' = 'soft') => {
     const useAdminApi = shouldUseAdminInquiryApi(isAdmin)
+    const serviceSlug = toInquiryServiceSlug(serviceType)
+    if (!serviceSlug) {
+      throw new Error('A supported service is required to delete inquiries')
+    }
     const endpoint = useAdminApi
-      ? API_CONFIG.INQUIRIES.ADMIN_BATCH_DELETE(mode, serviceType)
-      : API_CONFIG.INQUIRIES.USER_BATCH_DELETE
+      ? API_CONFIG.INQUIRIES.ADMIN_BATCH_DELETE(mode, serviceSlug)
+      : API_CONFIG.INQUIRIES.USER_BATCH_DELETE(serviceSlug)
 
     const response = await apiClient.delete(endpoint, {
       body: JSON.stringify({ ids }),

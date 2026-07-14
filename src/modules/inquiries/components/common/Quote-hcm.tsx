@@ -1,9 +1,9 @@
 import React from 'react'
 import { formatCargoNameWithType, normalizeInvoiceNumericFields } from '@/shared/utils/invoiceFormatters'
-import { legacyCargoTypeToCode } from '@/modules/gallery/shippingAgencyCargoCatalog'
 import {
   defaultParameterValues,
   normalizeParameterValues,
+  resolveCargoAgencyRate,
   resolveGrtTier,
   resolveLoaTier,
   type EpdaParameterValues,
@@ -497,13 +497,7 @@ const buildBBRows = (
     value.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 2 })
 
   const pickCargoFee = (value?: string) => {
-    // Agency fee on cargo comes solely from the per-cargo-type rates configured on
-    // the Parameter screen. Map both the cargo type and the configured rate code to
-    // the 3 canonical codes (IN_BULK / IN_EQUIPMENT / IN_BAG_PACK) so legacy variants
-    // (e.g. "BULK", "EQUIPMENT", "IN BAGS") still match their rate in the PDF.
-    const code = legacyCargoTypeToCode(value)
-    if (!code) return undefined
-    return (P.cargoAgencyRates ?? []).find((r) => legacyCargoTypeToCode(r.code) === code)?.rate
+    return resolveCargoAgencyRate(value, P)
   }
 
   const renderRow = (row: QuoteRow, index: number) => {
@@ -519,8 +513,8 @@ const buildBBRows = (
   }
 
   
-  const cargoRate = pickCargoFee(cargoType || cargoName)
   const cargoQty = toNumber(cargoQtyMt)
+  const cargoRate = pickCargoFee(cargoType || cargoName) ?? (cargoQty !== null ? 0 : undefined)
   const cargoBaseAmount = cargoRate !== undefined && cargoQty !== null ? cargoRate * cargoQty : undefined
   const agencyDiscountNumeric = toNumber(agencyDiscountPercent)
   const normalizedAgencyDiscount =
@@ -613,8 +607,9 @@ const buildBBRows = (
     return { html: autoRows.map(renderRow).join('\n'), total: totalNumeric ? formatAmount(totalNumeric) : undefined }
   }
 
+  const isCargoFeeRow = (row: QuoteRow) => (row.item || '').toLowerCase().includes('agency fee on cargo')
   const adjustedRows = customRows.map((row) => {
-    const isCargoFee = (row.item || '').toLowerCase().includes('agency fee on cargo')
+    const isCargoFee = isCargoFeeRow(row)
     const isGrtFee = (row.item || '').toLowerCase().includes('agency fee on grt')
     const isTransportLs = (row.item || '').toLowerCase().includes('transport')
     const isBoatHire = (row.item || '').toLowerCase().includes('boat-hire for agency service')
@@ -642,7 +637,7 @@ const buildBBRows = (
 
   const finalRows = adjustedRows
     .filter(isMeaningfulQuoteRow)
-    .filter(shouldIncludeFeeRow)
+    .filter((row) => isCargoFeeRow(row) || shouldIncludeFeeRow(row))
     .map((row, index) => ({ ...row, no: index + 1 }))
 
   const totalNumeric = finalRows.reduce((sum, row) => {

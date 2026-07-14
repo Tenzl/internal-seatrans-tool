@@ -6,9 +6,9 @@ import { Main } from '@/components/layout/main'
 import { ProfileDropdown } from '@/components/profile-dropdown'
 import { Search } from '@/components/search'
 import { ThemeSwitch } from '@/components/theme-switch'
-import { CreateEpdaScreen } from '@/features/admin/epda-create/CreateEpdaScreen'
+import { CreateInvoiceTab } from '@/features/admin/components/CreateInvoiceTab'
 
-/** Dedicated EPDA screen — create a new EPDA from scratch (legacy "create" flow). */
+/** Create EPDA — same worksheet layout as Edit EPDA (`CreateInvoiceTab`). */
 export default function Page() {
   return (
     <>
@@ -19,7 +19,7 @@ export default function Page() {
         <ProfileDropdown />
       </Header>
       <Main>
-        <CreateEpdaScreen />
+        <CreateInvoiceTab />
       </Main>
     </>
   )

@@ -30,13 +30,21 @@ describe('epdaParametersService.getEffective', () => {
     )
 
     const controller = new AbortController()
-    const result = await epdaParametersService.getEffective('2', 38, controller.signal)
+    const result = await epdaParametersService.getEffective(undefined, 38, controller.signal)
 
     expect(apiClient.get).toHaveBeenCalledWith(
-      '/admin/epda-parameters/effective?area=2&portId=38',
+      '/admin/epda-parameters/effective?portId=38',
       { signal: controller.signal },
     )
     expect(result.hours.berthHours).toBe(137)
     expect(result.garbage.atBerthUsd).toBe(4321)
+  })
+
+  it('rejects legacy area aliases before making an API request', async () => {
+    await expect(
+      epdaParametersService.getEffective('MIDDLE' as never),
+    ).rejects.toThrow('Invalid EPDA area: MIDDLE')
+
+    expect(apiClient.get).not.toHaveBeenCalled()
   })
 })

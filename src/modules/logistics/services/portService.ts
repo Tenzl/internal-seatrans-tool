@@ -1,8 +1,9 @@
 import { apiClient } from '@/shared/utils/apiClient'
 import { API_CONFIG } from '@/shared/config/api.config'
 import type { ApiResponse, PageResponse } from '@/shared/types/api.types'
+import type { PortAreaCode } from '@/shared/domain/portArea'
 
-export type PortArea = 1 | 2 | 3
+export type PortArea = PortAreaCode
 
 export type PortSearchFieldId =
   | 'area'
@@ -49,7 +50,7 @@ export interface ListPortsParams {
   size?: number
   q?: string
   searchIn?: PortSearchFieldId
-  area?: PortArea | string
+  area?: PortArea
   provinceId?: number
   active?: boolean
 }
@@ -145,7 +146,7 @@ export const portService = {
     return data.data ?? []
   },
 
-  async getPortsByArea(area: PortArea | string, q?: string): Promise<Port[]> {
+  async getPortsByArea(area: PortArea, q?: string): Promise<Port[]> {
     const page = await this.listPortsPaginated({
       area,
       q,

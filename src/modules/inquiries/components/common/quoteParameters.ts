@@ -18,6 +18,7 @@
  */
 
 import { parseFiniteNumber } from '@/shared/utils/parseNumber'
+import { legacyCargoTypeToCode } from '@/modules/gallery/shippingAgencyCargoCatalog'
 
 export type QuoteVariant = 'HCM' | 'QN' | 'HN'
 
@@ -101,7 +102,7 @@ export interface EpdaParameterValues {
   /** HCM "at buoy" table. Empty/unused for QN. */
   moorUnmoorBuoyTiers: GrtTier[]
   tugTiers: LoaTier[]
-  /** Per-cargo-type agency fee on cargo. Empty → fall back to coeff bag/equip/bulk rates. */
+  /** Per-cargo-type agency fee on cargo. Missing/invalid rates resolve to zero. */
   cargoAgencyRates: CargoAgencyRate[]
 }
 
@@ -182,8 +183,8 @@ function hcmDefaults(): EpdaParameterValues {
       { minLoa: 190, amount: 2600, label: '190 - <205m' },
       { minLoa: 205, amount: 2800, label: '≥ 205m' },
     ],
-    // Empty by default → the calc falls back to coeff bag/equip/bulk rates until an
-    // admin adds explicit per-cargo-type rates on the Parameter screen.
+    // Empty by default: the PDF displays a zero on-cargo rate until an admin
+    // configures the cargo type on the Parameter screen.
     cargoAgencyRates: [],
   }
 }
@@ -356,6 +357,25 @@ export function resolveGrtTier(
   }
   const last = tiers[tiers.length - 1]
   return { amount: parseFiniteNumber(last.amount) ?? 0, label: last.label }
+}
+
+/**
+ * Resolve the BB agency fee on cargo in USD/MT.
+ *
+ * Only the per-cargo-type table is authoritative. Missing and invalid rates resolve
+ * to zero so the PDF shows a complete zero-valued row instead of a partial formula.
+ */
+export function resolveCargoAgencyRate(
+  cargoType: string | null | undefined,
+  params: EpdaParameterValues,
+): number | undefined {
+  const code = legacyCargoTypeToCode(cargoType)
+  if (!code) return undefined
+
+  const configuredRate = (params.cargoAgencyRates ?? []).find(
+    (row) => legacyCargoTypeToCode(row.code) === code,
+  )
+  return parseFiniteNumber(configuredRate?.rate) ?? 0
 }
 
 /** Resolve an LOA-banded amount (highest `minLoa <= loa` wins). */

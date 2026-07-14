@@ -35,7 +35,6 @@ export const API_CONFIG = {
     ME: '/auth/me',
     LOGOUT: '/auth/logout',
     SESSION: '/auth/session',
-    GOOGLE_OAUTH: '/auth/oauth2/google',
   },
 
   PROVINCES: {
@@ -145,7 +144,8 @@ export const API_CONFIG = {
       `/admin/inquiries/shipping-agency/${id}/epda/field-changes?page=${page}&size=${size}`,
     ADMIN_SHIPPING_AGENCY_CUSTOMER_FIELD_CHANGES: (id: number) =>
       `/admin/inquiries/shipping-agency/${id}/epda/customer-field-changes`,
-    USER_BATCH_DELETE: '/inquiries/batch',
+    USER_BATCH_DELETE: (serviceSlug: string) =>
+      `/inquiries/batch?${new URLSearchParams({ serviceSlug }).toString()}`,
     ADMIN_BATCH_DELETE: (mode: 'soft' | 'hard' = 'soft', serviceSlug?: string) => {
       const qs = new URLSearchParams({ mode })
       if (serviceSlug?.trim()) qs.set('serviceSlug', serviceSlug.trim())
@@ -185,10 +185,17 @@ export const API_CONFIG = {
 
   EPDA_PARAMETERS: {
     LIST: '/admin/epda-parameters',
-    EFFECTIVE: (area: string, portId?: number) => {
-      const qs = new URLSearchParams({ area: String(area) })
+    EFFECTIVE: (area?: '1' | '2' | '3', portId?: number) => {
+      if (area != null && area !== '1' && area !== '2' && area !== '3') {
+        throw new Error(`Invalid EPDA area: ${String(area)}`)
+      }
+      const qs = new URLSearchParams()
+      if (area) qs.set('area', area)
       if (portId != null && Number.isFinite(portId) && portId > 0) {
         qs.set('portId', String(portId))
+      }
+      if (!qs.has('area') && !qs.has('portId')) {
+        throw new Error('A canonical EPDA area or portId is required')
       }
       return `/admin/epda-parameters/effective?${qs.toString()}`
     },

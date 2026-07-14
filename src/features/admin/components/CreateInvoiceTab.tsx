@@ -252,6 +252,7 @@ export function CreateInvoiceTab({
   const [cargoTypeCatalog, setCargoTypeCatalog] = useState<Commodity[]>([])
   const [isLoadingCargoCatalog, setIsLoadingCargoCatalog] = useState(false)
   const [ports, setPorts] = useState<LogisticsPort[]>([])
+  const [selectedPortId, setSelectedPortId] = useState<number | null>(null)
   const [isLoadingPorts, setIsLoadingPorts] = useState(false)
   const pendingPortOfCallRef = useRef<string | null>(null)
   
@@ -482,16 +483,16 @@ export function CreateInvoiceTab({
 
     // The port <Select> uses `portOfCall` as its value, so match on that (fall back to name).
     const target = (port ?? '').trim().toLowerCase()
-    const portId = target
+    const portId = selectedPortId ?? (target
       ? ports.find((p) => {
           const call = p.portOfCall?.trim().toLowerCase() ?? ''
           const name = p.name?.trim().toLowerCase() ?? ''
           return call === target || name === target
         })?.id
-      : undefined
+      : undefined)
     let cancelled = false
     epdaParametersService
-      .getEffective(selectedArea, portId)
+      .getEffective(portId ? undefined : selectedArea, portId)
       .then((v) => {
         if (cancelled) return
         setEffectiveParams(v)
@@ -518,7 +519,7 @@ export function CreateInvoiceTab({
     return () => {
       cancelled = true
     }
-  }, [selectedArea, port, ports, quoteForm, frozenParams, isLoadingPorts, linkedInquiryId, dischargeLoadingLocation])
+  }, [selectedArea, selectedPortId, port, ports, quoteForm, frozenParams, isLoadingPorts, linkedInquiryId, dischargeLoadingLocation])
 
   useEffect(() => {
     if (!selectedArea) return
@@ -534,6 +535,7 @@ export function CreateInvoiceTab({
           if (restorePort) {
             const matched = list.find((item) => item.portOfCall?.trim() === restorePort)
             setPort(matched?.portOfCall ?? restorePort)
+            setSelectedPortId((current) => current ?? matched?.id ?? null)
             pendingPortOfCallRef.current = null
           }
         }
@@ -622,6 +624,7 @@ export function CreateInvoiceTab({
     cargoTypeOptions,
     filteredCargoNames,
     shipType,
+    portId: selectedPortId,
     port,
     frtTaxType,
     shouldIncludeOceanFrtRate: isExportTotalAmountMode(frtTaxType),
@@ -717,10 +720,11 @@ export function CreateInvoiceTab({
           pendingInquiryCargoRef.current = inquiryCargo
           setPendingInquiryCargo(inquiryCargo)
         }
-        if (inquiry.portOfCall?.trim()) {
-          const selection = await findPortSelectionFromInquiry(inquiry.portOfCall)
+        if (inquiry.portId || inquiry.portOfCall?.trim()) {
+          const selection = await findPortSelectionFromInquiry(inquiry.portOfCall, inquiry.portId)
           if (cancelled) return
           pendingPortOfCallRef.current = selection.portOfCall
+          setSelectedPortId(selection.portId)
           if (selection.area) {
             setSelectedArea(selection.area)
             setPorts(selection.ports)
@@ -902,16 +906,6 @@ export function CreateInvoiceTab({
     }
   }
 
-  const resolvePortIdForParams = () => {
-    const target = (port ?? '').trim().toLowerCase()
-    if (!target) return undefined
-    return ports.find((p) => {
-      const call = p.portOfCall?.trim().toLowerCase() ?? ''
-      const name = p.name?.trim().toLowerCase() ?? ''
-      return call === target || name === target
-    })?.id
-  }
-
   const handlePreview = async () => {
     setShowValidationErrors(true)
     if (missingRequiredFields.length > 0) {
@@ -936,8 +930,8 @@ export function CreateInvoiceTab({
       if (!isEpdaLocked && !frozenParams && selectedArea) {
         try {
           paramsForQuote = await epdaParametersService.getEffective(
-            selectedArea,
-            resolvePortIdForParams(),
+            selectedPortId ? undefined : selectedArea,
+            selectedPortId ?? undefined,
           )
           setEffectiveParams(paramsForQuote)
         } catch (error) {
@@ -1001,6 +995,7 @@ export function CreateInvoiceTab({
   const handleReset = () => {
     setShowValidationErrors(false)
     setSelectedArea('')
+    setSelectedPortId(null)
     setPorts([])
     setIsLoadingPorts(false)
     setPortPickerCollapsed(false)
@@ -1440,6 +1435,7 @@ export function CreateInvoiceTab({
                   value={selectedArea}
                   onValueChange={(value) => {
                     setPort('')
+                    setSelectedPortId(null)
                     setPorts([])
                     setPortPickerCollapsed(false)
                     setIsLoadingPorts(true)
@@ -1469,6 +1465,9 @@ export function CreateInvoiceTab({
                   value={port}
                   onValueChange={(value) => {
                     setPort(value)
+                    setSelectedPortId(
+                      portsByArea.find((item) => item.portOfCall === value)?.id ?? null,
+                    )
                     setPortPickerCollapsed(true)
                   }}
                   disabled={!selectedArea || isLoadingPorts}

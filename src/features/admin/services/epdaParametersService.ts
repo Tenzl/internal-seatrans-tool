@@ -59,7 +59,7 @@ export const epdaParametersService = {
   },
 
   async getEffective(
-    area: '1' | '2' | '3',
+    area?: '1' | '2' | '3',
     portId?: number,
     signal?: AbortSignal,
   ): Promise<EpdaParameterValues> {

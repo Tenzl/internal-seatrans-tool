@@ -37,40 +37,6 @@ import {
   TableRow,
 } from "@/shared/components/ui/table"
 
-/** Sticky header + optional pinned left/right columns inside `.admin-data-table` scroll */
-export function adminStickyColumnClass(
-  columnId: string,
-  type: "header" | "cell",
-  baseClass = "",
-  options?: { pinLeft?: string[]; pinRight?: string[] },
-): string {
-  const isHeader = type === "header"
-  const pinLeft = options?.pinLeft ?? []
-  const pinRight = options?.pinRight ?? ["actions"]
-  const headerTop = isHeader ? "sticky top-0 z-20 bg-muted/95 backdrop-blur-sm" : ""
-  const pinnedHeader = "sticky top-0 z-30 bg-muted/95 backdrop-blur-sm"
-
-  if (pinLeft.includes(columnId)) {
-    return cn(
-      "admin-table-pin-left sticky left-0 min-w-[7rem] shadow-[inset_-1px_0_0_0_hsl(var(--border)/0.55)] sm:min-w-[11rem]",
-      isHeader ? pinnedHeader : "z-10 bg-background hover:!bg-background",
-      baseClass,
-    )
-  }
-
-  if (pinRight.includes(columnId)) {
-    return cn(
-      "admin-table-pin-right sticky right-0 min-w-[4.25rem] w-max max-w-[9rem]",
-      "shadow-[inset_1px_0_0_0_hsl(var(--border)/0.55)]",
-      !isHeader && "!px-0 !pr-1 !pl-2",
-      isHeader ? pinnedHeader : "z-10 bg-background hover:!bg-background",
-      baseClass,
-    )
-  }
-
-  return cn(headerTop, baseClass)
-}
-
 // ---------------------------------------------------------------------------
 // DataTableSortHeader — ghost-style sortable column header button
 // ---------------------------------------------------------------------------
