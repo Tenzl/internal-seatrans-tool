@@ -53,6 +53,8 @@ export interface BuildInvoiceQuoteDataParams {
   /** LOA is above the highest tug band → tug charge is entered manually. */
   isLoaOverTugMax: boolean
   tugAssistanceAmount: string
+  /** 1 = in|out; 2 = in & out (×2). */
+  tugAssistanceTrips: string
   /** Other expense picker — currently Shorecrane-hire. */
   otherExpenseType: string
   shorecraneHireUsdPerMt: string
@@ -119,6 +121,7 @@ export function buildInvoiceQuoteData(params: BuildInvoiceQuoteDataParams): Invo
       params.isLoaOverTugMax
         ? parseFiniteNumberOrUndefined(params.tugAssistanceAmount)
         : undefined,
+    tug_assistance_trips: parseFiniteNumberOrUndefined(params.tugAssistanceTrips) ?? 2,
     shorecrane_hire_usd_per_mt:
       params.otherExpenseType === 'SHORECRANE_HIRE'
         ? parseFiniteNumberOrUndefined(params.shorecraneHireUsdPerMt)

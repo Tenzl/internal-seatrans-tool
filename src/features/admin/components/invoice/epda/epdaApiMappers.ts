@@ -37,6 +37,7 @@ export type ShippingAgencyAdminInquiry = {
   boatHireAmount?: string | number | null
   tallyFeeAmount?: string | number | null
   tugAssistanceAmount?: string | number | null
+  tugAssistanceTrips?: string | number | null
   shorecraneHireUsdPerMt?: string | number | null
   transportLs?: string | null
   transportQuarantine?: string | null
@@ -150,6 +151,7 @@ export function buildEpdaPatchPayload(
     boatHireAmount: toNum(params.boatHireAmount),
     tallyFeeAmount: toNum(params.tallyFeeAmount),
     tugAssistanceAmount: params.isLoaOverTugMax ? toNum(params.tugAssistanceAmount) : undefined,
+    tugAssistanceTrips: toNum(params.tugAssistanceTrips) === 1 ? 1 : 2,
     shorecraneHireUsdPerMt:
       params.otherExpenseType === 'SHORECRANE_HIRE'
         ? (toNum(params.shorecraneHireUsdPerMt) ?? null)
@@ -206,6 +208,7 @@ export function buildInternalCreatePayload(
     agencyDiscountPercent: toNum(params.agencyDiscountPercent),
     agencyLumpsumAmount: toNum(params.agencyLumpsumAmount),
     tugAssistanceAmount: params.isLoaOverTugMax ? toNum(params.tugAssistanceAmount) : undefined,
+    tugAssistanceTrips: toNum(params.tugAssistanceTrips) === 1 ? 1 : 2,
     shorecraneHireUsdPerMt:
       params.otherExpenseType === 'SHORECRANE_HIRE' ? toNum(params.shorecraneHireUsdPerMt) : undefined,
   }
@@ -243,6 +246,7 @@ export function applyAdminInquiryToForm(
     setBoatHireQuarantineAmount: (v: string) => void
     setTallyFeeAmount: (v: string) => void
     setTugAssistanceAmount: (v: string) => void
+    setTugAssistanceTrips: (v: string) => void
     setOtherExpenseType: (v: string) => void
     setShorecraneHireUsdPerMt: (v: string) => void
     setTransportLs: (v: string) => void
@@ -292,6 +296,9 @@ export function applyAdminInquiryToForm(
   setters.setBoatHireQuarantineAmount(toNumStr(inquiry.transportQuarantine) ?? '')
   setters.setTallyFeeAmount(toNumStr(inquiry.tallyFeeAmount) ?? '')
   setters.setTugAssistanceAmount(toNumStr(inquiry.tugAssistanceAmount) ?? '')
+  setters.setTugAssistanceTrips(
+    toNum(inquiry.tugAssistanceTrips) === 1 ? '1' : '2',
+  )
   const shorecraneRate = toNumStr(inquiry.shorecraneHireUsdPerMt)
   const shorecraneFromSnapshot = toNumStr(
     (inquiry.epdaSnapshot?.shorecrane_hire_usd_per_mt as string | number | undefined) ?? null,

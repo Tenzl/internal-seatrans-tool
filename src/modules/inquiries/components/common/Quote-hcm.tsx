@@ -54,6 +54,7 @@ const buildAARows = (
     transportQuarantine?: string | number
     tallyFee?: string | number
     tugAssistanceOverride?: string | number
+    tugAssistanceTrips?: string | number
     cargoType?: string
     loa?: string | number
     mooringLocation?: 'berth' | 'anchorage'
@@ -186,12 +187,14 @@ const buildAARows = (
     const tugRate = resolveLoaTier(loaNumeric, P.tugTiers)
     // Above the highest tug band, the charge is entered manually (negotiable).
     const tugOverride = toNumber(options?.tugAssistanceOverride)
+    const tugTrips = toNumber(options?.tugAssistanceTrips) === 1 ? 1 : 2
     const tugAssistance =
       tugOverride !== null
         ? formatAmount(withVatNumber(tugOverride))
         : tugRate === undefined
           ? ''
-          : formatAmount(withVatNumber(tugRate.amount * 2))
+          : formatAmount(withVatNumber(tugRate.amount * tugTrips))
+    const tugDetails = tugTrips === 2 ? '(in & out)' : ''
     const mooringLocation = (options?.mooringLocation || '').toLowerCase() === 'anchorage' ? 'anchorage' : 'berth'
     const moorUnmoorRate = resolveGrtTier(
       grtNumeric,
@@ -345,7 +348,7 @@ const buildAARows = (
     }
     pushNumbered({
       item: 'Tug assistance charge',
-      details: '(in & out)',
+      details: tugDetails,
       remark: vatRemark,
       amount: tugAssistance,
     })
@@ -667,6 +670,7 @@ export const renderQuoteHtml = (template: string, data: QuoteData) => {
     transportQuarantine: normalizedData.transport_quarantine,
     tallyFee: normalizedData.tally_fee,
     tugAssistanceOverride: normalizedData.tug_assistance,
+    tugAssistanceTrips: normalizedData.tug_assistance_trips,
     cargoType: normalizedData.cargo_type,
     loa: data.loa,
     mooringLocation: (normalizedData.at_anchorage || '').trim() ? 'anchorage' : 'berth',

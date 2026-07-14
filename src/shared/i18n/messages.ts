@@ -254,6 +254,8 @@ const enMessages: Record<string, string> = {
 
     // tier tables
     'tbl.label': 'Label',
+    'tbl.labelGrt': 'GRT',
+    'tbl.labelLoa': 'L.O.A',
     'tbl.maxGrt': 'Max GRT (empty = ∞)',
     'tbl.amount': 'Amount (USD)',
     'tbl.minLoa': 'Min LOA (m)',
@@ -343,6 +345,9 @@ const enMessages: Record<string, string> = {
     'epda.shorecraneRate': 'Shorecrane-hire rate (USD/mt)',
     'epda.tugAssistance': 'Tug assistance charge (USD)',
     'epda.tugAssistanceHint': 'LOA is above the highest tug band — enter the tug charge manually.',
+    'epda.tugTrips': 'Tug assistance usage',
+    'epda.tugTripsOne': '1 trip (in | out)',
+    'epda.tugTripsTwo': '2 trips (in & out)',
     'epda.feeMode': 'Fee calculation mode',
     'epda.lumpsum': 'Lumpsum amount (USD, incl. transportation)',
     'epda.discount': 'Discount (%)',

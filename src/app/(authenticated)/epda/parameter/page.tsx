@@ -321,7 +321,9 @@ function GrtTierTable({
       <Table>
         <TableHeader>
           <TableRow>
-            <TableHead className='text-sm'>{t('tbl.label')}</TableHead>
+            <TableHead className='text-sm'>
+              {autoLabels ? t('tbl.labelGrt') : t('tbl.label')}
+            </TableHead>
             <TableHead className='w-40 text-sm'>{t('tbl.maxGrt')}</TableHead>
             <TableHead className='w-40 text-sm'>{t('tbl.amount')}</TableHead>
             <TableHead className='w-12' />
@@ -405,7 +407,7 @@ function LoaTierTable({
       <Table>
         <TableHeader>
           <TableRow>
-            <TableHead className='text-sm'>{t('tbl.label')}</TableHead>
+            <TableHead className='text-sm'>{t('tbl.labelLoa')}</TableHead>
             <TableHead className='w-40 text-sm'>{t('tbl.minLoa')}</TableHead>
             <TableHead className='w-40 text-sm'>{t('tbl.amount')}</TableHead>
             <TableHead className='w-12' />

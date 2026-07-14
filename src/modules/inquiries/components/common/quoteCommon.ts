@@ -54,6 +54,8 @@ export interface QuoteData {
   agency_lumpsum_amount?: string | number
   tally_fee?: string | number
   tug_assistance?: string | number
+  /** 1 = single trip (in|out); 2 = in & out (×2). Default treated as 2. */
+  tug_assistance_trips?: string | number
   shorecrane_hire_usd_per_mt?: string | number
   pilotage_miles?: string | number
   pilotage_third_miles?: string | number

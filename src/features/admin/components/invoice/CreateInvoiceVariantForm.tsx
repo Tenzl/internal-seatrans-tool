@@ -27,8 +27,10 @@ import {
   getAgencyFeeByGrt,
   SHIPOWNER_NATIONALITY_OPTIONS,
   OTHER_EXPENSE_OPTIONS,
+  TUG_ASSISTANCE_TRIP_OPTIONS,
   type ShipownerNationalityOption,
   type OtherExpenseOption,
+  type TugAssistanceTripsOption,
 } from './epdaFormParameters'
 import {
   defaultParameterValues,
@@ -91,6 +93,7 @@ export interface InvoiceVariantFormProps {
     frtTaxType: FrtTaxTypeOption | ''
     tallyFeeAmount: string
     tugAssistanceAmount: string
+    tugAssistanceTrips: TugAssistanceTripsOption
     otherExpenseType: OtherExpenseOption | ''
     shorecraneHireUsdPerMt: string
     oceanFrtRateUsdPerMt: string
@@ -125,6 +128,7 @@ export interface InvoiceVariantFormProps {
     setFrtTaxType: (value: FrtTaxTypeOption) => void
     setTallyFeeAmount: (value: string) => void
     setTugAssistanceAmount: (value: string) => void
+    setTugAssistanceTrips: (value: TugAssistanceTripsOption) => void
     setOtherExpenseType: (value: OtherExpenseOption | '') => void
     setShorecraneHireUsdPerMt: (value: string) => void
     setOceanFrtRateUsdPerMt: (value: string) => void
@@ -661,6 +665,43 @@ export function CreateInvoiceVariantForm({
               </SelectContent>
             </Select>
           </div>
+
+          <div className="grid gap-2">
+            <FieldLabel htmlFor="tugAssistanceTrips">{t('epda.tugTrips')}</FieldLabel>
+            <Select
+              value={values.tugAssistanceTrips}
+              onValueChange={(value) =>
+                handlers.setTugAssistanceTrips(value as TugAssistanceTripsOption)
+              }
+            >
+              <SelectTrigger id="tugAssistanceTrips">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {TUG_ASSISTANCE_TRIP_OPTIONS.map((option) => (
+                  <SelectItem key={option.value} value={option.value}>
+                    {option.value === '1' ? t('epda.tugTripsOne') : t('epda.tugTripsTwo')}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          {computed.isLoaOverTugMax && (
+            <div className="grid gap-2">
+              <FieldLabel htmlFor="tugAssistanceAmount">{t('epda.tugAssistance')}</FieldLabel>
+              <Input
+                id="tugAssistanceAmount"
+                type="number"
+                value={values.tugAssistanceAmount}
+                onChange={(e) => handlers.setTugAssistanceAmount(e.target.value)}
+                placeholder="0"
+                min="0"
+                step="any"
+              />
+              <p className="text-xs text-muted-foreground">{t('epda.tugAssistanceHint')}</p>
+            </div>
+          )}
         </div>
 
         <div className={epdaFieldGridClass(3)}>
@@ -717,22 +758,6 @@ export function CreateInvoiceVariantForm({
               className={disabledFieldTextClass}
             />
           </div>
-
-          {computed.isLoaOverTugMax && (
-            <div className="grid gap-2">
-              <FieldLabel htmlFor="tugAssistanceAmount">{t('epda.tugAssistance')}</FieldLabel>
-              <Input
-                id="tugAssistanceAmount"
-                type="number"
-                value={values.tugAssistanceAmount}
-                onChange={(e) => handlers.setTugAssistanceAmount(e.target.value)}
-                placeholder="0"
-                min="0"
-                step="any"
-              />
-              <p className="text-xs text-muted-foreground">{t('epda.tugAssistanceHint')}</p>
-            </div>
-          )}
         </div>
 
         <div className={epdaFieldGridClass(3)}>

@@ -84,6 +84,14 @@ export const QUARANTINE_CARGO_OPTIONS = [
   { value: 'OTHER', label: 'Other (water supply / repair / crew change ...)', fee: 0, trips: 0 },
 ] as const
 
+/** Tug assistance: 1 trip (in|out) or 2 trips (in & out). Default 2 keeps legacy ×2 behaviour. */
+export const TUG_ASSISTANCE_TRIP_OPTIONS = [
+  { value: '1', trips: 1 },
+  { value: '2', trips: 2 },
+] as const
+export type TugAssistanceTripsOption = (typeof TUG_ASSISTANCE_TRIP_OPTIONS)[number]['value']
+export const DEFAULT_TUG_ASSISTANCE_TRIPS: TugAssistanceTripsOption = '2'
+
 /** Default port-stay hours used to seed the form. */
 export const DEFAULT_BERTH_HOURS = '96'
 export const DEFAULT_ANCHORAGE_HOURS = '24'

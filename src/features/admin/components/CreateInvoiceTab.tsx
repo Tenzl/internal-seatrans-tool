@@ -92,6 +92,8 @@ import {
   FRT_TAX_TYPE_OPTIONS,
   AGENCY_FEE_MODE_OPTIONS,
   QUARANTINE_CARGO_OPTIONS,
+  DEFAULT_TUG_ASSISTANCE_TRIPS,
+  type TugAssistanceTripsOption,
   DEFAULT_BERTH_HOURS,
   DEFAULT_ANCHORAGE_HOURS,
   DEFAULT_PILOTAGE_THIRD_MILES,
@@ -301,6 +303,8 @@ export function CreateInvoiceTab({
   const [boatHireQuarantineAmount, setBoatHireQuarantineAmount] = useState('')
   const [tallyFeeAmount, setTallyFeeAmount] = useState('')
   const [tugAssistanceAmount, setTugAssistanceAmount] = useState('')
+  const [tugAssistanceTrips, setTugAssistanceTrips] =
+    useState<TugAssistanceTripsOption>(DEFAULT_TUG_ASSISTANCE_TRIPS)
   const [otherExpenseType, setOtherExpenseType] = useState<OtherExpenseOption | ''>('')
   const [shorecraneHireUsdPerMt, setShorecraneHireUsdPerMt] = useState('')
   const [transportLs, setTransportLs] = useState('')
@@ -645,6 +649,7 @@ export function CreateInvoiceTab({
     tallyFeeAmount,
     isLoaOverTugMax,
     tugAssistanceAmount,
+    tugAssistanceTrips,
     otherExpenseType,
     shorecraneHireUsdPerMt,
     berthHours,
@@ -766,6 +771,8 @@ export function CreateInvoiceTab({
           setBoatHireQuarantineAmount,
           setTallyFeeAmount,
           setTugAssistanceAmount,
+          setTugAssistanceTrips: (v) =>
+            setTugAssistanceTrips(v === '1' ? '1' : '2'),
           setOtherExpenseType: (v) =>
             setOtherExpenseType(v === 'SHORECRANE_HIRE' ? 'SHORECRANE_HIRE' : ''),
           setShorecraneHireUsdPerMt,
@@ -1030,6 +1037,7 @@ export function CreateInvoiceTab({
     setBoatHireQuarantineAmount('')
     setTallyFeeAmount('')
     setTugAssistanceAmount('')
+    setTugAssistanceTrips(DEFAULT_TUG_ASSISTANCE_TRIPS)
     setOtherExpenseType('')
     setShorecraneHireUsdPerMt('')
     setTransportLs('')
@@ -1095,6 +1103,7 @@ export function CreateInvoiceTab({
     frtTaxType,
     tallyFeeAmount,
     tugAssistanceAmount,
+    tugAssistanceTrips,
     otherExpenseType,
     shorecraneHireUsdPerMt,
     oceanFrtRateUsdPerMt,
@@ -1161,6 +1170,7 @@ export function CreateInvoiceTab({
     },
     setTallyFeeAmount,
     setTugAssistanceAmount,
+    setTugAssistanceTrips,
     setOtherExpenseType,
     setShorecraneHireUsdPerMt,
     setOceanFrtRateUsdPerMt,

@@ -112,6 +112,7 @@ export function buildEpdaLockSnapshotFromAdminInquiry(
     tallyFeeAmount: toStr(inquiry.tallyFeeAmount),
     isLoaOverTugMax: overTugMax,
     tugAssistanceAmount: toStr(inquiry.tugAssistanceAmount),
+    tugAssistanceTrips: Number(inquiry.tugAssistanceTrips) === 1 ? '1' : '2',
     otherExpenseType: shorecrane ? 'SHORECRANE_HIRE' : '',
     shorecraneHireUsdPerMt: shorecrane,
     berthHours,
