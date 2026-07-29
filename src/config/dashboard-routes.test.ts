@@ -15,6 +15,16 @@ describe('dashboard route policy', () => {
     expect(canAccessPath(LEGACY_CREATE_EPDA_PATH, operator)).toBe(false)
   })
 
+  it('maps transport documents to its own role section', () => {
+    expect(
+      canAccessPath('/booking/documents', {
+        role: 'ROLE_OPERATOR',
+        sections: ['booking-documents'],
+      })
+    ).toBe(true)
+    expect(canAccessPath('/booking/documents', operator)).toBe(false)
+  })
+
   it('keeps admin access while denying anonymous access by default', () => {
     expect(canAccessPath('/tasks', { role: 'ROLE_ADMIN' })).toBe(true)
     expect(canAccessPath(CANONICAL_CREATE_EPDA_PATH, null)).toBe(false)

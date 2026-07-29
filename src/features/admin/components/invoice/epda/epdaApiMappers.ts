@@ -181,6 +181,7 @@ export function buildInternalCreatePayload(
     eta: params.eta || undefined,
     cargoType: params.cargoType || undefined,
     cargoName: params.cargoName || undefined,
+    quantityTons: toNum(params.cargoQty),
     frtTaxType: params.frtTaxType || undefined,
     purposeOfCalling: params.purposeOfCalling || undefined,
     portId: params.portId,

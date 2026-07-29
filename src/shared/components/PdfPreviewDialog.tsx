@@ -16,27 +16,31 @@ import { toast } from '@/shared/utils/toast'
 interface PdfPreviewDialogProps {
   open: boolean
   onOpenChange: (open: boolean) => void
-  html: string | null
+  html?: string | null
+  previewUrl?: string | null
   fileName: string
   isGenerating?: boolean
   onEdit?: () => void
+  loadingLabel?: string
 }
 
 export function PdfPreviewDialog({
   open,
   onOpenChange,
-  html,
+  html = null,
+  previewUrl = null,
   fileName,
   isGenerating = false,
   onEdit,
+  loadingLabel = 'Building EPDA preview…',
 }: PdfPreviewDialogProps) {
   const [isExporting, setIsExporting] = useState(false)
   const iframeRef = useRef<HTMLIFrameElement | null>(null)
 
-  const showGenerating = isGenerating || !html
+  const showGenerating = isGenerating || (!html && !previewUrl)
 
   const handlePrintPdf = async () => {
-    if (!html) return
+    if (!html && !previewUrl) return
     const frameWin = iframeRef.current?.contentWindow
     if (!frameWin) {
       toast.error('Preview is not ready yet. Please try again.')
@@ -89,7 +93,7 @@ export function PdfPreviewDialog({
               <Button
                 size="sm"
                 onClick={handlePrintPdf}
-                disabled={!html || isExporting}
+                disabled={(!html && !previewUrl) || isExporting}
                 className="gap-2"
               >
                 {isExporting ? (
@@ -113,12 +117,12 @@ export function PdfPreviewDialog({
           {showGenerating ? (
             <div className="flex h-full flex-col items-center justify-center gap-3 p-12">
               <Loader2 className="h-10 w-10 animate-spin text-primary" />
-              <p className="text-sm text-muted-foreground">Building EPDA preview…</p>
+              <p className="text-sm text-muted-foreground">{loadingLabel}</p>
             </div>
           ) : (
             <iframe
               ref={iframeRef}
-              srcDoc={html ?? ''}
+              {...(previewUrl ? { src: previewUrl } : { srcDoc: html ?? '' })}
               title={fileName}
               className="h-full w-full border-0 bg-white"
             />

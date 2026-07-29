@@ -12,6 +12,7 @@ import {
   Tag,
   ShieldCheck,
   HardDrive,
+  Files,
 } from 'lucide-react'
 import { type SidebarData } from '../types'
 
@@ -42,6 +43,11 @@ export const sidebarData: SidebarData = {
           title: 'Booking Management',
           icon: BriefcaseBusiness,
           items: [
+            {
+              title: 'Transport Documents',
+              icon: Files,
+              url: '/booking/documents',
+            },
             {
               title: 'Partner',
               icon: BriefcaseBusiness,

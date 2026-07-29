@@ -24,6 +24,7 @@ export const SECTION_CATALOG: SectionDef[] = [
   { key: 'epda-parameter', label: 'Parameter', group: 'EPDA', route: '/epda/parameter' },
   { key: 'booking-partner', label: 'Partner', group: 'Booking Management', route: '/booking/partner' },
   { key: 'booking-shipment', label: 'Shipment', group: 'Booking Management', route: '/booking/shipping' },
+  { key: 'booking-documents', label: 'Transport documents', group: 'Booking Management', route: '/booking/documents' },
   { key: 'users', label: 'Users', group: 'Data Management', route: '/users' },
   { key: 'data-ports', label: 'Ports', group: 'Data Management', route: '/data/ports' },
   { key: 'data-cargo', label: 'Cargo', group: 'Data Management', route: '/data/cargo' },

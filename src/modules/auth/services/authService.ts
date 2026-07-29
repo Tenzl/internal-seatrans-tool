@@ -5,6 +5,7 @@ import type { User } from '@/shared/types/dashboard'
 interface LoginRequest {
   identifier: string
   password: string
+  remember?: boolean
 }
 
 interface AuthResponse {
@@ -82,7 +83,7 @@ export const authService = {
     try {
       // Skip auth for login endpoint
       const response = await apiClient.post(API_CONFIG.AUTH.LOGIN, 
-        { identifier, password } satisfies LoginRequest,
+        { identifier, password, remember } satisfies LoginRequest,
         { skipAuth: true }
       )
 
@@ -185,12 +186,16 @@ export const authService = {
 
   getCurrentUser: async (): Promise<ApiResponse<User>> => {
     try {
-      // apiClient will automatically handle 401 and logout
-      const response = await apiClient.get(API_CONFIG.AUTH.ME)
+      // skipAuth: 401 means "not signed in" during bootstrap, not a forced logout.
+      const response = await apiClient.get(API_CONFIG.AUTH.ME, { skipAuth: true })
 
       const result = await response.json()
 
       if (!response.ok) {
+        if (canUseStorage()) {
+          localStorage.removeItem(USER_KEY)
+          sessionStorage.removeItem(USER_KEY)
+        }
         return {
           success: false,
           message: result.message || 'Unable to fetch current user',

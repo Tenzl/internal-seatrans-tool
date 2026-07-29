@@ -34,7 +34,6 @@ export const API_CONFIG = {
     REGISTER: '/auth/register',
     ME: '/auth/me',
     LOGOUT: '/auth/logout',
-    SESSION: '/auth/session',
   },
 
   PROVINCES: {
@@ -73,6 +72,11 @@ export const API_CONFIG = {
     IMPORT_TEMPLATE: '/admin/booking-management/partners/import/template',
     BY_PARTNER: (partnerId: number) =>
       `/admin/booking-management/partners/${partnerId}/shipping`,
+  },
+
+  BOOKING_DOCUMENTS: {
+    ADMIN_PREVIEW: (type: 'an' | 'booking' | 'do') =>
+      `/admin/booking-documents/${type}/preview`,
   },
 
   SERVICE_TYPES: {
