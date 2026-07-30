@@ -2,68 +2,8 @@
 
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { ChevronLeft, ChevronRight, History, Loader2, Plus, Save, Trash2 } from 'lucide-react'
-import { toast } from 'sonner'
-import { ConfigDrawer } from '@/components/config-drawer'
-import { Header } from '@/components/layout/header'
-import { Main } from '@/components/layout/main'
-import { ProfileDropdown } from '@/components/profile-dropdown'
-import { Search } from '@/components/search'
-import { ThemeSwitch } from '@/components/theme-switch'
-import { Button } from '@/components/ui/button'
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from '@/components/ui/card'
-import { Badge } from '@/components/ui/badge'
-import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select'
-import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table'
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from '@/components/ui/dialog'
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from '@/components/ui/alert-dialog'
-import { useNavigate } from '@/lib/router'
-import {
-  AREA_OPTIONS,
-  AREA_TO_VARIANT,
-  QUARANTINE_CARGO_OPTIONS,
-  getAreaShortLabel,
-  type AreaOption,
-} from '@/features/admin/components/invoice/epdaFormParameters'
-import { isHcmWorksheet, usesQnPilotage } from '@/features/admin/components/invoice/epda/quoteFormFromArea'
-import { PURPOSE_OF_CALLING_OPTIONS } from '@/modules/inquiries/constants/shippingAgencyInquiryOptions'
+import { isAdminRole } from '@/config/section-catalog'
+import { SHIPPING_AGENCY_CARGO_TYPES } from '@/modules/gallery/shippingAgencyCargoCatalog'
 import {
   defaultParameterValues,
   mergeParameterValues,
@@ -74,18 +14,90 @@ import {
   type LoaTier,
   type QuoteVariant,
 } from '@/modules/inquiries/components/common/quoteParameters'
-import { SHIPPING_AGENCY_CARGO_TYPES } from '@/modules/gallery/shippingAgencyCargoCatalog'
+import { PURPOSE_OF_CALLING_OPTIONS } from '@/modules/inquiries/constants/shippingAgencyInquiryOptions'
+import { portService } from '@/modules/logistics/services/portService'
+import { useI18n } from '@/shared/i18n/I18nProvider'
+import { parseFiniteNumber } from '@/shared/utils/parseNumber'
+import {
+  ChevronLeft,
+  ChevronRight,
+  History,
+  Loader2,
+  Plus,
+  Save,
+  Trash2,
+} from 'lucide-react'
+import { toast } from 'sonner'
+import { useNavigate } from '@/lib/router'
+import { useCurrentUser } from '@/hooks/use-current-user'
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog'
+import { Badge } from '@/components/ui/badge'
+import { Button } from '@/components/ui/button'
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from '@/components/ui/card'
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from '@/components/ui/dialog'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table'
+import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import { ConfigDrawer } from '@/components/config-drawer'
+import { Header } from '@/components/layout/header'
+import { Main } from '@/components/layout/main'
+import { ProfileDropdown } from '@/components/profile-dropdown'
+import { Search } from '@/components/search'
+import { ThemeSwitch } from '@/components/theme-switch'
+import {
+  isHcmWorksheet,
+  usesQnPilotage,
+} from '@/features/admin/components/invoice/epda/quoteFormFromArea'
+import {
+  AREA_OPTIONS,
+  AREA_TO_VARIANT,
+  QUARANTINE_CARGO_OPTIONS,
+  getAreaShortLabel,
+  type AreaOption,
+} from '@/features/admin/components/invoice/epdaFormParameters'
 import {
   epdaParametersService,
+  planPortOverrideWrite,
   type EpdaParameterSet,
   type EpdaParameterValues,
   type PartialEpdaParameterValues,
 } from '@/features/admin/services/epdaParametersService'
-import { portService } from '@/modules/logistics/services/portService'
-import { useI18n } from '@/shared/i18n/I18nProvider'
-import { useCurrentUser } from '@/hooks/use-current-user'
-import { isAdminRole } from '@/config/section-catalog'
-import { parseFiniteNumber } from '@/shared/utils/parseNumber'
 
 const VISIBLE_AREA_OPTIONS = AREA_OPTIONS
 
@@ -113,7 +125,12 @@ const LEAD_PARAMETER_SECTION_ORDER = [
 ] as const
 
 /** Hidden in General port charges; configured per-port in Port overrides instead. */
-const AREA_SET_HIDDEN_SECTION_IDS: readonly string[] = ['pilotage', 'tug', 'moor', 'garbage']
+const AREA_SET_HIDDEN_SECTION_IDS: readonly string[] = [
+  'pilotage',
+  'tug',
+  'moor',
+  'garbage',
+]
 const PORT_OVERRIDE_VISIBLE_SECTION_IDS: readonly string[] = [
   'pilotage',
   'tug',
@@ -125,10 +142,14 @@ function sectionFilterKey(ids?: readonly string[]): string {
   return ids?.join('\0') ?? ''
 }
 
-function getSectionDisplayNumber(sectionId: string, index: number, useGlobalSectionNumbers: boolean): number {
+function getSectionDisplayNumber(
+  sectionId: string,
+  index: number,
+  useGlobalSectionNumbers: boolean
+): number {
   if (useGlobalSectionNumbers) {
     const globalIndex = LEAD_PARAMETER_SECTION_ORDER.indexOf(
-      sectionId as (typeof LEAD_PARAMETER_SECTION_ORDER)[number],
+      sectionId as (typeof LEAD_PARAMETER_SECTION_ORDER)[number]
     )
     if (globalIndex >= 0) return globalIndex + 1
   }
@@ -142,11 +163,13 @@ function clone(v: EpdaParameterValues): EpdaParameterValues {
 
 const num = (v: string): number => parseFiniteNumber(v) ?? 0
 
-const formatDecimalValue = (value: number) => (Number.isFinite(value) ? String(value) : '')
+const formatDecimalValue = (value: number) =>
+  Number.isFinite(value) ? String(value) : ''
 
 const parseDecimalText = (raw: string): number | null => {
   const trimmed = raw.trim()
-  if (trimmed === '' || trimmed === '-' || trimmed === '.' || trimmed === '-.') return 0
+  if (trimmed === '' || trimmed === '-' || trimmed === '.' || trimmed === '-.')
+    return 0
   return parseFiniteNumber(trimmed)
 }
 
@@ -209,7 +232,10 @@ function diffValues(
 ): PartialEpdaParameterValues {
   const out: PartialEpdaParameterValues = {}
 
-  const diffObj = <T extends Record<string, number>>(b: T, e: T): Partial<T> => {
+  const diffObj = <T extends Record<string, number>>(
+    b: T,
+    e: T
+  ): Partial<T> => {
     const o: Record<string, number> = {}
     ;(Object.keys(e) as (keyof T)[]).forEach((k) => {
       if (e[k] !== b[k]) o[k as string] = e[k]
@@ -226,15 +252,27 @@ function diffValues(
   const coeff = diffObj(base.coeff, edited.coeff)
   if (Object.keys(coeff).length) out.coeff = coeff
 
-  if (JSON.stringify(edited.agencyFeeTiers) !== JSON.stringify(base.agencyFeeTiers))
+  if (
+    JSON.stringify(edited.agencyFeeTiers) !==
+    JSON.stringify(base.agencyFeeTiers)
+  )
     out.agencyFeeTiers = edited.agencyFeeTiers
-  if (JSON.stringify(edited.moorUnmoorBerthTiers) !== JSON.stringify(base.moorUnmoorBerthTiers))
+  if (
+    JSON.stringify(edited.moorUnmoorBerthTiers) !==
+    JSON.stringify(base.moorUnmoorBerthTiers)
+  )
     out.moorUnmoorBerthTiers = edited.moorUnmoorBerthTiers
-  if (JSON.stringify(edited.moorUnmoorBuoyTiers) !== JSON.stringify(base.moorUnmoorBuoyTiers))
+  if (
+    JSON.stringify(edited.moorUnmoorBuoyTiers) !==
+    JSON.stringify(base.moorUnmoorBuoyTiers)
+  )
     out.moorUnmoorBuoyTiers = edited.moorUnmoorBuoyTiers
   if (JSON.stringify(edited.tugTiers) !== JSON.stringify(base.tugTiers))
     out.tugTiers = edited.tugTiers
-  if (JSON.stringify(edited.cargoAgencyRates) !== JSON.stringify(base.cargoAgencyRates))
+  if (
+    JSON.stringify(edited.cargoAgencyRates) !==
+    JSON.stringify(base.cargoAgencyRates)
+  )
     out.cargoAgencyRates = edited.cargoAgencyRates
   return out
 }
@@ -243,7 +281,11 @@ function diffValues(
 function OverriddenBadges({ labels }: { labels: string[] }) {
   const { t } = useI18n()
   if (labels.length === 0)
-    return <span className='text-sm text-muted-foreground'>{t('param.inheritsArea')}</span>
+    return (
+      <span className='text-sm text-muted-foreground'>
+        {t('param.inheritsArea')}
+      </span>
+    )
   return (
     <div className='flex flex-wrap gap-1'>
       {labels.map((l) => (
@@ -257,7 +299,7 @@ function OverriddenBadges({ labels }: { labels: string[] }) {
 
 function getCurrentOverrideSectionLabels(
   t: (key: string, vars?: Record<string, string | number>) => string,
-  values?: PartialEpdaParameterValues | null,
+  values?: PartialEpdaParameterValues | null
 ): string[] {
   if (!values) return []
   const labels: string[] = []
@@ -276,7 +318,8 @@ function getCurrentOverrideSectionLabels(
   ) {
     labels.push(t('sec.moor.title'))
   }
-  if (values.tugTiers && values.tugTiers.length > 0) labels.push(t('sec.tug.title'))
+  if (values.tugTiers && values.tugTiers.length > 0)
+    labels.push(t('sec.tug.title'))
   return Array.from(new Set(labels))
 }
 
@@ -292,8 +335,14 @@ function NumberField({
 }) {
   return (
     <div className='grid gap-2'>
-      <Label className='text-sm font-medium text-muted-foreground'>{label}</Label>
-      <DecimalInput value={value} onChange={onChange} className='h-11 text-base tabular-nums' />
+      <Label className='text-sm font-medium text-muted-foreground'>
+        {label}
+      </Label>
+      <DecimalInput
+        value={value}
+        onChange={onChange}
+        className='h-11 text-base tabular-nums'
+      />
     </div>
   )
 }
@@ -311,7 +360,8 @@ function GrtTierTable({
   autoLabels?: boolean
 }) {
   const { t } = useI18n()
-  const emit = (next: GrtTier[]) => onChange(autoLabels ? withAutoGrtTierLabels(next) : next)
+  const emit = (next: GrtTier[]) =>
+    onChange(autoLabels ? withAutoGrtTierLabels(next) : next)
   const setTier = (i: number, patch: Partial<GrtTier>) =>
     emit(tiers.map((row, idx) => (idx === i ? { ...row, ...patch } : row)))
   const addTier = () => emit([...tiers, { maxGrt: 0, amount: 0, label: '' }])
@@ -322,7 +372,9 @@ function GrtTierTable({
     <div>
       <div className='mb-3 flex items-center justify-between gap-3'>
         {title ? (
-          <h4 className='text-base font-medium text-muted-foreground'>{title}</h4>
+          <h4 className='text-base font-medium text-muted-foreground'>
+            {title}
+          </h4>
         ) : (
           <span />
         )}
@@ -331,56 +383,70 @@ function GrtTierTable({
         </Button>
       </div>
       <div className='overflow-x-auto'>
-      <Table>
-        <TableHeader>
-          <TableRow>
-            <TableHead className='text-sm'>
-              {autoLabels ? t('tbl.labelGrt') : t('tbl.label')}
-            </TableHead>
-            <TableHead className='w-40 text-sm'>{t('tbl.maxGrt')}</TableHead>
-            <TableHead className='w-40 text-sm'>{t('tbl.amount')}</TableHead>
-            <TableHead className='w-12' />
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          {displayTiers.map((row, i) => (
-            <TableRow key={i}>
-              <TableCell>
-                {autoLabels ? (
-                  <span className='text-sm tabular-nums text-muted-foreground'>{row.label}</span>
-                ) : (
-                  <Input className='text-base' value={row.label} onChange={(e) => setTier(i, { label: e.target.value })} />
-                )}
-              </TableCell>
-              <TableCell>
-                <Input
-                  type='number'
-                  className='text-base tabular-nums'
-                  value={row.maxGrt === null ? '' : String(row.maxGrt)}
-                  placeholder='∞'
-                  onChange={(e) =>
-                    setTier(i, {
-                      maxGrt: e.target.value.trim() === '' ? null : num(e.target.value),
-                    })
-                  }
-                />
-              </TableCell>
-              <TableCell>
-                <DecimalInput
-                  className='text-base tabular-nums'
-                  value={row.amount}
-                  onChange={(n) => setTier(i, { amount: n })}
-                />
-              </TableCell>
-              <TableCell>
-                <Button type='button' variant='ghost' size='icon' onClick={() => removeTier(i)}>
-                  <Trash2 className='h-4 w-4 text-destructive' />
-                </Button>
-              </TableCell>
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead className='text-sm'>
+                {autoLabels ? t('tbl.labelGrt') : t('tbl.label')}
+              </TableHead>
+              <TableHead className='w-40 text-sm'>{t('tbl.maxGrt')}</TableHead>
+              <TableHead className='w-40 text-sm'>{t('tbl.amount')}</TableHead>
+              <TableHead className='w-12' />
             </TableRow>
-          ))}
-        </TableBody>
-      </Table>
+          </TableHeader>
+          <TableBody>
+            {displayTiers.map((row, i) => (
+              <TableRow key={i}>
+                <TableCell>
+                  {autoLabels ? (
+                    <span className='text-sm text-muted-foreground tabular-nums'>
+                      {row.label}
+                    </span>
+                  ) : (
+                    <Input
+                      className='text-base'
+                      value={row.label}
+                      onChange={(e) => setTier(i, { label: e.target.value })}
+                    />
+                  )}
+                </TableCell>
+                <TableCell>
+                  <Input
+                    type='number'
+                    className='text-base tabular-nums'
+                    value={row.maxGrt === null ? '' : String(row.maxGrt)}
+                    placeholder='∞'
+                    onChange={(e) =>
+                      setTier(i, {
+                        maxGrt:
+                          e.target.value.trim() === ''
+                            ? null
+                            : num(e.target.value),
+                      })
+                    }
+                  />
+                </TableCell>
+                <TableCell>
+                  <DecimalInput
+                    className='text-base tabular-nums'
+                    value={row.amount}
+                    onChange={(n) => setTier(i, { amount: n })}
+                  />
+                </TableCell>
+                <TableCell>
+                  <Button
+                    type='button'
+                    variant='ghost'
+                    size='icon'
+                    onClick={() => removeTier(i)}
+                  >
+                    <Trash2 className='h-4 w-4 text-destructive' />
+                  </Button>
+                </TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
       </div>
     </div>
   )
@@ -408,7 +474,9 @@ function LoaTierTable({
     <div>
       <div className='mb-3 flex items-center justify-between gap-3'>
         {title ? (
-          <h4 className='text-base font-medium text-muted-foreground'>{title}</h4>
+          <h4 className='text-base font-medium text-muted-foreground'>
+            {title}
+          </h4>
         ) : (
           <span />
         )}
@@ -417,54 +485,66 @@ function LoaTierTable({
         </Button>
       </div>
       <div className='overflow-x-auto'>
-      <Table>
-        <TableHeader>
-          <TableRow>
-            <TableHead className='text-sm'>{t('tbl.labelLoa')}</TableHead>
-            <TableHead className='w-40 text-sm'>{t('tbl.minLoa')}</TableHead>
-            <TableHead className='w-40 text-sm'>{t('tbl.amount')}</TableHead>
-            <TableHead className='w-12' />
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          {displayTiers.map((row, i) => (
-            <TableRow key={i}>
-              <TableCell>
-                <span className='text-sm tabular-nums text-muted-foreground'>{row.label}</span>
-              </TableCell>
-              <TableCell>
-                <Input
-                  type='number'
-                  className='text-base tabular-nums'
-                  value={String(row.minLoa)}
-                  onChange={(e) => setTier(i, { minLoa: num(e.target.value) })}
-                  step='any'
-                  min='0'
-                />
-              </TableCell>
-              <TableCell>
-                <DecimalInput
-                  className='text-base tabular-nums'
-                  value={row.amount}
-                  onChange={(n) => setTier(i, { amount: n })}
-                />
-              </TableCell>
-              <TableCell>
-                <Button type='button' variant='ghost' size='icon' onClick={() => removeTier(i)}>
-                  <Trash2 className='h-4 w-4 text-destructive' />
-                </Button>
-              </TableCell>
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead className='text-sm'>{t('tbl.labelLoa')}</TableHead>
+              <TableHead className='w-40 text-sm'>{t('tbl.minLoa')}</TableHead>
+              <TableHead className='w-40 text-sm'>{t('tbl.amount')}</TableHead>
+              <TableHead className='w-12' />
             </TableRow>
-          ))}
-        </TableBody>
-      </Table>
+          </TableHeader>
+          <TableBody>
+            {displayTiers.map((row, i) => (
+              <TableRow key={i}>
+                <TableCell>
+                  <span className='text-sm text-muted-foreground tabular-nums'>
+                    {row.label}
+                  </span>
+                </TableCell>
+                <TableCell>
+                  <Input
+                    type='number'
+                    className='text-base tabular-nums'
+                    value={String(row.minLoa)}
+                    onChange={(e) =>
+                      setTier(i, { minLoa: num(e.target.value) })
+                    }
+                    step='any'
+                    min='0'
+                  />
+                </TableCell>
+                <TableCell>
+                  <DecimalInput
+                    className='text-base tabular-nums'
+                    value={row.amount}
+                    onChange={(n) => setTier(i, { amount: n })}
+                  />
+                </TableCell>
+                <TableCell>
+                  <Button
+                    type='button'
+                    variant='ghost'
+                    size='icon'
+                    onClick={() => removeTier(i)}
+                  >
+                    <Trash2 className='h-4 w-4 text-destructive' />
+                  </Button>
+                </TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
       </div>
     </div>
   )
 }
 
 const normalizeCargoTypeCode = (value: string): string =>
-  (value || '').trim().toUpperCase().replace(/[\s-]+/g, '_')
+  (value || '')
+    .trim()
+    .toUpperCase()
+    .replace(/[\s-]+/g, '_')
 
 /**
  * "Agency fee on cargo" table — one USD/MT rate per cargo type. Cargo types are a
@@ -480,18 +560,22 @@ function CargoAgencyRateTable({
   const { t } = useI18n()
 
   const rateFor = (code: string) =>
-    rates.find((r) => normalizeCargoTypeCode(r.code) === normalizeCargoTypeCode(code))?.rate ?? 0
+    rates.find(
+      (r) => normalizeCargoTypeCode(r.code) === normalizeCargoTypeCode(code)
+    )?.rate ?? 0
 
   // Always emit exactly the 3 fixed types, in enum order, with the edited rate.
   const setRate = (code: string, rate: number) => {
-    const edited = new Map(rates.map((r) => [normalizeCargoTypeCode(r.code), r.rate]))
+    const edited = new Map(
+      rates.map((r) => [normalizeCargoTypeCode(r.code), r.rate])
+    )
     edited.set(normalizeCargoTypeCode(code), rate)
     onChange(
       SHIPPING_AGENCY_CARGO_TYPES.map((ct) => ({
         code: ct.code,
         label: ct.displayLabel,
         rate: edited.get(normalizeCargoTypeCode(ct.code)) ?? 0,
-      })),
+      }))
     )
   }
 
@@ -501,7 +585,9 @@ function CargoAgencyRateTable({
         <TableHeader>
           <TableRow>
             <TableHead className='text-sm'>{t('cargoRate.colType')}</TableHead>
-            <TableHead className='w-48 text-sm'>{t('cargoRate.colRate')}</TableHead>
+            <TableHead className='w-48 text-sm'>
+              {t('cargoRate.colRate')}
+            </TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
@@ -533,7 +619,9 @@ function CargoAgencyCalculator({ rates }: { rates: CargoAgencyRate[] }) {
   const [mtText, setMtText] = useState('')
   const mt = parseFiniteNumber(mtText) ?? 0
   const rate =
-    rates.find((r) => normalizeCargoTypeCode(r.code) === normalizeCargoTypeCode(code))?.rate ?? 0
+    rates.find(
+      (r) => normalizeCargoTypeCode(r.code) === normalizeCargoTypeCode(code)
+    )?.rate ?? 0
   const fee = rate * mt
 
   return (
@@ -542,7 +630,9 @@ function CargoAgencyCalculator({ rates }: { rates: CargoAgencyRate[] }) {
 
       <div className='grid gap-3 sm:max-w-md sm:grid-cols-2'>
         <div className='grid gap-2'>
-          <Label className='text-sm font-medium text-muted-foreground'>{t('cargoRate.colType')}</Label>
+          <Label className='text-sm font-medium text-muted-foreground'>
+            {t('cargoRate.colType')}
+          </Label>
           <Select value={code} onValueChange={setCode}>
             <SelectTrigger className='h-11 w-full'>
               <SelectValue />
@@ -557,7 +647,9 @@ function CargoAgencyCalculator({ rates }: { rates: CargoAgencyRate[] }) {
           </Select>
         </div>
         <div className='grid gap-2'>
-          <Label className='text-sm font-medium text-muted-foreground'>{t('cargoAgencyCalc.mtLabel')}</Label>
+          <Label className='text-sm font-medium text-muted-foreground'>
+            {t('cargoAgencyCalc.mtLabel')}
+          </Label>
           <Input
             type='number'
             inputMode='decimal'
@@ -570,10 +662,14 @@ function CargoAgencyCalculator({ rates }: { rates: CargoAgencyRate[] }) {
       </div>
 
       <div className='space-y-2'>
-        <p className='text-sm font-medium uppercase tracking-wide text-muted-foreground'>{t('tonnageCalc.detail')}</p>
+        <p className='text-sm font-medium tracking-wide text-muted-foreground uppercase'>
+          {t('tonnageCalc.detail')}
+        </p>
         <div className='space-y-1'>
           <ScanRow
-            label={boldNumbers(t('cargoAgencyCalc.line', { rate: fmtNum(rate), mt: fmtNum(mt) }))}
+            label={boldNumbers(
+              t('cargoAgencyCalc.line', { rate: fmtNum(rate), mt: fmtNum(mt) })
+            )}
             test={boldNumbers(`= USD ${fmtNum(fee)}`)}
             hit
           />
@@ -599,7 +695,9 @@ function AgencyByGrtCalculator({ tiers }: { tiers: GrtTier[] }) {
       <h4 className='text-base font-semibold'>{t('agencyCalc.title')}</h4>
 
       <div className='grid gap-2 sm:max-w-xs'>
-        <Label className='text-sm font-medium text-muted-foreground'>{t('tonnageCalc.grtLabel')}</Label>
+        <Label className='text-sm font-medium text-muted-foreground'>
+          {t('tonnageCalc.grtLabel')}
+        </Label>
         <Input
           type='number'
           inputMode='decimal'
@@ -615,7 +713,8 @@ function AgencyByGrtCalculator({ tiers }: { tiers: GrtTier[] }) {
           {!hasInput
             ? t('moorCalc.enterGrt')
             : band
-              ? band.label || (band.maxGrt === null ? '∞' : `≤ ${fmtNum(band.maxGrt)}`)
+              ? band.label ||
+                (band.maxGrt === null ? '∞' : `≤ ${fmtNum(band.maxGrt)}`)
               : '—'}
         </span>
         <span className='text-lg font-bold tabular-nums'>
@@ -635,14 +734,15 @@ function boldNumbers(text: string): ReactNode {
       </strong>
     ) : (
       <span key={i}>{part}</span>
-    ),
+    )
   )
 }
 
 const fmtNum = (n: number) =>
-  n.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 2 })
-
-
+  n.toLocaleString('en-US', {
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 2,
+  })
 
 /** Compact two-column row used inside the guide example tables. */
 function ScanRow({
@@ -657,7 +757,9 @@ function ScanRow({
   return (
     <div
       className={`flex items-center justify-between gap-4 rounded-md px-3 py-2 text-base ${
-        hit ? 'bg-primary/10 font-semibold text-foreground' : 'text-muted-foreground'
+        hit
+          ? 'bg-primary/10 font-semibold text-foreground'
+          : 'text-muted-foreground'
       }`}
     >
       <span>{label}</span>
@@ -690,9 +792,15 @@ function GarbageCalculator({
   const buoy = garbage.atBuoyUsd * buoyBlocks
   const total = berth + (isHcmWorksheet(variant) ? buoy : 0) + clearanceFee
 
-  const inputField = (label: string, value: string, onChange: (v: string) => void) => (
+  const inputField = (
+    label: string,
+    value: string,
+    onChange: (v: string) => void
+  ) => (
     <div className='grid gap-2'>
-      <Label className='text-sm font-medium text-muted-foreground'>{label}</Label>
+      <Label className='text-sm font-medium text-muted-foreground'>
+        {label}
+      </Label>
       <Input
         type='number'
         inputMode='decimal'
@@ -710,26 +818,52 @@ function GarbageCalculator({
 
       {/* Inputs (days) */}
       <div className='grid gap-3 sm:max-w-md sm:grid-cols-2'>
-        {inputField(t('garbageCalc.berthDays'), berthDaysText, setBerthDaysText)}
-        {isHcmWorksheet(variant) && inputField(t('garbageCalc.buoyDays'), buoyDaysText, setBuoyDaysText)}
+        {inputField(
+          t('garbageCalc.berthDays'),
+          berthDaysText,
+          setBerthDaysText
+        )}
+        {isHcmWorksheet(variant) &&
+          inputField(t('garbageCalc.buoyDays'), buoyDaysText, setBuoyDaysText)}
       </div>
 
       {/* Detail below */}
       <div className='space-y-2'>
-        <p className='text-sm font-medium uppercase tracking-wide text-muted-foreground'>{t('tonnageCalc.detail')}</p>
+        <p className='text-sm font-medium tracking-wide text-muted-foreground uppercase'>
+          {t('tonnageCalc.detail')}
+        </p>
         <div className='space-y-1'>
           <ScanRow
-            label={boldNumbers(t('garbageEx.berth', { days: fmtNum(berthDays), blocks: berthBlocks, rate: fmtNum(garbage.atBerthUsd) }))}
+            label={boldNumbers(
+              t('garbageEx.berth', {
+                days: fmtNum(berthDays),
+                blocks: berthBlocks,
+                rate: fmtNum(garbage.atBerthUsd),
+              })
+            )}
             test={boldNumbers(`= USD ${fmtNum(berth)}`)}
           />
           {isHcmWorksheet(variant) && (
             <ScanRow
-              label={boldNumbers(t('garbageEx.buoy', { days: fmtNum(buoyDays), blocks: buoyBlocks, rate: fmtNum(garbage.atBuoyUsd) }))}
+              label={boldNumbers(
+                t('garbageEx.buoy', {
+                  days: fmtNum(buoyDays),
+                  blocks: buoyBlocks,
+                  rate: fmtNum(garbage.atBuoyUsd),
+                })
+              )}
               test={boldNumbers(`= USD ${fmtNum(buoy)}`)}
             />
           )}
-          <ScanRow label={boldNumbers(t('f.clearance'))} test={boldNumbers(`= USD ${fmtNum(clearanceFee)}`)} />
-          <ScanRow label={boldNumbers(t('garbageCalc.totalLine'))} test={boldNumbers(`= USD ${fmtNum(total)}`)} hit />
+          <ScanRow
+            label={boldNumbers(t('f.clearance'))}
+            test={boldNumbers(`= USD ${fmtNum(clearanceFee)}`)}
+          />
+          <ScanRow
+            label={boldNumbers(t('garbageCalc.totalLine'))}
+            test={boldNumbers(`= USD ${fmtNum(total)}`)}
+            hit
+          />
         </div>
       </div>
     </div>
@@ -742,7 +876,11 @@ function GarbageCalculator({
  *   tonnage    = tonnagePerGrt    × GRT × 2 (in & out)
  *   navigation = navigationPerGrt × GRT × 2 (in & out)
  */
-function TonnageDuesCalculator({ coeff }: { coeff: EpdaParameterValues['coeff'] }) {
+function TonnageDuesCalculator({
+  coeff,
+}: {
+  coeff: EpdaParameterValues['coeff']
+}) {
   const { t } = useI18n()
   const [grtText, setGrtText] = useState('')
   const grt = parseFiniteNumber(grtText) ?? 0
@@ -755,7 +893,9 @@ function TonnageDuesCalculator({ coeff }: { coeff: EpdaParameterValues['coeff'] 
 
       {/* GRT input */}
       <div className='grid gap-2 sm:max-w-xs'>
-        <Label className='text-sm font-medium text-muted-foreground'>{t('tonnageCalc.grtLabel')}</Label>
+        <Label className='text-sm font-medium text-muted-foreground'>
+          {t('tonnageCalc.grtLabel')}
+        </Label>
         <Input
           type='number'
           inputMode='decimal'
@@ -768,14 +908,26 @@ function TonnageDuesCalculator({ coeff }: { coeff: EpdaParameterValues['coeff'] 
 
       {/* Detail — recomputes live from the GRT above */}
       <div className='space-y-2'>
-        <p className='text-sm font-medium uppercase tracking-wide text-muted-foreground'>{t('tonnageCalc.detail')}</p>
+        <p className='text-sm font-medium tracking-wide text-muted-foreground uppercase'>
+          {t('tonnageCalc.detail')}
+        </p>
         <div className='space-y-1'>
           <ScanRow
-            label={boldNumbers(t('tonnageCalc.tonnageLine', { rate: coeff.tonnagePerGrt, grt: fmtNum(grt) }))}
+            label={boldNumbers(
+              t('tonnageCalc.tonnageLine', {
+                rate: coeff.tonnagePerGrt,
+                grt: fmtNum(grt),
+              })
+            )}
             test={boldNumbers(`= USD ${fmtNum(tonnage)}`)}
           />
           <ScanRow
-            label={boldNumbers(t('tonnageCalc.navLine', { rate: coeff.navigationPerGrt, grt: fmtNum(grt) }))}
+            label={boldNumbers(
+              t('tonnageCalc.navLine', {
+                rate: coeff.navigationPerGrt,
+                grt: fmtNum(grt),
+              })
+            )}
             test={boldNumbers(`= USD ${fmtNum(navigation)}`)}
           />
         </div>
@@ -801,9 +953,13 @@ function PilotageCalculator({
   hours: EpdaParameterValues['hours']
 }) {
   const { t } = useI18n()
-  const defaultMiles = usesQnPilotage(variant) ? hours.qnPilotageMiles : hours.pilotageThirdMiles
+  const defaultMiles = usesQnPilotage(variant)
+    ? hours.qnPilotageMiles
+    : hours.pilotageThirdMiles
   const [grtText, setGrtText] = useState('')
-  const [milesText, setMilesText] = useState(() => formatDecimalValue(defaultMiles))
+  const [milesText, setMilesText] = useState(() =>
+    formatDecimalValue(defaultMiles)
+  )
   const grt = parseFiniteNumber(grtText) ?? 0
   const miles = parseFiniteNumber(milesText) ?? 0
 
@@ -814,7 +970,9 @@ function PilotageCalculator({
       {/* GRT + miles / position inputs */}
       <div className='grid gap-4 sm:max-w-md sm:grid-cols-2'>
         <div className='grid gap-2'>
-          <Label className='text-sm font-medium text-muted-foreground'>{t('tonnageCalc.grtLabel')}</Label>
+          <Label className='text-sm font-medium text-muted-foreground'>
+            {t('tonnageCalc.grtLabel')}
+          </Label>
           <Input
             type='number'
             inputMode='decimal'
@@ -826,7 +984,9 @@ function PilotageCalculator({
         </div>
         <div className='grid gap-2'>
           <Label className='text-sm font-medium text-muted-foreground'>
-            {usesQnPilotage(variant) ? t('pilotageCalc.milesLabel') : t('pilotageCalc.positionLabel')}
+            {usesQnPilotage(variant)
+              ? t('pilotageCalc.milesLabel')
+              : t('pilotageCalc.positionLabel')}
           </Label>
           <Input
             type='number'
@@ -841,56 +1001,88 @@ function PilotageCalculator({
 
       {/* Detail — recomputes live from the inputs above */}
       <div className='space-y-2'>
-        <p className='text-sm font-medium uppercase tracking-wide text-muted-foreground'>{t('tonnageCalc.detail')}</p>
-        {!usesQnPilotage(variant) ? (
-          (() => {
-            const leg1Width = coeff.pilotageLeg1Miles
-            const leg2Width = coeff.pilotageLeg2Miles
-            const leg1Miles = miles > 0 ? leg1Width : 0
-            const leg2Miles = miles > leg1Width ? leg2Width : 0
-            const leg3Miles = Math.max(miles - leg1Width - leg2Width, 0)
-            const leg1 = coeff.pilotageLeg1Rate * grt * 2 * leg1Miles
-            const leg2 = coeff.pilotageLeg2Rate * grt * 2 * leg2Miles
-            const leg3 = coeff.pilotageLeg3Rate * grt * 2 * leg3Miles
-            const total = leg1 + leg2 + leg3
-            return (
-              <div className='space-y-1'>
-                <ScanRow
-                  label={boldNumbers(t('pilotageCalc.leg1', { rate: coeff.pilotageLeg1Rate, grt: fmtNum(grt), miles: fmtNum(leg1Miles) }))}
-                  test={boldNumbers(`= USD ${fmtNum(leg1)}`)}
-                />
-                <ScanRow
-                  label={boldNumbers(t('pilotageCalc.leg2', { rate: coeff.pilotageLeg2Rate, grt: fmtNum(grt), miles: fmtNum(leg2Miles) }))}
-                  test={boldNumbers(`= USD ${fmtNum(leg2)}`)}
-                />
-                <ScanRow
-                  label={boldNumbers(t('pilotageCalc.leg3', { rate: coeff.pilotageLeg3Rate, grt: fmtNum(grt), miles: fmtNum(leg3Miles) }))}
-                  test={boldNumbers(`= USD ${fmtNum(leg3)}`)}
-                />
-                <ScanRow label={boldNumbers(t('pilotageCalc.total'))} test={boldNumbers(`= USD ${fmtNum(total)}`)} hit />
-              </div>
-            )
-          })()
-        ) : (
-          (() => {
-            const multiplier = miles > 1 ? miles : 1
-            const raw = coeff.pilotageSingleRate * grt * 2 * multiplier
-            const value = Math.max(raw, coeff.pilotageMinAmount)
-            return (
-              <div className='space-y-1'>
-                <ScanRow
-                  label={boldNumbers(t('pilotageCalc.qnLine', { rate: coeff.pilotageSingleRate, grt: fmtNum(grt), miles: fmtNum(multiplier) }))}
-                  test={boldNumbers(`= USD ${fmtNum(raw)}`)}
-                />
-                <ScanRow
-                  label={boldNumbers(t('pilotageCalc.qnMin', { min: fmtNum(coeff.pilotageMinAmount) }))}
-                  test={boldNumbers(`= USD ${fmtNum(value)}`)}
-                  hit
-                />
-              </div>
-            )
-          })()
-        )}
+        <p className='text-sm font-medium tracking-wide text-muted-foreground uppercase'>
+          {t('tonnageCalc.detail')}
+        </p>
+        {!usesQnPilotage(variant)
+          ? (() => {
+              const leg1Width = coeff.pilotageLeg1Miles
+              const leg2Width = coeff.pilotageLeg2Miles
+              const leg1Miles = miles > 0 ? leg1Width : 0
+              const leg2Miles = miles > leg1Width ? leg2Width : 0
+              const leg3Miles = Math.max(miles - leg1Width - leg2Width, 0)
+              const leg1 = coeff.pilotageLeg1Rate * grt * 2 * leg1Miles
+              const leg2 = coeff.pilotageLeg2Rate * grt * 2 * leg2Miles
+              const leg3 = coeff.pilotageLeg3Rate * grt * 2 * leg3Miles
+              const total = leg1 + leg2 + leg3
+              return (
+                <div className='space-y-1'>
+                  <ScanRow
+                    label={boldNumbers(
+                      t('pilotageCalc.leg1', {
+                        rate: coeff.pilotageLeg1Rate,
+                        grt: fmtNum(grt),
+                        miles: fmtNum(leg1Miles),
+                      })
+                    )}
+                    test={boldNumbers(`= USD ${fmtNum(leg1)}`)}
+                  />
+                  <ScanRow
+                    label={boldNumbers(
+                      t('pilotageCalc.leg2', {
+                        rate: coeff.pilotageLeg2Rate,
+                        grt: fmtNum(grt),
+                        miles: fmtNum(leg2Miles),
+                      })
+                    )}
+                    test={boldNumbers(`= USD ${fmtNum(leg2)}`)}
+                  />
+                  <ScanRow
+                    label={boldNumbers(
+                      t('pilotageCalc.leg3', {
+                        rate: coeff.pilotageLeg3Rate,
+                        grt: fmtNum(grt),
+                        miles: fmtNum(leg3Miles),
+                      })
+                    )}
+                    test={boldNumbers(`= USD ${fmtNum(leg3)}`)}
+                  />
+                  <ScanRow
+                    label={boldNumbers(t('pilotageCalc.total'))}
+                    test={boldNumbers(`= USD ${fmtNum(total)}`)}
+                    hit
+                  />
+                </div>
+              )
+            })()
+          : (() => {
+              const multiplier = miles > 1 ? miles : 1
+              const raw = coeff.pilotageSingleRate * grt * 2 * multiplier
+              const value = Math.max(raw, coeff.pilotageMinAmount)
+              return (
+                <div className='space-y-1'>
+                  <ScanRow
+                    label={boldNumbers(
+                      t('pilotageCalc.qnLine', {
+                        rate: coeff.pilotageSingleRate,
+                        grt: fmtNum(grt),
+                        miles: fmtNum(multiplier),
+                      })
+                    )}
+                    test={boldNumbers(`= USD ${fmtNum(raw)}`)}
+                  />
+                  <ScanRow
+                    label={boldNumbers(
+                      t('pilotageCalc.qnMin', {
+                        min: fmtNum(coeff.pilotageMinAmount),
+                      })
+                    )}
+                    test={boldNumbers(`= USD ${fmtNum(value)}`)}
+                    hit
+                  />
+                </div>
+              )
+            })()}
       </div>
     </div>
   )
@@ -944,7 +1136,9 @@ function MoorCalculator({
 
       {/* GRT input */}
       <div className='grid gap-2 sm:max-w-xs'>
-        <Label className='text-sm font-medium text-muted-foreground'>{t('tonnageCalc.grtLabel')}</Label>
+        <Label className='text-sm font-medium text-muted-foreground'>
+          {t('tonnageCalc.grtLabel')}
+        </Label>
         <Input
           type='number'
           inputMode='decimal'
@@ -996,9 +1190,15 @@ function BerthDuesCalculator({
   const buoy = coeff.buoyDuePerGrtHour * anchorageHours * grt
   const anchorage = coeff.anchoragePerGrtHour * anchorageHours * grt
 
-  const inputField = (label: string, value: string, onChange: (v: string) => void) => (
+  const inputField = (
+    label: string,
+    value: string,
+    onChange: (v: string) => void
+  ) => (
     <div className='grid gap-2'>
-      <Label className='text-sm font-medium text-muted-foreground'>{label}</Label>
+      <Label className='text-sm font-medium text-muted-foreground'>
+        {label}
+      </Label>
       <Input
         type='number'
         inputMode='decimal'
@@ -1018,25 +1218,49 @@ function BerthDuesCalculator({
       <div className='grid gap-3 sm:max-w-2xl sm:grid-cols-3'>
         {inputField(t('tonnageCalc.grtLabel'), grtText, setGrtText)}
         {inputField(t('f.berthHours'), berthHoursText, setBerthHoursText)}
-        {inputField(t('f.anchorageHours'), anchorageHoursText, setAnchorageHoursText)}
+        {inputField(
+          t('f.anchorageHours'),
+          anchorageHoursText,
+          setAnchorageHoursText
+        )}
       </div>
 
       {/* Detail below — recomputes live from the inputs */}
       <div className='space-y-2'>
-        <p className='text-sm font-medium uppercase tracking-wide text-muted-foreground'>{t('tonnageCalc.detail')}</p>
+        <p className='text-sm font-medium tracking-wide text-muted-foreground uppercase'>
+          {t('tonnageCalc.detail')}
+        </p>
         <div className='space-y-1'>
           <ScanRow
-            label={boldNumbers(t('berthDuesCalc.berthLine', { rate: coeff.berthDuePerGrtHour, hours: fmtNum(berthHours), grt: fmtNum(grt) }))}
+            label={boldNumbers(
+              t('berthDuesCalc.berthLine', {
+                rate: coeff.berthDuePerGrtHour,
+                hours: fmtNum(berthHours),
+                grt: fmtNum(grt),
+              })
+            )}
             test={boldNumbers(`= USD ${fmtNum(berth)}`)}
           />
           {isHcmWorksheet(variant) && (
             <ScanRow
-              label={boldNumbers(t('berthDuesCalc.buoyLine', { rate: coeff.buoyDuePerGrtHour, hours: fmtNum(anchorageHours), grt: fmtNum(grt) }))}
+              label={boldNumbers(
+                t('berthDuesCalc.buoyLine', {
+                  rate: coeff.buoyDuePerGrtHour,
+                  hours: fmtNum(anchorageHours),
+                  grt: fmtNum(grt),
+                })
+              )}
               test={boldNumbers(`= USD ${fmtNum(buoy)}`)}
             />
           )}
           <ScanRow
-            label={boldNumbers(t('berthDuesCalc.anchorageLine', { rate: coeff.anchoragePerGrtHour, hours: fmtNum(anchorageHours), grt: fmtNum(grt) }))}
+            label={boldNumbers(
+              t('berthDuesCalc.anchorageLine', {
+                rate: coeff.anchoragePerGrtHour,
+                hours: fmtNum(anchorageHours),
+                grt: fmtNum(grt),
+              })
+            )}
             test={boldNumbers(`= USD ${fmtNum(anchorage)}`)}
           />
         </div>
@@ -1065,7 +1289,8 @@ function QuarantineCalculator({ q }: { q: EpdaParameterValues['quarantine'] }) {
   const grt = parseFiniteNumber(grtText) ?? 0
 
   const shipTrips = shipQuarantineTrips(purpose)
-  const cargoTrips = QUARANTINE_CARGO_OPTIONS.find((o) => o.value === cargoMode)?.trips ?? 0
+  const cargoTrips =
+    QUARANTINE_CARGO_OPTIONS.find((o) => o.value === cargoMode)?.trips ?? 0
   const unit = grt >= q.shipThresholdGrt ? q.shipUnitHighGrt : q.shipUnitLowGrt
   const ship = unit * shipTrips
   const cargo = q.cargoPerTrip * cargoTrips
@@ -1078,7 +1303,9 @@ function QuarantineCalculator({ q }: { q: EpdaParameterValues['quarantine'] }) {
       {/* Inputs — match Create EPDA (GRT + purpose + quarantine-cargo selects) */}
       <div className='grid gap-3 sm:max-w-2xl sm:grid-cols-3'>
         <div className='grid gap-2'>
-          <Label className='text-sm font-medium text-muted-foreground'>{t('tonnageCalc.grtLabel')}</Label>
+          <Label className='text-sm font-medium text-muted-foreground'>
+            {t('tonnageCalc.grtLabel')}
+          </Label>
           <Input
             type='number'
             inputMode='decimal'
@@ -1089,7 +1316,9 @@ function QuarantineCalculator({ q }: { q: EpdaParameterValues['quarantine'] }) {
           />
         </div>
         <div className='grid gap-2'>
-          <Label className='text-sm font-medium text-muted-foreground'>{t('epda.purpose')}</Label>
+          <Label className='text-sm font-medium text-muted-foreground'>
+            {t('epda.purpose')}
+          </Label>
           <Select value={purpose} onValueChange={setPurpose}>
             <SelectTrigger className='h-11 w-full'>
               <SelectValue placeholder={t('ph.purpose')} />
@@ -1104,7 +1333,9 @@ function QuarantineCalculator({ q }: { q: EpdaParameterValues['quarantine'] }) {
           </Select>
         </div>
         <div className='grid gap-2'>
-          <Label className='text-sm font-medium text-muted-foreground'>{t('epda.quarantineCargo')}</Label>
+          <Label className='text-sm font-medium text-muted-foreground'>
+            {t('epda.quarantineCargo')}
+          </Label>
           <Select value={cargoMode} onValueChange={setCargoMode}>
             <SelectTrigger className='h-11 w-full'>
               <SelectValue placeholder={t('ph.quarantineCargo')} />
@@ -1122,17 +1353,33 @@ function QuarantineCalculator({ q }: { q: EpdaParameterValues['quarantine'] }) {
 
       {/* Detail below */}
       <div className='space-y-2'>
-        <p className='text-sm font-medium uppercase tracking-wide text-muted-foreground'>{t('tonnageCalc.detail')}</p>
+        <p className='text-sm font-medium tracking-wide text-muted-foreground uppercase'>
+          {t('tonnageCalc.detail')}
+        </p>
         <div className='space-y-1'>
           <ScanRow
-            label={boldNumbers(t('quarantineCalc.shipLine', { unit: fmtNum(unit), trips: fmtNum(shipTrips) }))}
+            label={boldNumbers(
+              t('quarantineCalc.shipLine', {
+                unit: fmtNum(unit),
+                trips: fmtNum(shipTrips),
+              })
+            )}
             test={boldNumbers(`= USD ${fmtNum(ship)}`)}
           />
           <ScanRow
-            label={boldNumbers(t('quarantineCalc.cargoLine', { rate: fmtNum(q.cargoPerTrip), trips: fmtNum(cargoTrips) }))}
+            label={boldNumbers(
+              t('quarantineCalc.cargoLine', {
+                rate: fmtNum(q.cargoPerTrip),
+                trips: fmtNum(cargoTrips),
+              })
+            )}
             test={boldNumbers(`= USD ${fmtNum(cargo)}`)}
           />
-          <ScanRow label={boldNumbers(t('quarantineCalc.totalLine'))} test={boldNumbers(`= USD ${fmtNum(total)}`)} hit />
+          <ScanRow
+            label={boldNumbers(t('quarantineCalc.totalLine'))}
+            test={boldNumbers(`= USD ${fmtNum(total)}`)}
+            hit
+          />
         </div>
       </div>
     </div>
@@ -1160,7 +1407,10 @@ function TugCalculator({ tiers }: { tiers: LoaTier[] }) {
     const amount = parseFiniteNumber(tr.amount) ?? 0
     if (minLoa === null || amount <= 0) return
     if (loa < minLoa) return
-    if (minLoa > matchedMinLoa || (minLoa === matchedMinLoa && amount >= matchedAmount)) {
+    if (
+      minLoa > matchedMinLoa ||
+      (minLoa === matchedMinLoa && amount >= matchedAmount)
+    ) {
       matched = tr
       matchedMinLoa = minLoa
       matchedAmount = amount
@@ -1181,7 +1431,9 @@ function TugCalculator({ tiers }: { tiers: LoaTier[] }) {
 
       {/* LOA input */}
       <div className='grid gap-2 sm:max-w-xs'>
-        <Label className='text-sm font-medium text-muted-foreground'>{t('tugCalc.loaLabel')}</Label>
+        <Label className='text-sm font-medium text-muted-foreground'>
+          {t('tugCalc.loaLabel')}
+        </Label>
         <Input
           type='number'
           inputMode='decimal'
@@ -1203,7 +1455,9 @@ function TugCalculator({ tiers }: { tiers: LoaTier[] }) {
         </span>
         {isOverLast ? (
           <div className='flex items-center gap-2'>
-            <span className='text-sm font-medium text-muted-foreground'>USD</span>
+            <span className='text-sm font-medium text-muted-foreground'>
+              USD
+            </span>
             <Input
               type='number'
               inputMode='decimal'
@@ -1219,7 +1473,9 @@ function TugCalculator({ tiers }: { tiers: LoaTier[] }) {
           </span>
         )}
       </div>
-      {isOverLast && <p className='text-xs text-muted-foreground'>{t('tugCalc.overLast')}</p>}
+      {isOverLast && (
+        <p className='text-xs text-muted-foreground'>{t('tugCalc.overLast')}</p>
+      )}
     </div>
   )
 }
@@ -1249,7 +1505,12 @@ function ValuesEditor({
   const setHours = (k: keyof EpdaParameterValues['hours'], n: number) =>
     onChange({ ...values, hours: { ...values.hours, [k]: n } })
 
-  const sections: { id: string; title: string; desc: string; body: ReactNode }[] = [
+  const sections: {
+    id: string
+    title: string
+    desc: string
+    body: ReactNode
+  }[] = [
     {
       id: 'tonnage',
       title: t('sec.tonnage.title'),
@@ -1258,8 +1519,16 @@ function ValuesEditor({
         <div className='space-y-4'>
           {/* Editable inputs */}
           <div className='grid grid-cols-1 gap-4 sm:max-w-md sm:grid-cols-2'>
-            <NumberField label={t('f.tonnagePerGrt')} value={values.coeff.tonnagePerGrt} onChange={(n) => setCoeff('tonnagePerGrt', n)} />
-            <NumberField label={t('f.navigationPerGrt')} value={values.coeff.navigationPerGrt} onChange={(n) => setCoeff('navigationPerGrt', n)} />
+            <NumberField
+              label={t('f.tonnagePerGrt')}
+              value={values.coeff.tonnagePerGrt}
+              onChange={(n) => setCoeff('tonnagePerGrt', n)}
+            />
+            <NumberField
+              label={t('f.navigationPerGrt')}
+              value={values.coeff.navigationPerGrt}
+              onChange={(n) => setCoeff('navigationPerGrt', n)}
+            />
           </div>
           {/* GRT input + live detail */}
           <TonnageDuesCalculator coeff={values.coeff} />
@@ -1272,14 +1541,30 @@ function ValuesEditor({
       desc: t('sec.garbage.desc'),
       body: (
         <div className='space-y-6'>
-          <div className='grid grid-cols-1 gap-4 sm:grid-cols-2 sm:max-w-md'>
-            <NumberField label={t('f.garbageBerth')} value={values.garbage.atBerthUsd} onChange={(n) => setGarbage('atBerthUsd', n)} />
+          <div className='grid grid-cols-1 gap-4 sm:max-w-md sm:grid-cols-2'>
+            <NumberField
+              label={t('f.garbageBerth')}
+              value={values.garbage.atBerthUsd}
+              onChange={(n) => setGarbage('atBerthUsd', n)}
+            />
             {isHcmWorksheet(variant) && (
-              <NumberField label={t('f.garbageBuoy')} value={values.garbage.atBuoyUsd} onChange={(n) => setGarbage('atBuoyUsd', n)} />
+              <NumberField
+                label={t('f.garbageBuoy')}
+                value={values.garbage.atBuoyUsd}
+                onChange={(n) => setGarbage('atBuoyUsd', n)}
+              />
             )}
-            <NumberField label={t('f.clearance')} value={values.coeff.clearanceFee} onChange={(n) => setCoeff('clearanceFee', n)} />
+            <NumberField
+              label={t('f.clearance')}
+              value={values.coeff.clearanceFee}
+              onChange={(n) => setCoeff('clearanceFee', n)}
+            />
           </div>
-          <GarbageCalculator variant={variant} garbage={values.garbage} clearanceFee={values.coeff.clearanceFee} />
+          <GarbageCalculator
+            variant={variant}
+            garbage={values.garbage}
+            clearanceFee={values.coeff.clearanceFee}
+          />
         </div>
       ),
     },
@@ -1293,14 +1578,32 @@ function ValuesEditor({
             <div className='rounded-md border p-3 lg:col-span-2'>
               <p className='mb-3 text-base font-semibold'>{t('q.shipGroup')}</p>
               <div className='grid grid-cols-1 gap-4 sm:grid-cols-3'>
-                <NumberField label={t('q.shipSmall')} value={values.quarantine.shipUnitLowGrt} onChange={(n) => setQ('shipUnitLowGrt', n)} />
-                <NumberField label={t('q.shipLarge')} value={values.quarantine.shipUnitHighGrt} onChange={(n) => setQ('shipUnitHighGrt', n)} />
-                <NumberField label={t('q.threshold')} value={values.quarantine.shipThresholdGrt} onChange={(n) => setQ('shipThresholdGrt', n)} />
+                <NumberField
+                  label={t('q.shipSmall')}
+                  value={values.quarantine.shipUnitLowGrt}
+                  onChange={(n) => setQ('shipUnitLowGrt', n)}
+                />
+                <NumberField
+                  label={t('q.shipLarge')}
+                  value={values.quarantine.shipUnitHighGrt}
+                  onChange={(n) => setQ('shipUnitHighGrt', n)}
+                />
+                <NumberField
+                  label={t('q.threshold')}
+                  value={values.quarantine.shipThresholdGrt}
+                  onChange={(n) => setQ('shipThresholdGrt', n)}
+                />
               </div>
             </div>
             <div className='rounded-md border p-3'>
-              <p className='mb-3 text-base font-semibold'>{t('q.cargoGroup')}</p>
-              <NumberField label={t('q.cargoPerTrip')} value={values.quarantine.cargoPerTrip} onChange={(n) => setQ('cargoPerTrip', n)} />
+              <p className='mb-3 text-base font-semibold'>
+                {t('q.cargoGroup')}
+              </p>
+              <NumberField
+                label={t('q.cargoPerTrip')}
+                value={values.quarantine.cargoPerTrip}
+                onChange={(n) => setQ('cargoPerTrip', n)}
+              />
             </div>
           </div>
 
@@ -1332,18 +1635,54 @@ function ValuesEditor({
           <div className='grid grid-cols-1 gap-4 sm:max-w-2xl sm:grid-cols-2'>
             {!usesQnPilotage(variant) ? (
               <>
-                <NumberField label={t('f.pilotageLeg1Rate')} value={values.coeff.pilotageLeg1Rate} onChange={(n) => setCoeff('pilotageLeg1Rate', n)} />
-                <NumberField label={t('f.pilotageLeg1Miles')} value={values.coeff.pilotageLeg1Miles} onChange={(n) => setCoeff('pilotageLeg1Miles', n)} />
-                <NumberField label={t('f.pilotageLeg2Rate')} value={values.coeff.pilotageLeg2Rate} onChange={(n) => setCoeff('pilotageLeg2Rate', n)} />
-                <NumberField label={t('f.pilotageLeg2Miles')} value={values.coeff.pilotageLeg2Miles} onChange={(n) => setCoeff('pilotageLeg2Miles', n)} />
-                <NumberField label={t('f.pilotageLeg3Rate')} value={values.coeff.pilotageLeg3Rate} onChange={(n) => setCoeff('pilotageLeg3Rate', n)} />
-                <NumberField label={t('f.pilotage3rdMiles')} value={values.hours.pilotageThirdMiles} onChange={(n) => setHours('pilotageThirdMiles', n)} />
+                <NumberField
+                  label={t('f.pilotageLeg1Rate')}
+                  value={values.coeff.pilotageLeg1Rate}
+                  onChange={(n) => setCoeff('pilotageLeg1Rate', n)}
+                />
+                <NumberField
+                  label={t('f.pilotageLeg1Miles')}
+                  value={values.coeff.pilotageLeg1Miles}
+                  onChange={(n) => setCoeff('pilotageLeg1Miles', n)}
+                />
+                <NumberField
+                  label={t('f.pilotageLeg2Rate')}
+                  value={values.coeff.pilotageLeg2Rate}
+                  onChange={(n) => setCoeff('pilotageLeg2Rate', n)}
+                />
+                <NumberField
+                  label={t('f.pilotageLeg2Miles')}
+                  value={values.coeff.pilotageLeg2Miles}
+                  onChange={(n) => setCoeff('pilotageLeg2Miles', n)}
+                />
+                <NumberField
+                  label={t('f.pilotageLeg3Rate')}
+                  value={values.coeff.pilotageLeg3Rate}
+                  onChange={(n) => setCoeff('pilotageLeg3Rate', n)}
+                />
+                <NumberField
+                  label={t('f.pilotage3rdMiles')}
+                  value={values.hours.pilotageThirdMiles}
+                  onChange={(n) => setHours('pilotageThirdMiles', n)}
+                />
               </>
             ) : (
               <>
-                <NumberField label={t('f.pilotageSingleRate')} value={values.coeff.pilotageSingleRate} onChange={(n) => setCoeff('pilotageSingleRate', n)} />
-                <NumberField label={t('f.pilotageMin')} value={values.coeff.pilotageMinAmount} onChange={(n) => setCoeff('pilotageMinAmount', n)} />
-                <NumberField label={t('f.pilotageMiles')} value={values.hours.qnPilotageMiles} onChange={(n) => setHours('qnPilotageMiles', n)} />
+                <NumberField
+                  label={t('f.pilotageSingleRate')}
+                  value={values.coeff.pilotageSingleRate}
+                  onChange={(n) => setCoeff('pilotageSingleRate', n)}
+                />
+                <NumberField
+                  label={t('f.pilotageMin')}
+                  value={values.coeff.pilotageMinAmount}
+                  onChange={(n) => setCoeff('pilotageMinAmount', n)}
+                />
+                <NumberField
+                  label={t('f.pilotageMiles')}
+                  value={values.hours.qnPilotageMiles}
+                  onChange={(n) => setHours('qnPilotageMiles', n)}
+                />
               </>
             )}
           </div>
@@ -1374,21 +1713,33 @@ function ValuesEditor({
     {
       id: 'moor',
       title: t('sec.moor.title'),
-      desc: isHcmWorksheet(variant) ? t('sec.moor.descHcm') : t('sec.moor.descQn'),
+      desc: isHcmWorksheet(variant)
+        ? t('sec.moor.descHcm')
+        : t('sec.moor.descQn'),
       body: (
         <div className='space-y-8'>
           <GrtTierTable
             title={isHcmWorksheet(variant) ? t('tbl.atBerth') : ''}
             tiers={values.moorUnmoorBerthTiers}
             autoLabels
-            onChange={(rows) => onChange({ ...values, moorUnmoorBerthTiers: withAutoGrtTierLabels(rows) })}
+            onChange={(rows) =>
+              onChange({
+                ...values,
+                moorUnmoorBerthTiers: withAutoGrtTierLabels(rows),
+              })
+            }
           />
           {isHcmWorksheet(variant) && (
             <GrtTierTable
               title={t('tbl.atBuoy')}
               tiers={values.moorUnmoorBuoyTiers}
               autoLabels
-              onChange={(rows) => onChange({ ...values, moorUnmoorBuoyTiers: withAutoGrtTierLabels(rows) })}
+              onChange={(rows) =>
+                onChange({
+                  ...values,
+                  moorUnmoorBuoyTiers: withAutoGrtTierLabels(rows),
+                })
+              }
             />
           )}
           <MoorCalculator
@@ -1406,12 +1757,24 @@ function ValuesEditor({
       body: (
         <div className='space-y-6'>
           {/* Rate parameters (per GRT / hour) */}
-          <div className='grid grid-cols-1 gap-4 sm:grid-cols-2 sm:max-w-md'>
-            <NumberField label={t('f.berthDue')} value={values.coeff.berthDuePerGrtHour} onChange={(n) => setCoeff('berthDuePerGrtHour', n)} />
+          <div className='grid grid-cols-1 gap-4 sm:max-w-md sm:grid-cols-2'>
+            <NumberField
+              label={t('f.berthDue')}
+              value={values.coeff.berthDuePerGrtHour}
+              onChange={(n) => setCoeff('berthDuePerGrtHour', n)}
+            />
             {isHcmWorksheet(variant) && (
-              <NumberField label={t('f.buoyDue')} value={values.coeff.buoyDuePerGrtHour} onChange={(n) => setCoeff('buoyDuePerGrtHour', n)} />
+              <NumberField
+                label={t('f.buoyDue')}
+                value={values.coeff.buoyDuePerGrtHour}
+                onChange={(n) => setCoeff('buoyDuePerGrtHour', n)}
+              />
             )}
-            <NumberField label={t('f.anchorageDue')} value={values.coeff.anchoragePerGrtHour} onChange={(n) => setCoeff('anchoragePerGrtHour', n)} />
+            <NumberField
+              label={t('f.anchorageDue')}
+              value={values.coeff.anchoragePerGrtHour}
+              onChange={(n) => setCoeff('anchoragePerGrtHour', n)}
+            />
           </div>
           {/* GRT + (berth / anchorage) hours → live results */}
           <BerthDuesCalculator variant={variant} coeff={values.coeff} />
@@ -1427,7 +1790,9 @@ function ValuesEditor({
           <LoaTierTable
             title=''
             tiers={values.tugTiers}
-            onChange={(rows) => onChange({ ...values, tugTiers: withAutoLoaTierLabels(rows) })}
+            onChange={(rows) =>
+              onChange({ ...values, tugTiers: withAutoLoaTierLabels(rows) })
+            }
           />
           <TugCalculator tiers={values.tugTiers} />
         </div>
@@ -1448,9 +1813,13 @@ function ValuesEditor({
     const rest = sections.filter((s) => !lead.includes(s.id))
     let filtered = [...picked, ...rest]
     if (hiddenSectionIds?.length) {
-      filtered = filtered.filter((section) => !hiddenSectionIds.includes(section.id))
+      filtered = filtered.filter(
+        (section) => !hiddenSectionIds.includes(section.id)
+      )
     } else if (visibleSectionIds?.length) {
-      filtered = filtered.filter((section) => visibleSectionIds.includes(section.id))
+      filtered = filtered.filter((section) =>
+        visibleSectionIds.includes(section.id)
+      )
     }
     return filtered
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -1474,18 +1843,25 @@ function ValuesEditor({
     <div className='grid gap-4 md:grid-cols-[15rem_1fr] md:gap-8'>
       {/* Numbered section rail — click to view each part. On mobile it's a
           horizontal scroll strip; on desktop a sticky vertical list. */}
-      <nav aria-label='Parameter sections' className='min-w-0 md:sticky md:top-24 md:self-start'>
+      <nav
+        aria-label='Parameter sections'
+        className='min-w-0 md:sticky md:top-24 md:self-start'
+      >
         <ol className='flex min-w-0 gap-2 overflow-x-auto pb-1 md:flex-col md:gap-1 md:overflow-visible md:pb-0'>
           {orderedSections.map((s, i) => {
             const isActive = i === active
-            const sectionNumber = getSectionDisplayNumber(s.id, i, useGlobalSectionNumbers)
+            const sectionNumber = getSectionDisplayNumber(
+              s.id,
+              i,
+              useGlobalSectionNumbers
+            )
             return (
               <li key={s.id} className='shrink-0 md:shrink'>
                 <button
                   type='button'
                   onClick={() => selectSection(i)}
                   aria-current={isActive ? 'true' : undefined}
-                  className={`flex items-center gap-2 whitespace-nowrap rounded-lg border px-3 py-2 text-left transition-colors md:w-full md:gap-3 md:border-0 md:py-2.5 ${
+                  className={`flex items-center gap-2 rounded-lg border px-3 py-2 text-left whitespace-nowrap transition-colors md:w-full md:gap-3 md:border-0 md:py-2.5 ${
                     isActive
                       ? 'border-primary/30 bg-primary/10 text-foreground'
                       : 'border-transparent text-muted-foreground hover:bg-muted/60 hover:text-foreground'
@@ -1500,7 +1876,9 @@ function ValuesEditor({
                   </span>
                   <span
                     className={`text-sm lg:text-base ${
-                      isActive ? 'font-semibold' : 'font-medium hidden lg:inline'
+                      isActive
+                        ? 'font-semibold'
+                        : 'hidden font-medium lg:inline'
                     }`}
                   >
                     {s.title}
@@ -1515,11 +1893,13 @@ function ValuesEditor({
       {/* Active section */}
       <section className='min-w-0'>
         <header className='mb-6 flex items-baseline gap-4'>
-          <span className='text-4xl font-bold tabular-nums leading-none text-primary/30'>
+          <span className='text-4xl leading-none font-bold text-primary/30 tabular-nums'>
             {String(currentNumber).padStart(2, '0')}
           </span>
           <div className='space-y-1'>
-            <h3 className='text-2xl font-semibold tracking-tight'>{current.title}</h3>
+            <h3 className='text-2xl font-semibold tracking-tight'>
+              {current.title}
+            </h3>
             <p className='text-sm text-muted-foreground'>{current.desc}</p>
           </div>
         </header>
@@ -1541,7 +1921,7 @@ function ValuesEditor({
             >
               <ChevronLeft className='h-5 w-5 shrink-0 text-muted-foreground' />
               <span className='min-w-0'>
-                <span className='block text-[11px] font-medium uppercase tracking-wide text-muted-foreground'>
+                <span className='block text-[11px] font-medium tracking-wide text-muted-foreground uppercase'>
                   {t('epda.previous')}
                 </span>
                 <span className='block truncate text-sm font-medium'>
@@ -1549,8 +1929,8 @@ function ValuesEditor({
                     getSectionDisplayNumber(
                       orderedSections[active - 1].id,
                       active - 1,
-                      useGlobalSectionNumbers,
-                    ),
+                      useGlobalSectionNumbers
+                    )
                   ).padStart(2, '0')}{' '}
                   {orderedSections[active - 1].title}
                 </span>
@@ -1570,7 +1950,7 @@ function ValuesEditor({
               className='flex min-w-0 flex-1 items-center justify-end gap-2 rounded-lg border border-primary/30 bg-primary/5 px-3 py-2 text-right transition-transform active:scale-[0.98]'
             >
               <span className='min-w-0'>
-                <span className='block text-[11px] font-medium uppercase tracking-wide text-primary'>
+                <span className='block text-[11px] font-medium tracking-wide text-primary uppercase'>
                   {t('epda.next')}
                 </span>
                 <span className='block truncate text-sm font-medium'>
@@ -1578,8 +1958,8 @@ function ValuesEditor({
                     getSectionDisplayNumber(
                       orderedSections[active + 1].id,
                       active + 1,
-                      useGlobalSectionNumbers,
-                    ),
+                      useGlobalSectionNumbers
+                    )
                   ).padStart(2, '0')}{' '}
                   {orderedSections[active + 1].title}
                 </span>
@@ -1660,7 +2040,8 @@ function ParamHistoryButton({ area }: { area: AreaOption }) {
 
   const fmtVal = (v: unknown): string => {
     if (v === undefined || v === null) return '—'
-    if (typeof v === 'number') return v.toLocaleString('en-US', { maximumFractionDigits: 4 })
+    if (typeof v === 'number')
+      return v.toLocaleString('en-US', { maximumFractionDigits: 4 })
     return String(v)
   }
 
@@ -1697,10 +2078,16 @@ function ParamHistoryButton({ area }: { area: AreaOption }) {
   // (tiers/rates) expand into row-level changes so the history shows the full edit.
   const fieldChanges = (
     before: PartialEpdaParameterValues | null,
-    after: PartialEpdaParameterValues | null,
+    after: PartialEpdaParameterValues | null
   ): { label: string; from: string; to: string }[] => {
-    const b = (before ?? {}) as Record<string, Record<string, unknown> | unknown[]>
-    const a = (after ?? {}) as Record<string, Record<string, unknown> | unknown[]>
+    const b = (before ?? {}) as Record<
+      string,
+      Record<string, unknown> | unknown[]
+    >
+    const a = (after ?? {}) as Record<
+      string,
+      Record<string, unknown> | unknown[]
+    >
     const out: { label: string; from: string; to: string }[] = []
     for (const grp of NESTED_GROUPS) {
       const bg = (b[grp] ?? {}) as Record<string, unknown>
@@ -1708,12 +2095,20 @@ function ParamHistoryButton({ area }: { area: AreaOption }) {
       const keys = new Set([...Object.keys(bg), ...Object.keys(ag)])
       keys.forEach((k) => {
         if (JSON.stringify(bg[k]) !== JSON.stringify(ag[k]))
-          out.push({ label: fieldLabel(grp, k), from: fmtVal(bg[k]), to: fmtVal(ag[k]) })
+          out.push({
+            label: fieldLabel(grp, k),
+            from: fmtVal(bg[k]),
+            to: fmtVal(ag[k]),
+          })
       })
     }
     for (const group of ARRAY_FIELDS) {
-      const beforeRows = Array.isArray(b[group]) ? (b[group] as Record<string, unknown>[]) : []
-      const afterRows = Array.isArray(a[group]) ? (a[group] as Record<string, unknown>[]) : []
+      const beforeRows = Array.isArray(b[group])
+        ? (b[group] as Record<string, unknown>[])
+        : []
+      const afterRows = Array.isArray(a[group])
+        ? (a[group] as Record<string, unknown>[])
+        : []
       const max = Math.max(beforeRows.length, afterRows.length)
       for (let i = 0; i < max; i += 1) {
         const beforeRow = beforeRows[i]
@@ -1752,29 +2147,42 @@ function ParamHistoryButton({ area }: { area: AreaOption }) {
     return out
   }
 
-  const changeKind = (from: string, to: string): 'added' | 'removed' | 'updated' => {
+  const changeKind = (
+    from: string,
+    to: string
+  ): 'added' | 'removed' | 'updated' => {
     if ((from === '—' || from === '') && to !== '—' && to !== '') return 'added'
-    if ((to === '—' || to === '') && from !== '—' && from !== '') return 'removed'
+    if ((to === '—' || to === '') && from !== '—' && from !== '')
+      return 'removed'
     return 'updated'
   }
 
   const changeBadge = (kind: 'added' | 'removed' | 'updated') => {
     if (kind === 'added') {
       return (
-        <Badge variant='outline' className='border-emerald-200 bg-emerald-50 text-emerald-700'>
+        <Badge
+          variant='outline'
+          className='border-emerald-200 bg-emerald-50 text-emerald-700'
+        >
           Added
         </Badge>
       )
     }
     if (kind === 'removed') {
       return (
-        <Badge variant='outline' className='border-rose-200 bg-rose-50 text-rose-700'>
+        <Badge
+          variant='outline'
+          className='border-rose-200 bg-rose-50 text-rose-700'
+        >
           Removed
         </Badge>
       )
     }
     return (
-      <Badge variant='outline' className='border-sky-200 bg-sky-50 text-sky-700'>
+      <Badge
+        variant='outline'
+        className='border-sky-200 bg-sky-50 text-sky-700'
+      >
         Updated
       </Badge>
     )
@@ -1806,7 +2214,8 @@ function ParamHistoryButton({ area }: { area: AreaOption }) {
         </DialogHeader>
         <ul className='max-h-[60vh] space-y-2 overflow-y-auto pr-1'>
           {logs.map((log) => {
-            const isDelete = log.action === 'DELETE_PORT' || log.action === 'DELETE_GROUP'
+            const isDelete =
+              log.action === 'DELETE_PORT' || log.action === 'DELETE_GROUP'
             const isMembers = log.action === 'SET_GROUP_MEMBERS'
             const isCreate = !log.beforeValues && !isDelete && !isMembers
             const changes = fieldChanges(log.beforeValues, log.afterValues)
@@ -1815,31 +2224,47 @@ function ParamHistoryButton({ area }: { area: AreaOption }) {
               log.changedBy.email ||
               (log.changedBy.id ? `User #${log.changedBy.id}` : '—')
             return (
-              <li key={log.id} className='rounded-md border border-border/50 bg-muted/20 px-3 py-2.5 text-sm'>
+              <li
+                key={log.id}
+                className='rounded-md border border-border/50 bg-muted/20 px-3 py-2.5 text-sm'
+              >
                 <div className='flex flex-wrap items-baseline justify-between gap-x-3'>
                   <p className='font-medium'>
                     {actionLabel(log.action)}
-                    {log.scope === 'PORT' && log.portId != null ? ` · ${t('phist.port')} #${log.portId}` : ''}
+                    {log.scope === 'PORT' && log.portId != null
+                      ? ` · ${t('phist.port')} #${log.portId}`
+                      : ''}
                   </p>
-                  <p className='text-[11px] text-muted-foreground'>{new Date(log.createdAt).toLocaleString()}</p>
+                  <p className='text-[11px] text-muted-foreground'>
+                    {new Date(log.createdAt).toLocaleString()}
+                  </p>
                 </div>
 
                 {/* Who made the change */}
                 <p className='mt-0.5 text-[12px]'>
-                  <span className='text-muted-foreground'>{t('phist.by')}: </span>
+                  <span className='text-muted-foreground'>
+                    {t('phist.by')}:{' '}
+                  </span>
                   <span className='font-medium text-foreground'>{who}</span>
                 </p>
 
                 {/* What changed — field-level before → after */}
                 {isMembers ? (
-                  <p className='mt-1 text-[12px] text-muted-foreground'>{t('phist.setMembers')}</p>
+                  <p className='mt-1 text-[12px] text-muted-foreground'>
+                    {t('phist.setMembers')}
+                  </p>
                 ) : changes.length ? (
                   <ul className='mt-1 space-y-0.5'>
                     {changes.map((c, i) => (
-                      <li key={i} className='rounded-sm border border-border/50 bg-background/70 px-2 py-1.5 text-[12px] leading-snug'>
+                      <li
+                        key={i}
+                        className='rounded-sm border border-border/50 bg-background/70 px-2 py-1.5 text-[12px] leading-snug'
+                      >
                         <div className='mb-1 flex flex-wrap items-center gap-2'>
                           {changeBadge(changeKind(c.from, c.to))}
-                          <span className='font-medium text-foreground'>{c.label}</span>
+                          <span className='font-medium text-foreground'>
+                            {c.label}
+                          </span>
                         </div>
                         <div className='flex flex-wrap items-center gap-1.5'>
                           <span className='rounded bg-rose-50 px-1.5 py-0.5 font-medium text-rose-700 line-through'>
@@ -1854,7 +2279,9 @@ function ParamHistoryButton({ area }: { area: AreaOption }) {
                     ))}
                   </ul>
                 ) : isCreate ? (
-                  <p className='mt-1 text-[12px] text-muted-foreground'>{t('phist.created')}</p>
+                  <p className='mt-1 text-[12px] text-muted-foreground'>
+                    {t('phist.created')}
+                  </p>
                 ) : !isDelete ? (
                   <p className='mt-1 text-[12px] text-muted-foreground'>—</p>
                 ) : null}
@@ -1889,7 +2316,8 @@ export default function Page() {
     [sets, area]
   )
   const areaValues = useMemo(
-    () => mergeParameterValues(defaultParameterValues(variant), areaSet?.values),
+    () =>
+      mergeParameterValues(defaultParameterValues(variant), areaSet?.values),
     [areaSet, variant]
   )
 
@@ -1899,24 +2327,28 @@ export default function Page() {
     value: clone(areaValues),
   })
   const draft =
-    draftState.sourceKey === areaValuesKey ? draftState.value : clone(areaValues)
+    draftState.sourceKey === areaValuesKey
+      ? draftState.value
+      : clone(areaValues)
   const setDraft = (value: EpdaParameterValues) =>
     setDraftState({ sourceKey: areaValuesKey, value })
 
   const saveArea = useMutation({
-    mutationFn: () => epdaParametersService.upsertArea(area, draft),
+    mutationFn: () =>
+      epdaParametersService.upsertArea(area, draft, areaSet?.version ?? null),
     onSuccess: () => {
       toast.success(`Saved parameters for ${area}`)
       qc.invalidateQueries({ queryKey: ['epda-parameters'] })
       qc.invalidateQueries({ queryKey: ['epda-param-logs'] })
     },
-    onError: (e) => toast.error(e instanceof Error ? e.message : 'Failed to save'),
+    onError: (e) =>
+      toast.error(e instanceof Error ? e.message : 'Failed to save'),
   })
 
   // Dirty when the editable draft differs from the saved server values.
   const isDirty = useMemo(
     () => JSON.stringify(draft) !== JSON.stringify(areaValues),
-    [draft, areaValues],
+    [draft, areaValues]
   )
 
   // Warn before leaving with unsaved area edits — covers refresh/close (beforeunload)
@@ -1996,8 +2428,12 @@ export default function Page() {
       <Main>
         <div className='flex flex-wrap items-end justify-between gap-2'>
           <div className='space-y-1.5'>
-            <h2 className='text-2xl font-bold tracking-tight sm:text-3xl'>{t('param.title')}</h2>
-            <p className='max-w-2xl text-base text-muted-foreground'>{t('param.subtitle')}</p>
+            <h2 className='text-2xl font-bold tracking-tight sm:text-3xl'>
+              {t('param.title')}
+            </h2>
+            <p className='max-w-2xl text-base text-muted-foreground'>
+              {t('param.subtitle')}
+            </p>
           </div>
         </div>
 
@@ -2012,7 +2448,7 @@ export default function Page() {
             <Tabs
               value={area}
               onValueChange={(v) => handleAreaChange(v as AreaOption)}
-              className='sticky top-[var(--header-height,4rem)] z-30 -mx-4 border-b bg-background/95 px-4 py-2 max-md:backdrop-blur-none md:backdrop-blur supports-[backdrop-filter]:bg-background/80 lg:static lg:mx-0 lg:border-0 lg:bg-transparent lg:px-0 lg:py-0 lg:backdrop-blur-none'
+              className='sticky top-[var(--header-height,4rem)] z-30 -mx-4 border-b bg-background/95 px-4 py-2 supports-[backdrop-filter]:bg-background/80 max-md:backdrop-blur-none md:backdrop-blur lg:static lg:mx-0 lg:border-0 lg:bg-transparent lg:px-0 lg:py-0 lg:backdrop-blur-none'
             >
               <TabsList className='h-auto w-full lg:w-auto'>
                 {VISIBLE_AREA_OPTIONS.map((a) => (
@@ -2033,15 +2469,21 @@ export default function Page() {
                   <CardTitle className='text-xl'>
                     {t('param.areaSet', { area: getAreaLabel(area) })}
                   </CardTitle>
-                  <CardDescription className='text-base'>{t('param.areaDesc')}</CardDescription>
+                  <CardDescription className='text-base'>
+                    {t('param.areaDesc')}
+                  </CardDescription>
                 </div>
-                <div className='flex flex-col gap-2 sm:flex-row sm:w-auto sm:items-center [&>*]:w-full sm:[&>*]:w-auto'>
+                <div className='flex flex-col gap-2 sm:w-auto sm:flex-row sm:items-center [&>*]:w-full sm:[&>*]:w-auto'>
                   <ParamHistoryButton area={area} />
                   <Button
                     onClick={() => saveArea.mutate()}
                     disabled={!isDirty || saveArea.isPending}
                   >
-                    {saveArea.isPending ? <Loader2 className='h-4 w-4 animate-spin' /> : <Save className='h-4 w-4' />}
+                    {saveArea.isPending ? (
+                      <Loader2 className='h-4 w-4 animate-spin' />
+                    ) : (
+                      <Save className='h-4 w-4' />
+                    )}
                     {t('param.saveArea')}
                   </Button>
                 </div>
@@ -2062,7 +2504,9 @@ export default function Page() {
                 area={area}
                 variant={variant}
                 areaValues={areaValues}
-                overrides={(sets ?? []).filter((s) => s.scope === 'PORT' && s.area === area)}
+                overrides={(sets ?? []).filter(
+                  (s) => s.scope === 'PORT' && s.area === area
+                )}
                 groups={[]}
               />
             </div>
@@ -2082,15 +2526,28 @@ export default function Page() {
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>{t('param.unsavedTitle')}</AlertDialogTitle>
-            <AlertDialogDescription>{t('param.unsavedBody')}</AlertDialogDescription>
+            <AlertDialogDescription>
+              {t('param.unsavedBody')}
+            </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter className='gap-2 sm:gap-2'>
             <AlertDialogCancel>{t('param.stay')}</AlertDialogCancel>
-            <Button variant='destructive' onClick={confirmLeave} disabled={saveArea.isPending}>
+            <Button
+              variant='destructive'
+              onClick={confirmLeave}
+              disabled={saveArea.isPending}
+            >
               {t('param.leave')}
             </Button>
-            <AlertDialogAction onClick={saveThenLeave} disabled={saveArea.isPending}>
-              {saveArea.isPending ? <Loader2 className='h-4 w-4 animate-spin' /> : <Save className='h-4 w-4' />}
+            <AlertDialogAction
+              onClick={saveThenLeave}
+              disabled={saveArea.isPending}
+            >
+              {saveArea.isPending ? (
+                <Loader2 className='h-4 w-4 animate-spin' />
+              ) : (
+                <Save className='h-4 w-4' />
+              )}
               {t('param.saveAndLeave')}
             </AlertDialogAction>
           </AlertDialogFooter>
@@ -2157,38 +2614,85 @@ function PortOverridesCard({
   }
 
   const save = useMutation({
-    mutationFn: () =>
-      epdaParametersService.upsertPort(editingPortId!, diffValues(baselineForPort(editingPortId!), draft)),
-    onSuccess: () => {
-      toast.success('Port-specific dues saved')
+    mutationFn: async () => {
+      const portId = editingPortId!
+      const existing = overrideByPort.get(portId)
+      const baseline = baselineForPort(portId)
+      const values = diffValues(baseline, draft)
+      /* eslint-disable no-console -- local EPDA payload diagnostics */
+      if (process.env.NODE_ENV === 'development') {
+        console.groupCollapsed(`[EPDA] Save PORT override #${portId}`)
+        console.log('baseline', baseline)
+        console.log('draft shown by form', draft)
+        console.log('existing override', existing?.values ?? null)
+        console.log('diff before sanitize', values)
+        console.groupEnd()
+      }
+      /* eslint-enable no-console */
+      const plan = planPortOverrideWrite(values, existing)
+      if (plan.action === 'none') {
+        return 'unchanged' as const
+      }
+      if (plan.action === 'delete') {
+        await epdaParametersService.deletePort(portId, plan.expectedVersion)
+        return 'deleted' as const
+      }
+      await epdaParametersService.upsertPort(
+        portId,
+        plan.values,
+        plan.expectedVersion
+      )
+      return 'saved' as const
+    },
+    onSuccess: (result) => {
+      toast.success(
+        result === 'deleted'
+          ? 'Port now inherits its area/group parameters'
+          : result === 'unchanged'
+            ? 'Port already inherits its area/group parameters'
+            : 'Port-specific dues saved'
+      )
       qc.invalidateQueries({ queryKey: ['epda-parameters'] })
       qc.invalidateQueries({ queryKey: ['epda-param-logs'] })
       setEditingPortId(null)
     },
-    onError: (e) => toast.error(e instanceof Error ? e.message : 'Failed to save'),
+    onError: (e) =>
+      toast.error(e instanceof Error ? e.message : 'Failed to save'),
   })
 
   const remove = useMutation({
-    mutationFn: (portId: number) => epdaParametersService.deletePort(portId),
+    mutationFn: (portId: number) => {
+      const existing = overrideByPort.get(portId)
+      if (!existing) return Promise.resolve()
+      return epdaParametersService.deletePort(portId, existing.version)
+    },
     onSuccess: () => {
       toast.success('Removed port-specific dues (port now inherits area)')
       qc.invalidateQueries({ queryKey: ['epda-parameters'] })
       qc.invalidateQueries({ queryKey: ['epda-param-logs'] })
       setEditingPortId(null)
     },
-    onError: (e) => toast.error(e instanceof Error ? e.message : 'Failed to remove'),
+    onError: (e) =>
+      toast.error(e instanceof Error ? e.message : 'Failed to remove'),
   })
 
   return (
     <Card>
       <CardHeader>
-        <CardTitle>{t('param.portOverrides', { area: getAreaLabel(area) })}</CardTitle>
+        <CardTitle>
+          {t('param.portOverrides', { area: getAreaLabel(area) })}
+        </CardTitle>
         <CardDescription>{t('param.portOverridesDesc')}</CardDescription>
       </CardHeader>
       <CardContent className='space-y-4'>
         <div className='grid gap-1.5'>
-          <Label className='text-xs text-muted-foreground'>{t('param.addEditPort')}</Label>
-          <Select value={editingPortId ? String(editingPortId) : ''} onValueChange={(v) => beginEdit(Number(v))}>
+          <Label className='text-xs text-muted-foreground'>
+            {t('param.addEditPort')}
+          </Label>
+          <Select
+            value={editingPortId ? String(editingPortId) : ''}
+            onValueChange={(v) => beginEdit(Number(v))}
+          >
             <SelectTrigger className='w-full sm:max-w-xs'>
               <SelectValue placeholder={t('param.selectPort')} />
             </SelectTrigger>
@@ -2196,7 +2700,9 @@ function PortOverridesCard({
               {(ports ?? []).map((p) => (
                 <SelectItem key={p.id} value={String(p.id)}>
                   {p.portOfCall?.trim() || p.name}
-                  {overrideByPort.has(p.id) ? `  ${t('param.overrideTag')}` : ''}
+                  {overrideByPort.has(p.id)
+                    ? `  ${t('param.overrideTag')}`
+                    : ''}
                 </SelectItem>
               ))}
             </SelectContent>
@@ -2215,16 +2721,26 @@ function PortOverridesCard({
                 <li
                   key={o.id}
                   className={`rounded-xl border bg-card p-4 transition-colors ${
-                    isActive ? 'border-primary/50 ring-1 ring-primary/20' : 'hover:border-primary/30'
+                    isActive
+                      ? 'border-primary/50 ring-1 ring-primary/20'
+                      : 'hover:border-primary/30'
                   }`}
                 >
                   <div className='flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between'>
                     <div className='min-w-0 space-y-2'>
-                      <span className='block truncate text-base font-semibold'>{portName(o.portId!)}</span>
-                      <OverriddenBadges labels={getCurrentOverrideSectionLabels(t, o.values)} />
+                      <span className='block truncate text-base font-semibold'>
+                        {portName(o.portId!)}
+                      </span>
+                      <OverriddenBadges
+                        labels={getCurrentOverrideSectionLabels(t, o.values)}
+                      />
                     </div>
                     <div className='flex shrink-0 items-center gap-1.5'>
-                      <Button variant='outline' size='sm' onClick={() => beginEdit(o.portId!)}>
+                      <Button
+                        variant='outline'
+                        size='sm'
+                        onClick={() => beginEdit(o.portId!)}
+                      >
                         {t('common.edit')}
                       </Button>
                       <Button
@@ -2246,13 +2762,27 @@ function PortOverridesCard({
         {editingPortId && (
           <Card ref={editPanelRef} className='scroll-mt-24 border-primary/40'>
             <CardHeader className='flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between'>
-              <CardTitle className='text-base'>{t('param.overrideTitle', { port: portName(editingPortId) })}</CardTitle>
+              <CardTitle className='text-base'>
+                {t('param.overrideTitle', { port: portName(editingPortId) })}
+              </CardTitle>
               <div className='flex gap-2'>
-                <Button variant='outline' size='sm' onClick={() => setEditingPortId(null)}>
+                <Button
+                  variant='outline'
+                  size='sm'
+                  onClick={() => setEditingPortId(null)}
+                >
                   {t('common.cancel')}
                 </Button>
-                <Button size='sm' onClick={() => save.mutate()} disabled={save.isPending}>
-                  {save.isPending ? <Loader2 className='h-4 w-4 animate-spin' /> : <Save className='h-4 w-4' />}
+                <Button
+                  size='sm'
+                  onClick={() => save.mutate()}
+                  disabled={save.isPending}
+                >
+                  {save.isPending ? (
+                    <Loader2 className='h-4 w-4 animate-spin' />
+                  ) : (
+                    <Save className='h-4 w-4' />
+                  )}
                   {t('param.saveOverride')}
                 </Button>
               </div>

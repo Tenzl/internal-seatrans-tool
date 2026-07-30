@@ -16,9 +16,8 @@
  *    tug is a 5-step LOA table, navigation 0.058, clearance 100.
  * The superset below carries fields for both; each variant reads what it needs.
  */
-
-import { parseFiniteNumber } from '@/shared/utils/parseNumber'
 import { legacyCargoTypeToCode } from '@/modules/gallery/shippingAgencyCargoCatalog'
+import { parseFiniteNumber } from '@/shared/utils/parseNumber'
 
 export type QuoteVariant = 'HCM' | 'QN' | 'HN'
 
@@ -132,9 +131,19 @@ const AGENCY_FEE_TIERS: GrtTier[] = [
 function hcmDefaults(): EpdaParameterValues {
   return {
     // pilotageThirdMiles here = default buoy position (total miles); leg 3 = position − (leg1+leg2).
-    hours: { berthHours: 96, anchorageHours: 24, pilotageThirdMiles: 47, qnPilotageMiles: 5 },
+    hours: {
+      berthHours: 96,
+      anchorageHours: 24,
+      pilotageThirdMiles: 47,
+      qnPilotageMiles: 5,
+    },
     garbage: { atBerthUsd: 54, atBuoyUsd: 54 },
-    quarantine: { shipUnitLowGrt: 95, shipUnitHighGrt: 110, shipThresholdGrt: 10000, cargoPerTrip: 100 },
+    quarantine: {
+      shipUnitLowGrt: 95,
+      shipUnitHighGrt: 110,
+      shipThresholdGrt: 10000,
+      cargoPerTrip: 100,
+    },
     coeff: {
       tonnagePerGrt: 0.034,
       navigationPerGrt: 0.1,
@@ -229,6 +238,166 @@ function coerceScalars<T extends Record<string, number>>(obj: T): T {
   return out
 }
 
+const RATIO_PARAMETER_KEYS = new Set([
+  'tankerFactor',
+  'bulkFactor',
+  'oceanFrtTaxRate',
+])
+
+const SCALAR_PARAMETER_KEYS = {
+  hours: [
+    'berthHours',
+    'anchorageHours',
+    'pilotageThirdMiles',
+    'qnPilotageMiles',
+  ],
+  garbage: ['atBerthUsd', 'atBuoyUsd'],
+  quarantine: [
+    'shipUnitLowGrt',
+    'shipUnitHighGrt',
+    'shipThresholdGrt',
+    'cargoPerTrip',
+  ],
+  coeff: [
+    'tonnagePerGrt',
+    'navigationPerGrt',
+    'tankerFactor',
+    'bulkFactor',
+    'berthDuePerGrtHour',
+    'buoyDuePerGrtHour',
+    'anchoragePerGrtHour',
+    'clearanceFee',
+    'oceanFrtDefaultRate',
+    'oceanFrtTaxRate',
+    'pilotageLeg1Rate',
+    'pilotageLeg1Miles',
+    'pilotageLeg2Rate',
+    'pilotageLeg2Miles',
+    'pilotageLeg3Rate',
+    'pilotageSingleRate',
+    'pilotageMinAmount',
+    'cargoAgencyBagRate',
+    'cargoAgencyEquipRate',
+    'cargoAgencyBulkRate',
+  ],
+} as const
+
+function isValidScalarParameter(key: PropertyKey, value: number): boolean {
+  return value >= 0 && (!RATIO_PARAMETER_KEYS.has(String(key)) || value <= 1)
+}
+
+/**
+ * Merge numeric override fields without letting malformed API/legacy values
+ * replace a valid baseline. In particular, JSON `null` must not leak into the
+ * controlled form as a number.
+ */
+function mergeScalarParameters<T extends Record<string, number>>(
+  base: T,
+  override?: Partial<T>
+): T {
+  const result = { ...base }
+  if (!override) return result
+
+  for (const key of Object.keys(base) as (keyof T)[]) {
+    if (!(key in override)) continue
+    const parsed = parseFiniteNumber(override[key])
+    if (parsed !== null && isValidScalarParameter(key, parsed)) {
+      result[key] = parsed as T[keyof T]
+    }
+  }
+  return result
+}
+
+/**
+ * Guard the JSON boundary. JSON.stringify silently converts NaN/Infinity to
+ * null, which previously made a valid decimal form fail only after reaching
+ * the backend validator.
+ */
+export function assertSerializableParameterValues(
+  values: PartialEpdaParameterValues
+): void {
+  const assertNumber = (
+    value: unknown,
+    path: string,
+    options?: { nullable?: boolean; ratio?: boolean }
+  ) => {
+    if (options?.nullable && value === null) return
+    if (typeof value !== 'number' || !Number.isFinite(value) || value < 0) {
+      throw new Error(`${path} must be a finite non-negative number`)
+    }
+    if (options?.ratio && value > 1) {
+      throw new Error(`${path} must be between 0 and 1`)
+    }
+  }
+
+  const scalarGroups = ['hours', 'garbage', 'quarantine', 'coeff'] as const
+  for (const group of scalarGroups) {
+    const entries = values[group]
+    if (!entries) continue
+    for (const [key, value] of Object.entries(entries)) {
+      assertNumber(value, `${group}.${key}`, {
+        ratio: RATIO_PARAMETER_KEYS.has(key),
+      })
+    }
+  }
+
+  const grtGroups = [
+    'agencyFeeTiers',
+    'moorUnmoorBerthTiers',
+    'moorUnmoorBuoyTiers',
+  ] as const
+  for (const group of grtGroups) {
+    values[group]?.forEach((tier, index) => {
+      assertNumber(tier.maxGrt, `${group}[${index}].maxGrt`, {
+        nullable: true,
+      })
+      assertNumber(tier.amount, `${group}[${index}].amount`)
+    })
+  }
+
+  values.tugTiers?.forEach((tier, index) => {
+    assertNumber(tier.minLoa, `tugTiers[${index}].minLoa`)
+    assertNumber(tier.amount, `tugTiers[${index}].amount`)
+  })
+  values.cargoAgencyRates?.forEach((rate, index) => {
+    assertNumber(rate.rate, `cargoAgencyRates[${index}].rate`)
+  })
+}
+
+/**
+ * Repair stale scalar state before the JSON boundary. Invalid/null scalars are
+ * omitted from the partial document so AREA updates keep their stored value and
+ * PORT/GROUP overrides continue inheriting their baseline. Numeric strings are
+ * normalized to numbers for compatibility with legacy API/cache data.
+ */
+export function sanitizePartialParameterValues(
+  values: PartialEpdaParameterValues
+): PartialEpdaParameterValues {
+  const result: PartialEpdaParameterValues = { ...values }
+  const scalarGroups = ['hours', 'garbage', 'quarantine', 'coeff'] as const
+
+  for (const group of scalarGroups) {
+    const source = values[group]
+    if (!source) continue
+
+    const sanitized: Record<string, number> = {}
+    for (const key of SCALAR_PARAMETER_KEYS[group]) {
+      const value = (source as Record<string, unknown>)[key]
+      if (value === undefined) continue
+      const parsed = parseFiniteNumber(value)
+      if (parsed !== null) sanitized[key] = parsed
+    }
+
+    if (Object.keys(sanitized).length > 0) {
+      ;(result as Record<string, unknown>)[group] = sanitized
+    } else {
+      delete (result as Record<string, unknown>)[group]
+    }
+  }
+
+  return result
+}
+
 function coerceGrtTier(tier: GrtTier): GrtTier {
   return {
     ...tier,
@@ -261,16 +430,21 @@ export function withAutoGrtTierLabels(tiers: GrtTier[]): GrtTier[] {
   for (let i = 0; i < order.length; i += 1) {
     const { index, maxGrt } = order[i]
     if (maxGrt === null) {
-      labels[index] = prevMax === null ? '≥ 0' : `≥ ${formatGrtNumber(prevMax + 1)}`
+      labels[index] =
+        prevMax === null ? '≥ 0' : `≥ ${formatGrtNumber(prevMax + 1)}`
     } else if (prevMax === null) {
       labels[index] = `≤ ${formatGrtNumber(maxGrt)}`
     } else {
-      labels[index] = `${formatGrtNumber(prevMax + 1)} - <${formatGrtNumber(maxGrt + 1)}`
+      labels[index] =
+        `${formatGrtNumber(prevMax + 1)} - <${formatGrtNumber(maxGrt + 1)}`
     }
     if (maxGrt !== null) prevMax = maxGrt
   }
 
-  return coerced.map((tier, index) => ({ ...tier, label: labels[index] ?? tier.label }))
+  return coerced.map((tier, index) => ({
+    ...tier,
+    label: labels[index] ?? tier.label,
+  }))
 }
 
 function coerceLoaTier(tier: LoaTier): LoaTier {
@@ -282,7 +456,10 @@ function coerceLoaTier(tier: LoaTier): LoaTier {
 }
 
 /** Format a single tug-band label from its min LOA and the next higher band (if any). */
-export function formatLoaTierLabel(minLoa: number, nextMinLoa: number | null): string {
+export function formatLoaTierLabel(
+  minLoa: number,
+  nextMinLoa: number | null
+): string {
   const fmt = (n: number) => {
     if (Number.isInteger(n)) return String(n)
     return String(n)
@@ -300,9 +477,7 @@ export function withAutoLoaTierLabels(tiers: LoaTier[]): LoaTier[] {
   return tiers.map((tier, index) => {
     const minLoa = mins[index]
     const nextMinLoa =
-      mins
-        .filter((n) => n > minLoa)
-        .sort((a, b) => a - b)[0] ?? null
+      mins.filter((n) => n > minLoa).sort((a, b) => a - b)[0] ?? null
     return {
       ...tier,
       minLoa,
@@ -313,19 +488,27 @@ export function withAutoLoaTierLabels(tiers: LoaTier[]): LoaTier[] {
 }
 
 /** Normalize values loaded from API/DB so numeric comparisons work with decimals. */
-export function normalizeParameterValues(values: EpdaParameterValues): EpdaParameterValues {
+export function normalizeParameterValues(
+  values: EpdaParameterValues
+): EpdaParameterValues {
   const safe = values ?? defaultParameterValues('HCM')
   return {
     hours: coerceScalars(safe.hours ?? defaultParameterValues('HCM').hours),
-    garbage: coerceScalars(safe.garbage ?? defaultParameterValues('HCM').garbage),
-    quarantine: coerceScalars(safe.quarantine ?? defaultParameterValues('HCM').quarantine),
+    garbage: coerceScalars(
+      safe.garbage ?? defaultParameterValues('HCM').garbage
+    ),
+    quarantine: coerceScalars(
+      safe.quarantine ?? defaultParameterValues('HCM').quarantine
+    ),
     coeff: coerceScalars(safe.coeff ?? defaultParameterValues('HCM').coeff),
     agencyFeeTiers: (safe.agencyFeeTiers ?? []).map(coerceGrtTier),
-    moorUnmoorBerthTiers: withAutoGrtTierLabels(safe.moorUnmoorBerthTiers ?? []),
+    moorUnmoorBerthTiers: withAutoGrtTierLabels(
+      safe.moorUnmoorBerthTiers ?? []
+    ),
     moorUnmoorBuoyTiers: withAutoGrtTierLabels(safe.moorUnmoorBuoyTiers ?? []),
     // Drop empty placeholder tug rows (amount 0); refresh labels from min LOA.
     tugTiers: withAutoLoaTierLabels(
-      (safe.tugTiers ?? []).map(coerceLoaTier).filter((tier) => tier.amount > 0),
+      (safe.tugTiers ?? []).map(coerceLoaTier).filter((tier) => tier.amount > 0)
     ),
     cargoAgencyRates: (safe.cargoAgencyRates ?? []).map((row) => ({
       ...row,
@@ -335,7 +518,9 @@ export function normalizeParameterValues(values: EpdaParameterValues): EpdaParam
 }
 
 /** Built-in defaults for a variant (mirror the previously hardcoded values). */
-export function defaultParameterValues(variant: QuoteVariant = 'HCM'): EpdaParameterValues {
+export function defaultParameterValues(
+  variant: QuoteVariant = 'HCM'
+): EpdaParameterValues {
   if (variant === 'QN') return qnDefaults()
   // HN (Area 1) uses the HCM parameter set; pilotage calc follows the QN formula.
   return hcmDefaults()
@@ -344,7 +529,7 @@ export function defaultParameterValues(variant: QuoteVariant = 'HCM'): EpdaParam
 /** Resolve a GRT-banded amount. Returns `undefined` for a null/empty tier list or GRT. */
 export function resolveGrtTier(
   grt: number | null | undefined,
-  tiers: GrtTier[],
+  tiers: GrtTier[]
 ): { amount: number; label: string } | undefined {
   const grtNum = parseFiniteNumber(grt)
   if (grtNum === null || !tiers.length) return undefined
@@ -366,13 +551,13 @@ export function resolveGrtTier(
  */
 export function resolveCargoAgencyRate(
   cargoType: string | null | undefined,
-  params: EpdaParameterValues,
+  params: EpdaParameterValues
 ): number | undefined {
   const code = legacyCargoTypeToCode(cargoType)
   if (!code) return undefined
 
   const configuredRate = (params.cargoAgencyRates ?? []).find(
-    (row) => legacyCargoTypeToCode(row.code) === code,
+    (row) => legacyCargoTypeToCode(row.code) === code
   )
   return parseFiniteNumber(configuredRate?.rate) ?? 0
 }
@@ -380,7 +565,7 @@ export function resolveCargoAgencyRate(
 /** Resolve an LOA-banded amount (highest `minLoa <= loa` wins). */
 export function resolveLoaTier(
   loa: number | null | undefined,
-  tiers: LoaTier[],
+  tiers: LoaTier[]
 ): { amount: number; label: string } | undefined {
   const loaNum = parseFiniteNumber(loa)
   if (loaNum === null || !tiers.length) return undefined
@@ -394,7 +579,10 @@ export function resolveLoaTier(
     if (minLoa === null || amount <= 0) continue
     if (loaNum < minLoa) continue
     // Highest minLoa wins; on a tie keep the row with the larger amount.
-    if (minLoa > matchMinLoa || (minLoa === matchMinLoa && amount >= matchAmount)) {
+    if (
+      minLoa > matchMinLoa ||
+      (minLoa === matchMinLoa && amount >= matchAmount)
+    ) {
       match = tier
       matchMinLoa = minLoa
       matchAmount = amount
@@ -408,29 +596,34 @@ export function resolveLoaTier(
  * Returns null when absent or malformed (older records) so callers fall back to
  * live resolution. A snapshot keeps a saved EPDA immune to later Parameter edits.
  */
-export function extractParamsSnapshot(snapshot: unknown): EpdaParameterValues | null {
+export function extractParamsSnapshot(
+  snapshot: unknown
+): EpdaParameterValues | null {
   if (!snapshot || typeof snapshot !== 'object') return null
   const p = (snapshot as Record<string, unknown>).params
   if (!p || typeof p !== 'object') return null
   const v = p as Partial<EpdaParameterValues>
-  if (!Array.isArray(v.agencyFeeTiers) || !v.coeff || !v.hours || !v.quarantine) return null
+  if (!Array.isArray(v.agencyFeeTiers) || !v.coeff || !v.hours || !v.quarantine)
+    return null
   return normalizeParameterValues(p as EpdaParameterValues)
 }
 
 /** Deep-merge a base set with a partial override (scalars override; arrays replace). */
 export function mergeParameterValues(
   base: EpdaParameterValues,
-  override?: PartialEpdaParameterValues | null,
+  override?: PartialEpdaParameterValues | null
 ): EpdaParameterValues {
   if (!override) return normalizeParameterValues(base)
   return normalizeParameterValues({
-    hours: { ...base.hours, ...override.hours },
-    garbage: { ...base.garbage, ...override.garbage },
-    quarantine: { ...base.quarantine, ...override.quarantine },
-    coeff: { ...base.coeff, ...override.coeff },
+    hours: mergeScalarParameters(base.hours, override.hours),
+    garbage: mergeScalarParameters(base.garbage, override.garbage),
+    quarantine: mergeScalarParameters(base.quarantine, override.quarantine),
+    coeff: mergeScalarParameters(base.coeff, override.coeff),
     agencyFeeTiers: override.agencyFeeTiers ?? base.agencyFeeTiers,
-    moorUnmoorBerthTiers: override.moorUnmoorBerthTiers ?? base.moorUnmoorBerthTiers,
-    moorUnmoorBuoyTiers: override.moorUnmoorBuoyTiers ?? base.moorUnmoorBuoyTiers,
+    moorUnmoorBerthTiers:
+      override.moorUnmoorBerthTiers ?? base.moorUnmoorBerthTiers,
+    moorUnmoorBuoyTiers:
+      override.moorUnmoorBuoyTiers ?? base.moorUnmoorBuoyTiers,
     tugTiers: override.tugTiers ?? base.tugTiers,
     cargoAgencyRates: override.cargoAgencyRates ?? base.cargoAgencyRates,
   })

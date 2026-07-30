@@ -101,3 +101,17 @@ export interface TransportDocumentPayloadMap {
 
 export type TransportDocumentPayload =
   TransportDocumentPayloadMap[TransportDocumentType]
+
+export interface TransportDocumentRecord {
+  id: number
+  documentType: TransportDocumentType
+  referenceNumber: string | null
+  payload: TransportDocumentPayload
+  createdByUserId: number
+  createdAt: string
+  createdBy: {
+    id: number
+    fullName: string | null
+    email: string | null
+  } | null
+}

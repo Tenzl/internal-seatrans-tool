@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { z } from 'zod'
 import { PdfPreviewDialog } from '@/shared/components/PdfPreviewDialog'
 import { Button } from '@/shared/components/ui/button'
@@ -8,11 +8,20 @@ import { Input } from '@/shared/components/ui/input'
 import { Label } from '@/shared/components/ui/label'
 import { Textarea } from '@/shared/components/ui/textarea'
 import { toast } from '@/shared/utils/toast'
-import { FileOutput, Loader2, Plus, RotateCcw, Trash2 } from 'lucide-react'
+import {
+  FileOutput,
+  History,
+  Loader2,
+  Plus,
+  RefreshCw,
+  RotateCcw,
+  Trash2,
+} from 'lucide-react'
 import { transportDocumentService } from '@/features/admin/services/transportDocumentService'
 import type {
   CargoRow,
   TransportDocumentPayloadMap,
+  TransportDocumentRecord,
   TransportDocumentType,
 } from '@/features/admin/types/transportDocument.types'
 import {
@@ -381,6 +390,12 @@ export function TransportDocumentsScreen() {
   const [previewOpen, setPreviewOpen] = useState(false)
   const [previewUrl, setPreviewUrl] = useState<string | null>(null)
   const [isGenerating, setIsGenerating] = useState(false)
+  const [historyRecords, setHistoryRecords] = useState<
+    TransportDocumentRecord[]
+  >([])
+  const [historyPage, setHistoryPage] = useState(0)
+  const [historyTotalPages, setHistoryTotalPages] = useState(0)
+  const [isLoadingHistory, setIsLoadingHistory] = useState(false)
 
   const document =
     DOCUMENTS.find((item) => item.type === documentType) ?? DOCUMENTS[0]
@@ -392,6 +407,48 @@ export function TransportDocumentsScreen() {
       if (previewUrl) URL.revokeObjectURL(previewUrl)
     }
   }, [previewUrl])
+
+  const loadHistory = useCallback(async () => {
+    try {
+      const page = await transportDocumentService.history({
+        type: documentType,
+        page: historyPage,
+        size: 10,
+      })
+      setHistoryRecords(page.content)
+      setHistoryTotalPages(page.totalPages)
+    } catch (error) {
+      toast.error(
+        error instanceof Error
+          ? error.message
+          : 'Failed to load document history'
+      )
+    } finally {
+      setIsLoadingHistory(false)
+    }
+  }, [documentType, historyPage])
+
+  useEffect(() => {
+    let active = true
+    void transportDocumentService
+      .history({ type: documentType, page: historyPage, size: 10 })
+      .then((page) => {
+        if (!active) return
+        setHistoryRecords(page.content)
+        setHistoryTotalPages(page.totalPages)
+      })
+      .catch((error: unknown) => {
+        if (!active) return
+        toast.error(
+          error instanceof Error
+            ? error.message
+            : 'Failed to load document history'
+        )
+      })
+    return () => {
+      active = false
+    }
+  }, [documentType, historyPage])
 
   const fileName = useMemo(() => {
     const reference =
@@ -437,6 +494,9 @@ export function TransportDocumentsScreen() {
 
   const handleDocumentTypeChange = (type: TransportDocumentType) => {
     setDocumentType(type)
+    setHistoryPage(0)
+    setHistoryRecords([])
+    setHistoryTotalPages(0)
     setPreviewOpen(false)
     setPreviewUrl(null)
   }
@@ -462,7 +522,14 @@ export function TransportDocumentsScreen() {
         documentType,
         validated
       )
+      await transportDocumentService.create(documentType, validated)
       setPreviewUrl(URL.createObjectURL(pdf))
+      if (historyPage === 0) {
+        await loadHistory()
+      } else {
+        setHistoryPage(0)
+      }
+      toast.success(`${document.label} record created`)
     } catch (error) {
       setPreviewOpen(false)
       toast.error(
@@ -513,7 +580,7 @@ export function TransportDocumentsScreen() {
             ) : (
               <FileOutput className='mr-1.5 h-4 w-4' />
             )}
-            Preview PDF
+            Create & Preview
           </Button>
         </div>
       </header>
@@ -600,10 +667,104 @@ export function TransportDocumentsScreen() {
             ) : (
               <FileOutput className='mr-1.5 h-4 w-4' />
             )}
-            Preview {document.shortLabel} PDF
+            Create & Preview {document.shortLabel}
           </Button>
         </div>
       </form>
+
+      <section className='space-y-3 border-t border-border/60 pt-5'>
+        <div className='flex flex-wrap items-center justify-between gap-3'>
+          <div>
+            <h2 className='flex items-center gap-2 text-sm font-semibold'>
+              <History className='h-4 w-4' />
+              {document.label} history
+            </h2>
+            <p className='text-xs text-muted-foreground'>
+              Immutable records created from this form.
+            </p>
+          </div>
+          <Button
+            type='button'
+            variant='outline'
+            size='sm'
+            onClick={() => {
+              setIsLoadingHistory(true)
+              void loadHistory()
+            }}
+            disabled={isLoadingHistory}
+          >
+            {isLoadingHistory ? (
+              <Loader2 className='mr-1.5 h-4 w-4 animate-spin' />
+            ) : (
+              <RefreshCw className='mr-1.5 h-4 w-4' />
+            )}
+            Refresh
+          </Button>
+        </div>
+
+        <div className='overflow-hidden rounded-md border border-border/70'>
+          <div className='grid grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto] gap-3 bg-muted/70 px-3 py-2 text-xs font-semibold text-muted-foreground'>
+            <span>Reference</span>
+            <span>Created by</span>
+            <span>Created at</span>
+          </div>
+          {historyRecords.length === 0 && !isLoadingHistory ? (
+            <p className='px-3 py-6 text-center text-sm text-muted-foreground'>
+              No {document.shortLabel} records yet.
+            </p>
+          ) : (
+            historyRecords.map((record) => (
+              <div
+                key={record.id}
+                className='grid grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto] gap-3 border-t border-border/60 px-3 py-2.5 text-sm'
+              >
+                <span className='truncate font-medium'>
+                  {record.referenceNumber || `Record #${record.id}`}
+                </span>
+                <span className='truncate text-muted-foreground'>
+                  {record.createdBy?.fullName ||
+                    record.createdBy?.email ||
+                    `User #${record.createdByUserId}`}
+                </span>
+                <time
+                  dateTime={record.createdAt}
+                  className='whitespace-nowrap text-xs text-muted-foreground'
+                >
+                  {new Date(record.createdAt).toLocaleString()}
+                </time>
+              </div>
+            ))
+          )}
+        </div>
+
+        {historyTotalPages > 1 ? (
+          <div className='flex items-center justify-end gap-2'>
+            <Button
+              type='button'
+              variant='outline'
+              size='sm'
+              disabled={historyPage === 0 || isLoadingHistory}
+              onClick={() => setHistoryPage((page) => Math.max(0, page - 1))}
+            >
+              Previous
+            </Button>
+            <span className='text-xs text-muted-foreground'>
+              Page {historyPage + 1} of {historyTotalPages}
+            </span>
+            <Button
+              type='button'
+              variant='outline'
+              size='sm'
+              disabled={
+                historyPage + 1 >= historyTotalPages || isLoadingHistory
+              }
+              onClick={() => setHistoryPage((page) => page + 1)}
+            >
+              Next
+            </Button>
+          </div>
+        ) : null}
+      </section>
 
       <PdfPreviewDialog
         open={previewOpen}
