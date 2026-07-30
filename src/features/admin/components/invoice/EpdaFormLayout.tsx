@@ -1,6 +1,6 @@
 'use client'
 
-import { cn } from '@/shared/lib/utils'
+import { cn } from '@/lib/utils'
 import { useI18n } from '@/shared/i18n/I18nProvider'
 import {
   EPDA_CUSTOMER_SECTION,

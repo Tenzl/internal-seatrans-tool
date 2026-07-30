@@ -3,20 +3,20 @@
 import { useEffect, useState } from 'react'
 import { History } from 'lucide-react'
 import { shippingAgencyEpdaService } from '@/modules/inquiries/services/shippingAgencyEpdaService'
-import { Button } from '@/shared/components/ui/button'
+import { Button } from '@/components/ui/button'
 import {
   Dialog,
   DialogContent,
   DialogHeader,
   DialogTitle,
   DialogTrigger,
-} from '@/shared/components/ui/dialog'
+} from '@/components/ui/dialog'
 import { useI18n } from '@/shared/i18n/I18nProvider'
 import {
   formatFieldChangeAction,
   formatFieldChangeLabel,
   type InquiryFieldChangeLogEntry,
-} from '@/features/admin/components/invoice/epda/epdaCustomerFieldTracking'
+} from '@/modules/inquiries/components/common/epdaCustomerFieldTracking'
 
 interface EpdaFieldChangeHistoryProps {
   inquiryId?: number | null

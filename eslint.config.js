@@ -74,7 +74,6 @@ export default defineConfig(
       'src/modules/gallery/components/admin/ImageManagement.tsx',
       'src/modules/posts/components/admin/PostManagement.tsx',
       'src/modules/users/components/history/InquiryDataTable.tsx',
-      'src/shared/components/ui/data-table.tsx',
     ],
     rules: {
       // TanStack Table deliberately returns non-memoizable functions. React Compiler
@@ -88,29 +87,58 @@ export default defineConfig(
       'src/lib/router.tsx',
       'src/modules/gallery/components/admin/galleryManageContext.tsx',
       'src/shared/i18n/I18nProvider.tsx',
-      'src/shared/components/ui/alert-dialog.tsx',
-      'src/shared/components/ui/alert.tsx',
-      'src/shared/components/ui/badge.tsx',
-      'src/shared/components/ui/button.tsx',
-      'src/shared/components/ui/calendar.tsx',
-      'src/shared/components/ui/card.tsx',
-      'src/shared/components/ui/checkbox.tsx',
-      'src/shared/components/ui/command.tsx',
-      'src/shared/components/ui/dialog.tsx',
-      'src/shared/components/ui/dropdown-menu.tsx',
-      'src/shared/components/ui/input.tsx',
-      'src/shared/components/ui/label.tsx',
-      'src/shared/components/ui/popover.tsx',
-      'src/shared/components/ui/select.tsx',
-      'src/shared/components/ui/separator.tsx',
-      'src/shared/components/ui/sheet.tsx',
-      'src/shared/components/ui/table.tsx',
-      'src/shared/components/ui/textarea.tsx',
     ],
     rules: {
       // These modules intentionally mix components with Next metadata, route/context
       // helpers, or component-only proxy exports; keep Fast Refresh checks elsewhere.
       'react-refresh/only-export-components': 'off',
+    },
+  },
+  {
+    files: ['src/modules/**/*.{ts,tsx}'],
+    rules: {
+      'no-restricted-imports': [
+        'error',
+        {
+          patterns: [
+            {
+              group: ['@/app', '@/app/**', '@/features', '@/features/**'],
+              message:
+                'Domain modules must not depend on app routes or feature orchestration.',
+            },
+          ],
+        },
+      ],
+    },
+  },
+  {
+    files: [
+      'src/shared/**/*.{ts,tsx}',
+      'src/components/**/*.{ts,tsx}',
+      'src/config/**/*.{ts,tsx}',
+      'src/lib/**/*.{ts,tsx}',
+    ],
+    ignores: ['src/components/ui/**'],
+    rules: {
+      'no-restricted-imports': [
+        'error',
+        {
+          patterns: [
+            {
+              group: [
+                '@/app',
+                '@/app/**',
+                '@/features',
+                '@/features/**',
+                '@/modules',
+                '@/modules/**',
+              ],
+              message:
+                'Shared infrastructure must not depend on application or domain layers.',
+            },
+          ],
+        },
+      ],
     },
   }
 )

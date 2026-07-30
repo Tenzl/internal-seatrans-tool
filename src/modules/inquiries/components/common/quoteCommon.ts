@@ -82,9 +82,6 @@ export const formatAmount = (value: unknown) => {
   return rounded.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
 }
 
-export const formatCbm = (value: number) =>
-  value.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 2 })
-
 export const formatLoaDisplay = (value: unknown) => {
   const raw = String(value || '').trim()
   if (!raw) return ''

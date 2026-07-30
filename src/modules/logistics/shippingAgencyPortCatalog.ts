@@ -1,6 +1,5 @@
 import { portService, type Port, type PortArea } from '@/modules/logistics/services/portService'
-import type { AreaOption } from '@/features/admin/components/invoice/epdaFormParameters'
-import { isPortAreaCode } from '@/shared/domain/portArea'
+import { isPortAreaCode, type PortAreaCode as AreaOption } from '@/shared/domain/portArea'
 
 const AREAS: PortArea[] = ['1', '2', '3']
 

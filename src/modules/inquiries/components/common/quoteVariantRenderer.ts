@@ -1,4 +1,4 @@
-import type { QuoteFormVariant } from '@/features/admin/components/invoice/epda/quoteFormFromArea'
+import type { QuoteFormVariant } from '@/modules/inquiries/components/common/quoteForm'
 import { renderQuoteHtml as renderHcm } from './Quote-hcm'
 import { renderQuoteHtml as renderHn } from './Quote-hn'
 import { renderQuoteHtml as renderQn } from './Quote-qn'

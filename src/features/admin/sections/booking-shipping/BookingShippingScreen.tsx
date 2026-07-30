@@ -14,17 +14,17 @@ import {
   Trash2,
 } from 'lucide-react'
 
-import { Button } from '@/shared/components/ui/button'
-import { Input } from '@/shared/components/ui/input'
-import { Label } from '@/shared/components/ui/label'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from '@/shared/components/ui/select'
-import { Textarea } from '@/shared/components/ui/textarea'
+} from '@/components/ui/select'
+import { Textarea } from '@/components/ui/textarea'
 import { bookingShippingService } from '@/features/admin/services/bookingShippingService'
 import {
   partnerManagementService,
@@ -38,7 +38,7 @@ import type {
 import { portService } from '@/modules/logistics/services/portService'
 import { queryKeys } from '@/shared/config/react-query.config'
 import { useDebouncedValue } from '@/shared/hooks/useDebouncedValue'
-import { cn } from '@/shared/lib/utils'
+import { cn } from '@/lib/utils'
 import { toast } from '@/shared/utils/toast'
 
 import { AsyncSearchSelect } from './AsyncSearchSelect'

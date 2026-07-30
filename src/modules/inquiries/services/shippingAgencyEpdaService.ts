@@ -1,9 +1,9 @@
 import { API_CONFIG } from '@/shared/config/api.config'
 import type {
   EpdaApiPayload,
+  InquiryFieldChangeLogEntry,
   ShippingAgencyAdminInquiry,
-} from '@/features/admin/components/invoice/epda/epdaApiMappers'
-import type { InquiryFieldChangeLogEntry } from '@/features/admin/components/invoice/epda/epdaCustomerFieldTracking'
+} from '@/modules/inquiries/types/shippingAgencyEpda'
 import type { PageResponse } from '@/shared/types/api.types'
 import { apiClient } from '@/shared/utils/apiClient'
 import { unwrapApiResponse } from '@/shared/utils/apiUnwrap'

@@ -1,0 +1,67 @@
+import { describe, expect, it } from 'vitest'
+import type { BuildInvoiceQuoteDataParams } from '@/modules/inquiries/components/common/buildInvoiceQuoteData'
+import {
+  applyAdminInquiryToForm,
+  buildEpdaPatchPayload,
+  buildInternalCreatePayload,
+} from './epdaApiMappers'
+
+describe('EPDA quantity API contract', () => {
+  it('sends quantityTons when creating a new internal EPDA', () => {
+    const payload = buildInternalCreatePayload(7, {
+      quoteForm: 'HCM',
+      cargoQty: '12,500',
+      boatHireQuarantineAmount: '',
+    } as BuildInvoiceQuoteDataParams & {
+      boatHireQuarantineAmount: string
+    })
+
+    expect(payload).toMatchObject({ customerUserId: 7, quantityTons: 12500 })
+  })
+
+  it('sends quantityTons when editing an existing EPDA', () => {
+    const payload = buildEpdaPatchPayload({
+      quoteForm: 'HCM',
+      cargoQty: '12500.5',
+      boatHireQuarantineAmount: '',
+    } as BuildInvoiceQuoteDataParams & {
+      boatHireQuarantineAmount: string
+    })
+
+    expect(payload).toMatchObject({ quantityTons: 12500.5 })
+  })
+
+  it('hydrates edit-form cargoQty from the server cargoQuantity value', () => {
+    const appliedValues = new Map<string, string>()
+    const setters = new Proxy(
+      {},
+      {
+        get:
+          (_, setterName: string) =>
+          (value: string) =>
+            appliedValues.set(setterName, value),
+      },
+    ) as Parameters<typeof applyAdminInquiryToForm>[1]
+
+    applyAdminInquiryToForm(
+      { id: 11, cargoQuantity: '12,500.50' },
+      setters,
+    )
+
+    expect(appliedValues.get('setCargoQty')).toBe('12500.5')
+  })
+
+  it('sends canonical numeric portId with the display name', () => {
+    const payload = buildEpdaPatchPayload({
+      portId: 38,
+      port: 'CHAN MAY',
+      quoteForm: 'QN',
+      boatHireQuarantineAmount: '',
+    } as BuildInvoiceQuoteDataParams & {
+      portId: number
+      boatHireQuarantineAmount: string
+    })
+
+    expect(payload).toMatchObject({ portId: 38, portOfCall: 'CHAN MAY', quoteForm: 'QN' })
+  })
+})

@@ -1,8 +1,8 @@
 'use client'
 
-import { Badge } from '@/shared/components/ui/badge'
+import { Badge } from '@/components/ui/badge'
 import { STATUS_BADGE_CONFIG, type InquiryStatus } from '@/shared/constants/inquiry-status'
-import type { ShippingAgencyAdminInquiry } from '@/features/admin/components/invoice/epda/epdaApiMappers'
+import type { ShippingAgencyAdminInquiry } from '@/modules/inquiries/components/common/epdaApiMappers'
 
 function formatDateTime(value?: string | null) {
   if (!value) return '—'

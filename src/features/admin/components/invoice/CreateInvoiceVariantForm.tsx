@@ -1,13 +1,13 @@
-import { Input } from '@/shared/components/ui/input'
-import { Label } from '@/shared/components/ui/label'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from '@/shared/components/ui/select'
-import { DatePicker } from '@/shared/components/ui/date-picker'
+} from '@/components/ui/select'
+import { DatePicker } from '@/components/ui/form-date-picker'
 import type { CargoType, CargoTypeCatalogItem, Commodity } from '@/modules/gallery/services/commodityService'
 import {
   EpdaComputedSummary,
@@ -21,7 +21,7 @@ import {
 import {
   mergeEpdaFieldClasses,
   type EpdaCustomerTrackedField,
-} from './epda/epdaCustomerFieldTracking'
+} from '@/modules/inquiries/components/common/epdaCustomerFieldTracking'
 import {
   getAgencyFeeByGrt,
   SHIPOWNER_NATIONALITY_OPTIONS,
@@ -37,8 +37,8 @@ import {
   type EpdaParameterValues,
 } from '@/modules/inquiries/components/common/quoteParameters'
 import { useI18n } from '@/shared/i18n/I18nProvider'
-import { getEpdaVariantConfig } from './epda/quoteFormFromArea'
-import { cn } from '@/shared/lib/utils'
+import { getEpdaVariantConfig } from '@/modules/inquiries/components/common/quoteForm'
+import { cn } from '@/lib/utils'
 import type { ComponentProps } from 'react'
 
 function FieldLabel({ className, ...props }: ComponentProps<typeof Label>) {

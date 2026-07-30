@@ -7,8 +7,8 @@ import {
   DialogHeader,
   DialogTitle,
   DialogDescription,
-} from '@/shared/components/ui/dialog'
-import { Button } from '@/shared/components/ui/button'
+} from '@/components/ui/dialog'
+import { Button } from '@/components/ui/button'
 import { useRef, useState } from 'react'
 import { Loader2, Pencil, Printer, X } from 'lucide-react'
 import { toast } from '@/shared/utils/toast'

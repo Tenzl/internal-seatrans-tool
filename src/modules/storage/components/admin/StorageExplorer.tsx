@@ -20,7 +20,7 @@ import {
   AdminToolbar,
   AdminToolbarGroup,
 } from '@/shared/components/layout/dashboard/admin'
-import { Button } from '@/shared/components/ui/button'
+import { Button } from '@/components/ui/button'
 import {
   Dialog,
   DialogContent,
@@ -28,18 +28,18 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from '@/shared/components/ui/dialog'
+} from '@/components/ui/dialog'
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
-} from '@/shared/components/ui/dropdown-menu'
-import { Input } from '@/shared/components/ui/input'
-import { Label } from '@/shared/components/ui/label'
+} from '@/components/ui/dropdown-menu'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
 import { queryKeys } from '@/shared/config/react-query.config'
-import { cn } from '@/shared/lib/utils'
+import { cn } from '@/lib/utils'
 import { toast } from '@/shared/utils/toast'
 import { storageService } from '@/modules/storage/services/storageService'
 import type { StorageObject } from '@/modules/storage/types/storage.types'

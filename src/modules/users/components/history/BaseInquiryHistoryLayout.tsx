@@ -3,26 +3,26 @@
 import { useEffect, useState } from 'react'
 import { usePathname, useRouter } from 'next/navigation'
 import type { ColumnDef } from '@tanstack/react-table'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/shared/components/ui/card'
-import { Badge } from '@/shared/components/ui/badge'
-import { Alert, AlertDescription } from '@/shared/components/ui/alert'
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { Badge } from '@/components/ui/badge'
+import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Loader2, AlertCircle, RefreshCw, FileText, ArrowUpDown, Trash2, Archive, RotateCcw, MoreHorizontal, Lock } from 'lucide-react'
-import { Button } from '@/shared/components/ui/button'
+import { Button } from '@/components/ui/button'
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
-} from '@/shared/components/ui/dropdown-menu'
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/shared/components/ui/dialog'
+} from '@/components/ui/dropdown-menu'
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from '@/shared/components/ui/select'
+} from '@/components/ui/select'
 import { useCurrentUser } from '@/hooks/use-current-user'
 import { isAdminRole } from '@/config/section-catalog'
 import { QuotePreview } from '@/modules/inquiries/components/common/Quote-hcm'
@@ -40,10 +40,10 @@ import { useIsMobile } from '@/hooks/use-mobile'
 import { toast } from '@/shared/utils/toast'
 import { inquiryService } from '@/modules/inquiries/services/inquiryService'
 import { shippingAgencyEpdaService } from '@/modules/inquiries/services/shippingAgencyEpdaService'
-import { resolveEffectiveParams } from '@/features/admin/components/invoice/resolveEffectiveParams'
-import { quoteFormFromStored } from '@/features/admin/components/invoice/epda/quoteFormFromArea'
-import { buildEpdaLockSnapshotFromAdminInquiry } from '@/features/admin/components/invoice/epda/buildEpdaLockSnapshot'
-import type { ShippingAgencyAdminInquiry } from '@/features/admin/components/invoice/epda/epdaApiMappers'
+import { resolveEffectiveParams } from '@/modules/inquiries/services/resolveEffectiveParams'
+import { quoteFormFromStored } from '@/modules/inquiries/components/common/quoteForm'
+import { buildEpdaLockSnapshotFromAdminInquiry } from '@/modules/inquiries/components/common/buildEpdaLockSnapshot'
+import type { ShippingAgencyAdminInquiry } from '@/modules/inquiries/types/shippingAgencyEpda'
 import {
   AlertDialog,
   AlertDialogAction,
@@ -53,7 +53,7 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-} from '@/shared/components/ui/alert-dialog'
+} from '@/components/ui/alert-dialog'
 
 interface BaseInquiryHistoryLayoutProps {
   serviceType?: string

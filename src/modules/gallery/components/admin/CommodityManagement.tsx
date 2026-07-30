@@ -2,9 +2,9 @@
 
 import { useState, useEffect } from 'react'
 import { Package, Plus, Edit2, Trash2, Save, X } from 'lucide-react'
-import { Button } from '@/shared/components/ui/button'
-import { Badge } from '@/shared/components/ui/badge'
-import BadgeButtonCombo from '../../../../shared/components/ui/badge-button-combo'
+import { Button } from '@/components/ui/button'
+import { Badge } from '@/components/ui/badge'
+import BadgeButtonCombo from '@/components/ui/badge-button-combo'
 import {
   AlertDialog,
   AlertDialogAction,
@@ -14,7 +14,7 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-} from '@/shared/components/ui/alert-dialog'
+} from '@/components/ui/alert-dialog'
 import { serviceTypeService, type ServiceType } from '@/modules/service-types/services/serviceTypeService'
 import {
   commodityService,

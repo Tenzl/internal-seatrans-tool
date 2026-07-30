@@ -2,16 +2,16 @@
 
 import * as React from "react"
 import { Eye, Paperclip, FileText as FileTextIcon, Download, Loader2 } from "lucide-react"
-import { Button } from "@/shared/components/ui/button"
+import { Button } from "@/components/ui/button"
 import {
   Sheet,
   SheetContent,
   SheetDescription,
   SheetHeader,
   SheetTitle,
-} from "@/shared/components/ui/sheet"
-import { Badge } from "@/shared/components/ui/badge"
-import { Separator } from "@/shared/components/ui/separator"
+} from "@/components/ui/sheet"
+import { Badge } from "@/components/ui/badge"
+import { Separator } from "@/components/ui/separator"
 import {
   type InquiryFieldSchema,
   getFieldValue,

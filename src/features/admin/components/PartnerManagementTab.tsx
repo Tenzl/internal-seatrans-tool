@@ -14,16 +14,16 @@ import {
 } from "@tanstack/react-table"
 import { ChevronDown, FileSpreadsheet, Pencil, Plus, Trash2 } from "lucide-react"
 
-import { Badge } from "@/shared/components/ui/badge"
-import { Button } from "@/shared/components/ui/button"
+import { Badge } from "@/components/ui/badge"
+import { Button } from "@/components/ui/button"
 import {
   AdminDataPanel,
   AdminSection,
   AdminToolbar,
   AdminToolbarGroup,
 } from "@/shared/components/layout/dashboard/admin"
-import { Checkbox } from "@/shared/components/ui/checkbox"
-import { DataTablePagination } from "@/shared/components/ui/data-table"
+import { Checkbox } from "@/components/ui/checkbox"
+import { DataTablePagination } from "@/components/ui/data-table"
 import {
   Table,
   TableBody,
@@ -31,7 +31,7 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-} from "@/shared/components/ui/table"
+} from "@/components/ui/table"
 import {
   Dialog,
   DialogContent,
@@ -39,24 +39,24 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from "@/shared/components/ui/dialog"
+} from "@/components/ui/dialog"
 import {
   DropdownMenu,
   DropdownMenuCheckboxItem,
   DropdownMenuContent,
   DropdownMenuTrigger,
-} from "@/shared/components/ui/dropdown-menu"
-import { Input } from "@/shared/components/ui/input"
-import { Label } from "@/shared/components/ui/label"
+} from "@/components/ui/dropdown-menu"
+import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@/shared/components/ui/select"
+} from "@/components/ui/select"
 import { PartnerImportDialog } from "@/features/admin/components/PartnerImportDialog"
-import { useTableSortHeader } from "@/features/admin/hooks/useTableSortHeader"
+import { useTableSortHeader } from "@/shared/hooks/useTableSortHeader"
 import {
   PARTNERS_PAGE_SIZE,
   partnerManagementService,

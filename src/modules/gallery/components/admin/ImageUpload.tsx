@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react'
 import { Upload, X, MapPin, Anchor, Briefcase, Image as ImageIcon, AlertCircle } from 'lucide-react'
-import { Button } from '@/shared/components/ui/button'
+import { Button } from '@/components/ui/button'
 import { ImageDropzone } from '@/components/ui/file-upload'
 import { portService, type Port } from '@/modules/logistics/services/portService'
 import { serviceTypeService, type ServiceType } from '@/modules/service-types/services/serviceTypeService'

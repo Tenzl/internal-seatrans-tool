@@ -10,11 +10,11 @@ import {
   type ReactNode,
 } from 'react'
 import { Filter, X } from 'lucide-react'
-import { Button } from '@/shared/components/ui/button'
+import { Button } from '@/components/ui/button'
 import { portService, type Port } from '@/modules/logistics/services/portService'
 import { serviceTypeService, type ServiceType } from '@/modules/service-types/services/serviceTypeService'
 import { commodityService, type Commodity } from '@/modules/gallery/services/commodityService'
-import { cn } from '@/shared/lib/utils'
+import { cn } from '@/lib/utils'
 import { toast } from '@/shared/utils/toast'
 import {
   PORT_AREA_OPTIONS,

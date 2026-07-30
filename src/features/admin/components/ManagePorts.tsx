@@ -19,9 +19,9 @@ import {
   AdminToolbar,
   AdminToolbarGroup,
 } from '@/shared/components/layout/dashboard/admin'
-import { Button } from '@/shared/components/ui/button'
-import { Input } from '@/shared/components/ui/input'
-import { Label } from '@/shared/components/ui/label'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
 import { queryKeys } from '@/shared/config/react-query.config'
 import { useDebouncedValue } from '@/shared/hooks/useDebouncedValue'
 import { toast } from '@/shared/utils/toast'
@@ -36,8 +36,8 @@ import {
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from '@/shared/components/ui/select'
-import { DataTablePagination } from '@/shared/components/ui/data-table'
+} from '@/components/ui/select'
+import { DataTablePagination } from '@/components/ui/data-table'
 import {
   Table,
   TableBody,
@@ -45,14 +45,14 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-} from '@/shared/components/ui/table'
+} from '@/components/ui/table'
 import {
   DropdownMenu,
   DropdownMenuCheckboxItem,
   DropdownMenuContent,
   DropdownMenuTrigger,
-} from '@/shared/components/ui/dropdown-menu'
-import { useTableSortHeader } from '@/features/admin/hooks/useTableSortHeader'
+} from '@/components/ui/dropdown-menu'
+import { useTableSortHeader } from '@/shared/hooks/useTableSortHeader'
 import {
   Dialog,
   DialogContent,
@@ -60,7 +60,7 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from '@/shared/components/ui/dialog'
+} from '@/components/ui/dialog'
 import {
   PORT_AREA_OPTIONS,
   getPortAreaShortLabel,

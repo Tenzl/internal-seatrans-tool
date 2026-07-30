@@ -15,17 +15,17 @@ import {
 } from '@tanstack/react-table'
 import { ChevronDown, Pencil, Trash2, Plus } from 'lucide-react'
 
-import { Button } from '@/shared/components/ui/button'
-import { Input } from '@/shared/components/ui/input'
-import { Label } from '@/shared/components/ui/label'
-import { Textarea } from '@/shared/components/ui/textarea'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import { Textarea } from '@/components/ui/textarea'
 import {
   AdminDataPanel,
   AdminSection,
   AdminToolbar,
   AdminToolbarGroup,
 } from '@/shared/components/layout/dashboard/admin'
-import { DataTablePagination } from '@/shared/components/ui/data-table'
+import { DataTablePagination } from '@/components/ui/data-table'
 import {
   Table,
   TableBody,
@@ -33,13 +33,13 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-} from '@/shared/components/ui/table'
+} from '@/components/ui/table'
 import {
   DropdownMenu,
   DropdownMenuCheckboxItem,
   DropdownMenuContent,
   DropdownMenuTrigger,
-} from '@/shared/components/ui/dropdown-menu'
+} from '@/components/ui/dropdown-menu'
 import {
   AlertDialog,
   AlertDialogAction,
@@ -49,8 +49,8 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-} from '@/shared/components/ui/alert-dialog'
-import { useTableSortHeader } from '@/features/admin/hooks/useTableSortHeader'
+} from '@/components/ui/alert-dialog'
+import { useTableSortHeader } from '@/shared/hooks/useTableSortHeader'
 import {
   categoryService,
   type Category,

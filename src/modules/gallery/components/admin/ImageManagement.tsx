@@ -15,9 +15,9 @@ import {
   GalleryManageProvider,
   useGalleryManageFilters,
 } from './galleryManageContext'
-import { Button } from '@/shared/components/ui/button'
-import { Badge } from '@/shared/components/ui/badge'
-import { Dialog, DialogContent, DialogTrigger, DialogTitle, DialogDescription } from '@/shared/components/ui/dialog'
+import { Button } from '@/components/ui/button'
+import { Badge } from '@/components/ui/badge'
+import { Dialog, DialogContent, DialogTrigger, DialogTitle, DialogDescription } from '@/components/ui/dialog'
 import {
   AlertDialog,
   AlertDialogAction,
@@ -27,17 +27,17 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-} from '@/shared/components/ui/alert-dialog'
+} from '@/components/ui/alert-dialog'
 import { ImageWithFallback } from '@/shared/components/ImageWithFallback'
 import { provinceService, type Province } from '@/modules/logistics/services/provinceService'
 import { portService, type Port } from '@/modules/logistics/services/portService'
 import { commodityService, type Commodity } from '@/modules/gallery/services/commodityService'
 import { galleryService, type GalleryImage } from '@/modules/gallery/services/galleryService'
 import { API_CONFIG } from '@/shared/config/api.config'
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/shared/components/ui/table'
-import { Checkbox } from '@/shared/components/ui/checkbox'
-import { Card, CardContent, CardDescription, CardHeader } from '@/shared/components/ui/card'
-import { Input } from '@/shared/components/ui/input'
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
+import { Checkbox } from '@/components/ui/checkbox'
+import { Card, CardContent, CardDescription, CardHeader } from '@/components/ui/card'
+import { Input } from '@/components/ui/input'
 import { toast } from '@/shared/utils/toast'
 
 // Helper function to construct proper image URL

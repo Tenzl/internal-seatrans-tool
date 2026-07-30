@@ -2,9 +2,9 @@
 
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { usePathname, useRouter, useSearchParams } from 'next/navigation'
-import { Button } from '@/shared/components/ui/button'
-import { Label } from '@/shared/components/ui/label'
-import { Badge } from '@/shared/components/ui/badge'
+import { Button } from '@/components/ui/button'
+import { Label } from '@/components/ui/label'
+import { Badge } from '@/components/ui/badge'
 import { toast } from '@/shared/utils/toast'
 import { Loader2, Eye, Save, Send, ArrowLeft, ArrowRight, ChevronDown, ChevronUp, Lock } from 'lucide-react'
 import { buildDashboardUrl } from '@/shared/utils/dashboardNavigation'
@@ -21,7 +21,7 @@ import {
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from '@/shared/components/ui/select'
+} from '@/components/ui/select'
 import {
   CreateInvoiceVariantForm,
   type AgencyFeeModeOption,
@@ -33,7 +33,7 @@ import {
   type RequiredFieldKey,
 } from '@/features/admin/components/invoice/invoiceValidation'
 import { parseFiniteNumber } from '@/shared/utils/parseNumber'
-import { buildInvoiceQuoteData } from '@/features/admin/components/invoice/buildInvoiceQuoteData'
+import { buildInvoiceQuoteData } from '@/modules/inquiries/components/common/buildInvoiceQuoteData'
 import { EpdaFormSection, EpdaFormSkeleton, EpdaSectionRail } from '@/features/admin/components/invoice/EpdaFormLayout'
 import {
   EPDA_CUSTOMER_SECTION,
@@ -45,7 +45,7 @@ import {
   buildEpdaPatchPayload,
   buildInternalCreatePayload,
   type ShippingAgencyAdminInquiry,
-} from '@/features/admin/components/invoice/epda/epdaApiMappers'
+} from '@/modules/inquiries/components/common/epdaApiMappers'
 import { inquiryService } from '@/modules/inquiries/services/inquiryService'
 import { shippingAgencyEpdaService } from '@/modules/inquiries/services/shippingAgencyEpdaService'
 import { authService } from '@/modules/auth/services/authService'
@@ -60,7 +60,7 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-} from '@/shared/components/ui/alert-dialog'
+} from '@/components/ui/alert-dialog'
 import { EpdaFieldChangeHistory } from '@/features/admin/components/invoice/epda/EpdaFieldChangeHistory'
 import { useCurrentUser } from '@/hooks/use-current-user'
 import { isAdminRole } from '@/config/section-catalog'
@@ -75,11 +75,11 @@ import {
   quoteFormFromArea,
   quoteFormFromStored,
   isHcmWorksheet,
-} from '@/features/admin/components/invoice/epda/quoteFormFromArea'
+} from '@/modules/inquiries/components/common/quoteForm'
 import {
   getDefaultGarbageUsdRate,
-} from '@/features/admin/components/invoice/garbageFeeDefaults'
-import { cn } from '@/shared/lib/utils'
+} from '@/modules/inquiries/components/common/garbageFeeDefaults'
+import { cn } from '@/lib/utils'
 import { PURPOSE_OF_CALLING_OPTIONS } from '@/modules/inquiries/constants/shippingAgencyInquiryOptions'
 import {
   AREA_OPTIONS,
@@ -102,7 +102,7 @@ import {
 import {
   epdaParametersService,
   type EpdaParameterValues,
-} from '@/features/admin/services/epdaParametersService'
+} from '@/modules/inquiries/services/epdaParametersService'
 import { extractParamsSnapshot } from '@/modules/inquiries/components/common/quoteParameters'
 
 type EpdaCargoType = CargoType

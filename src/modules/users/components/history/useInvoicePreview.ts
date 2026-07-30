@@ -1,9 +1,9 @@
 import { useCallback, useState } from 'react'
-import { resolveEffectiveParams } from '@/features/admin/components/invoice/resolveEffectiveParams'
+import { resolveEffectiveParams } from '@/modules/inquiries/services/resolveEffectiveParams'
 import {
   quoteFormFromStored,
   usesQnPilotage,
-} from '@/features/admin/components/invoice/epda/quoteFormFromArea'
+} from '@/modules/inquiries/components/common/quoteForm'
 import type {
   QuoteData,
   QuoteRow,

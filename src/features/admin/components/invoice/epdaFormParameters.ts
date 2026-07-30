@@ -5,6 +5,7 @@
  * the form actually uses.
  */
 import { PURPOSE_OF_CALLING_OPTIONS } from '@/modules/inquiries/constants/shippingAgencyInquiryOptions'
+export { QUARANTINE_CARGO_OPTIONS } from '@/modules/inquiries/constants/epdaOptions'
 import {
   PORT_AREA_OPTIONS,
   getPortAreaLabel,
@@ -20,7 +21,7 @@ import {
 import {
   DEFAULT_GARBAGE_USD_HCM,
   DEFAULT_GARBAGE_USD_QN,
-} from './garbageFeeDefaults'
+} from '@/modules/inquiries/components/common/garbageFeeDefaults'
 
 export type { EpdaParameterValues, GrtTier }
 export { defaultParameterValues }
@@ -75,12 +76,6 @@ export const FRT_TAX_TYPE_OPTIONS = [
 export const AGENCY_FEE_MODE_OPTIONS = [
   { value: 'TARRIF_AGENCY', label: 'TARRIF AGENCY' },
   { value: 'AGENCY_IN_LUMPSUM', label: 'AGENCY IN LUMPSUM' },
-] as const
-
-export const QUARANTINE_CARGO_OPTIONS = [
-  { value: 'ONE_LEG', label: 'Loading or discharging only', fee: 100, trips: 1 },
-  { value: 'BOTH_LEGS', label: 'Loading and discharging', fee: 200, trips: 2 },
-  { value: 'OTHER', label: 'Other (water supply / repair / crew change ...)', fee: 0, trips: 0 },
 ] as const
 
 /** Tug assistance: 1 trip (in|out) or 2 trips (in & out). Default 2 keeps legacy ×2 behaviour. */
