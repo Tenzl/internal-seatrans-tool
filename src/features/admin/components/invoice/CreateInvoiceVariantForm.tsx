@@ -7,6 +7,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
+import { Switch } from '@/components/ui/switch'
 import { DatePicker } from '@/components/ui/form-date-picker'
 import type { CargoType, CargoTypeCatalogItem, Commodity } from '@/modules/gallery/services/commodityService'
 import {
@@ -40,6 +41,7 @@ import { useI18n } from '@/shared/i18n/I18nProvider'
 import { getEpdaVariantConfig } from '@/modules/inquiries/components/common/quoteForm'
 import { cn } from '@/lib/utils'
 import type { ComponentProps } from 'react'
+import { resolveQnCargoQuarantineMode } from './qnCargoQuarantine'
 
 function FieldLabel({ className, ...props }: ComponentProps<typeof Label>) {
   return <Label className={cn('font-bold', className)} {...props} />
@@ -195,6 +197,21 @@ export function CreateInvoiceVariantForm({
     )
   const isBoatHireForAgencyEnabled = values.dischargeLoadingLocation === 'Anchorage'
   const isHcmAnchorage = variantConfig.chargeLayout === 'HCM' && values.dischargeLoadingLocation === 'Anchorage'
+  const isQnCargoQuarantineEnabled =
+    variant === 'QN' && values.quarantineCargoMode !== 'OTHER'
+  const handlePurposeChange = (purpose: PurposeOption) => {
+    handlers.setPurposeOfCalling(purpose)
+    if (variant === 'QN' && isQnCargoQuarantineEnabled) {
+      handlers.setQuarantineCargoMode(
+        resolveQnCargoQuarantineMode(true, purpose),
+      )
+    }
+  }
+  const handleQnCargoQuarantineToggle = (enabled: boolean) => {
+    handlers.setQuarantineCargoMode(
+      resolveQnCargoQuarantineMode(enabled, values.purposeOfCalling),
+    )
+  }
   const grtNumeric = Number(values.grt)
   const cargoQtyNumeric = Number(values.cargoQty)
   const discountNumeric = Number(values.agencyDiscountPercent)
@@ -340,7 +357,7 @@ export function CreateInvoiceVariantForm({
             </FieldLabel>
             <Select
               value={values.purposeOfCalling}
-              onValueChange={(value) => handlers.setPurposeOfCalling(value as PurposeOption)}
+              onValueChange={(value) => handlePurposeChange(value as PurposeOption)}
             >
               <SelectTrigger id="purposeOfCalling" className={customerClass('purposeOfCalling', values.purposeOfCalling)}>
                 <SelectValue placeholder={t('ph.purpose')} />
@@ -355,24 +372,26 @@ export function CreateInvoiceVariantForm({
             </Select>
           </div>
 
-          <div className="grid gap-2">
-            <FieldLabel htmlFor="quarantineCargoMode">{t('epda.quarantineCargo')}</FieldLabel>
-            <Select
-              value={values.quarantineCargoMode}
-              onValueChange={(value) => handlers.setQuarantineCargoMode(value as QuarantineCargoOption)}
-            >
-              <SelectTrigger id="quarantineCargoMode">
-                <SelectValue placeholder={t('ph.quarantineCargo')} />
-              </SelectTrigger>
-              <SelectContent>
-                {options.quarantineCargoOptions.map((option) => (
-                  <SelectItem key={option.value} value={option.value}>
-                    {t('opt.quarantine.' + option.value)}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
+          {variant !== 'QN' && (
+            <div className="grid gap-2">
+              <FieldLabel htmlFor="quarantineCargoMode">{t('epda.quarantineCargo')}</FieldLabel>
+              <Select
+                value={values.quarantineCargoMode}
+                onValueChange={(value) => handlers.setQuarantineCargoMode(value as QuarantineCargoOption)}
+              >
+                <SelectTrigger id="quarantineCargoMode">
+                  <SelectValue placeholder={t('ph.quarantineCargo')} />
+                </SelectTrigger>
+                <SelectContent>
+                  {options.quarantineCargoOptions.map((option) => (
+                    <SelectItem key={option.value} value={option.value}>
+                      {t('opt.quarantine.' + option.value)}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
 
           <div className="grid gap-2">
             <FieldLabel
@@ -671,6 +690,29 @@ export function CreateInvoiceVariantForm({
               </SelectContent>
             </Select>
           </div>
+
+          {variant === 'QN' && (
+            <div className="grid gap-2">
+              <FieldLabel htmlFor="qnCargoQuarantine">
+                {t('epda.includeCargoQuarantine')}
+              </FieldLabel>
+              <div className="flex min-h-10 items-center justify-between gap-3 rounded-md border px-3 py-2">
+                <span className="text-sm text-muted-foreground">
+                  {t(
+                    isQnCargoQuarantineEnabled
+                      ? 'epda.cargoQuarantineIncluded'
+                      : 'epda.cargoQuarantineExcluded',
+                  )}
+                </span>
+                <Switch
+                  id="qnCargoQuarantine"
+                  checked={isQnCargoQuarantineEnabled}
+                  onCheckedChange={handleQnCargoQuarantineToggle}
+                  aria-label={t('epda.includeCargoQuarantine')}
+                />
+              </div>
+            </div>
+          )}
 
           {computed.isLoaOverTugMax && (
             <div className="grid gap-2">
