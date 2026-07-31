@@ -85,6 +85,8 @@ export const API_CONFIG = {
     ADMIN_BY_ID: (id: number) => `/admin/booking-documents/records/${id}`,
     ADMIN_UPDATE: (id: number) => `/admin/booking-documents/records/${id}`,
     ADMIN_LOCK: (id: number) => `/admin/booking-documents/records/${id}/lock`,
+    ADMIN_UNLOCK: (id: number) =>
+      `/admin/booking-documents/records/${id}/unlock`,
     ADMIN_ARCHIVE: (id: number) => `/admin/booking-documents/records/${id}`,
     ADMIN_PERMANENT_DELETE: (id: number) =>
       `/admin/booking-documents/records/${id}/permanent`,

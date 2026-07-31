@@ -42,6 +42,7 @@ export function TransportDocumentHistoryScreen() {
   const permissions = useMemo<TransportDocumentActionPermissions>(
     () => ({
       canLock: true,
+      canUnlock: isAdmin,
       canArchive: !isAdmin,
       canHardDelete: isAdmin,
     }),
@@ -83,11 +84,12 @@ export function TransportDocumentHistoryScreen() {
             permissions={permissions}
             onViewDetails={actions.openDetail}
             onLock={actions.openLock}
+            onUnlock={actions.openUnlock}
             onDelete={actions.openDelete}
           />
         ),
       }),
-    [actions.openDelete, actions.openDetail, actions.openLock, permissions]
+    [actions.openDelete, actions.openDetail, actions.openLock, actions.openUnlock, permissions]
   )
 
   const busy = historyQuery.isLoading || historyQuery.isFetching
@@ -111,7 +113,8 @@ export function TransportDocumentHistoryScreen() {
               <CardDescription className='max-w-2xl text-sm leading-relaxed'>
                 Arrival Notice, Booking Confirmation, and Delivery Order
                 records. Save drafts as Processing, complete with Create &amp;
-                Preview, then lock or archive as needed.
+                Preview, then lock or archive as needed. Admins can unlock
+                locked records to edit again.
               </CardDescription>
             </div>
             <Button

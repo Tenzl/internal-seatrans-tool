@@ -121,7 +121,7 @@ describe('transportDocumentService', () => {
     })
   })
 
-  it('updates, locks, archives, and permanently deletes records', async () => {
+  it('updates, locks, unlocks, archives, and permanently deletes records', async () => {
     vi.mocked(apiClient.get).mockResolvedValue(
       new Response(JSON.stringify({ data: { id: 5, status: 'PROCESSING' } }), {
         status: 200,
@@ -132,12 +132,18 @@ describe('transportDocumentService', () => {
         status: 200,
       })
     )
-    vi.mocked(apiClient.post).mockResolvedValue(
-      new Response(
-        JSON.stringify({ data: { id: 5, lockedAt: '2026-07-31T00:00:00Z' } }),
-        { status: 200 }
+    vi.mocked(apiClient.post)
+      .mockResolvedValueOnce(
+        new Response(
+          JSON.stringify({ data: { id: 5, lockedAt: '2026-07-31T00:00:00Z' } }),
+          { status: 200 }
+        )
       )
-    )
+      .mockResolvedValueOnce(
+        new Response(JSON.stringify({ data: { id: 5, lockedAt: null } }), {
+          status: 200,
+        })
+      )
     vi.mocked(apiClient.delete).mockResolvedValue(new Response(null, { status: 204 }))
 
     await transportDocumentService.getById(5)
@@ -146,6 +152,7 @@ describe('transportDocumentService', () => {
       status: 'COMPLETED',
     })
     await transportDocumentService.lock(5)
+    await transportDocumentService.unlock(5)
     await transportDocumentService.archive(5)
     await transportDocumentService.permanentDelete(5)
 
@@ -156,8 +163,13 @@ describe('transportDocumentService', () => {
       '/admin/booking-documents/records/5',
       expect.objectContaining({ status: 'COMPLETED' })
     )
-    expect(apiClient.post).toHaveBeenCalledWith(
+    expect(apiClient.post).toHaveBeenNthCalledWith(
+      1,
       '/admin/booking-documents/records/5/lock'
+    )
+    expect(apiClient.post).toHaveBeenNthCalledWith(
+      2,
+      '/admin/booking-documents/records/5/unlock'
     )
     expect(apiClient.delete).toHaveBeenNthCalledWith(
       1,

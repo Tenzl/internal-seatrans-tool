@@ -97,15 +97,17 @@ describe('transport document history actions', () => {
     ).toBe('/booking/documents/arrival-notice?recordId=12&preview=1')
   })
 
-  it('exposes lock / archive / delete capabilities by role', () => {
+  it('exposes lock / unlock / archive / delete capabilities by role', () => {
     expect(
       getTransportDocumentRowCapabilities(record, {
         canLock: true,
+        canUnlock: false,
         canArchive: true,
         canHardDelete: false,
       })
     ).toMatchObject({
       canLock: true,
+      canUnlock: false,
       showLocked: false,
       canArchive: true,
       canDelete: false,
@@ -114,11 +116,25 @@ describe('transport document history actions', () => {
     expect(
       getTransportDocumentRowCapabilities(
         { ...record, lockedAt: '2026-07-31T00:00:00.000Z' },
-        { canLock: true, canArchive: false, canHardDelete: true }
+        { canLock: true, canUnlock: false, canArchive: false, canHardDelete: true }
       )
     ).toMatchObject({
       canLock: false,
+      canUnlock: false,
       showLocked: true,
+      canArchive: false,
+      canDelete: true,
+    })
+
+    expect(
+      getTransportDocumentRowCapabilities(
+        { ...record, lockedAt: '2026-07-31T00:00:00.000Z' },
+        { canLock: true, canUnlock: true, canArchive: false, canHardDelete: true }
+      )
+    ).toMatchObject({
+      canLock: false,
+      canUnlock: true,
+      showLocked: false,
       canArchive: false,
       canDelete: true,
     })

@@ -1,4 +1,4 @@
-import { Archive, Eye, Lock, MoreHorizontal, Trash2 } from 'lucide-react'
+import { Archive, Eye, Lock, MoreHorizontal, Trash2, Unlock } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import {
@@ -19,6 +19,7 @@ interface TransportDocumentHistoryActionsProps {
   permissions: TransportDocumentActionPermissions
   onViewDetails: (record: TransportDocumentRecord) => void
   onLock: (record: TransportDocumentRecord) => void
+  onUnlock: (record: TransportDocumentRecord) => void
   onDelete: (
     record: TransportDocumentRecord,
     mode: TransportDocumentDeleteMode
@@ -53,6 +54,7 @@ function DesktopRowActions({
   capabilities,
   onViewDetails,
   onLock,
+  onUnlock,
   onDelete,
 }: TransportDocumentHistoryActionsProps & { capabilities: RowCapabilities }) {
   return (
@@ -77,6 +79,18 @@ function DesktopRowActions({
         >
           <Lock className='h-4 w-4' />
           Lock edit
+        </Button>
+      )}
+      {capabilities.canUnlock && (
+        <Button
+          type='button'
+          variant='outline'
+          size='sm'
+          onClick={() => onUnlock(record)}
+          className='gap-2'
+        >
+          <Unlock className='h-4 w-4' />
+          Unlock edit
         </Button>
       )}
       {capabilities.showLocked && (
@@ -121,6 +135,7 @@ function MobileRowActions({
   capabilities,
   onViewDetails,
   onLock,
+  onUnlock,
   onDelete,
 }: TransportDocumentHistoryActionsProps & { capabilities: RowCapabilities }) {
   return (
@@ -145,6 +160,12 @@ function MobileRowActions({
           <DropdownMenuItem onClick={() => onLock(record)}>
             <Lock className='mr-2 h-4 w-4' />
             Lock edit
+          </DropdownMenuItem>
+        )}
+        {capabilities.canUnlock && (
+          <DropdownMenuItem onClick={() => onUnlock(record)}>
+            <Unlock className='mr-2 h-4 w-4' />
+            Unlock edit
           </DropdownMenuItem>
         )}
         {capabilities.showLocked && (

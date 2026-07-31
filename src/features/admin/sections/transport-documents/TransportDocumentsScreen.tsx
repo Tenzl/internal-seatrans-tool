@@ -3,10 +3,12 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { z } from 'zod'
+import { isAdminRole } from '@/config/section-catalog'
+import { useCurrentUser } from '@/hooks/use-current-user'
 import { PdfPreviewDialog } from '@/shared/components/PdfPreviewDialog'
 import { delay, EPDA_PREVIEW_LOAD_DELAY_MS } from '@/shared/utils/epdaExport'
 import { toast } from '@/shared/utils/toast'
-import { FileOutput, Loader2, Lock, RotateCcw, Save } from 'lucide-react'
+import { FileOutput, Loader2, Lock, RotateCcw, Save, Unlock } from 'lucide-react'
 import {
   AlertDialog,
   AlertDialogAction,
@@ -54,6 +56,8 @@ export function TransportDocumentsScreen({
 }: TransportDocumentsScreenProps) {
   const router = useRouter()
   const searchParams = useSearchParams()
+  const currentUser = useCurrentUser()
+  const isAdmin = isAdminRole(currentUser?.role)
   const recordIdParam = searchParams.get('recordId')
   const previewParam = searchParams.get('preview')
   const recordId = recordIdParam ? Number.parseInt(recordIdParam, 10) : null
@@ -69,6 +73,7 @@ export function TransportDocumentsScreen({
   const [previewUrl, setPreviewUrl] = useState<string | null>(null)
   const [isGenerating, setIsGenerating] = useState(false)
   const [isSaving, setIsSaving] = useState(false)
+  const [isUnlocking, setIsUnlocking] = useState(false)
   const [leaveDialogOpen, setLeaveDialogOpen] = useState(false)
   const [pendingHref, setPendingHref] = useState<string | null>(null)
   const autoPreviewDone = useRef(false)
@@ -387,7 +392,23 @@ export function TransportDocumentsScreen({
     navigatePending()
   }
 
-  const busy = isGenerating || isSaving || isHydrating
+  const handleUnlock = useCallback(async () => {
+    if (!activeRecordId || !isLocked || !isAdmin) return
+    setIsUnlocking(true)
+    try {
+      const unlocked = await transportDocumentService.unlock(activeRecordId)
+      setLockedAt(unlocked.lockedAt)
+      toast.success('Document unlocked — you can edit again')
+    } catch (error) {
+      toast.error(
+        error instanceof Error ? error.message : 'Failed to unlock document'
+      )
+    } finally {
+      setIsUnlocking(false)
+    }
+  }, [activeRecordId, isAdmin, isLocked])
+
+  const busy = isGenerating || isSaving || isHydrating || isUnlocking
 
   return (
     <div className='mx-auto max-w-7xl space-y-5 pb-8'>
@@ -468,19 +489,38 @@ export function TransportDocumentsScreen({
               </Button>
             </>
           ) : (
-            <Button
-              type='button'
-              size='sm'
-              onClick={() => void openPreview()}
-              disabled={busy}
-            >
-              {isGenerating ? (
-                <Loader2 className='mr-1.5 h-4 w-4 animate-spin' />
-              ) : (
-                <FileOutput className='mr-1.5 h-4 w-4' />
-              )}
-              View PDF
-            </Button>
+            <div className='flex flex-wrap gap-2'>
+              <Button
+                type='button'
+                size='sm'
+                onClick={() => void openPreview()}
+                disabled={busy}
+              >
+                {isGenerating ? (
+                  <Loader2 className='mr-1.5 h-4 w-4 animate-spin' />
+                ) : (
+                  <FileOutput className='mr-1.5 h-4 w-4' />
+                )}
+                View PDF
+              </Button>
+              {isAdmin ? (
+                <Button
+                  type='button'
+                  variant='outline'
+                  size='sm'
+                  onClick={() => void handleUnlock()}
+                  disabled={busy}
+                  className='gap-2'
+                >
+                  {isUnlocking ? (
+                    <Loader2 className='h-4 w-4 animate-spin' />
+                  ) : (
+                    <Unlock className='h-4 w-4' />
+                  )}
+                  Unlock edit
+                </Button>
+              ) : null}
+            </div>
           )}
         </div>
       </header>

@@ -18,8 +18,11 @@ export function useTransportDocumentHistoryActions(options: {
     useState<TransportDocumentDeleteMode>('soft')
   const [lockTarget, setLockTarget] =
     useState<TransportDocumentRecord | null>(null)
+  const [unlockTarget, setUnlockTarget] =
+    useState<TransportDocumentRecord | null>(null)
   const [isDeleting, setIsDeleting] = useState(false)
   const [isLocking, setIsLocking] = useState(false)
+  const [isUnlocking, setIsUnlocking] = useState(false)
 
   const openDetail = (record: TransportDocumentRecord) => {
     router.push(buildTransportDocumentDetailUrl(record), { scroll: false })
@@ -86,12 +89,39 @@ export function useTransportDocumentHistoryActions(options: {
     }
   }
 
+  const openUnlock = (record: TransportDocumentRecord) => {
+    setUnlockTarget(record)
+  }
+
+  const closeUnlock = () => setUnlockTarget(null)
+
+  const confirmUnlock = async () => {
+    if (!unlockTarget) return
+    setIsUnlocking(true)
+    try {
+      await transportDocumentService.unlock(unlockTarget.id)
+      toast.success('Document record unlocked')
+      setUnlockTarget(null)
+      await options.onMutated()
+    } catch (error) {
+      toast.error(
+        error instanceof Error
+          ? error.message
+          : 'Failed to unlock document record'
+      )
+    } finally {
+      setIsUnlocking(false)
+    }
+  }
+
   return {
     deleteTarget,
     deleteMode,
     lockTarget,
+    unlockTarget,
     isDeleting,
     isLocking,
+    isUnlocking,
     openDetail,
     openDelete,
     closeDelete,
@@ -99,5 +129,8 @@ export function useTransportDocumentHistoryActions(options: {
     openLock,
     closeLock,
     confirmLock,
+    openUnlock,
+    closeUnlock,
+    confirmUnlock,
   }
 }

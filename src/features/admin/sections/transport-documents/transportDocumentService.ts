@@ -68,6 +68,13 @@ export const transportDocumentService = {
     return unwrapApiResponse<TransportDocumentRecord>(response)
   },
 
+  async unlock(id: number): Promise<TransportDocumentRecord> {
+    const response = await apiClient.post(
+      API_CONFIG.BOOKING_DOCUMENTS.ADMIN_UNLOCK(id)
+    )
+    return unwrapApiResponse<TransportDocumentRecord>(response)
+  },
+
   async archive(id: number): Promise<void> {
     const response = await apiClient.delete(
       API_CONFIG.BOOKING_DOCUMENTS.ADMIN_ARCHIVE(id)

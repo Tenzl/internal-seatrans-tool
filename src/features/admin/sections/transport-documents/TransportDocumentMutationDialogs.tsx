@@ -1,6 +1,6 @@
 'use client'
 
-import { Archive, Loader2, Lock, Trash2 } from 'lucide-react'
+import { Archive, Loader2, Lock, Trash2, Unlock } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import {
   Dialog,
@@ -14,7 +14,7 @@ import type { useTransportDocumentHistoryActions } from './useTransportDocumentH
 
 type HistoryActions = ReturnType<typeof useTransportDocumentHistoryActions>
 
-/** Confirm dialogs mirroring InquiryMutationDialogs for lock / archive / delete. */
+/** Confirm dialogs mirroring InquiryMutationDialogs for lock / unlock / archive / delete. */
 export function TransportDocumentMutationDialogs({
   actions,
 }: {
@@ -24,6 +24,7 @@ export function TransportDocumentMutationDialogs({
     <>
       <DeleteDialog actions={actions} />
       <LockDialog actions={actions} />
+      <UnlockDialog actions={actions} />
     </>
   )
 }
@@ -104,8 +105,8 @@ function LockDialog({ actions }: { actions: HistoryActions }) {
         <DialogHeader>
           <DialogTitle>Lock document edit?</DialogTitle>
           <DialogDescription>
-            Locking is permanent. Staff will still be able to view and preview
-            the PDF, but the form can no longer be edited.
+            Staff will still be able to view and preview the PDF, but the form
+            can no longer be edited until an admin unlocks it.
           </DialogDescription>
         </DialogHeader>
         <DialogFooter className='gap-2 sm:gap-2'>
@@ -127,6 +128,49 @@ function LockDialog({ actions }: { actions: HistoryActions }) {
               <Lock className='h-4 w-4' />
             )}
             Lock edit
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  )
+}
+
+function UnlockDialog({ actions }: { actions: HistoryActions }) {
+  return (
+    <Dialog
+      open={Boolean(actions.unlockTarget)}
+      onOpenChange={(open) => {
+        if (!open && !actions.isUnlocking) actions.closeUnlock()
+      }}
+    >
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Unlock document edit?</DialogTitle>
+          <DialogDescription>
+            Record #
+            {actions.unlockTarget?.referenceNumber || actions.unlockTarget?.id}{' '}
+            will be editable again. Only admins can unlock.
+          </DialogDescription>
+        </DialogHeader>
+        <DialogFooter className='gap-2 sm:gap-2'>
+          <Button
+            variant='outline'
+            onClick={actions.closeUnlock}
+            disabled={actions.isUnlocking}
+          >
+            Cancel
+          </Button>
+          <Button
+            onClick={() => void actions.confirmUnlock()}
+            disabled={actions.isUnlocking}
+            className='gap-2'
+          >
+            {actions.isUnlocking ? (
+              <Loader2 className='h-4 w-4 animate-spin' />
+            ) : (
+              <Unlock className='h-4 w-4' />
+            )}
+            Unlock edit
           </Button>
         </DialogFooter>
       </DialogContent>

@@ -131,6 +131,7 @@ export type TransportDocumentDeleteMode = 'soft' | 'hard'
 
 export type TransportDocumentActionPermissions = {
   canLock: boolean
+  canUnlock: boolean
   canArchive: boolean
   canHardDelete: boolean
 }

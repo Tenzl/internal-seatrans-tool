@@ -96,7 +96,8 @@ export function getTransportDocumentRowCapabilities(
   return {
     canViewDetails: true,
     canLock: permissions.canLock && !isLocked,
-    showLocked: isLocked,
+    canUnlock: permissions.canUnlock && isLocked,
+    showLocked: isLocked && !permissions.canUnlock,
     canArchive: permissions.canArchive && !record.deletedAt,
     canDelete: permissions.canHardDelete,
   }
