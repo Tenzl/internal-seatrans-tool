@@ -6,6 +6,11 @@ import {
   defaultParameterValues,
   mergeParameterValues,
 } from '@/modules/inquiries/components/common/quoteParameters'
+import {
+  epdaParametersService,
+  type EpdaParameterSet,
+  type EpdaParameterValues,
+} from '@/modules/inquiries/services/epdaParametersService'
 import { useI18n } from '@/shared/i18n/I18nProvider'
 import { Loader2, Save } from 'lucide-react'
 import { toast } from 'sonner'
@@ -29,28 +34,18 @@ import {
   CardTitle,
 } from '@/components/ui/card'
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { ConfigDrawer } from '@/components/config-drawer'
-import { Header } from '@/components/layout/header'
-import { Main } from '@/components/layout/main'
-import { ProfileDropdown } from '@/components/profile-dropdown'
-import { Search } from '@/components/search'
-import { ThemeSwitch } from '@/components/theme-switch'
+import { AdminPageShell } from '@/components/layout/admin-page-shell'
 import {
   AREA_OPTIONS,
   AREA_TO_VARIANT,
   getAreaShortLabel,
   type AreaOption,
 } from '@/features/admin/components/invoice/epdaFormParameters'
-import {
-  epdaParametersService,
-  type EpdaParameterSet,
-  type EpdaParameterValues,
-} from '@/modules/inquiries/services/epdaParametersService'
-import { cloneParameterValues } from './parameterOverrides'
 import { ValuesEditor } from './EpdaValuesEditor'
-import { AREA_SET_HIDDEN_SECTION_IDS } from './epdaParameterSections'
 import { ParamHistoryButton } from './ParamHistoryButton'
 import { PortOverridesCard } from './PortOverridesCard'
+import { AREA_SET_HIDDEN_SECTION_IDS } from './epdaParameterSections'
+import { cloneParameterValues } from './parameterOverrides'
 
 const VISIBLE_AREA_OPTIONS = AREA_OPTIONS
 
@@ -180,13 +175,7 @@ export function EpdaParametersScreen() {
 
   return (
     <>
-      <Header fixed>
-        <Search className='me-auto' />
-        <ThemeSwitch />
-        <ConfigDrawer />
-        <ProfileDropdown />
-      </Header>
-      <Main>
+      <AdminPageShell>
         <div className='flex flex-wrap items-end justify-between gap-2'>
           <div className='space-y-1.5'>
             <h2 className='text-2xl font-bold tracking-tight sm:text-3xl'>
@@ -273,7 +262,7 @@ export function EpdaParametersScreen() {
             </div>
           </div>
         )}
-      </Main>
+      </AdminPageShell>
 
       <AlertDialog
         open={leaveHref !== null || pendingArea !== null}
@@ -317,4 +306,3 @@ export function EpdaParametersScreen() {
     </>
   )
 }
-

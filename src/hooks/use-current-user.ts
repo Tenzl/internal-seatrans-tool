@@ -1,7 +1,11 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useQuery } from '@tanstack/react-query'
 import { authService } from '@/modules/auth/services/authService'
+import {
+  AUTH_SESSION_QUERY_KEY,
+  loadAuthSession,
+} from '@/modules/auth/services/authSession'
 import type { User } from '@/shared/types/dashboard'
 
 /**
@@ -10,22 +14,20 @@ import type { User } from '@/shared/types/dashboard'
  * they don't deny access before the role is known.
  */
 export function useAuthUser(): { user: User | null; loading: boolean } {
-  const [state, setState] = useState<{ user: User | null; loading: boolean }>(() => {
-    const cached = authService.getUser()
-    return { user: cached, loading: !cached }
+  const session = useQuery({
+    queryKey: AUTH_SESSION_QUERY_KEY,
+    queryFn: loadAuthSession,
+    placeholderData: () => authService.getUser(),
+    staleTime: 60_000,
+    retry: false,
   })
-  useEffect(() => {
-    void authService
-      .getCurrentUser()
-      .then((res) => {
-        setState((current) => ({
-          user: res.data ?? current.user,
-          loading: false,
-        }))
-      })
-      .catch(() => setState((current) => ({ ...current, loading: false })))
-  }, [])
-  return state
+
+  return {
+    user: session.data ?? null,
+    // A cached browser profile is only placeholder UI. Route access waits for
+    // /auth/me so stale local role data can never grant a page optimistically.
+    loading: session.isPending || session.isPlaceholderData,
+  }
 }
 
 /** The signed-in user, loaded from storage and refreshed from /auth/me. */
@@ -34,13 +36,18 @@ export function useCurrentUser(): User | null {
 }
 
 /** Display name, email, and avatar initials for the current user. */
-export function userDisplay(user: User | null): { name: string; email: string; initials: string } {
+export function userDisplay(user: User | null): {
+  name: string
+  email: string
+  initials: string
+} {
   const name =
     user?.fullName?.trim() ||
     user?.username?.trim() ||
     user?.email?.split('@')[0] ||
     'User'
   const email = user?.email ?? ''
-  const initials = (name.match(/\b\w/g) ?? []).slice(0, 2).join('').toUpperCase() || 'U'
+  const initials =
+    (name.match(/\b\w/g) ?? []).slice(0, 2).join('').toUpperCase() || 'U'
   return { name, email, initials }
 }

@@ -1,9 +1,10 @@
 import { useState, useCallback } from 'react'
-import { authService } from '@/modules/auth/services/authService'
-import { apiClient } from '@/shared/utils/apiClient'
 import { API_CONFIG } from '@/shared/config/api.config'
-import { isInternalStaff } from '@/shared/utils/auth'
 import { toInquiryServiceSlug } from '@/shared/domain/inquiryService'
+import type { User } from '@/shared/types/dashboard'
+import { apiClient } from '@/shared/utils/apiClient'
+import { isInternalStaff } from '@/shared/utils/auth'
+import { useCurrentUser } from '@/hooks/use-current-user'
 
 interface PageResponse<T> {
   content: T[]
@@ -31,7 +32,7 @@ interface ApiErrorBody {
 }
 
 function extractInquiries(
-  value: PageResponse<InquiryRecord> | InquiryRecord[] | InquiryPageEnvelope,
+  value: PageResponse<InquiryRecord> | InquiryRecord[] | InquiryPageEnvelope
 ): InquiryRecord[] {
   if (Array.isArray(value)) return value
   if ('data' in value && value.data) return extractInquiries(value.data)
@@ -61,51 +62,61 @@ function toServiceTypeName(input?: string): string | undefined {
   return SERVICE_TYPE_NAME_MAP[trimmed] ?? trimmed
 }
 
-function shouldUseAdminInquiryApi(isAdmin: boolean): boolean {
-  return isAdmin && isInternalStaff(authService.getUser())
+function shouldUseAdminInquiryApi(
+  isAdmin: boolean,
+  currentUser: User | null
+): boolean {
+  return isAdmin && isInternalStaff(currentUser)
 }
 
 export function useInquiryData(options: UseInquiryDataOptions = {}) {
   const { serviceType, isAdmin = false } = options
+  const currentUser = useCurrentUser()
 
   const [inquiries, setInquiries] = useState<InquiryRecord[]>([])
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const [archivedFilter, setArchivedFilter] = useState<AdminArchivedFilter>('all')
-  const updateStatus = useCallback(async (id: number, status: string, serviceSlug?: string) => {
-    if (!shouldUseAdminInquiryApi(isAdmin)) return { success: false }
-    const serviceName = toServiceTypeName(serviceSlug || serviceType)
-    if (!serviceName) {
-      throw new Error('serviceType is required to update status')
-    }
+  const [archivedFilter, setArchivedFilter] =
+    useState<AdminArchivedFilter>('all')
+  const updateStatus = useCallback(
+    async (id: number, status: string, serviceSlug?: string) => {
+      if (!shouldUseAdminInquiryApi(isAdmin, currentUser))
+        return { success: false }
+      const serviceName = toServiceTypeName(serviceSlug || serviceType)
+      if (!serviceName) {
+        throw new Error('serviceType is required to update status')
+      }
 
-    const response = await apiClient.patch(
-      API_CONFIG.INQUIRIES.ADMIN_STATUS(serviceName, id),
-      { status },
-    )
+      const response = await apiClient.patch(
+        API_CONFIG.INQUIRIES.ADMIN_STATUS(serviceName, id),
+        { status }
+      )
 
-    if (!response.ok) {
-      throw new Error('Failed to update status')
-    }
+      if (!response.ok) {
+        throw new Error('Failed to update status')
+      }
 
-    const updatedStatus = status
-    setInquiries(prev =>
-      prev.map(inq => (inq.id === id ? { ...inq, status: updatedStatus } : inq))
-    )
+      const updatedStatus = status
+      setInquiries((prev) =>
+        prev.map((inq) =>
+          inq.id === id ? { ...inq, status: updatedStatus } : inq
+        )
+      )
 
-    return { success: true }
-  }, [isAdmin, serviceType])
+      return { success: true }
+    },
+    [currentUser, isAdmin, serviceType]
+  )
 
   const fetchInquiries = useCallback(async () => {
     setIsLoading(true)
     setError(null)
-    const useAdminApi = shouldUseAdminInquiryApi(isAdmin)
-    
+    const useAdminApi = shouldUseAdminInquiryApi(isAdmin, currentUser)
+
     try {
       if (!useAdminApi) {
         // User endpoint - always filtered by JWT userId
-        const user = authService.getUser()
-        if (!user?.id) {
+        if (!currentUser?.id) {
           setError('Please log in to view your inquiries.')
           setInquiries([])
           return
@@ -117,14 +128,10 @@ export function useInquiryData(options: UseInquiryDataOptions = {}) {
         }
 
         const response = await apiClient.get<PageResponse<InquiryRecord>>(
-          `${API_CONFIG.INQUIRIES.USER_HISTORY(user.id)}?${params.toString()}`
+          `${API_CONFIG.INQUIRIES.USER_HISTORY(currentUser.id)}?${params.toString()}`
         )
 
         if (!response.ok) {
-          if (response.status === 401) {
-            authService.logout()
-            throw new Error('Unauthorized')
-          }
           throw new Error('Failed to fetch inquiries')
         }
 
@@ -158,56 +165,71 @@ export function useInquiryData(options: UseInquiryDataOptions = {}) {
         setInquiries(extractInquiries(data))
       }
     } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : 'Could not load inquiries'
+      const errorMessage =
+        err instanceof Error ? err.message : 'Could not load inquiries'
       setError(errorMessage)
     } finally {
       setIsLoading(false)
     }
-  }, [serviceType, isAdmin, archivedFilter])
+  }, [archivedFilter, currentUser, isAdmin, serviceType])
 
-  const deleteInquiries = useCallback(async (ids: number[], mode: 'soft' | 'hard' = 'soft') => {
-    const useAdminApi = shouldUseAdminInquiryApi(isAdmin)
-    const serviceSlug = toInquiryServiceSlug(serviceType)
-    if (!serviceSlug) {
-      throw new Error('A supported service is required to delete inquiries')
-    }
-    const endpoint = useAdminApi
-      ? API_CONFIG.INQUIRIES.ADMIN_BATCH_DELETE(mode, serviceSlug)
-      : API_CONFIG.INQUIRIES.USER_BATCH_DELETE(serviceSlug)
+  const deleteInquiries = useCallback(
+    async (ids: number[], mode: 'soft' | 'hard' = 'soft') => {
+      const useAdminApi = shouldUseAdminInquiryApi(isAdmin, currentUser)
+      const serviceSlug = toInquiryServiceSlug(serviceType)
+      if (!serviceSlug) {
+        throw new Error('A supported service is required to delete inquiries')
+      }
+      const endpoint = useAdminApi
+        ? API_CONFIG.INQUIRIES.ADMIN_BATCH_DELETE(mode, serviceSlug)
+        : API_CONFIG.INQUIRIES.USER_BATCH_DELETE(serviceSlug)
 
-    const response = await apiClient.delete(endpoint, {
-      body: JSON.stringify({ ids }),
-    })
+      const response = await apiClient.delete(endpoint, {
+        body: JSON.stringify({ ids }),
+      })
 
-    if (!response.ok) {
-      const body = (await response.json().catch(() => null)) as ApiErrorBody | null
-      throw new Error(
-        body?.error?.message || body?.message || 'Failed to delete inquiries',
+      if (!response.ok) {
+        const body = (await response
+          .json()
+          .catch(() => null)) as ApiErrorBody | null
+        throw new Error(
+          body?.error?.message || body?.message || 'Failed to delete inquiries'
+        )
+      }
+
+      setInquiries((prev) => prev.filter((inq) => !ids.includes(inq.id)))
+
+      return { success: true }
+    },
+    [currentUser, isAdmin, serviceType]
+  )
+
+  const restoreInquiries = useCallback(
+    async (ids: number[]) => {
+      const endpoint = API_CONFIG.INQUIRIES.ADMIN_BATCH_RESTORE(serviceType)
+      const response = await apiClient.post(endpoint, { ids })
+
+      if (!response.ok) {
+        const body = (await response
+          .json()
+          .catch(() => null)) as ApiErrorBody | null
+        throw new Error(
+          body?.error?.message || body?.message || 'Failed to restore inquiries'
+        )
+      }
+
+      setInquiries((prev) =>
+        prev.map((inq) =>
+          ids.includes(inq.id)
+            ? { ...inq, isArchived: false, deletedAt: null, deletedById: null }
+            : inq
+        )
       )
-    }
 
-    setInquiries(prev => prev.filter(inq => !ids.includes(inq.id)))
-
-    return { success: true }
-  }, [isAdmin, serviceType])
-
-  const restoreInquiries = useCallback(async (ids: number[]) => {
-    const endpoint = API_CONFIG.INQUIRIES.ADMIN_BATCH_RESTORE(serviceType)
-    const response = await apiClient.post(endpoint, { ids })
-
-    if (!response.ok) {
-      const body = (await response.json().catch(() => null)) as ApiErrorBody | null
-      throw new Error(body?.error?.message || body?.message || 'Failed to restore inquiries')
-    }
-
-    setInquiries(prev =>
-      prev.map((inq) =>
-        ids.includes(inq.id) ? { ...inq, isArchived: false, deletedAt: null, deletedById: null } : inq,
-      ),
-    )
-
-    return { success: true }
-  }, [serviceType])
+      return { success: true }
+    },
+    [serviceType]
+  )
 
   const refreshInquiries = useCallback(() => {
     return fetchInquiries()

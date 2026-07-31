@@ -1,26 +1,11 @@
-'use client'
-
-import { ConfigDrawer } from '@/components/config-drawer'
-import { Header } from '@/components/layout/header'
-import { Main } from '@/components/layout/main'
-import { ProfileDropdown } from '@/components/profile-dropdown'
-import { Search } from '@/components/search'
-import { ThemeSwitch } from '@/components/theme-switch'
-import { StorageManager } from '@/features/admin/components/StorageManager'
+import { StorageExplorer } from '@/modules/storage/components/admin/StorageExplorer'
+import { AdminPageShell } from '@/components/layout/admin-page-shell'
 
 /** Data Management → Object storage browser (Cloudflare R2). */
 export default function Page() {
   return (
-    <>
-      <Header fixed>
-        <Search className='me-auto' />
-        <ThemeSwitch />
-        <ConfigDrawer />
-        <ProfileDropdown />
-      </Header>
-      <Main>
-        <StorageManager />
-      </Main>
-    </>
+    <AdminPageShell>
+      <StorageExplorer />
+    </AdminPageShell>
   )
 }

@@ -31,7 +31,6 @@ export const API_CONFIG = {
 
   AUTH: {
     LOGIN: '/auth/login',
-    REGISTER: '/auth/register',
     ME: '/auth/me',
     LOGOUT: '/auth/logout',
   },
@@ -65,6 +64,9 @@ export const API_CONFIG = {
     OPTIONS: '/admin/booking-management/partners/options',
     ADMIN_BASE: '/admin/booking-management/partners',
     ADMIN_BY_ID: (id: number) => `/admin/booking-management/partners/${id}`,
+    FIELD_CHANGES: (id: number, page = 0, size = 6) =>
+      `/admin/booking-management/partners/${id}/field-changes?page=${page}&size=${size}`,
+    LOCK: (id: number) => `/admin/booking-management/partners/${id}/lock`,
     UPDATE_CUSTOMER_STATUS: (id: number) =>
       `/admin/booking-management/partners/${id}/customer-status`,
     IMPORT_PREVIEW: '/admin/booking-management/partners/import/preview',
@@ -80,6 +82,12 @@ export const API_CONFIG = {
     ADMIN_CREATE: (type: 'an' | 'booking' | 'do') =>
       `/admin/booking-documents/${type}/records`,
     ADMIN_HISTORY: '/admin/booking-documents/records',
+    ADMIN_BY_ID: (id: number) => `/admin/booking-documents/records/${id}`,
+    ADMIN_UPDATE: (id: number) => `/admin/booking-documents/records/${id}`,
+    ADMIN_LOCK: (id: number) => `/admin/booking-documents/records/${id}/lock`,
+    ADMIN_ARCHIVE: (id: number) => `/admin/booking-documents/records/${id}`,
+    ADMIN_PERMANENT_DELETE: (id: number) =>
+      `/admin/booking-documents/records/${id}/permanent`,
   },
 
   SERVICE_TYPES: {
@@ -89,11 +97,11 @@ export const API_CONFIG = {
   },
 
   COMMODITIES: {
-    BY_SERVICE_TYPE: (serviceTypeId: number) => `/commodities/service-type/${serviceTypeId}`,
+    BY_SERVICE_TYPE: (serviceTypeId: number) =>
+      `/commodities/service-type/${serviceTypeId}`,
     ADMIN_BASE: '/admin/commodities',
     ADMIN_BY_ID: (id: number) => `/admin/commodities/${id}`,
   },
-
 
   GALLERY: {
     PUBLIC_IMAGES: '/gallery/images',
@@ -123,7 +131,8 @@ export const API_CONFIG = {
     ADMIN_USERS: '/admin/users',
     ADMIN_USER_ROLES: '/admin/users/roles',
     ADMIN_USER_BY_ID: (id: number) => `/admin/users/${id}`,
-    ADMIN_USER_RESET_PASSWORD: (id: number) => `/admin/users/${id}/reset-password`,
+    ADMIN_USER_RESET_PASSWORD: (id: number) =>
+      `/admin/users/${id}/reset-password`,
     ADMIN_USER_REACTIVATE: (id: number) => `/admin/users/${id}/reactivate`,
     ADMIN_USER_ROLE: (id: number) => `/admin/users/${id}/role`,
   },
@@ -153,10 +162,18 @@ export const API_CONFIG = {
       `/admin/inquiries/shipping-agency/${id}/epda/customer-field-changes`,
     USER_BATCH_DELETE: (serviceSlug: string) =>
       `/inquiries/batch?${new URLSearchParams({ serviceSlug }).toString()}`,
-    ADMIN_BATCH_DELETE: (mode: 'soft' | 'hard' = 'soft', serviceSlug?: string) => {
-      const qs = new URLSearchParams({ mode })
+    ADMIN_BATCH_DELETE: (
+      mode: 'soft' | 'hard' = 'soft',
+      serviceSlug?: string
+    ) => {
+      const qs = new URLSearchParams()
       if (serviceSlug?.trim()) qs.set('serviceSlug', serviceSlug.trim())
-      return `/admin/inquiries/batch?${qs.toString()}`
+      const path =
+        mode === 'hard'
+          ? '/admin/inquiries/batch/permanent'
+          : '/admin/inquiries/batch'
+      const suffix = qs.toString()
+      return `${path}${suffix ? `?${suffix}` : ''}`
     },
     ADMIN_BATCH_RESTORE: (serviceSlug?: string) => {
       const qs = new URLSearchParams()
@@ -177,7 +194,12 @@ export const API_CONFIG = {
       `/inquiries/${serviceSlug}/${targetId}/documents`,
     LIST_BY_TYPE: (serviceSlug: string, targetId: number) =>
       `/inquiries/${serviceSlug}/${targetId}/documents/by-type`,
-    CONTENT: (serviceSlug: string, targetId: number, documentId: number, disposition?: 'inline' | 'attachment') => {
+    CONTENT: (
+      serviceSlug: string,
+      targetId: number,
+      documentId: number,
+      disposition?: 'inline' | 'attachment'
+    ) => {
       const base = `/inquiries/${serviceSlug}/${targetId}/documents/${documentId}/content`
       return disposition ? `${base}?disposition=${disposition}` : base
     },
@@ -206,7 +228,8 @@ export const API_CONFIG = {
       }
       return `/admin/epda-parameters/effective?${qs.toString()}`
     },
-    AREA: (area: string) => `/admin/epda-parameters/area/${encodeURIComponent(area)}`,
+    AREA: (area: string) =>
+      `/admin/epda-parameters/area/${encodeURIComponent(area)}`,
     PORT: (portId: number) => `/admin/epda-parameters/port/${portId}`,
     LOGS: (opts?: { area?: string; portId?: number; limit?: number }) => {
       const qs = new URLSearchParams()
@@ -220,7 +243,8 @@ export const API_CONFIG = {
       `/admin/epda-parameters/groups?area=${encodeURIComponent(area)}`,
     GROUPS_CREATE: '/admin/epda-parameters/groups',
     GROUP: (id: number) => `/admin/epda-parameters/groups/${id}`,
-    GROUP_MEMBERS: (id: number) => `/admin/epda-parameters/groups/${id}/members`,
+    GROUP_MEMBERS: (id: number) =>
+      `/admin/epda-parameters/groups/${id}/members`,
   },
 
   ROLES: {

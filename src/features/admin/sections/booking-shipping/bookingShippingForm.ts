@@ -1,7 +1,19 @@
 import type {
   BookingShippingResponse,
+  BookingTransitLegRequest,
   BookingShippingUpsertRequest,
-} from '@/features/admin/types/bookingShipping.types'
+} from './bookingShippingTypes'
+
+export type BookingShippingFieldKey = keyof BookingShippingUpsertRequest
+
+export type BookingContact = {
+  person?: string | null
+  firstName?: string | null
+  lastName?: string | null
+  email?: string | null
+  phone?: string | null
+  title?: string | null
+}
 
 export const emptyBookingShippingForm = (): BookingShippingUpsertRequest => ({
   bookingNo: null,
@@ -45,7 +57,7 @@ export const emptyBookingShippingForm = (): BookingShippingUpsertRequest => ({
 })
 
 export const toBookingShippingForm = (
-  data: BookingShippingResponse,
+  data: BookingShippingResponse
 ): BookingShippingUpsertRequest => ({
   bookingNo: data.bookingNo ?? null,
   bookingTo: data.bookingTo ?? null,
@@ -109,4 +121,71 @@ export function collectPortIds(form: BookingShippingUpsertRequest): number[] {
     if (leg.portId) ids.add(leg.portId)
   })
   return Array.from(ids)
+}
+
+export function contactOptionLabel(contact: BookingContact): string {
+  const name =
+    contact.person?.trim() ||
+    [contact.firstName, contact.lastName].filter(Boolean).join(' ').trim() ||
+    contact.email ||
+    'Contact'
+  return contact.title ? `${name} — ${contact.title}` : name
+}
+
+export function composeBookingContact(contact: BookingContact): string {
+  const name =
+    contact.person?.trim() ||
+    [contact.firstName, contact.lastName].filter(Boolean).join(' ').trim()
+  return [name, contact.email, contact.phone].filter(Boolean).join(' · ')
+}
+
+export function setBookingShippingField(
+  form: BookingShippingUpsertRequest,
+  key: BookingShippingFieldKey,
+  value: string | number | null
+): BookingShippingUpsertRequest {
+  return { ...form, [key]: value === '' ? null : value }
+}
+
+export function updateTransitLeg(
+  form: BookingShippingUpsertRequest,
+  index: number,
+  patch: Partial<BookingTransitLegRequest>
+): BookingShippingUpsertRequest {
+  return {
+    ...form,
+    transitLegs: form.transitLegs.map((leg, legIndex) =>
+      legIndex === index ? { ...leg, ...patch } : leg
+    ),
+  }
+}
+
+export function addTransitLeg(
+  form: BookingShippingUpsertRequest,
+  fallbackPortId: number
+): BookingShippingUpsertRequest {
+  return {
+    ...form,
+    transitLegs: [
+      ...form.transitLegs,
+      {
+        portId: fallbackPortId,
+        sortOrder: form.transitLegs.length + 1,
+        eta: null,
+        etd: null,
+      },
+    ],
+  }
+}
+
+export function removeTransitLeg(
+  form: BookingShippingUpsertRequest,
+  index: number
+): BookingShippingUpsertRequest {
+  return {
+    ...form,
+    transitLegs: form.transitLegs
+      .filter((_, legIndex) => legIndex !== index)
+      .map((leg, legIndex) => ({ ...leg, sortOrder: legIndex + 1 })),
+  }
 }

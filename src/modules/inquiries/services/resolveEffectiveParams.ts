@@ -1,10 +1,10 @@
-import { portService } from '@/modules/logistics/services/portService'
-import { epdaParametersService } from '@/modules/inquiries/services/epdaParametersService'
 import {
   defaultParameterValues,
   type EpdaParameterValues,
   type QuoteVariant,
 } from '@/modules/inquiries/components/common/quoteParameters'
+import { epdaParametersService } from '@/modules/inquiries/services/epdaParametersService'
+import { portService } from '@/modules/logistics/services/portService'
 
 /**
  * Resolve the effective EPDA parameter set for a saved inquiry. A canonical
@@ -17,14 +17,10 @@ import {
 export async function resolveEffectiveParams(
   variant: QuoteVariant,
   portName?: string | null,
-  portId?: number | null,
+  portId?: number | null
 ): Promise<EpdaParameterValues> {
   const areas: readonly ('1' | '2' | '3')[] =
-    variant === 'QN'
-      ? ['2']
-      : variant === 'HN'
-        ? ['1']
-        : ['3', '1']
+    variant === 'QN' ? ['2'] : variant === 'HN' ? ['1'] : ['3', '1']
   if (portId != null && Number.isInteger(portId) && portId > 0) {
     // The canonical numeric identity is authoritative. The backend derives its
     // area, so a legacy worksheet cannot create an area/port mismatch.

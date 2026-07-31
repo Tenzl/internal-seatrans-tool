@@ -1,26 +1,11 @@
-'use client'
+import { ManageCommodities } from '@/modules/gallery/components/admin/CommodityManagement'
+import { AdminPageShell } from '@/components/layout/admin-page-shell'
 
-import { ConfigDrawer } from '@/components/config-drawer'
-import { Header } from '@/components/layout/header'
-import { Main } from '@/components/layout/main'
-import { ProfileDropdown } from '@/components/profile-dropdown'
-import { Search } from '@/components/search'
-import { ThemeSwitch } from '@/components/theme-switch'
-import { ManageCommodities } from '@/features/admin/components/ManageCommodities'
-
-/** Data Management → Cargo (ported from the legacy admin dashboard). */
+/** Data Management: cargo definitions. */
 export default function Page() {
   return (
-    <>
-      <Header fixed>
-        <Search className='me-auto' />
-        <ThemeSwitch />
-        <ConfigDrawer />
-        <ProfileDropdown />
-      </Header>
-      <Main>
-        <ManageCommodities />
-      </Main>
-    </>
+    <AdminPageShell>
+      <ManageCommodities />
+    </AdminPageShell>
   )
 }

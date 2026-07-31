@@ -1,5 +1,4 @@
-import { useNavigate, useLocation } from '@/lib/router'
-import { useAuthStore } from '@/stores/auth-store'
+import { useSignOut } from '@/hooks/use-sign-out'
 import { ConfirmDialog } from '@/components/confirm-dialog'
 
 interface SignOutDialogProps {
@@ -8,20 +7,7 @@ interface SignOutDialogProps {
 }
 
 export function SignOutDialog({ open, onOpenChange }: SignOutDialogProps) {
-  const navigate = useNavigate()
-  const location = useLocation()
-  const { auth } = useAuthStore()
-
-  const handleSignOut = () => {
-    auth.reset()
-    // Preserve current location for redirect after sign-in
-    const currentPath = location.href
-    navigate({
-      to: '/sign-in',
-      search: { redirect: currentPath },
-      replace: true,
-    })
-  }
+  const { isSigningOut, signOut } = useSignOut()
 
   return (
     <ConfirmDialog
@@ -31,7 +17,8 @@ export function SignOutDialog({ open, onOpenChange }: SignOutDialogProps) {
       desc='Are you sure you want to sign out? You will need to sign in again to access your account.'
       confirmText='Sign out'
       destructive
-      handleConfirm={handleSignOut}
+      handleConfirm={signOut}
+      isLoading={isSigningOut}
       className='sm:max-w-sm'
     />
   )

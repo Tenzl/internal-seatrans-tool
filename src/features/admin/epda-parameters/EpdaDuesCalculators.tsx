@@ -1,15 +1,26 @@
 'use client'
 
 import { useState } from 'react'
-import type { GrtTier, QuoteVariant } from '@/modules/inquiries/components/common/quoteParameters'
-import { isHcmWorksheet, usesQnPilotage } from '@/modules/inquiries/components/common/quoteForm'
+import {
+  isHcmWorksheet,
+  usesQnPilotage,
+} from '@/modules/inquiries/components/common/quoteForm'
+import type {
+  GrtTier,
+  QuoteVariant,
+} from '@/modules/inquiries/components/common/quoteParameters'
 import type { EpdaParameterValues } from '@/modules/inquiries/services/epdaParametersService'
 import { useI18n } from '@/shared/i18n/I18nProvider'
 import { parseFiniteNumber } from '@/shared/utils/parseNumber'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import {
+  boldNumbers,
+  fmtNum,
+  resolveGrtBand,
+  ScanRow,
+} from './EpdaCalculatorPrimitives'
 import { formatDecimalValue } from './decimalInputUtils'
-import { boldNumbers, fmtNum, resolveGrtBand, ScanRow } from './EpdaCalculatorPrimitives'
 
 export function GarbageCalculator({
   variant,

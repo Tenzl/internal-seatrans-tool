@@ -42,26 +42,91 @@ describe('transport document schemas', () => {
   })
 
   it('keeps every AN, Booking and DO field in the backend contract', () => {
-    expect(Object.keys(emptyArrivalNotice()).sort()).toEqual([
-      'agent', 'anNumber', 'billOfLadingType', 'cargoRows', 'cfsTerminal',
-      'consignee', 'customerAttention', 'date', 'etdEta', 'finalDestination',
-      'hblNumber', 'marks', 'mblNumber', 'note', 'notifyParty', 'placeOfDelivery',
-      'placeOfReceipt', 'portOfDischarge', 'portOfLoading', 'referenceNumber',
-      'serviceMode', 'shipmentNumber', 'shipper', 'vesselVoyage', 'volume',
-    ].sort())
-    expect(Object.keys(emptyBookingConfirmation()).sort()).toEqual([
-      'bookingNumber', 'closingTime', 'commodity', 'contact', 'date', 'dropoffPlace',
-      'eta', 'etd', 'grossWeight', 'measurement', 'motherVessel', 'motherVoyage',
-      'pic', 'pickupDate', 'pickupPlace', 'placeOfDelivery', 'placeOfReceipt',
-      'portOfDischarge', 'portOfLoading', 'siCutoff', 'specialRemark', 'to',
-      'transitPort', 'vgmCutoff', 'vesselVoyage', 'volume',
-    ].sort())
-    expect(Object.keys(emptyDeliveryOrder()).sort()).toEqual([
-      'cargoRows', 'cfsTerminal', 'customerAttention', 'date', 'deliverTo',
-      'doNumber', 'eta', 'etd', 'finalDestination', 'hblNumber', 'marks',
-      'mblNumber', 'note', 'notifyParty', 'placeOfDelivery', 'placeOfReceipt',
-      'portOfDischarge', 'portOfLoading', 'serviceMode', 'shipmentNumber', 'to',
-      'vesselVoyage', 'volume',
-    ].sort())
+    expect(Object.keys(emptyArrivalNotice()).sort()).toEqual(
+      [
+        'agent',
+        'anNumber',
+        'billOfLadingType',
+        'cargoRows',
+        'cfsTerminal',
+        'consignee',
+        'customerAttention',
+        'date',
+        'etdEta',
+        'finalDestination',
+        'hblNumber',
+        'marks',
+        'mblNumber',
+        'note',
+        'notifyParty',
+        'placeOfDelivery',
+        'placeOfReceipt',
+        'portOfDischarge',
+        'portOfLoading',
+        'referenceNumber',
+        'serviceMode',
+        'shipmentNumber',
+        'shipper',
+        'vesselVoyage',
+        'volume',
+      ].sort()
+    )
+    expect(Object.keys(emptyBookingConfirmation()).sort()).toEqual(
+      [
+        'bookingNumber',
+        'closingTime',
+        'commodity',
+        'contact',
+        'date',
+        'dropoffPlace',
+        'eta',
+        'etd',
+        'grossWeight',
+        'measurement',
+        'motherVessel',
+        'motherVoyage',
+        'pic',
+        'pickupDate',
+        'pickupPlace',
+        'placeOfDelivery',
+        'placeOfReceipt',
+        'portOfDischarge',
+        'portOfLoading',
+        'siCutoff',
+        'specialRemark',
+        'to',
+        'transitPort',
+        'vgmCutoff',
+        'vesselVoyage',
+        'volume',
+      ].sort()
+    )
+    expect(Object.keys(emptyDeliveryOrder()).sort()).toEqual(
+      [
+        'cargoRows',
+        'cfsTerminal',
+        'customerAttention',
+        'date',
+        'deliverTo',
+        'doNumber',
+        'eta',
+        'etd',
+        'finalDestination',
+        'hblNumber',
+        'marks',
+        'mblNumber',
+        'note',
+        'notifyParty',
+        'placeOfDelivery',
+        'placeOfReceipt',
+        'portOfDischarge',
+        'portOfLoading',
+        'serviceMode',
+        'shipmentNumber',
+        'to',
+        'vesselVoyage',
+        'volume',
+      ].sort()
+    )
   })
 })

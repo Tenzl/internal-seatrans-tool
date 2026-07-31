@@ -1,5 +1,5 @@
-import { describe, expect, it } from 'vitest'
 import type { User } from '@/shared/types/dashboard'
+import { describe, expect, it } from 'vitest'
 import { getRoleGroup, isInternalStaff } from './auth'
 
 const user = (role: string, roleGroup?: User['roleGroup']): User => ({

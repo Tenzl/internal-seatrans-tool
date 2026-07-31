@@ -1,15 +1,15 @@
 import { useCallback, useState } from 'react'
-import { resolveEffectiveParams } from '@/modules/inquiries/services/resolveEffectiveParams'
-import {
-  quoteFormFromStored,
-  usesQnPilotage,
-} from '@/modules/inquiries/components/common/quoteForm'
 import type {
   QuoteData,
   QuoteRow,
 } from '@/modules/inquiries/components/common/quoteCommon'
+import {
+  quoteFormFromStored,
+  usesQnPilotage,
+} from '@/modules/inquiries/components/common/quoteForm'
 import { extractParamsSnapshot } from '@/modules/inquiries/components/common/quoteParameters'
 import { renderQuoteHtmlForVariant } from '@/modules/inquiries/components/common/quoteVariantRenderer'
+import { resolveEffectiveParams } from '@/modules/inquiries/services/resolveEffectiveParams'
 import {
   formatCargoDescription,
   formatCheckMark,
@@ -49,16 +49,22 @@ interface InvoicePreviewInquiry extends Record<string, unknown> {
 }
 
 const normalizeKey = (key: string) =>
-  key.trim().toLowerCase().replace(/[^a-z0-9]+/g, '_')
+  key
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '_')
 
 function normalizeDetails(raw?: string | null): Record<string, unknown> {
   if (!raw) return {}
   try {
     const parsed = JSON.parse(raw) as Record<string, unknown>
-    return Object.entries(parsed).reduce<Record<string, unknown>>((acc, [key, value]) => {
-      acc[normalizeKey(key)] = value
-      return acc
-    }, {})
+    return Object.entries(parsed).reduce<Record<string, unknown>>(
+      (acc, [key, value]) => {
+        acc[normalizeKey(key)] = value
+        return acc
+      },
+      {}
+    )
   } catch {
     return {}
   }
@@ -67,11 +73,12 @@ function normalizeDetails(raw?: string | null): Record<string, unknown> {
 function pickValue(
   map: Record<string, unknown>,
   keys: string[],
-  fallback?: string,
+  fallback?: string
 ): string | undefined {
   for (const key of keys) {
     const value = map[normalizeKey(key)]
-    if (value !== undefined && value !== null && value !== '') return String(value)
+    if (value !== undefined && value !== null && value !== '')
+      return String(value)
   }
   return fallback
 }
@@ -80,7 +87,8 @@ function buildRows(value: unknown): QuoteRow[] {
   if (!Array.isArray(value)) return []
 
   return value.map((row) => {
-    if (!row || typeof row !== 'object' || Array.isArray(row)) return row as QuoteRow
+    if (!row || typeof row !== 'object' || Array.isArray(row))
+      return row as QuoteRow
 
     const record = row as Record<string, unknown>
     const rawItem = record.item ?? record.name
@@ -98,7 +106,7 @@ function buildRows(value: unknown): QuoteRow[] {
 
 function mergeSnapshotPilotage(
   data: QuoteData,
-  snapshot: Record<string, unknown> | null | undefined,
+  snapshot: Record<string, unknown> | null | undefined
 ): QuoteData {
   if (!snapshot) return data
   if (snapshot.pilotage_miles != null && snapshot.pilotage_miles !== '') {
@@ -108,7 +116,10 @@ function mergeSnapshotPilotage(
       pilotage_third_miles: undefined,
     }
   }
-  if (snapshot.pilotage_third_miles != null && snapshot.pilotage_third_miles !== '') {
+  if (
+    snapshot.pilotage_third_miles != null &&
+    snapshot.pilotage_third_miles !== ''
+  ) {
     return {
       ...data,
       pilotage_third_miles: snapshot.pilotage_third_miles as number | string,
@@ -120,12 +131,21 @@ function mergeSnapshotPilotage(
 function buildQuoteData(inquiry: InvoicePreviewInquiry): QuoteData {
   const map = normalizeDetails(inquiry.details)
   const quoteForm = quoteFormFromStored(inquiry.quoteForm)
-  const port = inquiry.portOfCall || inquiry.loadingPort || inquiry.dischargingPort
+  const port =
+    inquiry.portOfCall || inquiry.loadingPort || inquiry.dischargingPort
 
   return {
     to_shipowner: inquiry.toName || inquiry.fullName || undefined,
-    date: pickValue(map, ['quote_date', 'date'], formatInvoiceDate(inquiry.submittedAt)),
-    ref: pickValue(map, ['ref', 'reference', 'quotation_ref'], `INQ-${inquiry.id}`),
+    date: pickValue(
+      map,
+      ['quote_date', 'date'],
+      formatInvoiceDate(inquiry.submittedAt)
+    ),
+    ref: pickValue(
+      map,
+      ['ref', 'reference', 'quotation_ref'],
+      `INQ-${inquiry.id}`
+    ),
     mv: inquiry.mv ?? undefined,
     dwt: inquiry.dwt?.toString(),
     grt: inquiry.grt?.toString(),
@@ -134,14 +154,16 @@ function buildQuoteData(inquiry: InvoicePreviewInquiry): QuoteData {
     cargo_qty_mt: inquiry.cargoQuantity?.toString(),
     cargo_name_upper: formatCargoDescription(
       inquiry.cargoName ?? undefined,
-      inquiry.cargoType ?? undefined,
+      inquiry.cargoType ?? undefined
     ),
     cargo_type: inquiry.cargoType?.toUpperCase(),
     port_upper: port?.toUpperCase(),
     loading_term: inquiry.frtTaxType || inquiry.deliveryTerm || undefined,
     purpose_of_calling: inquiry.purposeOfCalling ?? undefined,
     transport_ls: inquiry.transportLs ?? undefined,
-    at_anchorage: inquiry.dischargeLoadingLocation?.toLowerCase().includes('anchorage')
+    at_anchorage: inquiry.dischargeLoadingLocation
+      ?.toLowerCase()
+      .includes('anchorage')
       ? 'x'
       : formatCheckMark(pickValue(map, ['at_anchorage', 'anchorage'])),
     at_berth: inquiry.dischargeLoadingLocation?.toLowerCase().includes('berth')
@@ -160,11 +182,11 @@ function buildQuoteData(inquiry: InvoicePreviewInquiry): QuoteData {
     berth_hours: inquiry.berthHours ?? 96,
     anchorage_hours: inquiry.anchorageHours ?? 24,
     pilotage_miles: usesQnPilotage(quoteForm)
-      ? inquiry.pilotage3rdMiles ?? 5
+      ? (inquiry.pilotage3rdMiles ?? 5)
       : undefined,
     pilotage_third_miles: usesQnPilotage(quoteForm)
       ? undefined
-      : inquiry.pilotage3rdMiles ?? 17,
+      : (inquiry.pilotage3rdMiles ?? 17),
   }
 }
 
@@ -194,14 +216,16 @@ export function useInvoicePreview() {
         const quoteForm = quoteFormFromStored(inquiry.quoteForm)
         const quoteData = mergeSnapshotPilotage(
           buildQuoteData(inquiry),
-          inquiry.epdaSnapshot,
+          inquiry.epdaSnapshot
         )
         const params =
           extractParamsSnapshot(inquiry.epdaSnapshot) ??
           (await resolveEffectiveParams(
             quoteForm,
-            inquiry.portOfCall || inquiry.loadingPort || inquiry.dischargingPort,
-            inquiry.portId,
+            inquiry.portOfCall ||
+              inquiry.loadingPort ||
+              inquiry.dischargingPort,
+            inquiry.portId
           ))
 
         const html = renderQuoteHtmlForVariant(quoteForm, template, {
@@ -211,14 +235,17 @@ export function useInvoicePreview() {
         setQuoteHtml(html)
         return html
       } catch (caught) {
-        const message = caught instanceof Error ? caught.message : 'Failed to load invoice template'
+        const message =
+          caught instanceof Error
+            ? caught.message
+            : 'Failed to load invoice template'
         setError(message)
         throw caught
       } finally {
         setIsLoading(false)
       }
     },
-    [ensureQuoteTemplate],
+    [ensureQuoteTemplate]
   )
 
   const clearPreview = useCallback(() => {

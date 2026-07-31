@@ -5,7 +5,7 @@ import type {
   DeliveryOrderPayload,
   TransportDocumentPayloadMap,
   TransportDocumentType,
-} from '@/features/admin/types/transportDocument.types'
+} from './transportDocument.types'
 
 const shortText = z.string().trim().max(500, 'Use 500 characters or fewer')
 const longText = z.string().trim().max(2_000, 'Use 2,000 characters or fewer')

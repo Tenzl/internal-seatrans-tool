@@ -2,11 +2,12 @@ import { useState } from 'react'
 import { z } from 'zod'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
-import { Link, useNavigate } from '@/lib/router'
+import { useQueryClient } from '@tanstack/react-query'
+import { authService } from '@/modules/auth/services/authService'
+import { cacheAuthSession } from '@/modules/auth/services/authSession'
 import { Loader2, LogIn } from 'lucide-react'
 import { toast } from 'sonner'
-import { useAuthStore } from '@/stores/auth-store'
-import { authService } from '@/modules/auth/services/authService'
+import { Link, useNavigate } from '@/lib/router'
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 import {
@@ -21,9 +22,7 @@ import { Input } from '@/components/ui/input'
 import { PasswordInput } from '@/components/password-input'
 
 const formSchema = z.object({
-  identifier: z
-    .string()
-    .min(1, 'Please enter your email or username.'),
+  identifier: z.string().min(1, 'Please enter your email or username.'),
   password: z
     .string()
     .min(1, 'Please enter your password.')
@@ -41,7 +40,7 @@ export function UserAuthForm({
 }: UserAuthFormProps) {
   const [isLoading, setIsLoading] = useState(false)
   const navigate = useNavigate()
-  const { auth } = useAuthStore()
+  const queryClient = useQueryClient()
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -62,17 +61,7 @@ export function UserAuthForm({
       }
 
       const u = res.data.user
-      // Mirror into the template auth-store so the UI (nav-user) reflects the session.
-      auth.setUser({
-        accountNo: String(u.id ?? ''),
-        email: u.email ?? data.identifier,
-        role: u.role ? [u.role] : [],
-        // Session expiry is enforced by the backend HttpOnly cookie.
-        exp: 0,
-      })
-      // Store only a placeholder, never the real JWT (the session is an HttpOnly
-      // cookie). This keeps the token out of any JS-readable storage (XSS-safe).
-      auth.setAccessToken('session')
+      cacheAuthSession(queryClient, u)
 
       toast.success(`Welcome back, ${u.email ?? data.identifier}!`)
       navigate({ to: redirectTo || '/epda/create-epda', replace: true })

@@ -2,21 +2,18 @@
 
 import { useMemo, useState, type ReactNode } from 'react'
 import {
+  isHcmWorksheet,
+  usesQnPilotage,
+} from '@/modules/inquiries/components/common/quoteForm'
+import {
   withAutoGrtTierLabels,
   withAutoLoaTierLabels,
   type QuoteVariant,
 } from '@/modules/inquiries/components/common/quoteParameters'
-import { isHcmWorksheet, usesQnPilotage } from '@/modules/inquiries/components/common/quoteForm'
 import type { EpdaParameterValues } from '@/modules/inquiries/services/epdaParametersService'
 import { useI18n } from '@/shared/i18n/I18nProvider'
 import { ChevronLeft, ChevronRight } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
-import {
-  CargoAgencyRateTable,
-  GrtTierTable,
-  LoaTierTable,
-  NumberField,
-} from './EpdaEditorFields'
 import {
   AgencyByGrtCalculator,
   CargoAgencyCalculator,
@@ -28,6 +25,12 @@ import {
   PilotageCalculator,
   TonnageDuesCalculator,
 } from './EpdaDuesCalculators'
+import {
+  CargoAgencyRateTable,
+  GrtTierTable,
+  LoaTierTable,
+  NumberField,
+} from './EpdaEditorFields'
 import {
   QuarantineCalculator,
   TugCalculator,

@@ -1,10 +1,17 @@
 import axios, { type AxiosProgressEvent } from 'axios'
 import { API_CONFIG } from '@/shared/config/api.config'
-import { authService } from '@/modules/auth/services/authService'
+import { apiClient } from '@/shared/utils/apiClient'
+import { unwrapApiResponse } from '@/shared/utils/apiUnwrap'
 
 const API_BASE_URL = API_CONFIG.API_URL
 
-export type DocumentType = 'INVOICE' | 'QUOTATION' | 'PROFORMA_INVOICE' | 'DELIVERY_RECEIPT' | 'SPECIFICATION' | 'OTHER'
+export type DocumentType =
+  | 'INVOICE'
+  | 'QUOTATION'
+  | 'PROFORMA_INVOICE'
+  | 'DELIVERY_RECEIPT'
+  | 'SPECIFICATION'
+  | 'OTHER'
 
 export interface InquiryDocument {
   id: number
@@ -29,14 +36,11 @@ interface ApiResponse<T> {
   message: string
 }
 
-const getAuthHeaders = () => {
-  // Centralized auth header builder so we always send the bearer token
-  return authService.getAuthHeader()
-}
-
 /**
  * Document service for inquiry attachments.
- * Includes standardized error handling, progress tracking, and validation.
+ * Standard reads/deletes use apiClient. Upload remains on Axios only because
+ * browsers do not expose upload progress through fetch; it uses the same
+ * HttpOnly cookie session via withCredentials.
  */
 export const documentService = {
   /**
@@ -62,19 +66,16 @@ export const documentService = {
     formData.append('description', description || '')
 
     try {
-      const headers = getAuthHeaders()
-      if (!headers.Authorization) {
-        throw new Error('Please log in to upload documents')
-      }
-
       const response = await axios.post<ApiResponse<InquiryDocument>>(
         `${API_BASE_URL}${API_CONFIG.DOCUMENTS.ADMIN_UPLOAD(serviceSlug, inquiryId)}`,
         formData,
         {
-          headers,
+          withCredentials: true,
           onUploadProgress: (progressEvent: AxiosProgressEvent) => {
             if (progressEvent.total) {
-              const progress = Math.round((progressEvent.loaded * 100) / progressEvent.total)
+              const progress = Math.round(
+                (progressEvent.loaded * 100) / progressEvent.total
+              )
               onProgress?.(progress)
             }
           },
@@ -88,7 +89,10 @@ export const documentService = {
       return response.data.data
     } catch (error) {
       if (axios.isAxiosError(error)) {
-        throw new Error(error.response?.data?.message || 'Failed to upload document', { cause: error })
+        throw new Error(
+          error.response?.data?.message || 'Failed to upload document',
+          { cause: error }
+        )
       }
       throw error
     }
@@ -97,107 +101,86 @@ export const documentService = {
   /**
    * Get all documents for an inquiry.
    */
-  getDocuments: async (inquiryId: number, serviceSlug: string): Promise<InquiryDocument[]> => {
-    try {
-      const response = await axios.get<ApiResponse<InquiryDocument[]>>(
-        `${API_BASE_URL}${API_CONFIG.DOCUMENTS.LIST(serviceSlug, inquiryId)}`,
-        {
-          headers: getAuthHeaders(),
-        }
-      )
-
-      if (!response.data.success) {
-        throw new Error(response.data.message || 'Failed to fetch documents')
-      }
-
-      return response.data.data
-    } catch (error) {
-      if (axios.isAxiosError(error)) {
-        throw new Error(error.response?.data?.message || 'Failed to fetch documents', { cause: error })
-      }
-      throw error
-    }
+  getDocuments: async (
+    inquiryId: number,
+    serviceSlug: string
+  ): Promise<InquiryDocument[]> => {
+    const response = await apiClient.get(
+      API_CONFIG.DOCUMENTS.LIST(serviceSlug, inquiryId)
+    )
+    return unwrapApiResponse<InquiryDocument[]>(response)
   },
 
   /**
    * Get documents filtered by type.
    */
-  getDocumentsByType: async (inquiryId: number, serviceSlug: string, documentType: DocumentType): Promise<InquiryDocument[]> => {
-    try {
-      const response = await axios.get<ApiResponse<InquiryDocument[]>>(
-        `${API_BASE_URL}${API_CONFIG.DOCUMENTS.LIST_BY_TYPE(serviceSlug, inquiryId)}`,
-        {
-          params: { type: documentType },
-          headers: getAuthHeaders(),
-        }
-      )
-
-      if (!response.data.success) {
-        throw new Error(response.data.message || 'Failed to fetch documents')
-      }
-
-      return response.data.data
-    } catch (error) {
-      if (axios.isAxiosError(error)) {
-        throw new Error(error.response?.data?.message || 'Failed to fetch documents', { cause: error })
-      }
-      throw error
-    }
+  getDocumentsByType: async (
+    inquiryId: number,
+    serviceSlug: string,
+    documentType: DocumentType
+  ): Promise<InquiryDocument[]> => {
+    const params = new URLSearchParams({ type: documentType })
+    const response = await apiClient.get(
+      `${API_CONFIG.DOCUMENTS.LIST_BY_TYPE(serviceSlug, inquiryId)}?${params.toString()}`
+    )
+    return unwrapApiResponse<InquiryDocument[]>(response)
   },
 
   /**
    * Get direct download URL
    */
-  getDownloadUrl: (inquiryId: number, serviceSlug: string, documentId: number): string => {
+  getDownloadUrl: (
+    inquiryId: number,
+    serviceSlug: string,
+    documentId: number
+  ): string => {
     return `${API_BASE_URL}${API_CONFIG.DOCUMENTS.CONTENT(serviceSlug, inquiryId, documentId, 'attachment')}`
   },
 
-  getPreviewUrl: (inquiryId: number, serviceSlug: string, documentId: number): string => {
+  getPreviewUrl: (
+    inquiryId: number,
+    serviceSlug: string,
+    documentId: number
+  ): string => {
     return `${API_BASE_URL}${API_CONFIG.DOCUMENTS.CONTENT(serviceSlug, inquiryId, documentId, 'inline')}`
   },
 
   /**
    * Download a document.
    */
-  downloadDocument: async (inquiryId: number, serviceSlug: string, documentId: number): Promise<Blob> => {
-    try {
-      const response = await axios.get(
-        `${API_BASE_URL}${API_CONFIG.DOCUMENTS.CONTENT(serviceSlug, inquiryId, documentId, 'attachment')}`,
-        {
-          responseType: 'blob',
-          headers: getAuthHeaders(),
-        }
-      )
-
-      return response.data
-    } catch (error) {
-      if (axios.isAxiosError(error)) {
-        throw new Error(error.response?.data?.message || 'Failed to download document', { cause: error })
-      }
-      throw error
+  downloadDocument: async (
+    inquiryId: number,
+    serviceSlug: string,
+    documentId: number
+  ): Promise<Blob> => {
+    const response = await apiClient.get(
+      API_CONFIG.DOCUMENTS.CONTENT(
+        serviceSlug,
+        inquiryId,
+        documentId,
+        'attachment'
+      ),
+      { headers: { Accept: 'application/pdf,application/octet-stream' } }
+    )
+    if (!response.ok) {
+      throw new Error(`Failed to download document (${response.status})`)
     }
+    return response.blob()
   },
 
   /**
    * Delete a document.
    */
-  deleteDocument: async (inquiryId: number, serviceSlug: string, documentId: number): Promise<void> => {
-    try {
-      const response = await axios.delete(
-        `${API_BASE_URL}${API_CONFIG.DOCUMENTS.ADMIN_DELETE(serviceSlug, inquiryId, documentId)}`,
-        {
-          headers: getAuthHeaders(),
-        }
-      )
-
-      if (!response.data.success) {
-        throw new Error(response.data.message || 'Failed to delete document')
-      }
-    } catch (error) {
-      if (axios.isAxiosError(error)) {
-        throw new Error(error.response?.data?.message || 'Failed to delete document', { cause: error })
-      }
-      throw error
+  deleteDocument: async (
+    inquiryId: number,
+    serviceSlug: string,
+    documentId: number
+  ): Promise<void> => {
+    const response = await apiClient.delete(
+      API_CONFIG.DOCUMENTS.ADMIN_DELETE(serviceSlug, inquiryId, documentId)
+    )
+    if (!response.ok) {
+      throw new Error(`Failed to delete document (${response.status})`)
     }
   },
 
@@ -217,7 +200,10 @@ export const documentService = {
    */
   validateFile: (file: File): { valid: boolean; error?: string } => {
     // Check if file is PDF
-    if (!file.type.includes('pdf') && !file.name.toLowerCase().endsWith('.pdf')) {
+    if (
+      !file.type.includes('pdf') &&
+      !file.name.toLowerCase().endsWith('.pdf')
+    ) {
       return { valid: false, error: 'Only PDF files are allowed' }
     }
 

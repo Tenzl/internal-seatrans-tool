@@ -1,47 +1,49 @@
 'use client'
 
 import { type ReactNode } from 'react'
+import { canAccessAuthenticatedPath } from '@/config/section-catalog'
 import { Loader2 } from 'lucide-react'
 import { usePathname } from 'next/navigation'
-import { Link } from '@/lib/router'
 import { useAuthUser } from '@/hooks/use-current-user'
-import { canAccessPath } from '@/config/section-catalog'
+import { useSignOut } from '@/hooks/use-sign-out'
+import { Button } from '@/components/ui/button'
 
 /**
- * Real route-level access gate. Blocks pages whose section the user's role was
- * not granted — even when reached by typing the URL directly. Admins and
- * unmapped authenticated routes deny by default. The backend enforces the same
- * per section,
- * so this is the UX layer on top.
+ * UX authorization gate for direct navigation. The API remains the final
+ * authority for every protected operation.
  */
 export function RouteRoleGuard({ children }: { children: ReactNode }) {
   const pathname = usePathname()
   const { user, loading } = useAuthUser()
+  const { isSigningOut, signOut } = useSignOut()
 
-  // Allowed (admin, granted, or an unmapped route) → render immediately.
-  if (canAccessPath(pathname, user)) {
+  if (canAccessAuthenticatedPath(pathname, user)) {
     return <>{children}</>
   }
 
-  // Restricted route, role not yet known → wait instead of flashing "denied".
+  // Wait for the verified server session to avoid flashing "Access denied".
   if (loading) {
     return (
-      <div className="flex min-h-svh items-center justify-center">
-        <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+      <div className='flex min-h-svh items-center justify-center'>
+        <Loader2 className='h-6 w-6 animate-spin text-muted-foreground' />
       </div>
     )
   }
 
-  // Restricted route, role known and not permitted → block.
   return (
-    <div className="flex min-h-svh flex-col items-center justify-center gap-3 p-8 text-center">
-      <h2 className="text-2xl font-bold tracking-tight">Access denied</h2>
-      <p className="max-w-md text-sm text-muted-foreground">
+    <div className='flex min-h-svh flex-col items-center justify-center gap-3 p-8 text-center'>
+      <h2 className='text-2xl font-bold tracking-tight'>Access denied</h2>
+      <p className='max-w-md text-sm text-muted-foreground'>
         You don&apos;t have permission to view this page.
       </p>
-      <Link to="/" className="text-sm font-medium text-primary hover:underline">
-        Return to home
-      </Link>
+      <Button
+        variant='link'
+        className='text-sm font-medium text-primary'
+        disabled={isSigningOut}
+        onClick={() => void signOut()}
+      >
+        Logout
+      </Button>
     </div>
   )
 }

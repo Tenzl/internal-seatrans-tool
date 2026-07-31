@@ -1,10 +1,18 @@
 import { describe, expect, it } from 'vitest'
+import { sidebarData } from '@/components/layout/data/sidebar-data'
 import {
+  CANONICAL_EPDA_HISTORY_PATH,
   CANONICAL_CREATE_EPDA_PATH,
+  LEGACY_EPDA_HISTORY_PATH,
   LEGACY_CREATE_EPDA_PATH,
   canonicalizeDashboardPath,
 } from './dashboard-routes'
-import { canAccessPath } from './section-catalog'
+import {
+  canAccessAuthenticatedPath,
+  canAccessPath,
+  firstAccessibleDashboardPath,
+  SECTION_CATALOG,
+} from './section-catalog'
 
 describe('dashboard route policy', () => {
   const operator = { role: 'ROLE_OPERATOR', sections: ['epda-create'] }
@@ -15,14 +23,119 @@ describe('dashboard route policy', () => {
     expect(canAccessPath(LEGACY_CREATE_EPDA_PATH, operator)).toBe(false)
   })
 
-  it('maps transport documents to its own role section', () => {
+  it('allows authenticated self-service routes without granting business data', () => {
+    const noSections = { role: 'ROLE_OPERATOR', sections: [] }
+
+    expect(canAccessAuthenticatedPath('/settings', noSections)).toBe(true)
+    expect(canAccessAuthenticatedPath('/settings/account', noSections)).toBe(
+      true
+    )
+    expect(canAccessAuthenticatedPath('/errors/not-found', noSections)).toBe(
+      true
+    )
+    expect(canAccessAuthenticatedPath('/data/ports', noSections)).toBe(false)
+    expect(canAccessAuthenticatedPath('/settings', null)).toBe(false)
+  })
+
+  it('authorizes compatibility URLs using their canonical permission', () => {
+    expect(canAccessAuthenticatedPath(LEGACY_CREATE_EPDA_PATH, operator)).toBe(
+      true
+    )
     expect(
-      canAccessPath('/booking/documents', {
+      canAccessAuthenticatedPath(LEGACY_EPDA_HISTORY_PATH, {
+        role: 'ROLE_OPERATOR',
+        sections: ['epda-inquiry'],
+      })
+    ).toBe(true)
+  })
+
+  it('chooses a landing page the current user can access', () => {
+    expect(firstAccessibleDashboardPath(operator)).toBe(
+      CANONICAL_CREATE_EPDA_PATH
+    )
+    expect(
+      firstAccessibleDashboardPath({
         role: 'ROLE_OPERATOR',
         sections: ['booking-documents'],
       })
+    ).toBe('/booking/documents/arrival-notice')
+    expect(
+      firstAccessibleDashboardPath({
+        role: 'ROLE_OPERATOR',
+        sections: [],
+      })
+    ).toBe('/settings')
+    expect(firstAccessibleDashboardPath(null)).toBeNull()
+  })
+
+  it('maps transport documents to its own role section', () => {
+    const documentOperator = {
+      role: 'ROLE_OPERATOR',
+      sections: ['booking-documents'],
+    }
+    expect(
+      canAccessPath('/booking/documents/arrival-notice', documentOperator)
     ).toBe(true)
+    expect(
+      canAccessPath('/booking/documents/booking-confirmation', documentOperator)
+    ).toBe(true)
+    expect(
+      canAccessPath('/booking/documents/delivery-order', documentOperator)
+    ).toBe(true)
+    expect(canAccessPath('/booking/documents/history', documentOperator)).toBe(
+      true
+    )
     expect(canAccessPath('/booking/documents', operator)).toBe(false)
+  })
+
+  it('shows four transport-document entries under Booking Management', () => {
+    const general = sidebarData.navGroups.find(
+      (group) => group.title === 'General'
+    )
+    const booking = general?.items.find(
+      (item) => item.title === 'Booking Management'
+    )
+
+    expect(booking?.items ?? []).toEqual([
+      {
+        title: 'Create Arrival Notice',
+        url: '/booking/documents/arrival-notice',
+      },
+      {
+        title: 'Create Booking Confirmation',
+        url: '/booking/documents/booking-confirmation',
+      },
+      {
+        title: 'Create Delivery Order',
+        url: '/booking/documents/delivery-order',
+      },
+      {
+        title: 'History record',
+        url: '/booking/documents/history',
+      },
+    ])
+  })
+
+  it('moves Partner and Shipment into Data Management', () => {
+    expect(
+      SECTION_CATALOG.find((section) => section.key === 'booking-partner')
+        ?.group
+    ).toBe('Data Management')
+    expect(
+      SECTION_CATALOG.find((section) => section.key === 'booking-shipment')
+        ?.group
+    ).toBe('Data Management')
+
+    const general = sidebarData.navGroups.find(
+      (group) => group.title === 'General'
+    )
+    const dataManagement = general?.items.find(
+      (item) => item.title === 'Data Management'
+    )
+    const dataTitles = (dataManagement?.items ?? []).map((item) => item.title)
+
+    expect(dataTitles).toContain('Partner')
+    expect(dataTitles).toContain('Shipment')
   })
 
   it('keeps admin access while denying anonymous access by default', () => {
@@ -32,10 +145,13 @@ describe('dashboard route policy', () => {
 
   it('canonicalizes the legacy Create EPDA URL', () => {
     expect(canonicalizeDashboardPath(LEGACY_CREATE_EPDA_PATH)).toBe(
-      CANONICAL_CREATE_EPDA_PATH,
+      CANONICAL_CREATE_EPDA_PATH
     )
     expect(canonicalizeDashboardPath(CANONICAL_CREATE_EPDA_PATH)).toBe(
-      CANONICAL_CREATE_EPDA_PATH,
+      CANONICAL_CREATE_EPDA_PATH
+    )
+    expect(canonicalizeDashboardPath(LEGACY_EPDA_HISTORY_PATH)).toBe(
+      CANONICAL_EPDA_HISTORY_PATH
     )
   })
 })

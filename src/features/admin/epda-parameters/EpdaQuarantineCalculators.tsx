@@ -1,14 +1,23 @@
 'use client'
 
 import { useState } from 'react'
-import { withAutoLoaTierLabels, type LoaTier } from '@/modules/inquiries/components/common/quoteParameters'
+import {
+  withAutoLoaTierLabels,
+  type LoaTier,
+} from '@/modules/inquiries/components/common/quoteParameters'
 import { PURPOSE_OF_CALLING_OPTIONS } from '@/modules/inquiries/constants/shippingAgencyInquiryOptions'
 import type { EpdaParameterValues } from '@/modules/inquiries/services/epdaParametersService'
 import { useI18n } from '@/shared/i18n/I18nProvider'
 import { parseFiniteNumber } from '@/shared/utils/parseNumber'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
 import { QUARANTINE_CARGO_OPTIONS } from '@/features/admin/components/invoice/epdaFormParameters'
 import { boldNumbers, fmtNum, ScanRow } from './EpdaCalculatorPrimitives'
 
@@ -23,7 +32,11 @@ function shipQuarantineTrips(purpose: string): number {
  * select (→ ship trips) and a quarantine-cargo select (→ cargo trips). Ship unit is
  * low/high by GRT vs threshold; fee = unit × ship trips + cargoPerTrip × cargo trips.
  */
-export function QuarantineCalculator({ q }: { q: EpdaParameterValues['quarantine'] }) {
+export function QuarantineCalculator({
+  q,
+}: {
+  q: EpdaParameterValues['quarantine']
+}) {
   const { t } = useI18n()
   const [grtText, setGrtText] = useState('')
   const [purpose, setPurpose] = useState('')
@@ -221,4 +234,3 @@ export function TugCalculator({ tiers }: { tiers: LoaTier[] }) {
     </div>
   )
 }
-

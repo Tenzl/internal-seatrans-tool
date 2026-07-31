@@ -1,8 +1,8 @@
 import { API_CONFIG } from '@/shared/config/api.config'
 
 /**
- * API Client with automatic token handling and base URL from config.
- * Automatically logs out user when receiving 401 Unauthorized.
+ * API client for the backend HttpOnly-cookie session.
+ * Automatically clears cached profile state after a 401 response.
  */
 
 export interface ApiClientConfig extends RequestInit {
@@ -46,27 +46,42 @@ class ApiClient {
   private buildUrl(endpoint: string): string {
     if (endpoint.startsWith('http')) return endpoint
 
-    const normalizedEndpoint = endpoint.startsWith('/') ? endpoint : `/${endpoint}`
+    const normalizedEndpoint = endpoint.startsWith('/')
+      ? endpoint
+      : `/${endpoint}`
     return `${API_CONFIG.API_URL}${normalizedEndpoint}`
   }
 
-  private withTimeout(signal?: AbortSignal | null, customTimeout?: number): AbortSignal | undefined {
+  private withTimeout(
+    signal?: AbortSignal | null,
+    customTimeout?: number
+  ): { signal?: AbortSignal; cleanup: () => void } {
     const timeout = customTimeout ?? API_CONFIG.TIMEOUT
-    if (!timeout) return signal ?? undefined
+    if (!timeout)
+      return { signal: signal ?? undefined, cleanup: () => undefined }
+
     const controller = new AbortController()
     const timeoutId = setTimeout(() => controller.abort(), timeout)
+    const abortFromCaller = () => controller.abort(signal?.reason)
 
     if (signal) {
-      signal.addEventListener('abort', () => controller.abort())
+      if (signal.aborted) abortFromCaller()
+      else signal.addEventListener('abort', abortFromCaller, { once: true })
     }
 
-    // Clear timeout on abort to avoid leaks
-    controller.signal.addEventListener('abort', () => clearTimeout(timeoutId))
-
-    return controller.signal
+    return {
+      signal: controller.signal,
+      cleanup: () => {
+        clearTimeout(timeoutId)
+        signal?.removeEventListener('abort', abortFromCaller)
+      },
+    }
   }
 
-  async fetch(endpoint: string, config: ApiClientConfig = {}): Promise<Response> {
+  async fetch(
+    endpoint: string,
+    config: ApiClientConfig = {}
+  ): Promise<Response> {
     const { skipAuth, timeout, headers, signal, ...restConfig } = config
 
     const requestHeaders: Record<string, string> = {
@@ -75,6 +90,7 @@ class ApiClient {
     }
 
     const url = this.buildUrl(endpoint)
+    const timedRequest = this.withTimeout(signal, timeout)
 
     try {
       const isFormData = restConfig.body instanceof FormData
@@ -88,10 +104,10 @@ class ApiClient {
         ...restConfig,
         headers: requestHeaders,
         credentials: 'include',
-        signal: this.withTimeout(signal, timeout),
+        signal: timedRequest.signal,
       })
 
-      // Handle 401 Unauthorized - token expired or invalid
+      // The cookie session expired or is no longer valid.
       if (response.status === 401 && !skipAuth) {
         this.clearAuth()
         throw new Error('Session expired. Please login again.')
@@ -100,18 +116,35 @@ class ApiClient {
       return response
     } catch (error) {
       // Network errors or other fetch errors
-      if (error instanceof TypeError && error.message.includes('Failed to fetch')) {
-        throw new Error('Network error. Please check your connection.', { cause: error })
+      if (
+        error instanceof TypeError &&
+        error.message.includes('Failed to fetch')
+      ) {
+        throw new Error('Network error. Please check your connection.', {
+          cause: error,
+        })
       }
       throw error
+    } finally {
+      // Completed requests must not retain a timeout or abort listener.
+      timedRequest.cleanup()
     }
   }
 
-  async get<T = unknown>(endpoint: string, config?: ApiClientConfig): Promise<TypedResponse<T>> {
-    return this.fetch(endpoint, { ...config, method: 'GET' }) as Promise<TypedResponse<T>>
+  async get<T = unknown>(
+    endpoint: string,
+    config?: ApiClientConfig
+  ): Promise<TypedResponse<T>> {
+    return this.fetch(endpoint, { ...config, method: 'GET' }) as Promise<
+      TypedResponse<T>
+    >
   }
 
-  async post<T = unknown>(endpoint: string, body?: unknown, config?: ApiClientConfig): Promise<TypedResponse<T>> {
+  async post<T = unknown>(
+    endpoint: string,
+    body?: unknown,
+    config?: ApiClientConfig
+  ): Promise<TypedResponse<T>> {
     return this.fetch(endpoint, {
       ...config,
       method: 'POST',
@@ -120,7 +153,11 @@ class ApiClient {
     }) as Promise<TypedResponse<T>>
   }
 
-  async put<T = unknown>(endpoint: string, body?: unknown, config?: ApiClientConfig): Promise<TypedResponse<T>> {
+  async put<T = unknown>(
+    endpoint: string,
+    body?: unknown,
+    config?: ApiClientConfig
+  ): Promise<TypedResponse<T>> {
     return this.fetch(endpoint, {
       ...config,
       method: 'PUT',
@@ -128,7 +165,11 @@ class ApiClient {
     }) as Promise<TypedResponse<T>>
   }
 
-  async patch<T = unknown>(endpoint: string, body?: unknown, config?: ApiClientConfig): Promise<TypedResponse<T>> {
+  async patch<T = unknown>(
+    endpoint: string,
+    body?: unknown,
+    config?: ApiClientConfig
+  ): Promise<TypedResponse<T>> {
     return this.fetch(endpoint, {
       ...config,
       method: 'PATCH',
@@ -136,8 +177,13 @@ class ApiClient {
     }) as Promise<TypedResponse<T>>
   }
 
-  async delete<T = unknown>(endpoint: string, config?: ApiClientConfig): Promise<TypedResponse<T>> {
-    return this.fetch(endpoint, { ...config, method: 'DELETE' }) as Promise<TypedResponse<T>>
+  async delete<T = unknown>(
+    endpoint: string,
+    config?: ApiClientConfig
+  ): Promise<TypedResponse<T>> {
+    return this.fetch(endpoint, { ...config, method: 'DELETE' }) as Promise<
+      TypedResponse<T>
+    >
   }
 }
 

@@ -6,7 +6,8 @@ export function parseFiniteNumber(value: unknown): number | null {
   if (typeof value === 'number') return Number.isFinite(value) ? value : null
   if (typeof value === 'string') {
     const cleaned = value.replace(/,/g, '').trim()
-    if (!cleaned || cleaned === '-' || cleaned === '.' || cleaned === '-.') return null
+    if (!cleaned || cleaned === '-' || cleaned === '.' || cleaned === '-.')
+      return null
     const n = Number(cleaned)
     return Number.isFinite(n) ? n : null
   }
@@ -16,7 +17,9 @@ export function parseFiniteNumber(value: unknown): number | null {
 }
 
 /** Like parseFiniteNumber but returns `undefined` for empty/invalid (API payloads). */
-export function parseFiniteNumberOrUndefined(value: unknown): number | undefined {
+export function parseFiniteNumberOrUndefined(
+  value: unknown
+): number | undefined {
   const n = parseFiniteNumber(value)
   return n === null ? undefined : n
 }

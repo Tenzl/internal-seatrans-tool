@@ -1,6 +1,6 @@
 import { type ReactNode } from 'react'
-import { Link, useLocation } from '@/lib/router'
 import { ChevronRight } from 'lucide-react'
+import { Link, useLocation } from '@/lib/router'
 import {
   Collapsible,
   CollapsibleContent,

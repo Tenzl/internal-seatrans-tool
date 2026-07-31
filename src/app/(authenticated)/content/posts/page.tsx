@@ -1,26 +1,11 @@
-'use client'
+import { ManagePosts } from '@/modules/posts/components/admin/PostManagement'
+import { AdminPageShell } from '@/components/layout/admin-page-shell'
 
-import { ConfigDrawer } from '@/components/config-drawer'
-import { Header } from '@/components/layout/header'
-import { Main } from '@/components/layout/main'
-import { ProfileDropdown } from '@/components/profile-dropdown'
-import { Search } from '@/components/search'
-import { ThemeSwitch } from '@/components/theme-switch'
-import { ManagePosts } from '@/features/admin/components/ManagePosts'
-
-/** Content Management → Posts (ported from the legacy admin dashboard). */
+/** Content Management: posts. */
 export default function Page() {
   return (
-    <>
-      <Header fixed>
-        <Search className='me-auto' />
-        <ThemeSwitch />
-        <ConfigDrawer />
-        <ProfileDropdown />
-      </Header>
-      <Main>
-        <ManagePosts />
-      </Main>
-    </>
+    <AdminPageShell>
+      <ManagePosts />
+    </AdminPageShell>
   )
 }

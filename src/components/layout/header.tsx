@@ -1,3 +1,5 @@
+'use client'
+
 import { useEffect, useRef, useState } from 'react'
 import { cn } from '@/lib/utils'
 import { Separator } from '@/components/ui/separator'
@@ -33,7 +35,7 @@ export function Header({ className, fixed, children, ...props }: HeaderProps) {
     const syncHeight = () => {
       document.documentElement.style.setProperty(
         '--header-height',
-        `${el.offsetHeight}px`,
+        `${el.offsetHeight}px`
       )
     }
 
@@ -66,7 +68,10 @@ export function Header({ className, fixed, children, ...props }: HeaderProps) {
         )}
       >
         <div className='flex shrink-0 items-center gap-2 sm:gap-3'>
-          <SidebarTrigger variant='outline' className='min-h-11 min-w-11 active:scale-[0.98] max-lg:scale-100 md:min-h-8 md:min-w-8' />
+          <SidebarTrigger
+            variant='outline'
+            className='min-h-11 min-w-11 active:scale-[0.98] max-lg:scale-100 md:min-h-8 md:min-w-8'
+          />
           <Separator orientation='vertical' className='hidden h-6 sm:block' />
         </div>
         <div className='flex w-full min-w-0 flex-1 basis-full flex-wrap items-center gap-2 sm:basis-auto sm:flex-nowrap sm:gap-3 [&>:first-child]:w-full [&>:first-child]:sm:w-auto'>

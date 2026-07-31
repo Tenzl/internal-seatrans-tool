@@ -59,45 +59,59 @@ export const isSupportedImportFile = (file: File): boolean =>
 
 const buildHeaderLookup = (schema: ExcelImportSchema): Map<string, string> => {
   const lookup = new Map<string, string>()
-  const canonicalHeaders = [...schema.requiredHeaders, ...(schema.optionalHeaders ?? [])]
+  const canonicalHeaders = [
+    ...schema.requiredHeaders,
+    ...(schema.optionalHeaders ?? []),
+  ]
 
   canonicalHeaders.forEach((header) => {
     const normalized = normalizeHeader(header)
     lookup.set(normalized, normalized)
   })
 
-  Object.entries(schema.headerAliases ?? {}).forEach(([canonicalHeader, aliases]) => {
-    const normalizedCanonical = normalizeHeader(canonicalHeader)
-    lookup.set(normalizedCanonical, normalizedCanonical)
+  Object.entries(schema.headerAliases ?? {}).forEach(
+    ([canonicalHeader, aliases]) => {
+      const normalizedCanonical = normalizeHeader(canonicalHeader)
+      lookup.set(normalizedCanonical, normalizedCanonical)
 
-    aliases.forEach((alias) => {
-      lookup.set(normalizeHeader(alias), normalizedCanonical)
-    })
-  })
+      aliases.forEach((alias) => {
+        lookup.set(normalizeHeader(alias), normalizedCanonical)
+      })
+    }
+  )
 
   return lookup
 }
 
-const resolveCanonicalHeader = (header: string, lookup: Map<string, string>): string => {
+const resolveCanonicalHeader = (
+  header: string,
+  lookup: Map<string, string>
+): string => {
   const normalized = normalizeHeader(header)
   return lookup.get(normalized) ?? normalized
 }
 
 export const validateTemplateHeaders = (
   headers: string[],
-  schema: ExcelImportSchema,
+  schema: ExcelImportSchema
 ): ExcelImportValidationResult => {
   const lookup = buildHeaderLookup(schema)
 
   const normalizedActual = headers.map(normalizeHeader)
-  const canonicalActual = normalizedActual.map((header) => resolveCanonicalHeader(header, lookup))
+  const canonicalActual = normalizedActual.map((header) =>
+    resolveCanonicalHeader(header, lookup)
+  )
   const required = schema.requiredHeaders.map(normalizeHeader)
   const optional = (schema.optionalHeaders ?? []).map(normalizeHeader)
 
   const allowed = new Set([...required, ...optional])
 
-  const missingHeaders = required.filter((header) => !canonicalActual.includes(header))
-  const unknownHeaders = normalizedActual.filter((_, index) => !allowed.has(canonicalActual[index]))
+  const missingHeaders = required.filter(
+    (header) => !canonicalActual.includes(header)
+  )
+  const unknownHeaders = normalizedActual.filter(
+    (_, index) => !allowed.has(canonicalActual[index])
+  )
 
   return {
     isValid: missingHeaders.length === 0,
@@ -108,11 +122,13 @@ export const validateTemplateHeaders = (
 
 export const canonicalizeParsedRows = (
   parsed: ParsedExcelResult,
-  schema: ExcelImportSchema,
+  schema: ExcelImportSchema
 ): ParsedExcelResult => {
   const lookup = buildHeaderLookup(schema)
 
-  const canonicalHeaders = parsed.headers.map((header) => resolveCanonicalHeader(header, lookup))
+  const canonicalHeaders = parsed.headers.map((header) =>
+    resolveCanonicalHeader(header, lookup)
+  )
   const rows = parsed.rows.map((row) => {
     const mapped: Record<string, string> = {}
 
@@ -132,7 +148,9 @@ export const canonicalizeParsedRows = (
   }
 }
 
-export const parseExcelFile = async (file: File): Promise<ParsedExcelResult> => {
+export const parseExcelFile = async (
+  file: File
+): Promise<ParsedExcelResult> => {
   if (!isSupportedImportFile(file)) {
     throw new Error('Only .xlsx or .csv files are supported')
   }
@@ -169,7 +187,11 @@ export const parseExcelFile = async (file: File): Promise<ParsedExcelResult> => 
 const stringifyImportCell = (value: unknown): string => {
   if (value == null) return ''
   if (value instanceof Date) return value.toISOString()
-  if (typeof value === 'string' || typeof value === 'number' || typeof value === 'boolean') {
+  if (
+    typeof value === 'string' ||
+    typeof value === 'number' ||
+    typeof value === 'boolean'
+  ) {
     return String(value).trim()
   }
   return ''
@@ -182,7 +204,9 @@ const parseCsvFile = async (file: File): Promise<unknown[][]> => {
   })
 
   if (result.errors.length > 0) {
-    throw new Error(`Invalid CSV at row ${result.errors[0].row ?? 1}: ${result.errors[0].message}`)
+    throw new Error(
+      `Invalid CSV at row ${result.errors[0].row ?? 1}: ${result.errors[0].message}`
+    )
   }
 
   return result.data

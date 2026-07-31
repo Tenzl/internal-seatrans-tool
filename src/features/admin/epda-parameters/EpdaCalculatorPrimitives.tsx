@@ -49,7 +49,10 @@ export function ScanRow({
  * Live garbage calculator. Garbage = rate × ⌈days / 2⌉ (a block per 2 days).
  * Staff enter the days. HCM has berth + buoy, QN berth only.
  */
-export function resolveGrtBand(tiers: GrtTier[], grt: number): GrtTier | undefined {
+export function resolveGrtBand(
+  tiers: GrtTier[],
+  grt: number
+): GrtTier | undefined {
   if (!tiers.length) return undefined
   const grtNum = parseFiniteNumber(grt)
   if (grtNum === null) return undefined

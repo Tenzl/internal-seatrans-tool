@@ -2,24 +2,27 @@
 
 import { useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
-import { ChevronDown, ChevronRight, Folder, Loader2 } from 'lucide-react'
-import { queryKeys } from '@/shared/config/react-query.config'
-import { cn } from '@/lib/utils'
 import { storageService } from '@/modules/storage/services/storageService'
 import type { StorageObject } from '@/modules/storage/types/storage.types'
 import { normalizePrefix } from '@/modules/storage/utils/storageUtils'
+import { queryKeys } from '@/shared/config/react-query.config'
+import { ChevronDown, ChevronRight, Folder, Loader2 } from 'lucide-react'
+import { cn } from '@/lib/utils'
 
 interface StorageFolderTreeProps {
   currentPrefix: string
   onSelectPrefix: (prefix: string) => void
 }
 
-export function StorageFolderTree({ currentPrefix, onSelectPrefix }: StorageFolderTreeProps) {
+export function StorageFolderTree({
+  currentPrefix,
+  onSelectPrefix,
+}: StorageFolderTreeProps) {
   return (
-    <ul className="space-y-0.5 text-sm" role="tree">
+    <ul className='space-y-0.5 text-sm' role='tree'>
       <TreeNode
-        prefix=""
-        label="Root"
+        prefix=''
+        label='Root'
         depth={0}
         currentPrefix={currentPrefix}
         onSelectPrefix={onSelectPrefix}
@@ -48,7 +51,9 @@ function TreeNode({
 }: TreeNodeProps) {
   const normalized = normalizePrefix(prefix)
   const isSelected = normalizePrefix(currentPrefix) === normalized
-  const [expanded, setExpanded] = useState(defaultExpanded || isAncestor(normalized, currentPrefix))
+  const [expanded, setExpanded] = useState(
+    defaultExpanded || isAncestor(normalized, currentPrefix)
+  )
 
   const { data, isLoading } = useQuery({
     queryKey: queryKeys.storageList(normalized),
@@ -61,40 +66,39 @@ function TreeNode({
   const hasChildren = expanded && childFolders.length > 0
 
   return (
-    <li role="treeitem" aria-expanded={expanded}>
-      <div
-        className="flex items-center"
-        style={{ paddingLeft: depth * 12 }}
-      >
+    <li role='treeitem' aria-expanded={expanded}>
+      <div className='flex items-center' style={{ paddingLeft: depth * 12 }}>
         <button
-          type="button"
-          className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md text-muted-foreground hover:bg-muted"
+          type='button'
+          className='flex h-7 w-7 shrink-0 items-center justify-center rounded-md text-muted-foreground hover:bg-muted'
           onClick={() => setExpanded((e) => !e)}
           aria-label={expanded ? 'Collapse' : 'Expand'}
         >
           {isLoading ? (
-            <Loader2 className="h-3.5 w-3.5 animate-spin" />
+            <Loader2 className='h-3.5 w-3.5 animate-spin' />
           ) : expanded ? (
-            <ChevronDown className="h-3.5 w-3.5" />
+            <ChevronDown className='h-3.5 w-3.5' />
           ) : (
-            <ChevronRight className="h-3.5 w-3.5" />
+            <ChevronRight className='h-3.5 w-3.5' />
           )}
         </button>
         <button
-          type="button"
+          type='button'
           onClick={() => onSelectPrefix(normalized)}
           className={cn(
             'flex min-w-0 flex-1 items-center gap-2 rounded-md px-2 py-1.5 text-left transition-colors',
-            isSelected ? 'bg-primary/10 font-medium text-primary' : 'hover:bg-muted',
+            isSelected
+              ? 'bg-primary/10 font-medium text-primary'
+              : 'hover:bg-muted'
           )}
         >
-          <Folder className="h-3.5 w-3.5 shrink-0 text-amber-500" />
-          <span className="truncate">{label}</span>
+          <Folder className='h-3.5 w-3.5 shrink-0 text-amber-500' />
+          <span className='truncate'>{label}</span>
         </button>
       </div>
 
       {expanded && hasChildren && (
-        <ul className="mt-0.5" role="group">
+        <ul className='mt-0.5' role='group'>
           {childFolders.map((folder: StorageObject) => (
             <TreeNode
               key={folder.key}
@@ -113,5 +117,7 @@ function TreeNode({
 
 function isAncestor(ancestorPrefix: string, descendantPrefix: string): boolean {
   if (!ancestorPrefix) return true
-  return normalizePrefix(descendantPrefix).startsWith(normalizePrefix(ancestorPrefix))
+  return normalizePrefix(descendantPrefix).startsWith(
+    normalizePrefix(ancestorPrefix)
+  )
 }

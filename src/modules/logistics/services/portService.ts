@@ -1,7 +1,8 @@
-import { apiClient } from '@/shared/utils/apiClient'
 import { API_CONFIG } from '@/shared/config/api.config'
-import type { ApiResponse, PageResponse } from '@/shared/types/api.types'
 import type { PortAreaCode } from '@/shared/domain/portArea'
+import type { PageResponse } from '@/shared/types/api.types'
+import { apiClient } from '@/shared/utils/apiClient'
+import { unwrapApiResponse } from '@/shared/utils/apiUnwrap'
 
 export type PortArea = PortAreaCode
 
@@ -61,6 +62,17 @@ export interface ListPortOptionsParams {
   limit?: number
 }
 
+export interface SavePortPayload {
+  name: string
+  provinceId: number | null
+  portOfCall?: string
+  code?: string
+  zoneCode?: string
+  countryCode?: string
+  latitude?: string
+  longitude?: string
+}
+
 function buildPortsListUrl(params: ListPortsParams = {}): string {
   const search = new URLSearchParams()
   search.set('page', String(params.page ?? 0))
@@ -80,12 +92,8 @@ function buildPortsListUrl(params: ListPortsParams = {}): string {
 }
 
 async function fetchPortsPage(endpoint: string): Promise<PageResponse<Port>> {
-  const response = await apiClient.get<ApiResponse<PageResponse<Port>>>(endpoint)
-  if (!response.ok) {
-    throw new Error('Failed to load ports')
-  }
-  const payload = await response.json()
-  const data = payload.data
+  const response = await apiClient.get(endpoint)
+  const data = await unwrapApiResponse<PageResponse<Port>>(response)
   if (!data || !Array.isArray(data.content)) {
     return {
       content: [],
@@ -100,23 +108,21 @@ async function fetchPortsPage(endpoint: string): Promise<PageResponse<Port>> {
 
 export const portService = {
   async getPortById(id: number): Promise<Port> {
-    const response = await apiClient.get<ApiResponse<Port>>(API_CONFIG.PORTS.BY_ID(id))
-    if (!response.ok) {
-      throw new Error('Failed to load port details')
-    }
-    const data = await response.json()
-    if (!data.data) {
-      throw new Error('Port not found')
-    }
-    return data.data
+    const response = await apiClient.get(API_CONFIG.PORTS.BY_ID(id))
+    return unwrapApiResponse<Port>(response)
   },
 
-  async listPortsPaginated(params: ListPortsParams = {}): Promise<PageResponse<Port>> {
+  async listPortsPaginated(
+    params: ListPortsParams = {}
+  ): Promise<PageResponse<Port>> {
     return fetchPortsPage(buildPortsListUrl(params))
   },
 
   async listPorts(params: ListPortsParams = {}): Promise<Port[]> {
-    const page = await this.listPortsPaginated({ ...params, page: params.page ?? 0 })
+    const page = await this.listPortsPaginated({
+      ...params,
+      page: params.page ?? 0,
+    })
     return page.content
   },
 
@@ -124,26 +130,29 @@ export const portService = {
   async getAllPorts(maxPages = 5): Promise<Port[]> {
     const items: Port[] = []
     for (let page = 0; page < maxPages; page += 1) {
-      const batch = await this.listPortsPaginated({ page, size: PORTS_PAGE_SIZE })
+      const batch = await this.listPortsPaginated({
+        page,
+        size: PORTS_PAGE_SIZE,
+      })
       items.push(...batch.content)
       if (page >= batch.totalPages - 1 || !batch.content.length) break
     }
     return items
   },
 
-  async listPortOptions(params: ListPortOptionsParams = {}): Promise<PortOption[]> {
+  async listPortOptions(
+    params: ListPortOptionsParams = {}
+  ): Promise<PortOption[]> {
     const search = new URLSearchParams()
     if (params.q?.trim()) search.set('q', params.q.trim())
     if (params.ids?.length) search.set('ids', params.ids.join(','))
     if (params.limit != null) search.set('limit', String(params.limit))
     const query = search.toString()
-    const endpoint = query ? `${API_CONFIG.PORTS.OPTIONS}?${query}` : API_CONFIG.PORTS.OPTIONS
-    const response = await apiClient.get<ApiResponse<PortOption[]>>(endpoint)
-    if (!response.ok) {
-      throw new Error('Failed to load port options')
-    }
-    const data = await response.json()
-    return data.data ?? []
+    const endpoint = query
+      ? `${API_CONFIG.PORTS.OPTIONS}?${query}`
+      : API_CONFIG.PORTS.OPTIONS
+    const response = await apiClient.get(endpoint)
+    return unwrapApiResponse<PortOption[]>(response)
   },
 
   async getPortsByArea(area: PortArea, q?: string): Promise<Port[]> {
@@ -157,10 +166,37 @@ export const portService = {
   },
 
   async getPortsByProvince(provinceId: number, q?: string): Promise<Port[]> {
-    const response = await apiClient.get<ApiResponse<Port[]>>(
-      `${API_CONFIG.PORTS.BY_PROVINCE(provinceId)}${q?.trim() ? `?q=${encodeURIComponent(q.trim())}` : ''}`,
+    const response = await apiClient.get(
+      `${API_CONFIG.PORTS.BY_PROVINCE(provinceId)}${q?.trim() ? `?q=${encodeURIComponent(q.trim())}` : ''}`
     )
-    const data = await response.json()
-    return data.data ?? []
+    return unwrapApiResponse<Port[]>(response)
+  },
+
+  async createPort(payload: SavePortPayload): Promise<void> {
+    const response = await apiClient.post(API_CONFIG.PORTS.ADMIN_BASE, payload)
+    await unwrapApiResponse<Port>(response)
+  },
+
+  async updatePort(id: number, payload: SavePortPayload): Promise<void> {
+    const response = await apiClient.put(
+      API_CONFIG.PORTS.ADMIN_BY_ID(id),
+      payload
+    )
+    await unwrapApiResponse<Port>(response)
+  },
+
+  async deletePort(id: number): Promise<void> {
+    const response = await apiClient.delete(API_CONFIG.PORTS.ADMIN_BY_ID(id))
+    if (!response.ok) {
+      throw new Error('Failed to delete port')
+    }
+  },
+
+  async setPortHasInfo(id: number, hasInfo: 0 | 1): Promise<void> {
+    const response = await apiClient.patch(
+      API_CONFIG.PORTS.ADMIN_HAS_INFO(id),
+      { hasInfo }
+    )
+    await unwrapApiResponse<Port>(response)
   },
 }

@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from 'react'
 import { Check, ChevronsUpDown, Loader2 } from 'lucide-react'
-
+import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 import {
   Command,
@@ -13,8 +13,11 @@ import {
   CommandList,
 } from '@/components/ui/command'
 import { Label } from '@/components/ui/label'
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
-import { cn } from '@/lib/utils'
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from '@/components/ui/popover'
 
 export type SearchSelectOption = {
   value: number
@@ -64,8 +67,10 @@ export function AsyncSearchSelect({
   }, [options, selectedLabel, value])
 
   return (
-    <div className="space-y-1.5">
-      <Label className="text-xs font-medium text-muted-foreground">{label}</Label>
+    <div className='space-y-1.5'>
+      <Label className='text-xs font-medium text-muted-foreground'>
+        {label}
+      </Label>
       <Popover
         open={open}
         onOpenChange={(next) => {
@@ -75,26 +80,26 @@ export function AsyncSearchSelect({
       >
         <PopoverTrigger asChild>
           <Button
-            type="button"
-            variant="outline"
-            role="combobox"
+            type='button'
+            variant='outline'
+            role='combobox'
             aria-expanded={open}
             disabled={disabled}
-            className="h-9 w-full justify-between bg-background font-normal active:scale-[0.99]"
+            className='h-9 w-full justify-between bg-background font-normal active:scale-[0.99]'
           >
-            <span className="truncate text-left">
+            <span className='truncate text-left'>
               {displayLabel ?? 'Select…'}
             </span>
             {isLoading ? (
-              <Loader2 className="ml-2 h-4 w-4 shrink-0 animate-spin opacity-60" />
+              <Loader2 className='ml-2 h-4 w-4 shrink-0 animate-spin opacity-60' />
             ) : (
-              <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+              <ChevronsUpDown className='ml-2 h-4 w-4 shrink-0 opacity-50' />
             )}
           </Button>
         </PopoverTrigger>
         <PopoverContent
-          className="w-[var(--radix-popover-trigger-width)] p-0"
-          align="start"
+          className='w-[var(--radix-popover-trigger-width)] p-0'
+          align='start'
         >
           <Command shouldFilter={false}>
             <CommandInput
@@ -104,10 +109,12 @@ export function AsyncSearchSelect({
             />
             <CommandList>
               {awaitingSearch ? (
-                <p className="px-3 py-4 text-sm text-muted-foreground">{idleMessage}</p>
+                <p className='px-3 py-4 text-sm text-muted-foreground'>
+                  {idleMessage}
+                </p>
               ) : isLoading ? (
-                <div className="flex items-center gap-2 px-3 py-4 text-sm text-muted-foreground">
-                  <Loader2 className="h-4 w-4 animate-spin" />
+                <div className='flex items-center gap-2 px-3 py-4 text-sm text-muted-foreground'>
+                  <Loader2 className='h-4 w-4 animate-spin' />
                   Searching…
                 </div>
               ) : (
@@ -116,7 +123,7 @@ export function AsyncSearchSelect({
                   <CommandGroup>
                     {allowClear && (
                       <CommandItem
-                        value="clear"
+                        value='clear'
                         onSelect={() => {
                           onChange(null)
                           setOpen(false)
@@ -139,13 +146,13 @@ export function AsyncSearchSelect({
                         <Check
                           className={cn(
                             'mr-2 h-4 w-4 shrink-0',
-                            value === opt.value ? 'opacity-100' : 'opacity-0',
+                            value === opt.value ? 'opacity-100' : 'opacity-0'
                           )}
                         />
-                        <span className="flex min-w-0 flex-col">
-                          <span className="truncate">{opt.label}</span>
+                        <span className='flex min-w-0 flex-col'>
+                          <span className='truncate'>{opt.label}</span>
                           {opt.hint ? (
-                            <span className="truncate text-xs text-muted-foreground">
+                            <span className='truncate text-xs text-muted-foreground'>
                               {opt.hint}
                             </span>
                           ) : null}

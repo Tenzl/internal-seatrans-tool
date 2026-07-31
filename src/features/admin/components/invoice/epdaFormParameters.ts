@@ -1,27 +1,28 @@
 /**
  * Single source of truth for the parameters that drive the EPDA create form.
- * Both the form (CreateInvoiceTab / CreateInvoiceVariantForm) and the EPDA
+ * Both the editor workflow (EpdaEditorScreen / CreateInvoiceVariantForm) and the EPDA
  * Parameter overview screen import from here so the screen always reflects what
  * the form actually uses.
  */
-import { PURPOSE_OF_CALLING_OPTIONS } from '@/modules/inquiries/constants/shippingAgencyInquiryOptions'
-export { QUARANTINE_CARGO_OPTIONS } from '@/modules/inquiries/constants/epdaOptions'
 import {
-  PORT_AREA_OPTIONS,
-  getPortAreaLabel,
-  getPortAreaShortLabel,
-  type PortAreaCode,
-} from '@/shared/domain/portArea'
+  DEFAULT_GARBAGE_USD_HCM,
+  DEFAULT_GARBAGE_USD_QN,
+} from '@/modules/inquiries/components/common/garbageFeeDefaults'
 import {
   defaultParameterValues,
   resolveGrtTier,
   type GrtTier,
   type EpdaParameterValues,
 } from '@/modules/inquiries/components/common/quoteParameters'
+import { PURPOSE_OF_CALLING_OPTIONS } from '@/modules/inquiries/constants/shippingAgencyInquiryOptions'
 import {
-  DEFAULT_GARBAGE_USD_HCM,
-  DEFAULT_GARBAGE_USD_QN,
-} from '@/modules/inquiries/components/common/garbageFeeDefaults'
+  PORT_AREA_OPTIONS,
+  getPortAreaLabel,
+  getPortAreaShortLabel,
+  type PortAreaCode,
+} from '@/shared/domain/portArea'
+
+export { QUARANTINE_CARGO_OPTIONS } from '@/modules/inquiries/constants/epdaOptions'
 
 export type { EpdaParameterValues, GrtTier }
 export { defaultParameterValues }
@@ -57,9 +58,11 @@ export const SHIPOWNER_NATIONALITY_OPTIONS = [
   { value: 'OVERSEAS', label: 'OVERSEAS SHIPOWNER' },
   { value: 'VIETNAMESE', label: 'VIETNAMESE SHIPOWNER' },
 ] as const
-export type ShipownerNationalityOption = (typeof SHIPOWNER_NATIONALITY_OPTIONS)[number]['value']
+export type ShipownerNationalityOption =
+  (typeof SHIPOWNER_NATIONALITY_OPTIONS)[number]['value']
 
-export const DEFAULT_SHIPOWNER_NATIONALITY: ShipownerNationalityOption = 'OVERSEAS'
+export const DEFAULT_SHIPOWNER_NATIONALITY: ShipownerNationalityOption =
+  'OVERSEAS'
 
 /** Optional AA “other expenses” selectable in EPDA section 2 (Port dues). */
 export const OTHER_EXPENSE_OPTIONS = [
@@ -70,7 +73,10 @@ export type OtherExpenseOption = (typeof OTHER_EXPENSE_OPTIONS)[number]['value']
 export const FRT_TAX_TYPE_OPTIONS = [
   { value: 'Import', label: 'Import - No freight tax' },
   { value: 'Export - Pls Advise', label: 'Export - Pls Advise' },
-  { value: 'Export - Freight rate declaration', label: 'Export - Freight rate declaration' },
+  {
+    value: 'Export - Freight rate declaration',
+    label: 'Export - Freight rate declaration',
+  },
 ] as const
 
 export const AGENCY_FEE_MODE_OPTIONS = [
@@ -83,7 +89,8 @@ export const TUG_ASSISTANCE_TRIP_OPTIONS = [
   { value: '1', trips: 1 },
   { value: '2', trips: 2 },
 ] as const
-export type TugAssistanceTripsOption = (typeof TUG_ASSISTANCE_TRIP_OPTIONS)[number]['value']
+export type TugAssistanceTripsOption =
+  (typeof TUG_ASSISTANCE_TRIP_OPTIONS)[number]['value']
 export const DEFAULT_TUG_ASSISTANCE_TRIPS: TugAssistanceTripsOption = '2'
 
 /** Default port-stay hours used to seed the form. */
@@ -93,18 +100,21 @@ export const DEFAULT_PILOTAGE_THIRD_MILES = '47' // HCM buoy position (total mil
 export const DEFAULT_QN_PILOTAGE_MILES = '5' // QN template
 
 /** Tariff agency fee tiers by GRT (USD). `maxGrt: null` = no upper bound. */
-export const AGENCY_FEE_BY_GRT: GrtTier[] = defaultParameterValues('HCM').agencyFeeTiers
+export const AGENCY_FEE_BY_GRT: GrtTier[] =
+  defaultParameterValues('HCM').agencyFeeTiers
 
 /** Resolve the agency fee for a GRT against a tier list (defaults to the built-in tiers). */
 export function getAgencyFeeByGrt(
   grt: number,
-  tiers?: GrtTier[],
+  tiers?: GrtTier[]
 ): { amount: number; label: string } {
   const list = tiers && tiers.length ? tiers : AGENCY_FEE_BY_GRT
-  return resolveGrtTier(grt, list) ?? { amount: list[list.length - 1].amount, label: list[list.length - 1].label }
+  return (
+    resolveGrtTier(grt, list) ?? {
+      amount: list[list.length - 1].amount,
+      label: list[list.length - 1].label,
+    }
+  )
 }
 
-export {
-  DEFAULT_GARBAGE_USD_HCM,
-  DEFAULT_GARBAGE_USD_QN,
-}
+export { DEFAULT_GARBAGE_USD_HCM, DEFAULT_GARBAGE_USD_QN }

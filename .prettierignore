@@ -11,6 +11,7 @@
 !vite.config.ts
 !.prettierrc
 !README.md
+!ARCHITECTURE.md
 !eslint.config.js
 !postcss.config.js
 !.vscode/

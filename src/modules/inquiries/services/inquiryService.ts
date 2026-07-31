@@ -1,7 +1,10 @@
 import { API_CONFIG } from '@/shared/config/api.config'
 import type { PageResponse } from '@/shared/types/api.types'
 import { apiClient } from '@/shared/utils/apiClient'
-import { unwrapApiResponse, unwrapPaginatedContent } from '@/shared/utils/apiUnwrap'
+import {
+  unwrapApiResponse,
+  unwrapPaginatedContent,
+} from '@/shared/utils/apiUnwrap'
 
 /** Backend admin detail routes use service display name in the path */
 export const INQUIRY_SERVICE_DISPLAY = {
@@ -41,9 +44,12 @@ export const inquiryService = {
     return apiClient.post(API_CONFIG.INQUIRIES.SUBMIT, formData)
   },
 
-  async listForUser<T>(userId: number, params: InquiryListParams = {}): Promise<T[]> {
+  async listForUser<T>(
+    userId: number,
+    params: InquiryListParams = {}
+  ): Promise<T[]> {
     const response = await apiClient.get<PageResponse<T>>(
-      `${API_CONFIG.INQUIRIES.USER_HISTORY(userId)}?${buildListQuery(params)}`,
+      `${API_CONFIG.INQUIRIES.USER_HISTORY(userId)}?${buildListQuery(params)}`
     )
     if (!response.ok) throw new Error('Failed to fetch inquiries')
     const payload = await response.json()
@@ -53,7 +59,7 @@ export const inquiryService = {
 
   async listForAdmin<T>(params: InquiryListParams = {}): Promise<T[]> {
     const response = await apiClient.get<PageResponse<T>>(
-      `${API_CONFIG.INQUIRIES.ADMIN_BASE}?${buildListQuery(params)}`,
+      `${API_CONFIG.INQUIRIES.ADMIN_BASE}?${buildListQuery(params)}`
     )
     if (!response.ok) throw new Error('Failed to fetch inquiries')
     const payload = await response.json()
@@ -62,7 +68,9 @@ export const inquiryService = {
   },
 
   async getAdminDetail<T>(serviceType: string, id: number): Promise<T> {
-    const response = await apiClient.get(API_CONFIG.INQUIRIES.ADMIN_DETAIL(serviceType, id))
+    const response = await apiClient.get(
+      API_CONFIG.INQUIRIES.ADMIN_DETAIL(serviceType, id)
+    )
     return unwrapApiResponse<T>(response)
   },
 
@@ -70,33 +78,60 @@ export const inquiryService = {
     return this.getAdminDetail<T>(INQUIRY_SERVICE_DISPLAY.SHIPPING_AGENCY, id)
   },
 
-  async updateStatus(serviceType: string, id: number, status: string): Promise<void> {
-    const response = await apiClient.patch(API_CONFIG.INQUIRIES.ADMIN_STATUS(serviceType, id), {
-      status,
-    })
+  async updateStatus(
+    serviceType: string,
+    id: number,
+    status: string
+  ): Promise<void> {
+    const response = await apiClient.patch(
+      API_CONFIG.INQUIRIES.ADMIN_STATUS(serviceType, id),
+      {
+        status,
+      }
+    )
     if (!response.ok) {
       const err = await response.json().catch(() => ({}))
-      throw new Error((err as { message?: string }).message || 'Failed to update status')
+      throw new Error(
+        (err as { message?: string }).message || 'Failed to update status'
+      )
     }
   },
 
-  async updateForm(serviceType: string, id: number, form: string): Promise<void> {
-    const response = await apiClient.patch(API_CONFIG.INQUIRIES.ADMIN_FORM(serviceType, id), { form })
+  async updateForm(
+    serviceType: string,
+    id: number,
+    form: string
+  ): Promise<void> {
+    const response = await apiClient.patch(
+      API_CONFIG.INQUIRIES.ADMIN_FORM(serviceType, id),
+      { form }
+    )
     if (!response.ok) {
       const err = await response.json().catch(() => ({}))
-      throw new Error((err as { message?: string }).message || 'Failed to update form')
+      throw new Error(
+        (err as { message?: string }).message || 'Failed to update form'
+      )
     }
   },
 
   async updateHours(
     serviceType: string,
     id: number,
-    hours: { berthHours: number; anchorageHours: number; pilotage3rdMiles: number },
+    hours: {
+      berthHours: number
+      anchorageHours: number
+      pilotage3rdMiles: number
+    }
   ): Promise<void> {
-    const response = await apiClient.patch(API_CONFIG.INQUIRIES.ADMIN_HOURS(serviceType, id), hours)
+    const response = await apiClient.patch(
+      API_CONFIG.INQUIRIES.ADMIN_HOURS(serviceType, id),
+      hours
+    )
     if (!response.ok) {
       const err = await response.json().catch(() => ({}))
-      throw new Error((err as { message?: string }).message || 'Failed to update hours')
+      throw new Error(
+        (err as { message?: string }).message || 'Failed to update hours'
+      )
     }
   },
 }

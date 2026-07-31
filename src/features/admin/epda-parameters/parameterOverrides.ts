@@ -3,13 +3,10 @@ import type {
   PartialEpdaParameterValues,
 } from '@/modules/inquiries/services/epdaParametersService'
 
-type Translate = (
-  key: string,
-  vars?: Record<string, string | number>,
-) => string
+type Translate = (key: string, vars?: Record<string, string | number>) => string
 
 export function cloneParameterValues(
-  values: EpdaParameterValues,
+  values: EpdaParameterValues
 ): EpdaParameterValues {
   return JSON.parse(JSON.stringify(values)) as EpdaParameterValues
 }
@@ -17,13 +14,13 @@ export function cloneParameterValues(
 /** Return only parameter values that differ from the inherited baseline. */
 export function diffParameterValues(
   baseline: EpdaParameterValues,
-  edited: EpdaParameterValues,
+  edited: EpdaParameterValues
 ): PartialEpdaParameterValues {
   const override: PartialEpdaParameterValues = {}
 
   const diffObject = <T extends Record<string, number>>(
     base: T,
-    next: T,
+    next: T
   ): Partial<T> => {
     const changed: Partial<T> = {}
     for (const key of Object.keys(next) as Array<keyof T>) {
@@ -49,7 +46,7 @@ export function diffParameterValues(
       | 'tugTiers'
       | 'cargoAgencyRates',
   >(
-    key: K,
+    key: K
   ) => {
     if (JSON.stringify(edited[key]) !== JSON.stringify(baseline[key])) {
       Object.assign(override, { [key]: edited[key] })
@@ -67,7 +64,7 @@ export function diffParameterValues(
 
 export function getOverrideSectionLabels(
   t: Translate,
-  values?: PartialEpdaParameterValues | null,
+  values?: PartialEpdaParameterValues | null
 ): string[] {
   if (!values) return []
 

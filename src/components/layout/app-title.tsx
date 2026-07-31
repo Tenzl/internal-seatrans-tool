@@ -1,3 +1,4 @@
+import Image from 'next/image'
 import { Link } from '@/lib/router'
 import {
   SidebarMenu,
@@ -22,9 +23,11 @@ export function AppTitle() {
             className='flex items-center gap-2'
           >
             <div className='flex aspect-square size-9 items-center justify-center overflow-hidden rounded-lg bg-white'>
-              <img
+              <Image
                 src='/landing-image/web_Logo.png'
                 alt='SEATRANS'
+                width={32}
+                height={32}
                 className='size-8 object-contain'
               />
             </div>

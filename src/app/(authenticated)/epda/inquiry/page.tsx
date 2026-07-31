@@ -1,15 +1,26 @@
 'use client'
 
-import { useSearchParams } from 'next/navigation'
-import { ConfigDrawer } from '@/components/config-drawer'
-import { Header } from '@/components/layout/header'
-import { Main } from '@/components/layout/main'
-import { ProfileDropdown } from '@/components/profile-dropdown'
-import { Search } from '@/components/search'
-import { ThemeSwitch } from '@/components/theme-switch'
-import { ShippingAgencyInquiriesTab } from '@/features/admin/components/ShippingAgencyInquiriesTab'
-import { ShippingAgencyInquiryDetailTab } from '@/features/admin/components/ShippingAgencyInquiryDetailTab'
+import { BaseInquiryHistoryLayout } from '@/modules/users/components/history/BaseInquiryHistoryLayout'
 import { isShippingAgencyInquiryDetailSection } from '@/shared/utils/dashboardNavigation'
+import { Loader2 } from 'lucide-react'
+import dynamic from 'next/dynamic'
+import { useSearchParams } from 'next/navigation'
+import { AdminPageShell } from '@/components/layout/admin-page-shell'
+
+// The EPDA worksheet is large; load it only when a record is opened.
+const EpdaInquiryDetail = dynamic(
+  () =>
+    import('@/features/admin/sections/epda-inquiries/EpdaInquiryDetail').then(
+      (module) => module.EpdaInquiryDetail
+    ),
+  {
+    loading: () => (
+      <div className='flex min-h-[240px] items-center justify-center'>
+        <Loader2 className='h-6 w-6 animate-spin text-muted-foreground' />
+      </div>
+    ),
+  }
+)
 
 /**
  * Section router for shipping-agency inquiries — mirrors the legacy MainDashboard:
@@ -23,20 +34,17 @@ export default function Page() {
   )
 
   return (
-    <>
-      <Header fixed>
-        <Search className='me-auto' />
-        <ThemeSwitch />
-        <ConfigDrawer />
-        <ProfileDropdown />
-      </Header>
-      <Main>
-        {isDetail ? (
-          <ShippingAgencyInquiryDetailTab />
-        ) : (
-          <ShippingAgencyInquiriesTab />
-        )}
-      </Main>
-    </>
+    <AdminPageShell>
+      {isDetail ? (
+        <EpdaInquiryDetail />
+      ) : (
+        <BaseInquiryHistoryLayout
+          serviceType='shipping-agency'
+          serviceLabel='Shipping Agency'
+          isAdmin
+          description='Manage all shipping agency service inquiries'
+        />
+      )}
+    </AdminPageShell>
   )
 }

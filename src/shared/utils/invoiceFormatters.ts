@@ -1,8 +1,9 @@
 export const formatInvoiceDate = (dateInput?: string | Date | null): string => {
   if (!dateInput) return ''
-  
+
   const date = typeof dateInput === 'string' ? new Date(dateInput) : dateInput
-  if (Number.isNaN(date.getTime())) return typeof dateInput === 'string' ? dateInput : ''
+  if (Number.isNaN(date.getTime()))
+    return typeof dateInput === 'string' ? dateInput : ''
 
   const day = date.getDate()
   const month = date.toLocaleString('en-US', { month: 'long' })
@@ -20,12 +21,15 @@ export const formatInvoiceDate = (dateInput?: string | Date | null): string => {
 export const formatCheckMark = (value?: unknown): string => {
   if (typeof value === 'boolean') return value ? 'x' : ''
   const normalized = typeof value === 'string' ? value.trim().toLowerCase() : ''
-  
+
   if (['yes', 'y', 'true', '1', 'x'].includes(normalized)) return 'x'
   return ''
 }
 
-export const formatCargoDescription = (name?: string, type?: string): string => {
+export const formatCargoDescription = (
+  name?: string,
+  type?: string
+): string => {
   const normalize = (value?: string) =>
     (value || '')
       .trim()
@@ -58,7 +62,10 @@ const normalizeCargoTypeDisplay = (value: unknown): string => {
   return raw
 }
 
-export const formatCargoNameWithType = (name: unknown, type: unknown): string => {
+export const formatCargoNameWithType = (
+  name: unknown,
+  type: unknown
+): string => {
   const cargoName = normalizeCargoText(name)
   const cargoType = normalizeCargoTypeDisplay(type)
 
@@ -81,7 +88,9 @@ const formatNumericText = (value: string): string => {
   const numeric = Number(normalized)
   if (!Number.isFinite(numeric)) return value
 
-  const fractionDigits = normalized.includes('.') ? normalized.split('.')[1].length : 0
+  const fractionDigits = normalized.includes('.')
+    ? normalized.split('.')[1].length
+    : 0
 
   return numeric.toLocaleString('en-US', {
     minimumFractionDigits: fractionDigits,
@@ -89,7 +98,10 @@ const formatNumericText = (value: string): string => {
   })
 }
 
-const normalizeInvoiceNumericValue = (value: unknown, key?: string): unknown => {
+const normalizeInvoiceNumericValue = (
+  value: unknown,
+  key?: string
+): unknown => {
   if (value === null || value === undefined) return value
 
   // Keep EPDA tariff params numeric — locale-formatting amounts (e.g. 1020 → "1,020")
@@ -110,7 +122,9 @@ const normalizeInvoiceNumericValue = (value: unknown, key?: string): unknown => 
   }
 
   if (typeof value === 'object') {
-    return Object.entries(value as Record<string, unknown>).reduce<Record<string, unknown>>((acc, [childKey, item]) => {
+    return Object.entries(value as Record<string, unknown>).reduce<
+      Record<string, unknown>
+    >((acc, [childKey, item]) => {
       acc[childKey] = normalizeInvoiceNumericValue(item, childKey)
       return acc
     }, {})

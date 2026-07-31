@@ -1,5 +1,5 @@
 import type { PortOption } from '@/modules/logistics/services/portService'
-import type { PartnerOption } from '@/features/admin/services/partnerManagementService'
+import type { PartnerOption } from '@/features/admin/sections/partner-management/partnerManagementService'
 
 /** Typeahead: no request until user types; max rows per search */
 export const BOOKING_SEARCH = {
@@ -20,7 +20,7 @@ export const BOOKING_SHIPPING_CACHE = {
 
 export function mergePortLabels(
   target: Map<number, string>,
-  ports?: PortOption[] | null,
+  ports?: PortOption[] | null
 ): Map<number, string> {
   ports?.forEach((port) => {
     target.set(port.id, port.name)
@@ -30,7 +30,7 @@ export function mergePortLabels(
 
 export function rememberPartnerOption(
   target: Map<number, PartnerOption>,
-  partner: PartnerOption,
+  partner: PartnerOption
 ): void {
   target.set(partner.id, partner)
 }

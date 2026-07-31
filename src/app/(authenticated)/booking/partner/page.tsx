@@ -1,26 +1,11 @@
-'use client'
+import { AdminPageShell } from '@/components/layout/admin-page-shell'
+import { PartnerManagementScreen } from '@/features/admin/sections/partner-management/PartnerManagementScreen'
 
-import { ConfigDrawer } from '@/components/config-drawer'
-import { Header } from '@/components/layout/header'
-import { Main } from '@/components/layout/main'
-import { ProfileDropdown } from '@/components/profile-dropdown'
-import { Search } from '@/components/search'
-import { ThemeSwitch } from '@/components/theme-switch'
-import { PartnerManagementTab } from '@/features/admin/components/PartnerManagementTab'
-
-/** Booking Management → Partner (ported from the legacy admin dashboard). */
+/** Data Management: partners. */
 export default function Page() {
   return (
-    <>
-      <Header fixed>
-        <Search className='me-auto' />
-        <ThemeSwitch />
-        <ConfigDrawer />
-        <ProfileDropdown />
-      </Header>
-      <Main>
-        <PartnerManagementTab />
-      </Main>
-    </>
+    <AdminPageShell>
+      <PartnerManagementScreen />
+    </AdminPageShell>
   )
 }

@@ -1,4 +1,3 @@
-import { API_CONFIG } from '@/shared/config/api.config'
 import {
   assertSerializableParameterValues,
   normalizeParameterValues,
@@ -8,8 +7,12 @@ import {
   type GrtTier,
   type LoaTier,
 } from '@/modules/inquiries/components/common/quoteParameters'
+import { API_CONFIG } from '@/shared/config/api.config'
 import { apiClient } from '@/shared/utils/apiClient'
-import { unwrapApiResponse } from '@/shared/utils/apiUnwrap'
+import {
+  unwrapApiResponse,
+  unwrapNullableApiResponse,
+} from '@/shared/utils/apiUnwrap'
 
 export type {
   EpdaParameterValues,
@@ -135,7 +138,7 @@ export const epdaParametersService = {
 
   async getArea(area: '1' | '2' | '3'): Promise<EpdaParameterSet | null> {
     const res = await apiClient.get(API_CONFIG.EPDA_PARAMETERS.AREA(area))
-    return unwrapApiResponse<EpdaParameterSet | null>(res)
+    return unwrapNullableApiResponse<EpdaParameterSet>(res)
   },
 
   async upsertArea(
@@ -154,7 +157,7 @@ export const epdaParametersService = {
 
   async getPort(portId: number): Promise<EpdaParameterSet | null> {
     const res = await apiClient.get(API_CONFIG.EPDA_PARAMETERS.PORT(portId))
-    return unwrapApiResponse<EpdaParameterSet | null>(res)
+    return unwrapNullableApiResponse<EpdaParameterSet>(res)
   },
 
   async upsertPort(

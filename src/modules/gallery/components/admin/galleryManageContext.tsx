@@ -9,18 +9,27 @@ import {
   useState,
   type ReactNode,
 } from 'react'
-import { Filter, X } from 'lucide-react'
-import { Button } from '@/components/ui/button'
-import { portService, type Port } from '@/modules/logistics/services/portService'
-import { serviceTypeService, type ServiceType } from '@/modules/service-types/services/serviceTypeService'
-import { commodityService, type Commodity } from '@/modules/gallery/services/commodityService'
-import { cn } from '@/lib/utils'
-import { toast } from '@/shared/utils/toast'
+import {
+  commodityService,
+  type Commodity,
+} from '@/modules/gallery/services/commodityService'
+import {
+  portService,
+  type Port,
+} from '@/modules/logistics/services/portService'
+import {
+  serviceTypeService,
+  type ServiceType,
+} from '@/modules/service-types/services/serviceTypeService'
 import {
   PORT_AREA_OPTIONS,
   isPortAreaCode,
   type PortAreaCode,
 } from '@/shared/domain/portArea'
+import { toast } from '@/shared/utils/toast'
+import { Filter, X } from 'lucide-react'
+import { cn } from '@/lib/utils'
+import { Button } from '@/components/ui/button'
 
 export interface GalleryManageFilterState {
   filterArea: PortAreaCode | ''
@@ -40,12 +49,16 @@ export interface GalleryManageFilterState {
   handleClearAll: () => void
 }
 
-const GalleryManageContext = createContext<GalleryManageFilterState | null>(null)
+const GalleryManageContext = createContext<GalleryManageFilterState | null>(
+  null
+)
 
 export function useGalleryManageFilters(): GalleryManageFilterState {
   const ctx = useContext(GalleryManageContext)
   if (!ctx) {
-    throw new Error('useGalleryManageFilters must be used within GalleryManageProvider')
+    throw new Error(
+      'useGalleryManageFilters must be used within GalleryManageProvider'
+    )
   }
   return ctx
 }
@@ -54,11 +67,17 @@ export function GalleryManageProvider({ children }: { children: ReactNode }) {
   const [serviceTypes, setServiceTypes] = useState<ServiceType[]>([])
   const [filterArea, setFilterArea] = useState<PortAreaCode | ''>('')
   const [filterPort, setFilterPort] = useState<number | null>(null)
-  const [filterServiceType, setFilterServiceType] = useState<number | null>(null)
+  const [filterServiceType, setFilterServiceType] = useState<number | null>(
+    null
+  )
   const [filterCommodity, setFilterCommodity] = useState<number | null>(null)
   const [availablePorts, setAvailablePorts] = useState<Port[]>([])
-  const [availableCommodities, setAvailableCommodities] = useState<Commodity[]>([])
-  const [commodityCounts, setCommodityCounts] = useState<Record<string, number>>({})
+  const [availableCommodities, setAvailableCommodities] = useState<Commodity[]>(
+    []
+  )
+  const [commodityCounts, setCommodityCounts] = useState<
+    Record<string, number>
+  >({})
 
   useEffect(() => {
     void serviceTypeService
@@ -114,7 +133,7 @@ export function GalleryManageProvider({ children }: { children: ReactNode }) {
         filterCommodity,
         provinceId ?? undefined,
         filterPort ?? undefined,
-        filterServiceType ?? undefined,
+        filterServiceType ?? undefined
       )
       .then((countData) => {
         const scopedKey =
@@ -134,7 +153,12 @@ export function GalleryManageProvider({ children }: { children: ReactNode }) {
     const provinceId = filterPort
       ? availablePorts.find((port) => port.id === filterPort)?.provinceId
       : undefined
-    if (!filterServiceType || !filterPort || !provinceId || availableCommodities.length === 0) {
+    if (
+      !filterServiceType ||
+      !filterPort ||
+      !provinceId ||
+      availableCommodities.length === 0
+    ) {
       return
     }
 
@@ -144,11 +168,11 @@ export function GalleryManageProvider({ children }: { children: ReactNode }) {
           type.id,
           provinceId,
           filterPort,
-          filterServiceType,
+          filterServiceType
         )
         const scopedKey = `${provinceId}_${filterPort}_${filterServiceType}_${type.id}`
         return { scopedKey, id: type.id, current: countData.current }
-      }),
+      })
     )
       .then((results) => {
         setCommodityCounts((prev) => {
@@ -169,7 +193,7 @@ export function GalleryManageProvider({ children }: { children: ReactNode }) {
   const filterProvinceId = selectedFilterPort?.provinceId ?? undefined
 
   const hasActiveFilters = Boolean(
-    filterArea || filterPort || filterServiceType || filterCommodity,
+    filterArea || filterPort || filterServiceType || filterCommodity
   )
 
   const handleClearAll = useCallback(() => {
@@ -225,11 +249,13 @@ export function GalleryManageProvider({ children }: { children: ReactNode }) {
       handleClearAll,
       handleAreaChange,
       handleServiceTypeChange,
-    ],
+    ]
   )
 
   return (
-    <GalleryManageContext.Provider value={value}>{children}</GalleryManageContext.Provider>
+    <GalleryManageContext.Provider value={value}>
+      {children}
+    </GalleryManageContext.Provider>
   )
 }
 
@@ -272,24 +298,24 @@ export function GalleryImageFilters({
       className={cn(
         'border-t border-border/60 pt-5',
         layout === 'sidebar' ? 'mt-5' : '',
-        className,
+        className
       )}
     >
-      <div className="mb-3 flex items-center justify-between gap-2">
-        <div className="flex items-center gap-2">
-          <Filter className="h-4 w-4 text-primary" strokeWidth={1.75} />
-          <span className="text-[0.65rem] font-semibold uppercase tracking-[0.08em] text-muted-foreground">
+      <div className='mb-3 flex items-center justify-between gap-2'>
+        <div className='flex items-center gap-2'>
+          <Filter className='h-4 w-4 text-primary' strokeWidth={1.75} />
+          <span className='text-[0.65rem] font-semibold tracking-[0.08em] text-muted-foreground uppercase'>
             Filters
           </span>
         </div>
         {hasActiveFilters && (
           <Button
-            variant="ghost"
-            size="sm"
+            variant='ghost'
+            size='sm'
             onClick={handleClearAll}
-            className="h-7 px-2 text-xs active:scale-[0.98]"
+            className='h-7 px-2 text-xs active:scale-[0.98]'
           >
-            <X className="mr-1 h-3 w-3" />
+            <X className='mr-1 h-3 w-3' />
             Clear
           </Button>
         )}
@@ -300,11 +326,13 @@ export function GalleryImageFilters({
           'gap-3',
           layout === 'sidebar'
             ? 'flex flex-col'
-            : 'grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4',
+            : 'grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4'
         )}
       >
-        <div className="flex flex-col gap-2">
-          <label className="text-xs font-medium text-muted-foreground">Area</label>
+        <div className='flex flex-col gap-2'>
+          <label className='text-xs font-medium text-muted-foreground'>
+            Area
+          </label>
           <select
             value={filterArea}
             onChange={(e) => {
@@ -312,10 +340,12 @@ export function GalleryImageFilters({
               setFilterArea(isPortAreaCode(value) ? value : '')
             }}
             className={selectClassName}
-            title="Area filter"
-            aria-label="Area filter"
+            title='Area filter'
+            aria-label='Area filter'
           >
-            <option value="">{mode === 'add' ? 'Select area' : 'All areas'}</option>
+            <option value=''>
+              {mode === 'add' ? 'Select area' : 'All areas'}
+            </option>
             {PORT_AREA_OPTIONS.map((area) => (
               <option key={area.value} value={area.value}>
                 {area.label}
@@ -324,18 +354,26 @@ export function GalleryImageFilters({
           </select>
         </div>
 
-        <div className="flex flex-col gap-2">
-          <label className="text-xs font-medium text-muted-foreground">Port</label>
+        <div className='flex flex-col gap-2'>
+          <label className='text-xs font-medium text-muted-foreground'>
+            Port
+          </label>
           <select
             value={filterPort ?? ''}
-            onChange={(e) => setFilterPort(e.target.value ? Number(e.target.value) : null)}
+            onChange={(e) =>
+              setFilterPort(e.target.value ? Number(e.target.value) : null)
+            }
             disabled={!filterArea}
             className={selectClassName}
-            title="Port filter"
-            aria-label="Port filter"
+            title='Port filter'
+            aria-label='Port filter'
           >
-            <option value="">
-              {!filterArea ? 'Select area first' : mode === 'add' ? 'Select port' : 'All ports'}
+            <option value=''>
+              {!filterArea
+                ? 'Select area first'
+                : mode === 'add'
+                  ? 'Select port'
+                  : 'All ports'}
             </option>
             {availablePorts.map((port) => (
               <option key={port.id} value={port.id}>
@@ -346,18 +384,24 @@ export function GalleryImageFilters({
           </select>
         </div>
 
-        <div className="flex flex-col gap-2">
-          <label className="text-xs font-medium text-muted-foreground">Service</label>
+        <div className='flex flex-col gap-2'>
+          <label className='text-xs font-medium text-muted-foreground'>
+            Service
+          </label>
           <select
             value={filterServiceType ?? ''}
             onChange={(e) =>
-              setFilterServiceType(e.target.value ? Number(e.target.value) : null)
+              setFilterServiceType(
+                e.target.value ? Number(e.target.value) : null
+              )
             }
             className={selectClassName}
-            title="Service type filter"
-            aria-label="Service type filter"
+            title='Service type filter'
+            aria-label='Service type filter'
           >
-            <option value="">{mode === 'add' ? 'Select service' : 'All services'}</option>
+            <option value=''>
+              {mode === 'add' ? 'Select service' : 'All services'}
+            </option>
             {serviceTypes.map((service) => (
               <option key={service.id} value={service.id}>
                 {service.name}
@@ -366,8 +410,10 @@ export function GalleryImageFilters({
           </select>
         </div>
 
-        <div className="flex flex-col gap-2">
-          <label className="text-xs font-medium text-muted-foreground">Cargo</label>
+        <div className='flex flex-col gap-2'>
+          <label className='text-xs font-medium text-muted-foreground'>
+            Cargo
+          </label>
           <select
             value={filterCommodity ?? ''}
             onChange={(e) =>
@@ -375,16 +421,19 @@ export function GalleryImageFilters({
             }
             disabled={!filterServiceType || (mode === 'add' && !filterPort)}
             className={selectClassName}
-            title="Cargo type filter"
-            aria-label="Cargo type filter"
+            title='Cargo type filter'
+            aria-label='Cargo type filter'
           >
-            <option value="">{mode === 'add' ? 'Select cargo' : 'All cargo types'}</option>
+            <option value=''>
+              {mode === 'add' ? 'Select cargo' : 'All cargo types'}
+            </option>
             {availableCommodities.map((type) => {
               const scopedKey =
                 provinceId && filterPort && filterServiceType
                   ? `${provinceId}_${filterPort}_${filterServiceType}_${type.id}`
                   : String(type.id)
-              const current = commodityCounts[scopedKey] ?? commodityCounts[type.id] ?? 0
+              const current =
+                commodityCounts[scopedKey] ?? commodityCounts[type.id] ?? 0
               return (
                 <option key={type.id} value={type.id}>
                   {type.displayName} ({current}/{type.requiredImageCount})

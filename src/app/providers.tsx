@@ -7,15 +7,15 @@ import {
   QueryClient,
   QueryClientProvider,
 } from '@tanstack/react-query'
+import { authService } from '@/modules/auth/services/authService'
+import { I18nProvider } from '@/shared/i18n/I18nProvider'
 import { toast } from 'sonner'
-import { useAuthStore } from '@/stores/auth-store'
 import { handleServerError } from '@/lib/handle-server-error'
 import { DirectionProvider } from '@/context/direction-provider'
 import { FontProvider } from '@/context/font-provider'
 import { ThemeProvider } from '@/context/theme-provider'
 import { Toaster } from '@/components/ui/sonner'
 import { NavigationProgress } from '@/components/navigation-progress'
-import { I18nProvider } from '@/shared/i18n/I18nProvider'
 
 function createQueryClient() {
   return new QueryClient({
@@ -50,7 +50,7 @@ function createQueryClient() {
         if (error instanceof AxiosError) {
           if (error.response?.status === 401) {
             toast.error('Session expired!')
-            useAuthStore.getState().auth.reset()
+            void authService.logout()
             if (typeof window !== 'undefined') {
               const redirect = window.location.href
               window.location.href = `/sign-in?redirect=${encodeURIComponent(redirect)}`
@@ -74,7 +74,7 @@ export function Providers({ children }: { children: ReactNode }) {
   const mounted = useSyncExternalStore(
     () => () => undefined,
     () => true,
-    () => false,
+    () => false
   )
   if (!mounted) return null
 

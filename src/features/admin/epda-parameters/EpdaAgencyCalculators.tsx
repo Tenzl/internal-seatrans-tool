@@ -2,16 +2,33 @@
 
 import { useState } from 'react'
 import { SHIPPING_AGENCY_CARGO_TYPES } from '@/modules/gallery/shippingAgencyCargoCatalog'
-import type { CargoAgencyRate, GrtTier } from '@/modules/inquiries/components/common/quoteParameters'
+import type {
+  CargoAgencyRate,
+  GrtTier,
+} from '@/modules/inquiries/components/common/quoteParameters'
 import { useI18n } from '@/shared/i18n/I18nProvider'
 import { parseFiniteNumber } from '@/shared/utils/parseNumber'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { boldNumbers, fmtNum, resolveGrtBand, ScanRow } from './EpdaCalculatorPrimitives'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
+import {
+  boldNumbers,
+  fmtNum,
+  resolveGrtBand,
+  ScanRow,
+} from './EpdaCalculatorPrimitives'
 
 const normalizeCargoTypeCode = (value: string): string =>
-  value.trim().toUpperCase().replace(/[\s-]+/g, '_')
+  value
+    .trim()
+    .toUpperCase()
+    .replace(/[\s-]+/g, '_')
 
 export function CargoAgencyCalculator({ rates }: { rates: CargoAgencyRate[] }) {
   const { t } = useI18n()

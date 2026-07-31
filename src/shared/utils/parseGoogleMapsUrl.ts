@@ -37,7 +37,9 @@ const SHORT_LINK_HOSTS = ['goo.gl', 'maps.app.goo.gl']
 function isShortLink(url: string): boolean {
   const lower = url.trim().toLowerCase()
   return SHORT_LINK_HOSTS.some(
-    (host) => lower.startsWith(`https://${host}/`) || lower.startsWith(`http://${host}/`),
+    (host) =>
+      lower.startsWith(`https://${host}/`) ||
+      lower.startsWith(`http://${host}/`)
   )
 }
 
@@ -50,7 +52,9 @@ function isValid(lat: number, lng: number): boolean {
   )
 }
 
-export function parseGoogleMapsUrl(input: string): ParsedMapsResult | ParseMapsError {
+export function parseGoogleMapsUrl(
+  input: string
+): ParsedMapsResult | ParseMapsError {
   const url = (input ?? '').trim()
   if (!url) {
     return { ok: false, code: 'empty', message: 'Paste a Google Maps URL.' }
@@ -70,7 +74,11 @@ export function parseGoogleMapsUrl(input: string): ParsedMapsResult | ParseMapsE
     const lat = parseFloat(pin[1])
     const lng = parseFloat(pin[2])
     if (isValid(lat, lng)) return { ok: true, lat, lng, source: 'pin' }
-    return { ok: false, code: 'outOfRange', message: 'Coordinates are outside the valid range.' }
+    return {
+      ok: false,
+      code: 'outOfRange',
+      message: 'Coordinates are outside the valid range.',
+    }
   }
 
   const at = url.match(/@(-?\d+(?:\.\d+)?),(-?\d+(?:\.\d+)?)/)
@@ -78,24 +86,35 @@ export function parseGoogleMapsUrl(input: string): ParsedMapsResult | ParseMapsE
     const lat = parseFloat(at[1])
     const lng = parseFloat(at[2])
     if (isValid(lat, lng)) return { ok: true, lat, lng, source: 'viewport' }
-    return { ok: false, code: 'outOfRange', message: 'Coordinates are outside the valid range.' }
+    return {
+      ok: false,
+      code: 'outOfRange',
+      message: 'Coordinates are outside the valid range.',
+    }
   }
 
-  const queryEncoded = url.match(/[?&](?:q|ll|query)=(-?\d+(?:\.\d+)?)%2C(-?\d+(?:\.\d+)?)/i)
+  const queryEncoded = url.match(
+    /[?&](?:q|ll|query)=(-?\d+(?:\.\d+)?)%2C(-?\d+(?:\.\d+)?)/i
+  )
   if (queryEncoded) {
     const lat = parseFloat(queryEncoded[1])
     const lng = parseFloat(queryEncoded[2])
     if (isValid(lat, lng)) return { ok: true, lat, lng, source: 'query' }
   }
 
-  const queryPlain = url.match(/[?&](?:q|ll|query)=(-?\d+(?:\.\d+)?),(-?\d+(?:\.\d+)?)/)
+  const queryPlain = url.match(
+    /[?&](?:q|ll|query)=(-?\d+(?:\.\d+)?),(-?\d+(?:\.\d+)?)/
+  )
   if (queryPlain) {
     const lat = parseFloat(queryPlain[1])
     const lng = parseFloat(queryPlain[2])
     if (isValid(lat, lng)) return { ok: true, lat, lng, source: 'query' }
   }
 
-  if (!url.toLowerCase().includes('google.') && !url.toLowerCase().includes('/maps')) {
+  if (
+    !url.toLowerCase().includes('google.') &&
+    !url.toLowerCase().includes('/maps')
+  ) {
     return {
       ok: false,
       code: 'invalidUrl',

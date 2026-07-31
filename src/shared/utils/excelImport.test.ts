@@ -1,5 +1,4 @@
 import { describe, expect, it, vi } from 'vitest'
-
 import { parseExcelFile } from './excelImport'
 
 vi.mock('read-excel-file/browser', () => ({
@@ -19,7 +18,7 @@ describe('parseExcelFile', () => {
     const file = new File(
       ['\uFEFFName*,Address\n"Ocean Partner","Da Nang, Viet Nam"\n'],
       'partners.csv',
-      { type: 'text/csv' },
+      { type: 'text/csv' }
     )
 
     await expect(parseExcelFile(file)).resolves.toEqual({

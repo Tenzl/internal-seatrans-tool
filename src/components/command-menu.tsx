@@ -1,8 +1,9 @@
 import React from 'react'
-import { useNavigate } from '@/lib/router'
 import { ArrowRight, ChevronRight, Laptop, Moon, Sun } from 'lucide-react'
+import { useNavigate } from '@/lib/router'
 import { useSearch } from '@/context/search-provider'
 import { useTheme } from '@/context/theme-provider'
+import { useAuthUser } from '@/hooks/use-current-user'
 import {
   CommandDialog,
   CommandEmpty,
@@ -12,13 +13,20 @@ import {
   CommandList,
   CommandSeparator,
 } from '@/components/ui/command'
-import { sidebarData } from './layout/data/sidebar-data'
+import {
+  filterNavGroupsBySections,
+  sidebarData,
+} from './layout/data/sidebar-data'
 import { ScrollArea } from './ui/scroll-area'
 
 export function CommandMenu() {
   const navigate = useNavigate()
   const { setTheme } = useTheme()
   const { open, setOpen } = useSearch()
+  const { user, loading } = useAuthUser()
+  const navGroups = loading
+    ? []
+    : filterNavGroupsBySections(sidebarData.navGroups, user)
 
   const runCommand = React.useCallback(
     (command: () => unknown) => {
@@ -34,7 +42,7 @@ export function CommandMenu() {
       <CommandList>
         <ScrollArea type='hover' className='h-72 pe-1'>
           <CommandEmpty>No results found.</CommandEmpty>
-          {sidebarData.navGroups.map((group) => (
+          {navGroups.map((group) => (
             <CommandGroup key={group.title} heading={group.title}>
               {group.items.map((navItem, i) => {
                 if (navItem.url)

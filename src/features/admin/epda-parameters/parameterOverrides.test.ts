@@ -9,7 +9,9 @@ import {
 describe('EPDA parameter override helpers', () => {
   it('keeps an empty override empty', () => {
     const baseline = defaultParameterValues('HCM')
-    expect(diffParameterValues(baseline, cloneParameterValues(baseline))).toEqual({})
+    expect(
+      diffParameterValues(baseline, cloneParameterValues(baseline))
+    ).toEqual({})
   })
 
   it('returns only changed nested values and arrays', () => {
@@ -30,7 +32,7 @@ describe('EPDA parameter override helpers', () => {
       getOverrideSectionLabels(t, {
         coeff: { pilotageMinAmount: 700, clearanceFee: 150 },
         garbage: { atBuoyUsd: 54 },
-      }),
+      })
     ).toEqual(['sec.pilotage.title', 'sec.garbage.title'])
   })
 })

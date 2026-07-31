@@ -10,7 +10,11 @@ import {
 } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
 import { useRef, useState } from 'react'
-import { Loader2, Pencil, Printer, X } from 'lucide-react'
+import { Download, Loader2, Pencil, Printer, X } from 'lucide-react'
+import {
+  downloadPdfBlobUrl,
+  printPreviewIframe,
+} from '@/shared/utils/epdaExport'
 import { toast } from '@/shared/utils/toast'
 
 interface PdfPreviewDialogProps {
@@ -22,6 +26,8 @@ interface PdfPreviewDialogProps {
   isGenerating?: boolean
   onEdit?: () => void
   loadingLabel?: string
+  /** Explicit action: download blob PDF vs browser-print HTML. */
+  actionMode?: 'print' | 'download'
 }
 
 export function PdfPreviewDialog({
@@ -33,30 +39,45 @@ export function PdfPreviewDialog({
   isGenerating = false,
   onEdit,
   loadingLabel = 'Building EPDA preview…',
+  actionMode,
 }: PdfPreviewDialogProps) {
   const [isExporting, setIsExporting] = useState(false)
   const iframeRef = useRef<HTMLIFrameElement | null>(null)
 
   const showGenerating = isGenerating || (!html && !previewUrl)
+  const isDownloadMode =
+    actionMode === 'download' ||
+    (actionMode !== 'print' && Boolean(previewUrl) && !html)
 
   const handlePrintPdf = async () => {
     if (!html && !previewUrl) return
-    const frameWin = iframeRef.current?.contentWindow
-    if (!frameWin) {
-      toast.error('Preview is not ready yet. Please try again.')
+
+    // Booking / transport: download the generated PDF immediately.
+    if (isDownloadMode && previewUrl) {
+      setIsExporting(true)
+      try {
+        await downloadPdfBlobUrl(previewUrl, fileName)
+        onOpenChange(false)
+      } catch (err) {
+        toast.error(
+          err instanceof Error ? err.message : 'Failed to download PDF'
+        )
+      } finally {
+        setIsExporting(false)
+      }
       return
     }
 
     setIsExporting(true)
     try {
-      // Give the browser a moment so layout/fonts settle before printing.
-      await new Promise<void>((resolve) => window.setTimeout(resolve, 2000))
-
-      frameWin.focus()
-      frameWin.print()
-
-      // Close the preview right after triggering print dialog.
-      window.setTimeout(() => onOpenChange(false), 150)
+      const frame = iframeRef.current
+      if (!frame) {
+        toast.error('Preview is not ready yet. Please try again.')
+        return
+      }
+      // EPDA HTML: keep iframe mounted until afterprint.
+      await printPreviewIframe(frame)
+      onOpenChange(false)
     } catch (err) {
       toast.error(err instanceof Error ? err.message : 'Failed to open print dialog')
     } finally {
@@ -74,7 +95,9 @@ export function PdfPreviewDialog({
           <div className="min-w-0 flex-1 space-y-1">
             <DialogTitle className="truncate">{fileName}</DialogTitle>
             <DialogDescription className="text-xs text-muted-foreground">
-              Print will open the browser Save as PDF dialog.
+              {isDownloadMode
+                ? 'Download will save the generated PDF to your device.'
+                : 'Print will open the browser Save as PDF dialog.'}
             </DialogDescription>
           </div>
           <div className="flex shrink-0 items-center justify-end gap-2">
@@ -93,15 +116,19 @@ export function PdfPreviewDialog({
               <Button
                 size="sm"
                 onClick={handlePrintPdf}
-                disabled={(!html && !previewUrl) || isExporting}
+                disabled={
+                  (isDownloadMode ? !previewUrl : !html) || isExporting
+                }
                 className="gap-2"
               >
                 {isExporting ? (
                   <Loader2 className="h-4 w-4 animate-spin" />
+                ) : isDownloadMode ? (
+                  <Download className="h-4 w-4" />
                 ) : (
                   <Printer className="h-4 w-4" />
                 )}
-                Print / Save PDF
+                {isDownloadMode ? 'Download PDF' : 'Print / Save PDF'}
               </Button>
             ) : null}
             <DialogClose asChild>
@@ -122,7 +149,11 @@ export function PdfPreviewDialog({
           ) : (
             <iframe
               ref={iframeRef}
-              {...(previewUrl ? { src: previewUrl } : { srcDoc: html ?? '' })}
+              {...(html
+                ? { srcDoc: html }
+                : previewUrl
+                  ? { src: previewUrl }
+                  : { srcDoc: '' })}
               title={fileName}
               className="h-full w-full border-0 bg-white"
             />

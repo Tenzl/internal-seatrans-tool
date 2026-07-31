@@ -8,7 +8,7 @@ const EPDA_DETAIL_ONLY_PARAMS = ['inquiryId', 'from'] as const
 export function buildDashboardUrl(
   pathname: string,
   section: DashboardSection,
-  extra?: Record<string, string | number | null | undefined>,
+  extra?: Record<string, string | number | null | undefined>
 ): string {
   const params = new URLSearchParams()
   params.set('section', section)
@@ -18,7 +18,9 @@ export function buildDashboardUrl(
       if (value === undefined || value === null || value === '') continue
       if (
         section !== EPDA_INQUIRY_DETAIL_SECTION &&
-        EPDA_DETAIL_ONLY_PARAMS.includes(key as (typeof EPDA_DETAIL_ONLY_PARAMS)[number])
+        EPDA_DETAIL_ONLY_PARAMS.includes(
+          key as (typeof EPDA_DETAIL_ONLY_PARAMS)[number]
+        )
       ) {
         continue
       }
@@ -30,6 +32,8 @@ export function buildDashboardUrl(
   return qs ? `${pathname}?${qs}` : pathname
 }
 
-export function isShippingAgencyInquiryDetailSection(section: string | null | undefined): boolean {
+export function isShippingAgencyInquiryDetailSection(
+  section: string | null | undefined
+): boolean {
   return section === EPDA_INQUIRY_DETAIL_SECTION
 }

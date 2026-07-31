@@ -5,7 +5,12 @@ export const formatDecimalValue = (value: number) =>
 
 export const parseDecimalText = (raw: string): number | null => {
   const trimmed = raw.trim()
-  if (trimmed === '' || trimmed === '-' || trimmed === '.' || trimmed === '-.') {
+  if (
+    trimmed === '' ||
+    trimmed === '-' ||
+    trimmed === '.' ||
+    trimmed === '-.'
+  ) {
     return 0
   }
   return parseFiniteNumber(trimmed)

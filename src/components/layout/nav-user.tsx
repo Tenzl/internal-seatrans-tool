@@ -1,14 +1,9 @@
 'use client'
 
+import { BadgeCheck, Bell, ChevronsUpDown, LogOut } from 'lucide-react'
 import { Link } from '@/lib/router'
-import {
-  BadgeCheck,
-  Bell,
-  ChevronsUpDown,
-  LogOut,
-} from 'lucide-react'
-import useDialogState from '@/hooks/use-dialog-state'
 import { useCurrentUser, userDisplay } from '@/hooks/use-current-user'
+import useDialogState from '@/hooks/use-dialog-state'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import {
   DropdownMenu,
@@ -43,7 +38,9 @@ export function NavUser() {
                 className='data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground'
               >
                 <Avatar className='h-8 w-8 rounded-lg'>
-                  <AvatarFallback className='rounded-lg'>{initials}</AvatarFallback>
+                  <AvatarFallback className='rounded-lg'>
+                    {initials}
+                  </AvatarFallback>
                 </Avatar>
                 <div className='grid flex-1 text-start text-sm leading-tight'>
                   <span className='truncate font-semibold'>{name}</span>
@@ -61,7 +58,9 @@ export function NavUser() {
               <DropdownMenuLabel className='p-0 font-normal'>
                 <div className='flex items-center gap-2 px-1 py-1.5 text-start text-sm'>
                   <Avatar className='h-8 w-8 rounded-lg'>
-                    <AvatarFallback className='rounded-lg'>{initials}</AvatarFallback>
+                    <AvatarFallback className='rounded-lg'>
+                      {initials}
+                    </AvatarFallback>
                   </Avatar>
                   <div className='grid flex-1 text-start text-sm leading-tight'>
                     <span className='truncate font-semibold'>{name}</span>

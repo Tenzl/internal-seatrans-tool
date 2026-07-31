@@ -51,28 +51,38 @@ const REQUIRED_FIELD_CONFIG: Array<{ key: RequiredFieldKey; label: string }> = [
   { key: 'frtTaxType', label: 'Freight tax declaration' },
 ]
 
-export function buildRequiredFields(values: CreateInvoiceRequiredValues, options?: RequiredFieldOptions): RequiredField[] {
+export function buildRequiredFields(
+  values: CreateInvoiceRequiredValues,
+  options?: RequiredFieldOptions
+): RequiredField[] {
   const requireFrtTaxType = options?.requireFrtTaxType ?? true
   const requireCargoName = options?.requireCargoName ?? true
 
-  return REQUIRED_FIELD_CONFIG
-    .filter((field) => (field.key === 'frtTaxType' ? requireFrtTaxType : true))
+  return REQUIRED_FIELD_CONFIG.filter((field) =>
+    field.key === 'frtTaxType' ? requireFrtTaxType : true
+  )
     .filter((field) => (field.key === 'cargoName' ? requireCargoName : true))
     .map((field) => ({
-    key: field.key,
-    label: field.label,
-    value: values[field.key],
+      key: field.key,
+      label: field.label,
+      value: values[field.key],
     }))
 }
 
-export function getMissingRequiredFields(fields: RequiredField[]): RequiredField[] {
+export function getMissingRequiredFields(
+  fields: RequiredField[]
+): RequiredField[] {
   return fields.filter((field) => String(field.value ?? '').trim() === '')
 }
 
-export function getRequiredFieldState(value: string | null | undefined, showError: boolean) {
+export function getRequiredFieldState(
+  value: string | null | undefined,
+  showError: boolean
+) {
   const hasValue = String(value ?? '').trim() !== ''
   return {
     labelClass: !showError || hasValue ? 'text-foreground' : 'text-red-600',
-    fieldClass: !showError || hasValue ? '' : 'border-red-500 focus-visible:ring-red-500',
+    fieldClass:
+      !showError || hasValue ? '' : 'border-red-500 focus-visible:ring-red-500',
   }
 }

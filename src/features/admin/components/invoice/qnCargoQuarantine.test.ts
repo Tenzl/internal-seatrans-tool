@@ -11,8 +11,12 @@ describe('resolveQnCargoQuarantineMode', () => {
   })
 
   it('uses one trip for a single cargo leg', () => {
-    expect(resolveQnCargoQuarantineMode(true, 'NHAP_CHUYEN_CANG')).toBe('ONE_LEG')
-    expect(resolveQnCargoQuarantineMode(true, 'CHUYEN_CANG_XUAT')).toBe('ONE_LEG')
+    expect(resolveQnCargoQuarantineMode(true, 'NHAP_CHUYEN_CANG')).toBe(
+      'ONE_LEG'
+    )
+    expect(resolveQnCargoQuarantineMode(true, 'CHUYEN_CANG_XUAT')).toBe(
+      'ONE_LEG'
+    )
   })
 
   it('does not enable cargo quarantine for other purposes', () => {

@@ -1,10 +1,14 @@
 import globals from 'globals'
 import js from '@eslint/js'
+import pluginNextModule from '@next/eslint-plugin-next'
 import pluginQuery from '@tanstack/eslint-plugin-query'
 import reactHooks from 'eslint-plugin-react-hooks'
 import reactRefresh from 'eslint-plugin-react-refresh'
 import { defineConfig } from 'eslint/config'
 import tseslint from 'typescript-eslint'
+
+// The Next 15 package is CommonJS-wrapped when loaded from this ESM config.
+const pluginNext = pluginNextModule.default ?? pluginNextModule
 
 export default defineConfig(
   {
@@ -15,6 +19,16 @@ export default defineConfig(
       'public/**',
       'src/components/ui/**',
     ],
+  },
+  {
+    // Register Next globally so both ESLint and Next's build-time detector see it.
+    plugins: {
+      '@next/next': pluginNext,
+    },
+    rules: {
+      ...pluginNext.configs.recommended.rules,
+      ...pluginNext.configs['core-web-vitals'].rules,
+    },
   },
   {
     extends: [
@@ -66,12 +80,7 @@ export default defineConfig(
   },
   {
     files: [
-      'src/features/admin/components/ManagePorts.tsx',
-      'src/features/admin/components/ManageUsers.tsx',
-      'src/features/admin/components/PartnerImportDialog.tsx',
-      'src/features/admin/components/PartnerManagementTab.tsx',
       'src/modules/categories/components/admin/CategoryManagement.tsx',
-      'src/modules/gallery/components/admin/ImageManagement.tsx',
       'src/modules/posts/components/admin/PostManagement.tsx',
       'src/modules/users/components/history/InquiryDataTable.tsx',
     ],
