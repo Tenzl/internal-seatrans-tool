@@ -35,9 +35,9 @@ describe('dashboard section catalog contract', () => {
           "label": "Parameter",
         },
         {
-          "group": "Booking Management",
+          "group": "Data Management",
           "key": "booking-documents",
-          "label": "Transport documents",
+          "label": "Booking Management",
         },
         {
           "group": "Data Management",
@@ -117,7 +117,7 @@ describe('dashboard section catalog contract', () => {
     )
   })
 
-  it('maps all four transport-document links to one permission section', () => {
+  it('maps all five transport-document links to one permission section', () => {
     const booking = sidebarData.navGroups
       .flatMap((group) => group.items)
       .find((item) => item.title === 'Booking Management')
@@ -125,7 +125,7 @@ describe('dashboard section catalog contract', () => {
       item.url ? sectionForPath(item.url)?.key : undefined
     )
 
-    expect(ownedSections).toEqual(Array(4).fill('booking-documents'))
+    expect(ownedSections).toEqual(Array(5).fill('booking-documents'))
   })
 
   it('produces the same permission-filtered model for sidebar and command menu', () => {
@@ -138,6 +138,6 @@ describe('dashboard section catalog contract', () => {
     expect(groups[0]?.items.map((item) => item.title)).toEqual([
       'Booking Management',
     ])
-    expect(groups[0]?.items[0]?.items).toHaveLength(4)
+    expect(groups[0]?.items[0]?.items).toHaveLength(5)
   })
 })

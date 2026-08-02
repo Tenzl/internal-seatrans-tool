@@ -74,7 +74,8 @@ export const DASHBOARD_CATALOG: readonly NavigationCategory[] = [
     sections: [
       {
         key: 'booking-documents',
-        label: 'Transport documents',
+        label: 'Booking Management',
+        permissionGroup: 'Data Management',
         route: '/booking/documents',
         navigation: [
           {
