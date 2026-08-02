@@ -180,7 +180,7 @@ export const partnerManagementService = {
       API_CONFIG.BOOKING_PARTNERS.FIELD_CHANGES(partnerId, page, size)
     )
     return unwrapApiResponse<{
-      content: import('./partnerFieldChangeHistory').PartnerFieldChangeLogEntry[]
+      content: import('./partnerFieldChangeHistoryModel').PartnerFieldChangeLogEntry[]
       totalElements: number
       totalPages: number
       size: number

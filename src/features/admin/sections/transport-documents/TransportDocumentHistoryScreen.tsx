@@ -111,10 +111,10 @@ export function TransportDocumentHistoryScreen() {
                 Transport document history
               </CardTitle>
               <CardDescription className='max-w-2xl text-sm leading-relaxed'>
-                Arrival Notice, Booking Confirmation, and Delivery Order
-                records. Save drafts as Processing, complete with Create &amp;
-                Preview, then lock or archive as needed. Admins can unlock
-                locked records to edit again.
+                Arrival Notice, Booking Confirmation, Delivery Order, and Bill
+                of Lading records. Save drafts as Processing, complete with
+                Create &amp; Preview, then lock or archive as needed. Admins can
+                unlock locked records to edit again.
               </CardDescription>
             </div>
             <Button

@@ -7,6 +7,7 @@ import type {
 import {
   getTransportDocumentDefinition,
   TRANSPORT_DOCUMENT_FORM_SECTIONS,
+  type TransportDocumentFieldSpec,
 } from './transportDocumentFormConfig'
 
 export interface HistoryDocumentField {
@@ -24,6 +25,7 @@ const EDITOR_PATH_BY_TYPE: Record<TransportDocumentType, string> = {
   an: '/booking/documents/arrival-notice',
   booking: '/booking/documents/booking-confirmation',
   do: '/booking/documents/delivery-order',
+  bl: '/booking/documents/bill-of-lading',
 }
 
 export function buildHistoryDocumentFileName(
@@ -47,11 +49,11 @@ export function getHistoryDocumentSections(
     title: section.title,
     fields: section.fields.map((field) => ({
       label: field.label,
-      value: toDisplayValue(payload[field.key]),
+      value: toDisplayValue(payload[field.key], field),
     })),
   }))
 
-  if (record.documentType !== 'booking') {
+  if (record.documentType !== 'booking' && record.documentType !== 'bl') {
     const cargoRows = Array.isArray(payload.cargoRows)
       ? (payload.cargoRows as CargoRow[])
       : []
@@ -103,7 +105,13 @@ export function getTransportDocumentRowCapabilities(
   }
 }
 
-function toDisplayValue(value: unknown): string {
+function toDisplayValue(
+  value: unknown,
+  field?: TransportDocumentFieldSpec
+): string {
   if (value == null || value === '') return '—'
-  return String(value)
+  const raw = String(value)
+  const optionLabel = field?.options?.find((option) => option.value === raw)
+    ?.label
+  return optionLabel ?? raw
 }

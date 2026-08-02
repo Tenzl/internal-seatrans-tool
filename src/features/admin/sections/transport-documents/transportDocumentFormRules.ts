@@ -15,6 +15,8 @@ export function getTransportDocumentReference(
       return forms.booking.bookingNumber
     case 'do':
       return forms.do.doNumber
+    case 'bl':
+      return forms.bl.fblNumber
   }
 }
 
@@ -41,6 +43,7 @@ export function getTransportDocumentCargoRows(
     case 'do':
       return forms.do.cargoRows
     case 'booking':
+    case 'bl':
       return null
   }
 }

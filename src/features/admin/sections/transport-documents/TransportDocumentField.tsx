@@ -1,5 +1,12 @@
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
 import { Textarea } from '@/components/ui/textarea'
 import {
   TRANSPORT_FIELD_SPAN_CLASS,
@@ -31,11 +38,30 @@ export function TransportDocumentField({
           id={id}
           value={value}
           rows={3}
-          maxLength={2_000}
+          maxLength={4_000}
           placeholder={field.placeholder}
           onChange={(event) => onChange(event.target.value)}
           className='min-h-20 resize-y bg-background'
         />
+      ) : field.kind === 'select' && field.options ? (
+        <Select
+          value={value || '__empty__'}
+          onValueChange={(next) => onChange(next === '__empty__' ? '' : next)}
+        >
+          <SelectTrigger id={id} className='bg-background'>
+            <SelectValue placeholder={field.placeholder ?? 'Select'} />
+          </SelectTrigger>
+          <SelectContent>
+            {field.options.map((option) => (
+              <SelectItem
+                key={option.value || '__empty__'}
+                value={option.value || '__empty__'}
+              >
+                {option.label}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
       ) : (
         <Input
           id={id}

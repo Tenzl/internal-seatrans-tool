@@ -110,6 +110,10 @@ describe('dashboard route policy', () => {
         url: '/booking/documents/delivery-order',
       },
       {
+        title: 'Create Bill of Lading',
+        url: '/booking/documents/bill-of-lading',
+      },
+      {
         title: 'History record',
         url: '/booking/documents/history',
       },

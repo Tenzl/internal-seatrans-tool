@@ -11,6 +11,7 @@ import type {
   TransportDocumentStatus,
   TransportDocumentType,
 } from './transportDocument.types'
+import { normalizeBillOfLadingPayload } from './transportDocumentSchemas'
 
 async function readError(response: Response): Promise<string> {
   const fallback = 'Failed to build PDF preview'
@@ -131,6 +132,8 @@ export const transportDocumentService = {
         )
       case 'do':
         return this.preview('do', record.payload as DeliveryOrderPayload)
+      case 'bl':
+        return this.preview('bl', normalizeBillOfLadingPayload(record.payload))
     }
   },
 }

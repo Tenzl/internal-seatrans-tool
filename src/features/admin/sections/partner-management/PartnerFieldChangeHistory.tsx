@@ -13,7 +13,7 @@ import {
 import {
   formatPartnerFieldChangeAction,
   type PartnerFieldChangeLogEntry,
-} from './partnerFieldChangeHistory'
+} from './partnerFieldChangeHistoryModel'
 import { partnerManagementService } from './partnerManagementService'
 
 interface PartnerFieldChangeHistoryProps {

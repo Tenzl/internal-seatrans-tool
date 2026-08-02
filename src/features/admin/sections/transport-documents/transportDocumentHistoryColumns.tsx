@@ -14,6 +14,7 @@ const DOCUMENT_TYPE_LABELS: Record<TransportDocumentRecord['documentType'], stri
     an: 'Arrival Notice',
     booking: 'Booking Confirmation',
     do: 'Delivery Order',
+    bl: 'Bill of Lading',
   }
 
 type BuildTransportDocumentHistoryColumnsOptions = {

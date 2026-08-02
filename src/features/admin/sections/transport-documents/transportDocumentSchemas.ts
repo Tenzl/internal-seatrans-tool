@@ -1,6 +1,7 @@
 import { z } from 'zod'
 import type {
   ArrivalNoticePayload,
+  BillOfLadingPayload,
   BookingConfirmationPayload,
   DeliveryOrderPayload,
   TransportDocumentPayloadMap,
@@ -9,6 +10,7 @@ import type {
 
 const shortText = z.string().trim().max(500, 'Use 500 characters or fewer')
 const longText = z.string().trim().max(2_000, 'Use 2,000 characters or fewer')
+const xlText = z.string().trim().max(4_000, 'Use 4,000 characters or fewer')
 
 export const cargoRowSchema = z.object({
   containerSealNumber: shortText,
@@ -196,11 +198,101 @@ export const emptyBookingConfirmation = (): BookingConfirmationPayload => ({
   pic: '',
 })
 
+export const billOfLadingSchema = z.object({
+  fblNumber: shortText,
+  consignor: longText,
+  consignedToOrderOf: longText,
+  notifyAddress: longText,
+  placeOfReceipt: shortText,
+  oceanVessel: shortText,
+  voyageNumber: shortText,
+  portOfLoading: shortText,
+  portOfDischarge: shortText,
+  placeOfDelivery: shortText,
+  marksAndNumbers: longText,
+  numberAndKindOfPackages: longText,
+  descriptionOfGoods: xlText,
+  grossWeight: shortText,
+  measurement: shortText,
+  freightTerms: shortText,
+  cleanOnBoard: shortText,
+  declarationOfInterest: shortText,
+  declaredValue: shortText,
+  freightAmount: shortText,
+  freightPayableAt: shortText,
+  placeOfIssue: shortText,
+  dateOfIssue: shortText,
+  numberOfOriginals: shortText,
+  cargoInsurance: z.enum(['', 'not_covered', 'covered']),
+  deliveryApplyTo: longText,
+  blFormVariant: z.enum(['non_negotiable', 'original', 'surrendered']),
+})
+
+export const emptyBillOfLading = (): BillOfLadingPayload => ({
+  fblNumber: '',
+  consignor: '',
+  consignedToOrderOf: '',
+  notifyAddress: '',
+  placeOfReceipt: '',
+  oceanVessel: '',
+  voyageNumber: '',
+  portOfLoading: '',
+  portOfDischarge: '',
+  placeOfDelivery: '',
+  marksAndNumbers: '',
+  numberAndKindOfPackages: '',
+  descriptionOfGoods: '',
+  grossWeight: '',
+  measurement: '',
+  freightTerms: '',
+  cleanOnBoard: '',
+  declarationOfInterest: '',
+  declaredValue: '',
+  freightAmount: '',
+  freightPayableAt: '',
+  placeOfIssue: '',
+  dateOfIssue: '',
+  numberOfOriginals: '',
+  cargoInsurance: '',
+  deliveryApplyTo: '',
+  blFormVariant: 'non_negotiable',
+})
+
+/** Normalize stored/legacy BL payloads (maps old stamp toggles → form variant). */
+export function normalizeBillOfLadingPayload(
+  payload: unknown
+): BillOfLadingPayload {
+  const raw =
+    typeof payload === 'object' && payload !== null
+      ? (payload as Record<string, unknown>)
+      : {}
+  const {
+    showSurrendered: legacySurrendered,
+    includeCompanyStamp: _ignoredStamp,
+    ...rest
+  } = raw
+  void _ignoredStamp
+  const blFormVariant =
+    rest.blFormVariant === 'original' ||
+    rest.blFormVariant === 'surrendered' ||
+    rest.blFormVariant === 'non_negotiable'
+      ? rest.blFormVariant
+      : legacySurrendered === 'yes'
+        ? 'surrendered'
+        : 'non_negotiable'
+  return billOfLadingSchema.parse({
+    ...emptyBillOfLading(),
+    ...rest,
+    blFormVariant,
+  })
+}
+
 export const createEmptyTransportDocuments =
   (): TransportDocumentPayloadMap => ({
     an: emptyArrivalNotice(),
     booking: emptyBookingConfirmation(),
     do: emptyDeliveryOrder(),
+    bl: emptyBillOfLading(),
   })
 
 export function parseTransportDocument<T extends TransportDocumentType>(
@@ -218,6 +310,10 @@ export function parseTransportDocument<T extends TransportDocumentType>(
       ) as TransportDocumentPayloadMap[T]
     case 'do':
       return deliveryOrderSchema.parse(
+        payload
+      ) as TransportDocumentPayloadMap[T]
+    case 'bl':
+      return normalizeBillOfLadingPayload(
         payload
       ) as TransportDocumentPayloadMap[T]
   }

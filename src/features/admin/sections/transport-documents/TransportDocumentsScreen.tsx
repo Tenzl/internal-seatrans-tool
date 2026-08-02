@@ -36,6 +36,7 @@ import {
 } from './transportDocumentFormRules'
 import {
   createEmptyTransportDocuments,
+  normalizeBillOfLadingPayload,
   parseTransportDocument,
 } from './transportDocumentSchemas'
 import { transportDocumentService } from './transportDocumentService'
@@ -45,7 +46,6 @@ interface TransportDocumentsScreenProps {
 }
 
 function payloadSnapshot(
-  documentType: TransportDocumentType,
   payload: TransportDocumentPayloadMap[TransportDocumentType]
 ) {
   return JSON.stringify(payload)
@@ -60,7 +60,13 @@ export function TransportDocumentsScreen({
   const isAdmin = isAdminRole(currentUser?.role)
   const recordIdParam = searchParams.get('recordId')
   const previewParam = searchParams.get('preview')
-  const recordId = recordIdParam ? Number.parseInt(recordIdParam, 10) : null
+  const parsedRecordId = recordIdParam
+    ? Number.parseInt(recordIdParam, 10)
+    : null
+  const validRecordId =
+    parsedRecordId != null && Number.isFinite(parsedRecordId)
+      ? parsedRecordId
+      : null
 
   const [forms, setForms] = useState<TransportDocumentPayloadMap>(
     createEmptyTransportDocuments
@@ -76,14 +82,28 @@ export function TransportDocumentsScreen({
   const [isUnlocking, setIsUnlocking] = useState(false)
   const [leaveDialogOpen, setLeaveDialogOpen] = useState(false)
   const [pendingHref, setPendingHref] = useState<string | null>(null)
-  const autoPreviewDone = useRef(false)
-  const savedSnapshotRef = useRef(
-    payloadSnapshot(
-      documentType,
-      createEmptyTransportDocuments()[documentType]
-    )
+  const [savedSnapshot, setSavedSnapshot] = useState(() =>
+    payloadSnapshot(createEmptyTransportDocuments()[documentType])
   )
+  const [trackedRecordId, setTrackedRecordId] = useState(validRecordId)
+  const autoPreviewDone = useRef(false)
   const isDirtyRef = useRef(false)
+
+  // Adjust session state when URL recordId changes (avoid setState-in-effect).
+  if (trackedRecordId !== validRecordId) {
+    setTrackedRecordId(validRecordId)
+    if (validRecordId == null) {
+      setActiveRecordId(null)
+      setStatus(null)
+      setLockedAt(null)
+      setIsHydrating(false)
+      setSavedSnapshot(
+        payloadSnapshot(createEmptyTransportDocuments()[documentType])
+      )
+    } else {
+      setIsHydrating(true)
+    }
+  }
 
   const document = getTransportDocumentDefinition(documentType)
   const activePayload = forms[documentType]
@@ -92,12 +112,8 @@ export function TransportDocumentsScreen({
   const isLocked = Boolean(lockedAt)
   const isDirty = useMemo(() => {
     if (isLocked) return false
-    return (
-      payloadSnapshot(documentType, activePayload) !== savedSnapshotRef.current
-    )
-  }, [activePayload, documentType, isLocked])
-
-  isDirtyRef.current = isDirty
+    return payloadSnapshot(activePayload) !== savedSnapshot
+  }, [activePayload, isLocked, savedSnapshot])
 
   const fileName = useMemo(
     () =>
@@ -107,10 +123,14 @@ export function TransportDocumentsScreen({
 
   const markSaved = useCallback(
     (payload: TransportDocumentPayloadMap[typeof documentType]) => {
-      savedSnapshotRef.current = payloadSnapshot(documentType, payload)
+      setSavedSnapshot(payloadSnapshot(payload))
     },
-    [documentType]
+    []
   )
+
+  useEffect(() => {
+    isDirtyRef.current = isDirty
+  }, [isDirty])
 
   useEffect(() => {
     return () => {
@@ -118,32 +138,27 @@ export function TransportDocumentsScreen({
     }
   }, [previewUrl])
 
-  useEffect(() => {
-    if (!recordId) {
-      savedSnapshotRef.current = payloadSnapshot(
-        documentType,
-        createEmptyTransportDocuments()[documentType]
-      )
-    }
-  }, [documentType, recordId])
-
   const applyRecord = useCallback(
     (record: TransportDocumentRecord) => {
       if (record.documentType !== documentType) {
         toast.error('This record belongs to a different document type')
         return
       }
+      const payload =
+        documentType === 'bl'
+          ? normalizeBillOfLadingPayload(record.payload)
+          : record.payload
       setForms(
         (previous) =>
           ({
             ...previous,
-            [documentType]: record.payload,
+            [documentType]: payload,
           }) as TransportDocumentPayloadMap
       )
       setActiveRecordId(record.id)
       setStatus(record.status)
       setLockedAt(record.lockedAt)
-      savedSnapshotRef.current = payloadSnapshot(documentType, record.payload)
+      setSavedSnapshot(payloadSnapshot(payload))
     },
     [documentType]
   )
@@ -238,20 +253,16 @@ export function TransportDocumentsScreen({
   ])
 
   useEffect(() => {
-    if (!recordId || !Number.isFinite(recordId)) {
-      setActiveRecordId(null)
-      setStatus(null)
-      setLockedAt(null)
+    if (validRecordId == null) {
       autoPreviewDone.current = false
       return
     }
 
     let cancelled = false
-    setIsHydrating(true)
     autoPreviewDone.current = false
 
     void transportDocumentService
-      .getById(recordId)
+      .getById(validRecordId)
       .then((record) => {
         if (cancelled) return
         applyRecord(record)
@@ -271,7 +282,7 @@ export function TransportDocumentsScreen({
     return () => {
       cancelled = true
     }
-  }, [applyRecord, recordId])
+  }, [applyRecord, validRecordId])
 
   useEffect(() => {
     if (
@@ -382,7 +393,7 @@ export function TransportDocumentsScreen({
   }
 
   const handleLeaveWithoutSaving = () => {
-    savedSnapshotRef.current = payloadSnapshot(documentType, activePayload)
+    setSavedSnapshot(payloadSnapshot(activePayload))
     navigatePending()
   }
 

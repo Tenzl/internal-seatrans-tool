@@ -1,5 +1,6 @@
 import type {
   ArrivalNoticePayload,
+  BillOfLadingPayload,
   BookingConfirmationPayload,
   CargoRow,
   DeliveryOrderPayload,
@@ -11,13 +12,20 @@ export type TransportDocumentFieldKind =
   | 'datetime-local'
   | 'text'
   | 'textarea'
+  | 'select'
 
 type TransportDocumentFieldKey = Exclude<
   | keyof ArrivalNoticePayload
   | keyof BookingConfirmationPayload
-  | keyof DeliveryOrderPayload,
+  | keyof DeliveryOrderPayload
+  | keyof BillOfLadingPayload,
   'cargoRows'
 >
+
+export interface TransportDocumentFieldOption {
+  value: string
+  label: string
+}
 
 export interface TransportDocumentFieldSpec {
   key: TransportDocumentFieldKey
@@ -25,6 +33,7 @@ export interface TransportDocumentFieldSpec {
   kind?: TransportDocumentFieldKind
   placeholder?: string
   span?: 1 | 2 | 3
+  options?: TransportDocumentFieldOption[]
 }
 
 export interface TransportDocumentFieldSection {
@@ -58,6 +67,12 @@ export const TRANSPORT_DOCUMENTS: TransportDocumentDefinition[] = [
     shortLabel: 'DO',
     label: 'Delivery Order',
     description: 'Cargo release instruction',
+  },
+  {
+    type: 'bl',
+    shortLabel: 'BL',
+    label: 'Bill of Lading',
+    description: 'FIATA multimodal transport bill of lading',
   },
 ]
 
@@ -234,6 +249,117 @@ export const TRANSPORT_DOCUMENT_FORM_SECTIONS: Record<
     {
       title: 'Person in charge',
       fields: [{ key: 'pic', label: 'PIC', kind: 'textarea', span: 3 }],
+    },
+  ],
+  bl: [
+    {
+      title: 'Document',
+      description:
+        'Choose a blank BL form; fields and the author signature overlay onto it.',
+      fields: [
+        { key: 'fblNumber', label: 'FBL No.' },
+        {
+          key: 'blFormVariant',
+          label: 'BL form',
+          kind: 'select',
+          options: [
+            { value: 'non_negotiable', label: 'Non-negotiable' },
+            { value: 'original', label: 'Original' },
+            { value: 'surrendered', label: 'Surrendered' },
+          ],
+        },
+      ],
+    },
+    {
+      title: 'Parties',
+      fields: [
+        { key: 'consignor', label: 'Consignor', kind: 'textarea', span: 3 },
+        {
+          key: 'consignedToOrderOf',
+          label: 'Consigned to order of',
+          kind: 'textarea',
+          span: 3,
+        },
+        {
+          key: 'notifyAddress',
+          label: 'Notify address',
+          kind: 'textarea',
+          span: 3,
+        },
+      ],
+    },
+    {
+      title: 'Routing',
+      fields: [
+        { key: 'placeOfReceipt', label: 'Place of receipt' },
+        { key: 'oceanVessel', label: 'Ocean vessel' },
+        { key: 'voyageNumber', label: 'Voyage no.' },
+        { key: 'portOfLoading', label: 'Port of loading' },
+        { key: 'portOfDischarge', label: 'Port of discharge' },
+        { key: 'placeOfDelivery', label: 'Place of delivery' },
+      ],
+    },
+    {
+      title: 'Cargo',
+      fields: [
+        {
+          key: 'marksAndNumbers',
+          label: 'Marks and numbers',
+          kind: 'textarea',
+          span: 2,
+        },
+        {
+          key: 'numberAndKindOfPackages',
+          label: 'Number and kind of packages',
+          kind: 'textarea',
+        },
+        {
+          key: 'descriptionOfGoods',
+          label: 'Description of goods',
+          kind: 'textarea',
+          span: 3,
+        },
+        { key: 'grossWeight', label: 'Gross weight' },
+        { key: 'measurement', label: 'Measurement' },
+        { key: 'freightTerms', label: 'Freight terms' },
+        { key: 'cleanOnBoard', label: 'Clean on board' },
+      ],
+    },
+    {
+      title: 'Declarations & freight',
+      fields: [
+        {
+          key: 'declarationOfInterest',
+          label: 'Declaration of interest (Clause 6.2)',
+          kind: 'textarea',
+        },
+        {
+          key: 'declaredValue',
+          label: 'Declared value (Clauses 7 & 8)',
+          kind: 'textarea',
+        },
+        { key: 'freightAmount', label: 'Freight amount' },
+        { key: 'freightPayableAt', label: 'Freight payable at' },
+        { key: 'placeOfIssue', label: 'Place of issue' },
+        { key: 'dateOfIssue', label: 'Date of issue', kind: 'date' },
+        { key: 'numberOfOriginals', label: "Number of Original FBL's" },
+        {
+          key: 'cargoInsurance',
+          label: 'Cargo insurance',
+          kind: 'select',
+          options: [
+            { value: '', label: 'Unchecked' },
+            { value: 'not_covered', label: 'Not covered' },
+            { value: 'covered', label: 'Covered (attached policy)' },
+          ],
+        },
+        {
+          key: 'deliveryApplyTo',
+          label: 'For delivery of goods please apply to',
+          kind: 'textarea',
+          span: 3,
+        },
+      ],
     },
   ],
 }

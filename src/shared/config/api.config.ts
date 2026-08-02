@@ -77,9 +77,9 @@ export const API_CONFIG = {
   },
 
   BOOKING_DOCUMENTS: {
-    ADMIN_PREVIEW: (type: 'an' | 'booking' | 'do') =>
+    ADMIN_PREVIEW: (type: 'an' | 'booking' | 'do' | 'bl') =>
       `/admin/booking-documents/${type}/preview`,
-    ADMIN_CREATE: (type: 'an' | 'booking' | 'do') =>
+    ADMIN_CREATE: (type: 'an' | 'booking' | 'do' | 'bl') =>
       `/admin/booking-documents/${type}/records`,
     ADMIN_HISTORY: '/admin/booking-documents/records',
     ADMIN_BY_ID: (id: number) => `/admin/booking-documents/records/${id}`,

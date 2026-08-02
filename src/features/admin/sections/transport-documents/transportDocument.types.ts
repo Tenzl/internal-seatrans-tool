@@ -1,4 +1,4 @@
-export const TRANSPORT_DOCUMENT_TYPES = ['an', 'booking', 'do'] as const
+export const TRANSPORT_DOCUMENT_TYPES = ['an', 'booking', 'do', 'bl'] as const
 
 export type TransportDocumentType = (typeof TRANSPORT_DOCUMENT_TYPES)[number]
 
@@ -98,10 +98,42 @@ export interface BookingConfirmationPayload {
   pic: string
 }
 
+export interface BillOfLadingPayload {
+  fblNumber: string
+  consignor: string
+  consignedToOrderOf: string
+  notifyAddress: string
+  placeOfReceipt: string
+  oceanVessel: string
+  voyageNumber: string
+  portOfLoading: string
+  portOfDischarge: string
+  placeOfDelivery: string
+  marksAndNumbers: string
+  numberAndKindOfPackages: string
+  descriptionOfGoods: string
+  grossWeight: string
+  measurement: string
+  freightTerms: string
+  cleanOnBoard: string
+  declarationOfInterest: string
+  declaredValue: string
+  freightAmount: string
+  freightPayableAt: string
+  placeOfIssue: string
+  dateOfIssue: string
+  numberOfOriginals: string
+  cargoInsurance: '' | 'not_covered' | 'covered'
+  deliveryApplyTo: string
+  /** Blank template: non-negotiable / original / surrendered PNG */
+  blFormVariant: 'non_negotiable' | 'original' | 'surrendered'
+}
+
 export interface TransportDocumentPayloadMap {
   an: ArrivalNoticePayload
   booking: BookingConfirmationPayload
   do: DeliveryOrderPayload
+  bl: BillOfLadingPayload
 }
 
 export type TransportDocumentPayload =
