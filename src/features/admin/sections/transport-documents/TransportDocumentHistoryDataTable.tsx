@@ -54,6 +54,7 @@ export function TransportDocumentHistoryDataTable<
   const [columnVisibility, setColumnVisibility] =
     React.useState<VisibilityState>(() => initialColumnVisibility ?? {})
 
+  // eslint-disable-next-line react-hooks/incompatible-library
   const table = useReactTable({
     data,
     columns,
