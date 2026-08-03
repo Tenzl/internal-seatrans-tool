@@ -1,6 +1,6 @@
 'use client'
 
-import { useCallback, useEffect, useState } from 'react'
+import { useState } from 'react'
 import { Loader2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import {
@@ -12,7 +12,6 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog'
 import { getTransportDocumentDefinition } from './transportDocumentFormConfig'
-import { transportDocumentService } from './transportDocumentService'
 import type {
   TransportDocumentRecord,
   TransportDocumentType,
@@ -21,6 +20,9 @@ import type {
 type TransportDocumentPrefillDialogProps = {
   open: boolean
   sourceType: TransportDocumentType
+  loading: boolean
+  error: string | null
+  records: TransportDocumentRecord[]
   onOpenChange: (open: boolean) => void
   onSelect: (record: TransportDocumentRecord) => void
 }
@@ -28,44 +30,26 @@ type TransportDocumentPrefillDialogProps = {
 export function TransportDocumentPrefillDialog({
   open,
   sourceType,
+  loading,
+  error,
+  records,
   onOpenChange,
   onSelect,
 }: TransportDocumentPrefillDialogProps) {
   const sourceLabel = getTransportDocumentDefinition(sourceType).label
-  const [loading, setLoading] = useState(false)
-  const [records, setRecords] = useState<TransportDocumentRecord[]>([])
-  const [error, setError] = useState<string | null>(null)
   const [selectedId, setSelectedId] = useState<number | null>(null)
 
-  const load = useCallback(async () => {
-    setLoading(true)
-    setError(null)
-    try {
-      const page = await transportDocumentService.history({
-        type: sourceType,
-        page: 0,
-        size: 20,
-      })
-      setRecords(page.content)
-      setSelectedId(page.content[0]?.id ?? null)
-    } catch (err) {
-      setRecords([])
-      setSelectedId(null)
-      setError(err instanceof Error ? err.message : 'Failed to load records')
-    } finally {
-      setLoading(false)
-    }
-  }, [sourceType])
-
-  useEffect(() => {
-    if (!open) return
-    void load()
-  }, [load, open])
-
-  const selected = records.find((record) => record.id === selectedId) ?? null
+  const selected =
+    records.find((record) => record.id === selectedId) ?? records[0] ?? null
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <Dialog
+      open={open}
+      onOpenChange={(next) => {
+        if (!next) setSelectedId(null)
+        onOpenChange(next)
+      }}
+    >
       <DialogContent className='max-w-lg'>
         <DialogHeader>
           <DialogTitle>Prefill from previous</DialogTitle>
@@ -88,7 +72,7 @@ export function TransportDocumentPrefillDialog({
             </p>
           ) : (
             records.map((record) => {
-              const active = record.id === selectedId
+              const active = (selectedId ?? records[0]?.id) === record.id
               return (
                 <button
                   key={record.id}

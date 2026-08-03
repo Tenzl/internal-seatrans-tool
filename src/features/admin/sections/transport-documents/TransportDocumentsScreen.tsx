@@ -95,6 +95,11 @@ export function TransportDocumentsScreen({
   const [isUnlocking, setIsUnlocking] = useState(false)
   const [leaveDialogOpen, setLeaveDialogOpen] = useState(false)
   const [prefillDialogOpen, setPrefillDialogOpen] = useState(false)
+  const [prefillLoading, setPrefillLoading] = useState(false)
+  const [prefillError, setPrefillError] = useState<string | null>(null)
+  const [prefillRecords, setPrefillRecords] = useState<TransportDocumentRecord[]>(
+    []
+  )
   const [pendingHref, setPendingHref] = useState<string | null>(null)
   const [savedSnapshot, setSavedSnapshot] = useState(() =>
     payloadSnapshot(createEmptyTransportDocuments()[documentType])
@@ -463,6 +468,29 @@ export function TransportDocumentsScreen({
     [activePayload, documentType, isLocked, prefillSourceType]
   )
 
+  const openPrefillDialog = useCallback(async () => {
+    if (!prefillSourceType || isLocked) return
+    setPrefillDialogOpen(true)
+    setPrefillLoading(true)
+    setPrefillError(null)
+    setPrefillRecords([])
+    try {
+      const page = await transportDocumentService.history({
+        type: prefillSourceType,
+        page: 0,
+        size: 20,
+      })
+      setPrefillRecords(page.content)
+    } catch (error) {
+      setPrefillRecords([])
+      setPrefillError(
+        error instanceof Error ? error.message : 'Failed to load records'
+      )
+    } finally {
+      setPrefillLoading(false)
+    }
+  }, [isLocked, prefillSourceType])
+
   return (
     <div className='mx-auto max-w-7xl space-y-5 pb-8'>
       <header className='flex flex-col gap-4 border-b border-border/60 pb-5 lg:flex-row lg:items-end lg:justify-between'>
@@ -508,7 +536,7 @@ export function TransportDocumentsScreen({
                   type='button'
                   variant='outline'
                   size='sm'
-                  onClick={() => setPrefillDialogOpen(true)}
+                  onClick={() => void openPrefillDialog()}
                   disabled={busy}
                 >
                   <ClipboardPaste className='mr-1.5 h-4 w-4' />
@@ -674,7 +702,17 @@ export function TransportDocumentsScreen({
         <TransportDocumentPrefillDialog
           open={prefillDialogOpen}
           sourceType={prefillSourceType}
-          onOpenChange={setPrefillDialogOpen}
+          loading={prefillLoading}
+          error={prefillError}
+          records={prefillRecords}
+          onOpenChange={(open) => {
+            setPrefillDialogOpen(open)
+            if (!open) {
+              setPrefillError(null)
+              setPrefillRecords([])
+              setPrefillLoading(false)
+            }
+          }}
           onSelect={handlePrefillSelect}
         />
       ) : null}
