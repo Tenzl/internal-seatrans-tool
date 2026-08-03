@@ -107,9 +107,6 @@ export function ValuesEditor({
     onChange({ ...values, quarantine: { ...values.quarantine, [k]: n } })
   const setCoeff = (k: keyof EpdaParameterValues['coeff'], n: number) =>
     onChange({ ...values, coeff: { ...values.coeff, [k]: n } })
-  const setHours = (k: keyof EpdaParameterValues['hours'], n: number) =>
-    onChange({ ...values, hours: { ...values.hours, [k]: n } })
-
   const sections: {
     id: string
     title: string
