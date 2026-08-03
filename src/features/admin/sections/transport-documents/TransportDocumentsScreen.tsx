@@ -8,7 +8,15 @@ import { useCurrentUser } from '@/hooks/use-current-user'
 import { PdfPreviewDialog } from '@/shared/components/PdfPreviewDialog'
 import { delay, EPDA_PREVIEW_LOAD_DELAY_MS } from '@/shared/utils/epdaExport'
 import { toast } from '@/shared/utils/toast'
-import { FileOutput, Loader2, Lock, RotateCcw, Save, Unlock } from 'lucide-react'
+import {
+  ClipboardPaste,
+  FileOutput,
+  Loader2,
+  Lock,
+  RotateCcw,
+  Save,
+  Unlock,
+} from 'lucide-react'
 import {
   AlertDialog,
   AlertDialogAction,
@@ -22,6 +30,7 @@ import {
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { TransportDocumentForm } from './TransportDocumentForm'
+import { TransportDocumentPrefillDialog } from './TransportDocumentPrefillDialog'
 import type {
   CargoRow,
   TransportDocumentPayloadMap,
@@ -34,6 +43,10 @@ import {
   buildTransportDocumentFileName,
   getTransportDocumentCargoRows,
 } from './transportDocumentFormRules'
+import {
+  applyPrefillFromPrevious,
+  getPrefillSourceType,
+} from './transportDocumentPrefill'
 import {
   createEmptyTransportDocuments,
   normalizeBillOfLadingPayload,
@@ -81,6 +94,7 @@ export function TransportDocumentsScreen({
   const [isSaving, setIsSaving] = useState(false)
   const [isUnlocking, setIsUnlocking] = useState(false)
   const [leaveDialogOpen, setLeaveDialogOpen] = useState(false)
+  const [prefillDialogOpen, setPrefillDialogOpen] = useState(false)
   const [pendingHref, setPendingHref] = useState<string | null>(null)
   const [savedSnapshot, setSavedSnapshot] = useState(() =>
     payloadSnapshot(createEmptyTransportDocuments()[documentType])
@@ -420,6 +434,34 @@ export function TransportDocumentsScreen({
   }, [activeRecordId, isAdmin, isLocked])
 
   const busy = isGenerating || isSaving || isHydrating || isUnlocking
+  const prefillSourceType = getPrefillSourceType(documentType)
+
+  const handlePrefillSelect = useCallback(
+    (record: TransportDocumentRecord) => {
+      if (!prefillSourceType || isLocked) return
+      const sourcePayload =
+        prefillSourceType === 'bl'
+          ? normalizeBillOfLadingPayload(record.payload)
+          : record.payload
+      const next = applyPrefillFromPrevious(
+        documentType,
+        prefillSourceType,
+        sourcePayload as TransportDocumentPayloadMap[typeof prefillSourceType],
+        activePayload
+      )
+      setForms(
+        (previous) =>
+          ({
+            ...previous,
+            [documentType]: next,
+          }) as TransportDocumentPayloadMap
+      )
+      toast.success(
+        `Prefilled from ${getTransportDocumentDefinition(prefillSourceType).label}`
+      )
+    },
+    [activePayload, documentType, isLocked, prefillSourceType]
+  )
 
   return (
     <div className='mx-auto max-w-7xl space-y-5 pb-8'>
@@ -461,6 +503,18 @@ export function TransportDocumentsScreen({
         <div className='flex flex-wrap gap-2'>
           {!isLocked ? (
             <>
+              {prefillSourceType ? (
+                <Button
+                  type='button'
+                  variant='outline'
+                  size='sm'
+                  onClick={() => setPrefillDialogOpen(true)}
+                  disabled={busy}
+                >
+                  <ClipboardPaste className='mr-1.5 h-4 w-4' />
+                  Prefill from previous
+                </Button>
+              ) : null}
               <Button
                 type='button'
                 variant='outline'
@@ -615,6 +669,15 @@ export function TransportDocumentsScreen({
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {prefillSourceType ? (
+        <TransportDocumentPrefillDialog
+          open={prefillDialogOpen}
+          sourceType={prefillSourceType}
+          onOpenChange={setPrefillDialogOpen}
+          onSelect={handlePrefillSelect}
+        />
+      ) : null}
     </div>
   )
 }

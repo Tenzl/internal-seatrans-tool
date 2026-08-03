@@ -114,8 +114,6 @@ export function PortDuesSection({
                 handlers.setQnPilotageMiles(event.target.value)
               }
               min='0'
-              disabled
-              className={disabledFieldTextClass}
             />
           </div>
         ) : (
@@ -131,8 +129,6 @@ export function PortDuesSection({
                 handlers.setPilotageThirdMiles(event.target.value)
               }
               min='0'
-              disabled
-              className={disabledFieldTextClass}
             />
           </div>
         )}

@@ -265,11 +265,6 @@ export function ValuesEditor({
                   value={values.coeff.pilotageLeg3Rate}
                   onChange={(n) => setCoeff('pilotageLeg3Rate', n)}
                 />
-                <NumberField
-                  label={t('f.pilotage3rdMiles')}
-                  value={values.hours.pilotageThirdMiles}
-                  onChange={(n) => setHours('pilotageThirdMiles', n)}
-                />
               </>
             ) : (
               <>
@@ -282,11 +277,6 @@ export function ValuesEditor({
                   label={t('f.pilotageMin')}
                   value={values.coeff.pilotageMinAmount}
                   onChange={(n) => setCoeff('pilotageMinAmount', n)}
-                />
-                <NumberField
-                  label={t('f.pilotageMiles')}
-                  value={values.hours.qnPilotageMiles}
-                  onChange={(n) => setHours('qnPilotageMiles', n)}
                 />
               </>
             )}

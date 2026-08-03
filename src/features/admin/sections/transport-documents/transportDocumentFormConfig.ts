@@ -49,24 +49,13 @@ export interface TransportDocumentDefinition {
   description: string
 }
 
+/** Lifecycle order: Order → BL → AN → DO */
 export const TRANSPORT_DOCUMENTS: TransportDocumentDefinition[] = [
   {
-    type: 'an',
-    shortLabel: 'AN',
-    label: 'Arrival Notice',
-    description: 'Incoming shipment notification',
-  },
-  {
     type: 'booking',
-    shortLabel: 'Booking',
-    label: 'Booking Confirmation',
-    description: 'Confirmed shipment schedule',
-  },
-  {
-    type: 'do',
-    shortLabel: 'DO',
-    label: 'Delivery Order',
-    description: 'Cargo release instruction',
+    shortLabel: 'Order',
+    label: 'Order',
+    description: 'Initial order / booking confirmation schedule',
   },
   {
     type: 'bl',
@@ -74,147 +63,54 @@ export const TRANSPORT_DOCUMENTS: TransportDocumentDefinition[] = [
     label: 'Bill of Lading',
     description: 'FIATA multimodal transport bill of lading',
   },
+  {
+    type: 'an',
+    shortLabel: 'AN',
+    label: 'Arrival Notice',
+    description: 'Incoming shipment notification',
+  },
+  {
+    type: 'do',
+    shortLabel: 'DO',
+    label: 'Delivery Order',
+    description: 'Cargo release instruction',
+  },
 ]
 
 export const TRANSPORT_DOCUMENT_FORM_SECTIONS: Record<
   TransportDocumentType,
   TransportDocumentFieldSection[]
 > = {
-  an: [
+  booking: [
     {
-      title: 'Document',
+      title: 'Identity',
       fields: [
-        { key: 'agent', label: 'Agent' },
+        { key: 'bookingNumber', label: 'Booking No.' },
         { key: 'date', label: 'Date', kind: 'date' },
-        { key: 'anNumber', label: 'AN No.' },
       ],
     },
     {
       title: 'Parties',
-      fields: [
-        { key: 'shipper', label: 'Shipper', kind: 'textarea' },
-        { key: 'consignee', label: 'Consignee', kind: 'textarea' },
-        { key: 'notifyParty', label: 'Notify party', kind: 'textarea' },
-      ],
+      fields: [{ key: 'to', label: 'To', kind: 'textarea', span: 3 }],
     },
     {
-      title: 'Shipment references',
+      title: 'Route',
       fields: [
-        { key: 'mblNumber', label: 'MBL No.' },
-        { key: 'hblNumber', label: 'HBL No.' },
-        { key: 'shipmentNumber', label: 'Shipment No.' },
-        { key: 'vesselVoyage', label: 'Vessel / Voyage No.' },
-        { key: 'etdEta', label: 'ETD / ETA' },
-        { key: 'cfsTerminal', label: 'CFS terminal' },
-        { key: 'referenceNumber', label: 'Reference No.' },
-        { key: 'billOfLadingType', label: 'Type of B/L' },
-        { key: 'serviceMode', label: 'Service mode' },
-      ],
-    },
-    {
-      title: 'Routing',
-      fields: [
-        { key: 'placeOfReceipt', label: 'Place of receipt' },
-        { key: 'portOfLoading', label: 'Port of loading' },
-        { key: 'portOfDischarge', label: 'Port of discharge' },
-        { key: 'placeOfDelivery', label: 'Place of delivery' },
-        { key: 'finalDestination', label: 'Final destination' },
-      ],
-    },
-    {
-      title: 'Cargo notes',
-      fields: [
-        { key: 'marks', label: 'Marks', kind: 'textarea', span: 2 },
-        { key: 'volume', label: 'Volume' },
-        { key: 'note', label: 'Note', kind: 'textarea', span: 3 },
-        {
-          key: 'customerAttention',
-          label: "For customer's attention",
-          kind: 'textarea',
-          span: 3,
-        },
-      ],
-    },
-  ],
-  do: [
-    {
-      title: 'Document',
-      fields: [
-        { key: 'doNumber', label: 'DO No.' },
-        { key: 'date', label: 'Date', kind: 'date' },
-        { key: 'to', label: 'To', kind: 'textarea' },
-      ],
-    },
-    {
-      title: 'Delivery parties',
-      fields: [
-        {
-          key: 'deliverTo',
-          label: 'Deliver shipment to',
-          kind: 'textarea',
-          span: 2,
-        },
-        { key: 'notifyParty', label: 'Notify party', kind: 'textarea' },
-      ],
-    },
-    {
-      title: 'Shipment references',
-      fields: [
-        { key: 'mblNumber', label: 'MBL No.' },
-        { key: 'hblNumber', label: 'HBL No.' },
-        { key: 'shipmentNumber', label: 'Shipment No.' },
-        { key: 'vesselVoyage', label: 'Vessel / Voyage No.' },
-        { key: 'etd', label: 'ETD', kind: 'date' },
-        { key: 'eta', label: 'ETA', kind: 'date' },
-        { key: 'serviceMode', label: 'Service mode' },
-        { key: 'cfsTerminal', label: 'CFS terminal' },
-      ],
-    },
-    {
-      title: 'Routing',
-      fields: [
-        { key: 'placeOfReceipt', label: 'Place of receipt' },
-        { key: 'portOfLoading', label: 'Port of loading' },
-        { key: 'portOfDischarge', label: 'Port of discharge' },
-        { key: 'placeOfDelivery', label: 'Place of delivery' },
-        { key: 'finalDestination', label: 'Final destination' },
-      ],
-    },
-    {
-      title: 'Cargo notes',
-      fields: [
-        { key: 'marks', label: 'Marks', kind: 'textarea', span: 2 },
-        { key: 'volume', label: 'Volume' },
-        { key: 'note', label: 'Note', kind: 'textarea', span: 3 },
-        {
-          key: 'customerAttention',
-          label: "For customer's attention",
-          kind: 'textarea',
-          span: 3,
-        },
-      ],
-    },
-  ],
-  booking: [
-    {
-      title: 'Confirmation',
-      fields: [
-        { key: 'date', label: 'Date', kind: 'date' },
-        { key: 'bookingNumber', label: 'Booking No.' },
-        { key: 'to', label: 'To', kind: 'textarea' },
-      ],
-    },
-    {
-      title: 'Schedule and routing',
-      fields: [
-        { key: 'vesselVoyage', label: 'Vessel / Voyage' },
-        { key: 'etd', label: 'ETD', kind: 'date' },
-        { key: 'eta', label: 'ETA', kind: 'date' },
         { key: 'placeOfReceipt', label: 'Place of receipt' },
         { key: 'portOfLoading', label: 'Port of loading' },
         { key: 'portOfDischarge', label: 'Port of discharge' },
         { key: 'placeOfDelivery', label: 'Place of delivery' },
         { key: 'transitPort', label: 'Transit port' },
+      ],
+    },
+    {
+      title: 'Schedule',
+      fields: [
+        { key: 'vesselVoyage', label: 'Vessel / Voyage' },
+        { key: 'etd', label: 'ETD', kind: 'date' },
+        { key: 'eta', label: 'ETA', kind: 'date' },
+        { key: 'motherVessel', label: 'Mother vessel' },
+        { key: 'motherVoyage', label: 'Mother voyage' },
       ],
     },
     {
@@ -229,31 +125,31 @@ export const TRANSPORT_DOCUMENT_FORM_SECTIONS: Record<
       ],
     },
     {
-      title: 'Cargo and vessel',
+      title: 'Cargo',
       fields: [
-        { key: 'commodity', label: 'Commodity', kind: 'textarea' },
+        { key: 'commodity', label: 'Commodity', kind: 'textarea', span: 2 },
         { key: 'volume', label: 'Volume' },
         { key: 'grossWeight', label: 'Gross weight (KGS)' },
         { key: 'measurement', label: 'Measurement (CBM)' },
-        { key: 'motherVessel', label: 'Mother vessel' },
-        { key: 'motherVoyage', label: 'Mother voyage' },
         {
           key: 'specialRemark',
           label: 'Special remark',
           kind: 'textarea',
-          span: 2,
+          span: 3,
         },
-        { key: 'contact', label: 'Contact', kind: 'textarea' },
       ],
     },
     {
-      title: 'Person in charge',
-      fields: [{ key: 'pic', label: 'PIC', kind: 'textarea', span: 3 }],
+      title: 'Contact',
+      fields: [
+        { key: 'contact', label: 'Contact', kind: 'textarea' },
+        { key: 'pic', label: 'PIC', kind: 'textarea', span: 2 },
+      ],
     },
   ],
   bl: [
     {
-      title: 'Document',
+      title: 'Identity',
       description:
         'Choose a blank BL form; fields and the author signature overlay onto it.',
       fields: [
@@ -268,6 +164,9 @@ export const TRANSPORT_DOCUMENT_FORM_SECTIONS: Record<
             { value: 'surrendered', label: 'Surrendered' },
           ],
         },
+        { key: 'placeOfIssue', label: 'Place of issue' },
+        { key: 'dateOfIssue', label: 'Date of issue', kind: 'date' },
+        { key: 'numberOfOriginals', label: "Number of Original FBL's" },
       ],
     },
     {
@@ -289,14 +188,19 @@ export const TRANSPORT_DOCUMENT_FORM_SECTIONS: Record<
       ],
     },
     {
-      title: 'Routing',
+      title: 'Route',
       fields: [
         { key: 'placeOfReceipt', label: 'Place of receipt' },
-        { key: 'oceanVessel', label: 'Ocean vessel' },
-        { key: 'voyageNumber', label: 'Voyage no.' },
         { key: 'portOfLoading', label: 'Port of loading' },
         { key: 'portOfDischarge', label: 'Port of discharge' },
         { key: 'placeOfDelivery', label: 'Place of delivery' },
+      ],
+    },
+    {
+      title: 'Vessel',
+      fields: [
+        { key: 'oceanVessel', label: 'Ocean vessel' },
+        { key: 'voyageNumber', label: 'Voyage no.' },
       ],
     },
     {
@@ -321,13 +225,15 @@ export const TRANSPORT_DOCUMENT_FORM_SECTIONS: Record<
         },
         { key: 'grossWeight', label: 'Gross weight' },
         { key: 'measurement', label: 'Measurement' },
-        { key: 'freightTerms', label: 'Freight terms' },
-        { key: 'cleanOnBoard', label: 'Clean on board' },
       ],
     },
     {
-      title: 'Declarations & freight',
+      title: 'Commercial',
       fields: [
+        { key: 'freightTerms', label: 'Freight terms' },
+        { key: 'cleanOnBoard', label: 'Clean on board' },
+        { key: 'freightAmount', label: 'Freight amount' },
+        { key: 'freightPayableAt', label: 'Freight payable at' },
         {
           key: 'declarationOfInterest',
           label: 'Declaration of interest (Clause 6.2)',
@@ -338,11 +244,6 @@ export const TRANSPORT_DOCUMENT_FORM_SECTIONS: Record<
           label: 'Declared value (Clauses 7 & 8)',
           kind: 'textarea',
         },
-        { key: 'freightAmount', label: 'Freight amount' },
-        { key: 'freightPayableAt', label: 'Freight payable at' },
-        { key: 'placeOfIssue', label: 'Place of issue' },
-        { key: 'dateOfIssue', label: 'Date of issue', kind: 'date' },
-        { key: 'numberOfOriginals', label: "Number of Original FBL's" },
         {
           key: 'cargoInsurance',
           label: 'Cargo insurance',
@@ -353,9 +254,139 @@ export const TRANSPORT_DOCUMENT_FORM_SECTIONS: Record<
             { value: 'covered', label: 'Covered (attached policy)' },
           ],
         },
+      ],
+    },
+    {
+      title: 'Delivery note',
+      fields: [
         {
           key: 'deliveryApplyTo',
           label: 'For delivery of goods please apply to',
+          kind: 'textarea',
+          span: 3,
+        },
+      ],
+    },
+  ],
+  an: [
+    {
+      title: 'Identity',
+      fields: [
+        { key: 'anNumber', label: 'AN No.' },
+        { key: 'date', label: 'Date', kind: 'date' },
+        { key: 'agent', label: 'Agent' },
+      ],
+    },
+    {
+      title: 'Parties',
+      fields: [
+        { key: 'shipper', label: 'Shipper', kind: 'textarea' },
+        { key: 'consignee', label: 'Consignee', kind: 'textarea' },
+        { key: 'notifyParty', label: 'Notify party', kind: 'textarea' },
+      ],
+    },
+    {
+      title: 'References',
+      fields: [
+        { key: 'mblNumber', label: 'MBL No.' },
+        { key: 'hblNumber', label: 'HBL No.' },
+        { key: 'shipmentNumber', label: 'Shipment No.' },
+        { key: 'referenceNumber', label: 'Reference No.' },
+        { key: 'billOfLadingType', label: 'Type of B/L' },
+      ],
+    },
+    {
+      title: 'Route',
+      fields: [
+        { key: 'placeOfReceipt', label: 'Place of receipt' },
+        { key: 'portOfLoading', label: 'Port of loading' },
+        { key: 'portOfDischarge', label: 'Port of discharge' },
+        { key: 'placeOfDelivery', label: 'Place of delivery' },
+        { key: 'finalDestination', label: 'Final destination' },
+      ],
+    },
+    {
+      title: 'Schedule / ops',
+      fields: [
+        { key: 'vesselVoyage', label: 'Vessel / Voyage No.' },
+        { key: 'etdEta', label: 'ETD / ETA' },
+        { key: 'serviceMode', label: 'Service mode' },
+        { key: 'cfsTerminal', label: 'CFS terminal' },
+      ],
+    },
+    {
+      title: 'Cargo',
+      fields: [
+        { key: 'marks', label: 'Marks', kind: 'textarea', span: 2 },
+        { key: 'volume', label: 'Volume' },
+        { key: 'note', label: 'Note', kind: 'textarea', span: 3 },
+        {
+          key: 'customerAttention',
+          label: "For customer's attention",
+          kind: 'textarea',
+          span: 3,
+        },
+      ],
+    },
+  ],
+  do: [
+    {
+      title: 'Identity',
+      fields: [
+        { key: 'doNumber', label: 'DO No.' },
+        { key: 'date', label: 'Date', kind: 'date' },
+        { key: 'to', label: 'To', kind: 'textarea' },
+      ],
+    },
+    {
+      title: 'Delivery parties',
+      fields: [
+        {
+          key: 'deliverTo',
+          label: 'Deliver shipment to',
+          kind: 'textarea',
+          span: 2,
+        },
+        { key: 'notifyParty', label: 'Notify party', kind: 'textarea' },
+      ],
+    },
+    {
+      title: 'References',
+      fields: [
+        { key: 'mblNumber', label: 'MBL No.' },
+        { key: 'hblNumber', label: 'HBL No.' },
+        { key: 'shipmentNumber', label: 'Shipment No.' },
+      ],
+    },
+    {
+      title: 'Route',
+      fields: [
+        { key: 'placeOfReceipt', label: 'Place of receipt' },
+        { key: 'portOfLoading', label: 'Port of loading' },
+        { key: 'portOfDischarge', label: 'Port of discharge' },
+        { key: 'placeOfDelivery', label: 'Place of delivery' },
+        { key: 'finalDestination', label: 'Final destination' },
+      ],
+    },
+    {
+      title: 'Schedule / ops',
+      fields: [
+        { key: 'vesselVoyage', label: 'Vessel / Voyage No.' },
+        { key: 'etd', label: 'ETD', kind: 'date' },
+        { key: 'eta', label: 'ETA', kind: 'date' },
+        { key: 'serviceMode', label: 'Service mode' },
+        { key: 'cfsTerminal', label: 'CFS terminal' },
+      ],
+    },
+    {
+      title: 'Cargo',
+      fields: [
+        { key: 'marks', label: 'Marks', kind: 'textarea', span: 2 },
+        { key: 'volume', label: 'Volume' },
+        { key: 'note', label: 'Note', kind: 'textarea', span: 3 },
+        {
+          key: 'customerAttention',
+          label: "For customer's attention",
           kind: 'textarea',
           span: 3,
         },

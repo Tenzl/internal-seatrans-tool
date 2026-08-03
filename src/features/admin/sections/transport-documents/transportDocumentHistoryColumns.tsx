@@ -12,7 +12,7 @@ import type { TransportDocumentRecord } from './transportDocument.types'
 const DOCUMENT_TYPE_LABELS: Record<TransportDocumentRecord['documentType'], string> =
   {
     an: 'Arrival Notice',
-    booking: 'Booking Confirmation',
+    booking: 'Order',
     do: 'Delivery Order',
     bl: 'Bill of Lading',
   }

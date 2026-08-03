@@ -32,6 +32,23 @@ type UpsertBody<T extends TransportDocumentType> =
     status?: TransportDocumentStatus
   }
 
+/** Drop legacy BL stamp toggles so they are never persisted. */
+function sanitizeUpsertBody<T extends TransportDocumentType>(
+  payload: UpsertBody<T>
+): UpsertBody<T> {
+  const {
+    showSurrendered: _a,
+    includeCompanyStamp: _b,
+    ...rest
+  } = payload as UpsertBody<T> & {
+    showSurrendered?: unknown
+    includeCompanyStamp?: unknown
+  }
+  void _a
+  void _b
+  return rest as UpsertBody<T>
+}
+
 export const transportDocumentService = {
   async create<T extends TransportDocumentType>(
     type: T,
@@ -39,7 +56,7 @@ export const transportDocumentService = {
   ): Promise<TransportDocumentRecord> {
     const response = await apiClient.post(
       API_CONFIG.BOOKING_DOCUMENTS.ADMIN_CREATE(type),
-      payload
+      sanitizeUpsertBody(payload)
     )
     return unwrapApiResponse<TransportDocumentRecord>(response)
   },
@@ -57,7 +74,7 @@ export const transportDocumentService = {
   ): Promise<TransportDocumentRecord> {
     const response = await apiClient.put(
       API_CONFIG.BOOKING_DOCUMENTS.ADMIN_UPDATE(id),
-      payload
+      sanitizeUpsertBody(payload)
     )
     return unwrapApiResponse<TransportDocumentRecord>(response)
   },

@@ -258,7 +258,7 @@ export const emptyBillOfLading = (): BillOfLadingPayload => ({
   blFormVariant: 'non_negotiable',
 })
 
-/** Normalize stored/legacy BL payloads (maps old stamp toggles → form variant). */
+/** Normalize BL payloads and drop legacy stamp toggle keys. */
 export function normalizeBillOfLadingPayload(
   payload: unknown
 ): BillOfLadingPayload {
@@ -285,6 +285,23 @@ export function normalizeBillOfLadingPayload(
     ...rest,
     blFormVariant,
   })
+}
+
+/** Strip legacy stamp keys before persisting a BL payload. */
+export function stripLegacyBillOfLadingKeys<T extends Record<string, unknown>>(
+  payload: T
+): Omit<T, 'showSurrendered' | 'includeCompanyStamp'> {
+  const {
+    showSurrendered: _a,
+    includeCompanyStamp: _b,
+    ...rest
+  } = payload as T & {
+    showSurrendered?: unknown
+    includeCompanyStamp?: unknown
+  }
+  void _a
+  void _b
+  return rest
 }
 
 export const createEmptyTransportDocuments =

@@ -58,7 +58,7 @@ describe('dashboard route policy', () => {
         role: 'ROLE_OPERATOR',
         sections: ['booking-documents'],
       })
-    ).toBe('/booking/documents/arrival-notice')
+    ).toBe('/booking/documents/booking-confirmation')
     expect(
       firstAccessibleDashboardPath({
         role: 'ROLE_OPERATOR',
@@ -98,20 +98,20 @@ describe('dashboard route policy', () => {
 
     expect(booking?.items ?? []).toEqual([
       {
-        title: 'Create Arrival Notice',
-        url: '/booking/documents/arrival-notice',
-      },
-      {
-        title: 'Create Booking Confirmation',
+        title: 'Create Order',
         url: '/booking/documents/booking-confirmation',
-      },
-      {
-        title: 'Create Delivery Order',
-        url: '/booking/documents/delivery-order',
       },
       {
         title: 'Create Bill of Lading',
         url: '/booking/documents/bill-of-lading',
+      },
+      {
+        title: 'Create Arrival Notice',
+        url: '/booking/documents/arrival-notice',
+      },
+      {
+        title: 'Create Delivery Order',
+        url: '/booking/documents/delivery-order',
       },
       {
         title: 'History record',
