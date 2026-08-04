@@ -1,4 +1,11 @@
-import { Archive, Eye, Lock, MoreHorizontal, Trash2, Unlock } from 'lucide-react'
+import {
+  Archive,
+  Eye,
+  Lock,
+  MoreHorizontal,
+  Trash2,
+  Unlock,
+} from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import {
@@ -67,7 +74,7 @@ function DesktopRowActions({
         className='gap-2'
       >
         <Eye className='h-4 w-4' />
-        View Details
+        View
       </Button>
       {capabilities.canLock && (
         <Button
@@ -154,7 +161,7 @@ function MobileRowActions({
       <DropdownMenuContent align='end' className='w-48'>
         <DropdownMenuItem onClick={() => onViewDetails(record)}>
           <Eye className='mr-2 h-4 w-4' />
-          View Details
+          View
         </DropdownMenuItem>
         {capabilities.canLock && (
           <DropdownMenuItem onClick={() => onLock(record)}>

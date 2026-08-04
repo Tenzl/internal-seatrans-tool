@@ -3,11 +3,11 @@
 import { useEffect, useMemo, useState } from 'react'
 import { keepPreviousData, useQuery } from '@tanstack/react-query'
 import { isAdminRole } from '@/config/section-catalog'
-import { useCurrentUser } from '@/hooks/use-current-user'
-import { useIsMobile } from '@/hooks/use-mobile'
 import { queryKeys } from '@/shared/config/react-query.config'
 import { toast } from '@/shared/utils/toast'
 import { AlertCircle, History, Loader2, RefreshCw } from 'lucide-react'
+import { useCurrentUser } from '@/hooks/use-current-user'
+import { useIsMobile } from '@/hooks/use-mobile'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
 import {
@@ -20,20 +20,16 @@ import {
 import { TransportDocumentHistoryActions } from './TransportDocumentHistoryActions'
 import { TransportDocumentHistoryDataTable } from './TransportDocumentHistoryDataTable'
 import { TransportDocumentMutationDialogs } from './TransportDocumentMutationDialogs'
+import { buildBookingHistoryColumns } from './bookingHistoryColumns'
 import type {
   TransportDocumentActionPermissions,
   TransportDocumentRecord,
 } from './transportDocument.types'
-import { buildTransportDocumentHistoryColumns } from './transportDocumentHistoryColumns'
 import { transportDocumentService } from './transportDocumentService'
 import { useTransportDocumentHistoryActions } from './useTransportDocumentHistoryActions'
 
-/**
- * History list chrome mirrors InquiryHistoryCard + InquiryDataTable:
- * Card header/reload, TanStack table borders/sticky header/columns toggle,
- * desktop buttons + mobile dropdown actions, EPDA-style status badges.
- */
-export function TransportDocumentHistoryScreen() {
+/** Booking-root list; child documents are managed inside the workflow view. */
+export function BookingHistoryScreen() {
   const [page, setPage] = useState(0)
   const pageSize = 10
   const currentUser = useCurrentUser()
@@ -49,35 +45,36 @@ export function TransportDocumentHistoryScreen() {
     [isAdmin]
   )
 
-  const historyQuery = useQuery({
-    queryKey: queryKeys.transportDocumentHistory(page, pageSize),
+  const bookingQuery = useQuery({
+    queryKey: queryKeys.bookingHistoryList(page, pageSize),
     queryFn: () =>
       transportDocumentService.history({
+        type: 'booking',
         page,
         size: pageSize,
       }),
     placeholderData: keepPreviousData,
   })
 
-  const records: TransportDocumentRecord[] = historyQuery.data?.content ?? []
-  const totalPages = historyQuery.data?.totalPages ?? 0
+  const records: TransportDocumentRecord[] = bookingQuery.data?.content ?? []
+  const totalPages = bookingQuery.data?.totalPages ?? 0
   const actions = useTransportDocumentHistoryActions({
-    onMutated: () => historyQuery.refetch(),
+    onMutated: () => bookingQuery.refetch(),
   })
 
   useEffect(() => {
-    if (historyQuery.error) {
+    if (bookingQuery.error) {
       toast.error(
-        historyQuery.error instanceof Error
-          ? historyQuery.error.message
-          : 'Failed to load document history'
+        bookingQuery.error instanceof Error
+          ? bookingQuery.error.message
+          : 'Failed to load bookings'
       )
     }
-  }, [historyQuery.error])
+  }, [bookingQuery.error])
 
   const columns = useMemo(
     () =>
-      buildTransportDocumentHistoryColumns({
+      buildBookingHistoryColumns({
         renderActions: (record) => (
           <TransportDocumentHistoryActions
             record={record}
@@ -89,15 +86,21 @@ export function TransportDocumentHistoryScreen() {
           />
         ),
       }),
-    [actions.openDelete, actions.openDetail, actions.openLock, actions.openUnlock, permissions]
+    [
+      actions.openDelete,
+      actions.openDetail,
+      actions.openLock,
+      actions.openUnlock,
+      permissions,
+    ]
   )
 
-  const busy = historyQuery.isLoading || historyQuery.isFetching
+  const busy = bookingQuery.isLoading || bookingQuery.isFetching
   const errorMessage =
-    historyQuery.error instanceof Error
-      ? historyQuery.error.message
-      : historyQuery.error
-        ? 'Failed to load document history'
+    bookingQuery.error instanceof Error
+      ? bookingQuery.error.message
+      : bookingQuery.error
+        ? 'Failed to load bookings'
         : null
 
   return (
@@ -108,34 +111,33 @@ export function TransportDocumentHistoryScreen() {
             <div className='min-w-0 flex-1 space-y-1.5'>
               <CardTitle className='flex items-center gap-2 text-lg font-semibold tracking-tight'>
                 <History className='h-5 w-5' />
-                Transport document history
+                History Record
               </CardTitle>
               <CardDescription className='max-w-2xl text-sm leading-relaxed'>
-                Order, Bill of Lading, Arrival Notice, and Delivery Order
-                records. Save drafts as Processing, complete with Create &amp;
-                Preview, then lock or archive as needed. Admins can unlock
-                locked records to edit again.
+                View and manage Import and Export booking workflow records.
               </CardDescription>
             </div>
-            <Button
-              type='button'
-              variant='outline'
-              size='sm'
-              onClick={() => void historyQuery.refetch()}
-              disabled={busy}
-              className='h-10 shrink-0 gap-2 active:scale-[0.98] sm:h-9'
-            >
-              {busy ? (
-                <Loader2 className='h-4 w-4 animate-spin' />
-              ) : (
-                <RefreshCw className='h-4 w-4' />
-              )}
-              Reload
-            </Button>
+            <div className='flex flex-wrap gap-2'>
+              <Button
+                type='button'
+                variant='outline'
+                size='sm'
+                onClick={() => void bookingQuery.refetch()}
+                disabled={busy}
+                className='h-10 shrink-0 gap-2 active:scale-[0.98] sm:h-9'
+              >
+                {busy ? (
+                  <Loader2 className='h-4 w-4 animate-spin' />
+                ) : (
+                  <RefreshCw className='h-4 w-4' />
+                )}
+                Reload
+              </Button>
+            </div>
           </div>
         </CardHeader>
         <CardContent>
-          {historyQuery.isLoading && records.length === 0 ? (
+          {bookingQuery.isLoading && records.length === 0 ? (
             <div className='flex items-center justify-center py-8'>
               <Loader2 className='h-6 w-6 animate-spin' />
             </div>
@@ -146,7 +148,7 @@ export function TransportDocumentHistoryScreen() {
             </Alert>
           ) : records.length === 0 ? (
             <div className='py-8 text-center text-muted-foreground'>
-              No transport document records yet.
+              No bookings yet. Create an Import or Export booking to begin.
             </div>
           ) : (
             <TransportDocumentHistoryDataTable

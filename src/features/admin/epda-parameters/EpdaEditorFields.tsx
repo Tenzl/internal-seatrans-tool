@@ -8,8 +8,8 @@ import {
   type GrtTier,
   type LoaTier,
 } from '@/modules/inquiries/components/common/quoteParameters'
+import { NumberInput } from '@/shared/components/NumberInput'
 import { useI18n } from '@/shared/i18n/I18nProvider'
-import { parseFiniteNumber } from '@/shared/utils/parseNumber'
 import { Plus, Trash2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -22,9 +22,6 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table'
-import { DecimalInput } from './DecimalInput'
-
-const num = (value: string): number => parseFiniteNumber(value) ?? 0
 
 export function NumberField({
   label,
@@ -40,9 +37,9 @@ export function NumberField({
       <Label className='text-sm font-medium text-muted-foreground'>
         {label}
       </Label>
-      <DecimalInput
+      <NumberInput
         value={value}
-        onChange={onChange}
+        onValueChange={(next) => onChange(next ?? 0)}
         className='h-11 text-base tabular-nums'
       />
     </div>
@@ -113,26 +110,18 @@ export function GrtTierTable({
                   )}
                 </TableCell>
                 <TableCell>
-                  <Input
-                    type='number'
+                  <NumberInput
                     className='text-base tabular-nums'
-                    value={row.maxGrt === null ? '' : String(row.maxGrt)}
+                    value={row.maxGrt}
                     placeholder='∞'
-                    onChange={(e) =>
-                      setTier(i, {
-                        maxGrt:
-                          e.target.value.trim() === ''
-                            ? null
-                            : num(e.target.value),
-                      })
-                    }
+                    onValueChange={(next) => setTier(i, { maxGrt: next })}
                   />
                 </TableCell>
                 <TableCell>
-                  <DecimalInput
+                  <NumberInput
                     className='text-base tabular-nums'
                     value={row.amount}
-                    onChange={(n) => setTier(i, { amount: n })}
+                    onValueChange={(next) => setTier(i, { amount: next ?? 0 })}
                   />
                 </TableCell>
                 <TableCell>
@@ -205,22 +194,17 @@ export function LoaTierTable({
                   </span>
                 </TableCell>
                 <TableCell>
-                  <Input
-                    type='number'
+                  <NumberInput
                     className='text-base tabular-nums'
-                    value={String(row.minLoa)}
-                    onChange={(e) =>
-                      setTier(i, { minLoa: num(e.target.value) })
-                    }
-                    step='any'
-                    min='0'
+                    value={row.minLoa}
+                    onValueChange={(next) => setTier(i, { minLoa: next ?? 0 })}
                   />
                 </TableCell>
                 <TableCell>
-                  <DecimalInput
+                  <NumberInput
                     className='text-base tabular-nums'
                     value={row.amount}
-                    onChange={(n) => setTier(i, { amount: n })}
+                    onValueChange={(next) => setTier(i, { amount: next ?? 0 })}
                   />
                 </TableCell>
                 <TableCell>
@@ -297,10 +281,10 @@ export function CargoAgencyRateTable({
             <TableRow key={ct.code}>
               <TableCell className='text-base'>{ct.displayLabel}</TableCell>
               <TableCell>
-                <DecimalInput
+                <NumberInput
                   className='text-base tabular-nums'
                   value={rateFor(ct.code)}
-                  onChange={(n) => setRate(ct.code, n)}
+                  onValueChange={(next) => setRate(ct.code, next ?? 0)}
                 />
               </TableCell>
             </TableRow>

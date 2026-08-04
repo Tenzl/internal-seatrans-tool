@@ -79,23 +79,15 @@ export const DASHBOARD_CATALOG: readonly NavigationCategory[] = [
         route: '/booking/documents',
         navigation: [
           {
-            title: 'Create Order',
-            url: '/booking/documents/booking-confirmation',
+            title: 'Create Import Booking',
+            url: '/booking/documents/booking-confirmation?flow=IMPORT',
           },
           {
-            title: 'Create Bill of Lading',
-            url: '/booking/documents/bill-of-lading',
+            title: 'Create Export Booking',
+            url: '/booking/documents/booking-confirmation?flow=EXPORT',
           },
           {
-            title: 'Create Arrival Notice',
-            url: '/booking/documents/arrival-notice',
-          },
-          {
-            title: 'Create Delivery Order',
-            url: '/booking/documents/delivery-order',
-          },
-          {
-            title: 'History record',
+            title: 'History Record',
             url: '/booking/documents/history',
           },
         ],

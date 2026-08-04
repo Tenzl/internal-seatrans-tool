@@ -69,11 +69,11 @@ describe('transport document history actions', () => {
     const sections = getHistoryDocumentSections(record)
 
     expect(sections[0]).toMatchObject({
-      title: 'Document',
+      title: 'Identity',
       fields: [
-        { label: 'Agent', value: 'SeaTrans' },
-        { label: 'Date', value: '2026-07-30' },
         { label: 'AN No.', value: 'AN 24/001' },
+        { label: 'Date', value: '2026-07-30' },
+        { label: 'Agent', value: 'SeaTrans' },
       ],
     })
     expect(sections.at(-1)).toMatchObject({
@@ -116,7 +116,12 @@ describe('transport document history actions', () => {
     expect(
       getTransportDocumentRowCapabilities(
         { ...record, lockedAt: '2026-07-31T00:00:00.000Z' },
-        { canLock: true, canUnlock: false, canArchive: false, canHardDelete: true }
+        {
+          canLock: true,
+          canUnlock: false,
+          canArchive: false,
+          canHardDelete: true,
+        }
       )
     ).toMatchObject({
       canLock: false,
@@ -129,7 +134,12 @@ describe('transport document history actions', () => {
     expect(
       getTransportDocumentRowCapabilities(
         { ...record, lockedAt: '2026-07-31T00:00:00.000Z' },
-        { canLock: true, canUnlock: true, canArchive: false, canHardDelete: true }
+        {
+          canLock: true,
+          canUnlock: true,
+          canArchive: false,
+          canHardDelete: true,
+        }
       )
     ).toMatchObject({
       canLock: false,

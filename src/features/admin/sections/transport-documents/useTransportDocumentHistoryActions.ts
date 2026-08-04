@@ -1,6 +1,6 @@
 import { useState } from 'react'
-import { useRouter } from 'next/navigation'
 import { toast } from '@/shared/utils/toast'
+import { useRouter } from 'next/navigation'
 import type {
   TransportDocumentDeleteMode,
   TransportDocumentRecord,
@@ -16,8 +16,9 @@ export function useTransportDocumentHistoryActions(options: {
     useState<TransportDocumentRecord | null>(null)
   const [deleteMode, setDeleteMode] =
     useState<TransportDocumentDeleteMode>('soft')
-  const [lockTarget, setLockTarget] =
-    useState<TransportDocumentRecord | null>(null)
+  const [lockTarget, setLockTarget] = useState<TransportDocumentRecord | null>(
+    null
+  )
   const [unlockTarget, setUnlockTarget] =
     useState<TransportDocumentRecord | null>(null)
   const [isDeleting, setIsDeleting] = useState(false)

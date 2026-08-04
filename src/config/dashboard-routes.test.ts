@@ -58,7 +58,7 @@ describe('dashboard route policy', () => {
         role: 'ROLE_OPERATOR',
         sections: ['booking-documents'],
       })
-    ).toBe('/booking/documents/booking-confirmation')
+    ).toBe('/booking/documents/booking-confirmation?flow=IMPORT')
     expect(
       firstAccessibleDashboardPath({
         role: 'ROLE_OPERATOR',
@@ -88,7 +88,7 @@ describe('dashboard route policy', () => {
     expect(canAccessPath('/booking/documents', operator)).toBe(false)
   })
 
-  it('shows four transport-document entries under Booking Management', () => {
+  it('shows the three Booking Management actions', () => {
     const general = sidebarData.navGroups.find(
       (group) => group.title === 'General'
     )
@@ -96,25 +96,17 @@ describe('dashboard route policy', () => {
       (item) => item.title === 'Booking Management'
     )
 
-    expect(booking?.items ?? []).toEqual([
+    expect(booking?.items).toEqual([
       {
-        title: 'Create Order',
-        url: '/booking/documents/booking-confirmation',
+        title: 'Create Import Booking',
+        url: '/booking/documents/booking-confirmation?flow=IMPORT',
       },
       {
-        title: 'Create Bill of Lading',
-        url: '/booking/documents/bill-of-lading',
+        title: 'Create Export Booking',
+        url: '/booking/documents/booking-confirmation?flow=EXPORT',
       },
       {
-        title: 'Create Arrival Notice',
-        url: '/booking/documents/arrival-notice',
-      },
-      {
-        title: 'Create Delivery Order',
-        url: '/booking/documents/delivery-order',
-      },
-      {
-        title: 'History record',
+        title: 'History Record',
         url: '/booking/documents/history',
       },
     ])

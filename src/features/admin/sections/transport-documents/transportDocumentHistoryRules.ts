@@ -1,3 +1,4 @@
+import { buildBookingWorkflowUrl } from './bookingWorkflow'
 import type {
   CargoRow,
   TransportDocumentActionPermissions,
@@ -85,6 +86,14 @@ export function getTransportDocumentDetailParams(
 export function buildTransportDocumentDetailUrl(
   record: TransportDocumentRecord
 ): string {
+  if (record.documentType === 'booking') {
+    return buildBookingWorkflowUrl(
+      record.bookingFlow ?? 'EXPORT',
+      record.id,
+      'booking',
+      record
+    )
+  }
   const path = getTransportDocumentEditorPath(record.documentType)
   const params = new URLSearchParams(getTransportDocumentDetailParams(record))
   return `${path}?${params.toString()}`
@@ -111,7 +120,8 @@ function toDisplayValue(
 ): string {
   if (value == null || value === '') return '—'
   const raw = String(value)
-  const optionLabel = field?.options?.find((option) => option.value === raw)
-    ?.label
+  const optionLabel = field?.options?.find(
+    (option) => option.value === raw
+  )?.label
   return optionLabel ?? raw
 }

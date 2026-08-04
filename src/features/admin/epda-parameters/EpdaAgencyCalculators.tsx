@@ -6,9 +6,9 @@ import type {
   CargoAgencyRate,
   GrtTier,
 } from '@/modules/inquiries/components/common/quoteParameters'
+import { NumberInput } from '@/shared/components/NumberInput'
 import { useI18n } from '@/shared/i18n/I18nProvider'
 import { parseFiniteNumber } from '@/shared/utils/parseNumber'
-import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import {
   Select,
@@ -67,12 +67,10 @@ export function CargoAgencyCalculator({ rates }: { rates: CargoAgencyRate[] }) {
           <Label className='text-sm font-medium text-muted-foreground'>
             {t('cargoAgencyCalc.mtLabel')}
           </Label>
-          <Input
-            type='number'
-            inputMode='decimal'
+          <NumberInput
             placeholder='0'
             value={mtText}
-            onChange={(e) => setMtText(e.target.value)}
+            onValueChange={(_value, canonical) => setMtText(canonical)}
             className='h-11 text-base tabular-nums'
           />
         </div>
@@ -115,12 +113,10 @@ export function AgencyByGrtCalculator({ tiers }: { tiers: GrtTier[] }) {
         <Label className='text-sm font-medium text-muted-foreground'>
           {t('tonnageCalc.grtLabel')}
         </Label>
-        <Input
-          type='number'
-          inputMode='decimal'
+        <NumberInput
           placeholder='0'
           value={grtText}
-          onChange={(e) => setGrtText(e.target.value)}
+          onValueChange={(_value, canonical) => setGrtText(canonical)}
           className='h-11 text-base tabular-nums'
         />
       </div>

@@ -1,5 +1,6 @@
 'use client'
 
+import { formatPortDisplay } from '@/modules/logistics/portDisplay'
 import { useI18n } from '@/shared/i18n/I18nProvider'
 import { ChevronDown, ChevronUp } from 'lucide-react'
 import { cn } from '@/lib/utils'
@@ -17,7 +18,10 @@ export type EpdaArea = (typeof AREA_OPTIONS)[number]['value']
 
 interface EpdaPortOption {
   id: number
+  name?: string | null
   portOfCall?: string | null
+  countryCode?: string | null
+  code?: string | null
 }
 
 interface EpdaPortSelectorProps {
@@ -43,6 +47,14 @@ export function EpdaPortSelector({
   onCollapsedChange,
 }: EpdaPortSelectorProps) {
   const { t } = useI18n()
+  const selectedPort = ports.find((item) => item.portOfCall === port)
+  const selectedPortLabel = selectedPort
+    ? formatPortDisplay({
+        name: selectedPort.name?.trim() || port,
+        countryCode: selectedPort.countryCode,
+        code: selectedPort.code,
+      })
+    : port
 
   return (
     <>
@@ -55,7 +67,7 @@ export function EpdaPortSelector({
           <span className='min-w-0 truncate text-sm'>
             <span className='text-muted-foreground'>{getAreaLabel(area)}</span>
             <span className='mx-1.5 text-muted-foreground'>·</span>
-            <span className='font-medium'>{port}</span>
+            <span className='font-medium'>{selectedPortLabel}</span>
           </span>
           <span className='flex shrink-0 items-center gap-1 text-xs font-medium text-primary'>
             {collapsed ? t('common.edit') : t('epda.collapse')}
@@ -120,12 +132,18 @@ export function EpdaPortSelector({
                       ? t('epda.loadingPorts')
                       : t('epda.selectPortOfCall')
                 }
-              />
+              >
+                {selectedPortLabel || null}
+              </SelectValue>
             </SelectTrigger>
             <SelectContent>
               {ports.map((item) => (
                 <SelectItem key={item.id} value={item.portOfCall as string}>
-                  {item.portOfCall}
+                  {formatPortDisplay({
+                    name: item.name?.trim() || item.portOfCall || '',
+                    countryCode: item.countryCode,
+                    code: item.code,
+                  })}
                 </SelectItem>
               ))}
             </SelectContent>

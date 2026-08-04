@@ -44,6 +44,8 @@ export interface PortOption {
   id: number
   name: string
   provinceName?: string | null
+  code?: string | null
+  countryCode?: string | null
 }
 
 export interface ListPortsParams {

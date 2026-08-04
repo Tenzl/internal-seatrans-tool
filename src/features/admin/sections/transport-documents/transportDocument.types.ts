@@ -2,6 +2,10 @@ export const TRANSPORT_DOCUMENT_TYPES = ['an', 'booking', 'do', 'bl'] as const
 
 export type TransportDocumentType = (typeof TRANSPORT_DOCUMENT_TYPES)[number]
 
+export const BOOKING_FLOWS = ['IMPORT', 'EXPORT'] as const
+
+export type BookingFlow = (typeof BOOKING_FLOWS)[number]
+
 export const TRANSPORT_DOCUMENT_STATUSES = ['PROCESSING', 'COMPLETED'] as const
 
 export type TransportDocumentStatus =
@@ -142,6 +146,9 @@ export type TransportDocumentPayload =
 export interface TransportDocumentRecord {
   id: number
   documentType: TransportDocumentType
+  /** Optional during rolling deployment for records created before workflows. */
+  bookingFlow?: BookingFlow | null
+  bookingId?: number | null
   referenceNumber: string | null
   payload: TransportDocumentPayload
   status: TransportDocumentStatus
@@ -157,6 +164,12 @@ export interface TransportDocumentRecord {
     fullName: string | null
     email: string | null
   } | null
+}
+
+export interface BookingWorkflow {
+  id: number
+  flow: BookingFlow
+  documents: Partial<Record<TransportDocumentType, TransportDocumentRecord>>
 }
 
 export type TransportDocumentDeleteMode = 'soft' | 'hard'

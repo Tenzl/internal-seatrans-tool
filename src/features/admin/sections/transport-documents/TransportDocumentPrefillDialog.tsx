@@ -11,11 +11,11 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog'
-import { getTransportDocumentDefinition } from './transportDocumentFormConfig'
 import type {
   TransportDocumentRecord,
   TransportDocumentType,
 } from './transportDocument.types'
+import { getTransportDocumentDefinition } from './transportDocumentFormConfig'
 
 type TransportDocumentPrefillDialogProps = {
   open: boolean

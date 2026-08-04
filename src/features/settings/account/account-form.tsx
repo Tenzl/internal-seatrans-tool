@@ -2,6 +2,11 @@ import { z } from 'zod'
 import { useForm } from 'react-hook-form'
 import { CaretSortIcon, CheckIcon } from '@radix-ui/react-icons'
 import { zodResolver } from '@hookform/resolvers/zod'
+import { DateTimePicker } from '@/shared/components/DateTimePicker'
+import {
+  formatLocalDateTime,
+  parseLocalDateTime,
+} from '@/shared/utils/dateTimePicker'
 import { showSubmittedData } from '@/lib/show-submitted-data'
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
@@ -28,7 +33,6 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from '@/components/ui/popover'
-import { DatePicker } from '@/components/date-picker'
 
 const languages = [
   { label: 'English', value: 'en' },
@@ -95,7 +99,17 @@ export function AccountForm() {
           render={({ field }) => (
             <FormItem className='flex flex-col'>
               <FormLabel>Date of birth</FormLabel>
-              <DatePicker selected={field.value} onSelect={field.onChange} />
+              <DateTimePicker
+                value={
+                  field.value ? formatLocalDateTime(field.value, false) : ''
+                }
+                onValueChange={(value) =>
+                  field.onChange(parseLocalDateTime(value))
+                }
+                minDate={new Date(1900, 0, 1)}
+                maxDate={new Date()}
+                required
+              />
               <FormDescription>
                 Your date of birth is used to calculate your age.
               </FormDescription>

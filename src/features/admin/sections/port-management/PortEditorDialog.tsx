@@ -2,6 +2,7 @@
 
 import { type FormEvent } from 'react'
 import type { Province } from '@/modules/logistics/services/provinceService'
+import { NumberInput } from '@/shared/components/NumberInput'
 import { PORT_AREA_OPTIONS } from '@/shared/domain/portArea'
 import { Loader2, Plus } from 'lucide-react'
 import { Button } from '@/components/ui/button'
@@ -181,26 +182,24 @@ export function PortEditorDialog({
 
             <div className='space-y-2'>
               <Label htmlFor='port-latitude'>Latitude (optional)</Label>
-              <Input
+              <NumberInput
                 id='port-latitude'
-                type='number'
-                inputMode='decimal'
-                step='any'
                 value={form.latitude}
-                onChange={(event) => onChange('latitude', event.target.value)}
+                onValueChange={(_value, canonical) =>
+                  onChange('latitude', canonical)
+                }
                 placeholder='e.g., 10.73'
               />
             </div>
 
             <div className='space-y-2'>
               <Label htmlFor='port-longitude'>Longitude (optional)</Label>
-              <Input
+              <NumberInput
                 id='port-longitude'
-                type='number'
-                inputMode='decimal'
-                step='any'
                 value={form.longitude}
-                onChange={(event) => onChange('longitude', event.target.value)}
+                onValueChange={(_value, canonical) =>
+                  onChange('longitude', canonical)
+                }
                 placeholder='e.g., 106.71'
               />
             </div>

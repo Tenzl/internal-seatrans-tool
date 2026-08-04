@@ -93,7 +93,7 @@
 /* Decorative grid backdrop used by the ported gallery image hub. */
 .maritime-grid-subtle {
   background-image:
-    linear-gradient(to right, hsl(var(--muted)) 1px, transparent 1px),
-    linear-gradient(to bottom, hsl(var(--muted)) 1px, transparent 1px);
+    linear-gradient(to right, color-mix(in oklch, var(--border) 55%, transparent) 1px, transparent 1px),
+    linear-gradient(to bottom, color-mix(in oklch, var(--border) 55%, transparent) 1px, transparent 1px);
   background-size: 32px 32px;
 }

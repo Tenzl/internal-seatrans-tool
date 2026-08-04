@@ -10,9 +10,10 @@ import type {
   QuoteVariant,
 } from '@/modules/inquiries/components/common/quoteParameters'
 import type { EpdaParameterValues } from '@/modules/inquiries/services/epdaParametersService'
+import { NumberInput } from '@/shared/components/NumberInput'
 import { useI18n } from '@/shared/i18n/I18nProvider'
+import { formatNumberInputValue } from '@/shared/utils/numberInput'
 import { parseFiniteNumber } from '@/shared/utils/parseNumber'
-import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import {
   boldNumbers,
@@ -20,7 +21,6 @@ import {
   resolveGrtBand,
   ScanRow,
 } from './EpdaCalculatorPrimitives'
-import { formatDecimalValue } from './decimalInputUtils'
 
 export function GarbageCalculator({
   variant,
@@ -51,12 +51,10 @@ export function GarbageCalculator({
       <Label className='text-sm font-medium text-muted-foreground'>
         {label}
       </Label>
-      <Input
-        type='number'
-        inputMode='decimal'
+      <NumberInput
         placeholder='0'
         value={value}
-        onChange={(e) => onChange(e.target.value)}
+        onValueChange={(_number, canonical) => onChange(canonical)}
         className='h-11 text-base tabular-nums'
       />
     </div>
@@ -146,12 +144,10 @@ export function TonnageDuesCalculator({
         <Label className='text-sm font-medium text-muted-foreground'>
           {t('tonnageCalc.grtLabel')}
         </Label>
-        <Input
-          type='number'
-          inputMode='decimal'
+        <NumberInput
           placeholder='0'
           value={grtText}
-          onChange={(e) => setGrtText(e.target.value)}
+          onValueChange={(_value, canonical) => setGrtText(canonical)}
           className='h-11 text-base tabular-nums'
         />
       </div>
@@ -208,7 +204,7 @@ export function PilotageCalculator({
     : hours.pilotageThirdMiles
   const [grtText, setGrtText] = useState('')
   const [milesText, setMilesText] = useState(() =>
-    formatDecimalValue(defaultMiles)
+    formatNumberInputValue(defaultMiles)
   )
   const grt = parseFiniteNumber(grtText) ?? 0
   const miles = parseFiniteNumber(milesText) ?? 0
@@ -223,12 +219,10 @@ export function PilotageCalculator({
           <Label className='text-sm font-medium text-muted-foreground'>
             {t('tonnageCalc.grtLabel')}
           </Label>
-          <Input
-            type='number'
-            inputMode='decimal'
+          <NumberInput
             placeholder='0'
             value={grtText}
-            onChange={(e) => setGrtText(e.target.value)}
+            onValueChange={(_value, canonical) => setGrtText(canonical)}
             className='h-11 text-base tabular-nums'
           />
         </div>
@@ -238,12 +232,10 @@ export function PilotageCalculator({
               ? t('pilotageCalc.milesLabel')
               : t('pilotageCalc.positionLabel')}
           </Label>
-          <Input
-            type='number'
-            inputMode='decimal'
+          <NumberInput
             placeholder='0'
             value={milesText}
-            onChange={(e) => setMilesText(e.target.value)}
+            onValueChange={(_value, canonical) => setMilesText(canonical)}
             className='h-11 text-base tabular-nums'
           />
         </div>
@@ -373,12 +365,10 @@ export function MoorCalculator({
         <Label className='text-sm font-medium text-muted-foreground'>
           {t('tonnageCalc.grtLabel')}
         </Label>
-        <Input
-          type='number'
-          inputMode='decimal'
+        <NumberInput
           placeholder='0'
           value={grtText}
-          onChange={(e) => setGrtText(e.target.value)}
+          onValueChange={(_value, canonical) => setGrtText(canonical)}
           className='h-11 text-base tabular-nums'
         />
       </div>
@@ -433,12 +423,10 @@ export function BerthDuesCalculator({
       <Label className='text-sm font-medium text-muted-foreground'>
         {label}
       </Label>
-      <Input
-        type='number'
-        inputMode='decimal'
+      <NumberInput
         placeholder='0'
         value={value}
-        onChange={(e) => onChange(e.target.value)}
+        onValueChange={(_number, canonical) => onChange(canonical)}
         className='h-11 text-base tabular-nums'
       />
     </div>

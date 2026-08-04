@@ -1,3 +1,5 @@
+import { PortNameSearchSelect } from '@/modules/logistics/components/PortNameSearchSelect'
+import { DateTimePicker } from '@/shared/components/DateTimePicker'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import {
@@ -62,14 +64,25 @@ export function TransportDocumentField({
             ))}
           </SelectContent>
         </Select>
+      ) : field.kind === 'port-name' ? (
+        <PortNameSearchSelect
+          id={id}
+          value={value}
+          onValueChange={onChange}
+          placeholder={field.placeholder ?? 'Search port name...'}
+        />
+      ) : field.kind === 'date' || field.kind === 'datetime-local' ? (
+        <DateTimePicker
+          id={id}
+          value={value}
+          onValueChange={onChange}
+          includeTime={field.kind === 'datetime-local'}
+          placeholder={field.placeholder}
+        />
       ) : (
         <Input
           id={id}
-          type={
-            field.kind === 'date' || field.kind === 'datetime-local'
-              ? field.kind
-              : 'text'
-          }
+          type='text'
           value={value}
           maxLength={500}
           placeholder={field.placeholder}

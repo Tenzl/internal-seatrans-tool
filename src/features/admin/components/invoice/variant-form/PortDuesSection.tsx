@@ -1,7 +1,7 @@
 import { mergeEpdaFieldClasses } from '@/modules/inquiries/components/common/epdaCustomerFieldTracking'
 import { getEpdaVariantConfig } from '@/modules/inquiries/components/common/quoteForm'
+import { NumberInput } from '@/shared/components/NumberInput'
 import { useI18n } from '@/shared/i18n/I18nProvider'
-import { Input } from '@/components/ui/input'
 import {
   Select,
   SelectContent,
@@ -79,12 +79,12 @@ export function PortDuesSection({
           <FieldLabel htmlFor='berthHours'>
             {isHcmAnchorage ? t('epda.buoyHours') : t('epda.berthHours')}
           </FieldLabel>
-          <Input
+          <NumberInput
             id='berthHours'
-            type='number'
             value={values.berthHours}
-            onChange={(event) => handlers.setBerthHours(event.target.value)}
-            min='0'
+            onValueChange={(_value, canonical) =>
+              handlers.setBerthHours(canonical)
+            }
           />
         </div>
 
@@ -92,12 +92,12 @@ export function PortDuesSection({
           <FieldLabel htmlFor='anchorageHours'>
             {t('epda.anchorageHours')}
           </FieldLabel>
-          <Input
+          <NumberInput
             id='anchorageHours'
-            type='number'
             value={values.anchorageHours}
-            onChange={(event) => handlers.setAnchorageHours(event.target.value)}
-            min='0'
+            onValueChange={(_value, canonical) =>
+              handlers.setAnchorageHours(canonical)
+            }
           />
         </div>
 
@@ -106,14 +106,12 @@ export function PortDuesSection({
             <FieldLabel htmlFor='qnPilotageMiles'>
               {t('epda.buoyPosition')}
             </FieldLabel>
-            <Input
+            <NumberInput
               id='qnPilotageMiles'
-              type='number'
               value={values.qnPilotageMiles}
-              onChange={(event) =>
-                handlers.setQnPilotageMiles(event.target.value)
+              onValueChange={(_value, canonical) =>
+                handlers.setQnPilotageMiles(canonical)
               }
-              min='0'
             />
           </div>
         ) : (
@@ -121,14 +119,12 @@ export function PortDuesSection({
             <FieldLabel htmlFor='pilotageThirdMiles'>
               {t('epda.buoyPosition')}
             </FieldLabel>
-            <Input
+            <NumberInput
               id='pilotageThirdMiles'
-              type='number'
               value={values.pilotageThirdMiles}
-              onChange={(event) =>
-                handlers.setPilotageThirdMiles(event.target.value)
+              onValueChange={(_value, canonical) =>
+                handlers.setPilotageThirdMiles(canonical)
               }
-              min='0'
             />
           </div>
         )}
@@ -229,16 +225,13 @@ export function PortDuesSection({
             <FieldLabel htmlFor='tugAssistanceAmount'>
               {t('epda.tugAssistance')}
             </FieldLabel>
-            <Input
+            <NumberInput
               id='tugAssistanceAmount'
-              type='number'
               value={values.tugAssistanceAmount}
-              onChange={(event) =>
-                handlers.setTugAssistanceAmount(event.target.value)
+              onValueChange={(_value, canonical) =>
+                handlers.setTugAssistanceAmount(canonical)
               }
               placeholder='0'
-              min='0'
-              step='any'
             />
             <p className='text-xs text-muted-foreground'>
               {t('epda.tugAssistanceHint')}
@@ -252,12 +245,11 @@ export function PortDuesSection({
           <FieldLabel htmlFor='oceanFrtRateUsdPerMt'>
             {t('epda.oceanFrt')}
           </FieldLabel>
-          <Input
+          <NumberInput
             id='oceanFrtRateUsdPerMt'
-            type='number'
             value={values.oceanFrtRateUsdPerMt}
-            onChange={(event) =>
-              handlers.setOceanFrtRateUsdPerMt(event.target.value)
+            onValueChange={(_value, canonical) =>
+              handlers.setOceanFrtRateUsdPerMt(canonical)
             }
             placeholder={
               computed.isExportPlsAdviseMode
@@ -266,7 +258,7 @@ export function PortDuesSection({
                   ? '0'
                   : 'e.g. 16'
             }
-            min='0'
+            min={0}
             aria-label='Ocean freight rate USD per metric ton'
             disabled={computed.isOceanFreightInputDisabled}
             className={disabledFieldTextClass}
@@ -277,16 +269,13 @@ export function PortDuesSection({
           <FieldLabel htmlFor='boatHireQuarantineAmount'>
             {t('epda.boatHireQuarantine')}
           </FieldLabel>
-          <Input
+          <NumberInput
             id='boatHireQuarantineAmount'
-            type='number'
             value={values.boatHireQuarantineAmount}
-            onChange={(event) =>
-              handlers.setBoatHireQuarantineAmount(event.target.value)
+            onValueChange={(_value, canonical) =>
+              handlers.setBoatHireQuarantineAmount(canonical)
             }
             placeholder='0'
-            min='0'
-            step='any'
           />
         </div>
 
@@ -299,14 +288,13 @@ export function PortDuesSection({
           >
             {t('epda.tallyFee')}
           </FieldLabel>
-          <Input
+          <NumberInput
             id='tallyFeeAmount'
-            type='number'
             value={values.tallyFeeAmount}
-            onChange={(event) => handlers.setTallyFeeAmount(event.target.value)}
+            onValueChange={(_value, canonical) =>
+              handlers.setTallyFeeAmount(canonical)
+            }
             placeholder={computed.isTallyFeeEligibleCargo ? '0' : t('ph.nil')}
-            min='0'
-            step='any'
             disabled={!computed.isTallyFeeEligibleCargo}
             className={disabledFieldTextClass}
           />
@@ -350,16 +338,13 @@ export function PortDuesSection({
             <FieldLabel htmlFor='shorecraneHireUsdPerMt'>
               {t('epda.shorecraneRate')}
             </FieldLabel>
-            <Input
+            <NumberInput
               id='shorecraneHireUsdPerMt'
-              type='number'
               value={values.shorecraneHireUsdPerMt}
-              onChange={(event) =>
-                handlers.setShorecraneHireUsdPerMt(event.target.value)
+              onValueChange={(_value, canonical) =>
+                handlers.setShorecraneHireUsdPerMt(canonical)
               }
               placeholder='e.g. 2.5'
-              min='0'
-              step='any'
             />
           </div>
         )}

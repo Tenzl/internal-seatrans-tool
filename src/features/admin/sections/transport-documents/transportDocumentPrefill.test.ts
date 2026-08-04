@@ -2,8 +2,8 @@ import { describe, expect, it } from 'vitest'
 import {
   applyPrefillFromPrevious,
   getPrefillSourceType,
-  prefillArrivalNoticeFromBl,
-  prefillBillOfLadingFromOrder,
+  prefillArrivalNoticeFromBooking,
+  prefillBillOfLadingFromArrivalNotice,
   prefillDeliveryOrderFromAn,
 } from './transportDocumentPrefill'
 import {
@@ -16,61 +16,65 @@ import {
 } from './transportDocumentSchemas'
 
 describe('transportDocumentPrefill', () => {
-  it('resolves previous types in Order → BL → AN → DO chain', () => {
+  it('resolves previous types for both booking workflow branches', () => {
     expect(getPrefillSourceType('booking')).toBeNull()
-    expect(getPrefillSourceType('bl')).toBe('booking')
-    expect(getPrefillSourceType('an')).toBe('bl')
+    expect(getPrefillSourceType('an')).toBe('booking')
+    expect(getPrefillSourceType('bl')).toBe('an')
     expect(getPrefillSourceType('do')).toBe('an')
   })
 
-  it('maps Order fields onto BL without touching FBL identity', () => {
-    const order = emptyBookingConfirmation()
-    order.placeOfReceipt = 'QUI NHON'
-    order.portOfLoading = 'DA NANG'
-    order.portOfDischarge = 'KOBE'
-    order.placeOfDelivery = 'KOBE'
-    order.vesselVoyage = 'YOUCAN / 001E'
-    order.grossWeight = '24000'
-    order.measurement = '20'
-    order.commodity = 'STONE'
-    order.date = '2026-08-05'
+  it('maps shared Booking route, schedule and cargo fields onto AN', () => {
+    const booking = emptyBookingConfirmation()
+    booking.bookingNumber = 'BK-101'
+    booking.placeOfReceipt = 'QUI NHON'
+    booking.portOfLoading = 'DA NANG'
+    booking.portOfDischarge = 'KOBE'
+    booking.placeOfDelivery = 'KOBE'
+    booking.vesselVoyage = 'YOUCAN / 001E'
+    booking.grossWeight = '24000'
+    booking.measurement = '20'
+    booking.commodity = 'STONE'
+    booking.date = '2026-08-05'
+    booking.etd = '2026-08-06'
+    booking.eta = '2026-08-12'
 
-    const current = emptyBillOfLading()
-    current.fblNumber = 'KEEP-FBL'
-    current.blFormVariant = 'original'
-
-    const next = prefillBillOfLadingFromOrder(order, current)
-    expect(next.fblNumber).toBe('KEEP-FBL')
-    expect(next.blFormVariant).toBe('original')
-    expect(next.placeOfReceipt).toBe('QUI NHON')
-    expect(next.oceanVessel).toBe('YOUCAN')
-    expect(next.voyageNumber).toBe('001E')
-    expect(next.descriptionOfGoods).toBe('STONE')
-    expect(next.dateOfIssue).toBe('2026-08-05')
-  })
-
-  it('maps BL parties and route onto AN', () => {
-    const bl = emptyBillOfLading()
-    bl.fblNumber = 'ST2607036'
-    bl.consignor = 'SHIPPER CO'
-    bl.consignedToOrderOf = 'CONSIGNEE CO'
-    bl.notifyAddress = 'NOTIFY CO'
-    bl.oceanVessel = 'SITC'
-    bl.voyageNumber = '2615N'
-    bl.marksAndNumbers = 'N/M'
-    bl.blFormVariant = 'surrendered'
-
-    const next = prefillArrivalNoticeFromBl(bl, emptyArrivalNotice())
-    expect(next.shipper).toBe('SHIPPER CO')
-    expect(next.consignee).toBe('CONSIGNEE CO')
-    expect(next.notifyParty).toBe('NOTIFY CO')
-    expect(next.vesselVoyage).toBe('SITC/2615N')
-    expect(next.hblNumber).toBe('ST2607036')
-    expect(next.billOfLadingType).toBe('Surrendered')
+    const next = prefillArrivalNoticeFromBooking(booking, emptyArrivalNotice())
     expect(next.anNumber).toBe('')
+    expect(next.shipmentNumber).toBe('BK-101')
+    expect(next.placeOfReceipt).toBe('QUI NHON')
+    expect(next.vesselVoyage).toBe('YOUCAN / 001E')
+    expect(next.etdEta).toBe('2026-08-06 / 2026-08-12')
+    expect(next.cargoRows[0]?.descriptionOfGoods).toBe('STONE')
   })
 
-  it('copies AN cargo rows onto DO', () => {
+  it('maps shared AN parties, route and cargo fields onto BL', () => {
+    const an = emptyArrivalNotice()
+    an.hblNumber = 'ST2607036'
+    an.shipper = 'SHIPPER CO'
+    an.consignee = 'CONSIGNEE CO'
+    an.notifyParty = 'NOTIFY CO'
+    an.vesselVoyage = 'SITC / 2615N'
+    an.marks = 'N/M'
+    an.volume = '10 PKGS'
+    an.cargoRows[0] = {
+      containerSealNumber: 'CONT1',
+      quantity: '10',
+      descriptionOfGoods: 'STONE',
+      grossWeight: '100',
+      measurement: '2',
+    }
+
+    const next = prefillBillOfLadingFromArrivalNotice(an, emptyBillOfLading())
+    expect(next.fblNumber).toBe('ST2607036')
+    expect(next.consignor).toBe('SHIPPER CO')
+    expect(next.consignedToOrderOf).toBe('CONSIGNEE CO')
+    expect(next.notifyAddress).toBe('NOTIFY CO')
+    expect(next.oceanVessel).toBe('SITC')
+    expect(next.voyageNumber).toBe('2615N')
+    expect(next.descriptionOfGoods).toBe('STONE')
+  })
+
+  it('copies AN cargo rows onto DO without sharing mutable arrays', () => {
     const an = emptyArrivalNotice()
     an.mblNumber = 'MBL1'
     an.hblNumber = 'HBL1'
@@ -91,16 +95,16 @@ describe('transportDocumentPrefill', () => {
     expect(next.doNumber).toBe('')
   })
 
-  it('applyPrefillFromPrevious dispatches by type pair', () => {
-    const order = emptyBookingConfirmation()
-    order.portOfLoading = 'DAD'
-    const bl = applyPrefillFromPrevious(
-      'bl',
+  it('dispatches prefill only for the configured previous step', () => {
+    const booking = emptyBookingConfirmation()
+    booking.portOfLoading = 'DAD'
+    const an = applyPrefillFromPrevious(
+      'an',
       'booking',
-      order,
-      emptyBillOfLading()
+      booking,
+      emptyArrivalNotice()
     )
-    expect(bl.portOfLoading).toBe('DAD')
+    expect(an.portOfLoading).toBe('DAD')
   })
 })
 

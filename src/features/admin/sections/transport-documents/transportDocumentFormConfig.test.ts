@@ -15,16 +15,21 @@ const fieldOrder = (type: 'an' | 'booking' | 'do' | 'bl') =>
     section.fields.map((field) => field.key)
   )
 
+const fieldKind = (type: 'an' | 'booking' | 'do' | 'bl', key: string) =>
+  TRANSPORT_DOCUMENT_FORM_SECTIONS[type]
+    .flatMap((section) => section.fields)
+    .find((field) => field.key === key)?.kind
+
 describe('transport document form config', () => {
-  it('lists documents in lifecycle order with Order label', () => {
+  it('lists Booking and AN before the two final document types', () => {
     expect(TRANSPORT_DOCUMENTS.map((document) => document.type)).toEqual([
       'booking',
-      'bl',
       'an',
+      'bl',
       'do',
     ])
-    expect(TRANSPORT_DOCUMENTS[0]?.label).toBe('Order')
-    expect(TRANSPORT_DOCUMENTS[0]?.shortLabel).toBe('Order')
+    expect(TRANSPORT_DOCUMENTS[0]?.label).toBe('Booking')
+    expect(TRANSPORT_DOCUMENTS[0]?.shortLabel).toBe('Booking')
   })
 
   it('keeps the official field order for every document', () => {
@@ -147,6 +152,49 @@ describe('transport document form config', () => {
     ])
   })
 
+  it('uses paginated port search for every port and place field', () => {
+    const portFields = {
+      booking: [
+        'placeOfReceipt',
+        'portOfLoading',
+        'portOfDischarge',
+        'placeOfDelivery',
+        'transitPort',
+        'pickupPlace',
+        'dropoffPlace',
+      ],
+      bl: [
+        'placeOfIssue',
+        'placeOfReceipt',
+        'portOfLoading',
+        'portOfDischarge',
+        'placeOfDelivery',
+      ],
+      an: [
+        'placeOfReceipt',
+        'portOfLoading',
+        'portOfDischarge',
+        'placeOfDelivery',
+        'finalDestination',
+      ],
+      do: [
+        'placeOfReceipt',
+        'portOfLoading',
+        'portOfDischarge',
+        'placeOfDelivery',
+        'finalDestination',
+      ],
+    } as const
+
+    Object.entries(portFields).forEach(([type, keys]) => {
+      keys.forEach((key) => {
+        expect(fieldKind(type as keyof typeof portFields, key)).toBe(
+          'port-name'
+        )
+      })
+    })
+  })
+
   it('builds safe PDF names from each document reference', () => {
     const forms = createEmptyTransportDocuments()
     forms.an.anNumber = ' AN 25/01 '
@@ -155,8 +203,8 @@ describe('transport document form config', () => {
     expect(buildTransportDocumentFileName('an', forms, 'AN')).toBe(
       'AN-AN-25-01.pdf'
     )
-    expect(buildTransportDocumentFileName('booking', forms, 'Order')).toBe(
-      'Order-BK_100.pdf'
+    expect(buildTransportDocumentFileName('booking', forms, 'Booking')).toBe(
+      'Booking-BK_100.pdf'
     )
     expect(buildTransportDocumentFileName('do', forms, 'DO')).toBe('DO.pdf')
   })

@@ -9,32 +9,24 @@ import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import type { TransportDocumentRecord } from './transportDocument.types'
 
-const DOCUMENT_TYPE_LABELS: Record<TransportDocumentRecord['documentType'], string> =
-  {
-    an: 'Arrival Notice',
-    booking: 'Order',
-    do: 'Delivery Order',
-    bl: 'Bill of Lading',
-  }
-
-type BuildTransportDocumentHistoryColumnsOptions = {
+type BuildBookingHistoryColumnsOptions = {
   renderActions: (record: TransportDocumentRecord) => ReactNode
 }
 
-export function buildTransportDocumentHistoryColumns({
+export function buildBookingHistoryColumns({
   renderActions,
-}: BuildTransportDocumentHistoryColumnsOptions): ColumnDef<TransportDocumentRecord>[] {
+}: BuildBookingHistoryColumnsOptions): ColumnDef<TransportDocumentRecord>[] {
   return [
     {
       id: 'document',
-      accessorKey: 'documentType',
+      accessorKey: 'bookingFlow',
       header: ({ column }) =>
-        renderSortableHeader('Document', () =>
+        renderSortableHeader('Direction', () =>
           column.toggleSorting(column.getIsSorted() === 'asc')
         ),
       cell: ({ row }) => (
         <span className='font-medium'>
-          {DOCUMENT_TYPE_LABELS[row.original.documentType]}
+          {row.original.bookingFlow === 'IMPORT' ? 'Import' : 'Export'}
         </span>
       ),
     },

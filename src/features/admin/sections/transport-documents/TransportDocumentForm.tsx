@@ -16,6 +16,7 @@ interface TransportDocumentFormProps {
   onFieldChange: (key: string, value: string) => void
   onCargoRowsChange: (rows: CargoRow[]) => void
   onSubmit: () => void
+  submitLabel?: string
 }
 
 export function TransportDocumentForm({
@@ -26,6 +27,7 @@ export function TransportDocumentForm({
   onFieldChange,
   onCargoRowsChange,
   onSubmit,
+  submitLabel,
 }: TransportDocumentFormProps) {
   const document = getTransportDocumentDefinition(documentType)
 
@@ -74,7 +76,7 @@ export function TransportDocumentForm({
           ) : (
             <Save className='mr-1.5 h-4 w-4' />
           )}
-          Save & Preview {document.shortLabel}
+          {submitLabel ?? `Save & Preview ${document.shortLabel}`}
         </Button>
       </div>
     </form>

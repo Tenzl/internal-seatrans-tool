@@ -12,8 +12,8 @@ import { emptyCargoRow } from './transportDocumentSchemas'
 export const PREFILL_SOURCE_TYPE: Partial<
   Record<TransportDocumentType, TransportDocumentType>
 > = {
-  bl: 'booking',
-  an: 'bl',
+  an: 'booking',
+  bl: 'an',
   do: 'an',
 }
 
@@ -39,68 +39,70 @@ function splitVesselVoyage(vesselVoyage: string): {
   return { oceanVessel: trimmed, voyageNumber: '' }
 }
 
-function joinVesselVoyage(oceanVessel: string, voyageNumber: string): string {
-  const vessel = oceanVessel.trim()
-  const voyage = voyageNumber.trim()
-  if (vessel && voyage) return `${vessel}/${voyage}`
-  return vessel || voyage
-}
-
-function variantLabel(
-  variant: BillOfLadingPayload['blFormVariant']
-): string {
-  switch (variant) {
-    case 'original':
-      return 'Original'
-    case 'surrendered':
-      return 'Surrendered'
-    default:
-      return 'Non-negotiable'
+export function prefillArrivalNoticeFromBooking(
+  source: BookingConfirmationPayload,
+  current: ArrivalNoticePayload
+): ArrivalNoticePayload {
+  const schedule = [source.etd.trim(), source.eta.trim()]
+    .filter(Boolean)
+    .join(' / ')
+  return {
+    ...current,
+    date: source.date,
+    shipmentNumber: source.bookingNumber,
+    referenceNumber: source.bookingNumber,
+    vesselVoyage: source.vesselVoyage,
+    etdEta: schedule,
+    placeOfReceipt: source.placeOfReceipt,
+    portOfLoading: source.portOfLoading,
+    portOfDischarge: source.portOfDischarge,
+    placeOfDelivery: source.placeOfDelivery,
+    finalDestination: source.placeOfDelivery,
+    volume: source.volume,
+    cargoRows: [
+      {
+        ...emptyCargoRow(),
+        quantity: source.volume,
+        descriptionOfGoods: source.commodity,
+        grossWeight: source.grossWeight,
+        measurement: source.measurement,
+      },
+    ],
   }
 }
 
-export function prefillBillOfLadingFromOrder(
-  source: BookingConfirmationPayload,
+export function prefillBillOfLadingFromArrivalNotice(
+  source: ArrivalNoticePayload,
   current: BillOfLadingPayload
 ): BillOfLadingPayload {
   const { oceanVessel, voyageNumber } = splitVesselVoyage(source.vesselVoyage)
+  const cargoValues = (
+    key: 'descriptionOfGoods' | 'grossWeight' | 'measurement'
+  ) =>
+    source.cargoRows
+      .map((row) => row[key].trim())
+      .filter(Boolean)
+      .join('\n')
   return {
     ...current,
+    fblNumber: source.hblNumber,
+    consignor: source.shipper,
+    consignedToOrderOf: source.consignee,
+    notifyAddress: source.notifyParty,
     placeOfReceipt: source.placeOfReceipt,
     portOfLoading: source.portOfLoading,
     portOfDischarge: source.portOfDischarge,
     placeOfDelivery: source.placeOfDelivery,
     oceanVessel,
     voyageNumber,
-    grossWeight: source.grossWeight,
-    measurement: source.measurement,
-    descriptionOfGoods: source.commodity,
+    marksAndNumbers: source.marks,
+    numberAndKindOfPackages: source.volume,
+    descriptionOfGoods: cargoValues('descriptionOfGoods'),
+    grossWeight: cargoValues('grossWeight'),
+    measurement: cargoValues('measurement'),
     dateOfIssue: source.date,
     placeOfIssue: source.portOfLoading,
     freightPayableAt: source.placeOfDelivery,
-  }
-}
-
-export function prefillArrivalNoticeFromBl(
-  source: BillOfLadingPayload,
-  current: ArrivalNoticePayload
-): ArrivalNoticePayload {
-  return {
-    ...current,
-    shipper: source.consignor,
-    consignee: source.consignedToOrderOf,
-    notifyParty: source.notifyAddress,
-    placeOfReceipt: source.placeOfReceipt,
-    portOfLoading: source.portOfLoading,
-    portOfDischarge: source.portOfDischarge,
-    placeOfDelivery: source.placeOfDelivery,
-    vesselVoyage: joinVesselVoyage(source.oceanVessel, source.voyageNumber),
-    marks: source.marksAndNumbers,
-    volume: source.numberAndKindOfPackages,
-    hblNumber: source.fblNumber,
-    referenceNumber: source.fblNumber,
-    billOfLadingType: variantLabel(source.blFormVariant),
-    date: source.dateOfIssue,
   }
 }
 
@@ -142,16 +144,16 @@ export function applyPrefillFromPrevious<T extends TransportDocumentType>(
   sourcePayload: TransportDocumentPayloadMap[TransportDocumentType],
   currentPayload: TransportDocumentPayloadMap[T]
 ): TransportDocumentPayloadMap[T] {
-  if (targetType === 'bl' && sourceType === 'booking') {
-    return prefillBillOfLadingFromOrder(
+  if (targetType === 'an' && sourceType === 'booking') {
+    return prefillArrivalNoticeFromBooking(
       sourcePayload as BookingConfirmationPayload,
-      currentPayload as BillOfLadingPayload
+      currentPayload as ArrivalNoticePayload
     ) as TransportDocumentPayloadMap[T]
   }
-  if (targetType === 'an' && sourceType === 'bl') {
-    return prefillArrivalNoticeFromBl(
-      sourcePayload as BillOfLadingPayload,
-      currentPayload as ArrivalNoticePayload
+  if (targetType === 'bl' && sourceType === 'an') {
+    return prefillBillOfLadingFromArrivalNotice(
+      sourcePayload as ArrivalNoticePayload,
+      currentPayload as BillOfLadingPayload
     ) as TransportDocumentPayloadMap[T]
   }
   if (targetType === 'do' && sourceType === 'an') {

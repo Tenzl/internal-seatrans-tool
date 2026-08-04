@@ -1,3 +1,4 @@
+import { formatPortDisplay } from '@/modules/logistics/portDisplay'
 import type { PortOption } from '@/modules/logistics/services/portService'
 import type { PartnerOption } from '@/features/admin/sections/partner-management/partnerManagementService'
 
@@ -23,7 +24,7 @@ export function mergePortLabels(
   ports?: PortOption[] | null
 ): Map<number, string> {
   ports?.forEach((port) => {
-    target.set(port.id, port.name)
+    target.set(port.id, formatPortDisplay(port))
   })
   return target
 }

@@ -117,15 +117,14 @@ describe('dashboard section catalog contract', () => {
     )
   })
 
-  it('maps all five transport-document links to one permission section', () => {
+  it('maps all booking management entries to one permission section', () => {
     const booking = sidebarData.navGroups
       .flatMap((group) => group.items)
       .find((item) => item.title === 'Booking Management')
-    const ownedSections = (booking?.items ?? []).map((item) =>
-      item.url ? sectionForPath(item.url)?.key : undefined
-    )
-
-    expect(ownedSections).toEqual(Array(5).fill('booking-documents'))
+    expect(
+      booking?.items?.map((item) => sectionForPath(item.url ?? '')?.key)
+    ).toEqual(['booking-documents', 'booking-documents', 'booking-documents'])
+    expect(booking?.items).toHaveLength(3)
   })
 
   it('produces the same permission-filtered model for sidebar and command menu', () => {
@@ -138,6 +137,10 @@ describe('dashboard section catalog contract', () => {
     expect(groups[0]?.items.map((item) => item.title)).toEqual([
       'Booking Management',
     ])
-    expect(groups[0]?.items[0]?.items).toHaveLength(5)
+    expect(groups[0]?.items[0]?.items?.map((item) => item.title)).toEqual([
+      'Create Import Booking',
+      'Create Export Booking',
+      'History Record',
+    ])
   })
 })

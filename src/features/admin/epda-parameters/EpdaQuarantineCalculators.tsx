@@ -7,9 +7,9 @@ import {
 } from '@/modules/inquiries/components/common/quoteParameters'
 import { PURPOSE_OF_CALLING_OPTIONS } from '@/modules/inquiries/constants/shippingAgencyInquiryOptions'
 import type { EpdaParameterValues } from '@/modules/inquiries/services/epdaParametersService'
+import { NumberInput } from '@/shared/components/NumberInput'
 import { useI18n } from '@/shared/i18n/I18nProvider'
 import { parseFiniteNumber } from '@/shared/utils/parseNumber'
-import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import {
   Select,
@@ -61,12 +61,10 @@ export function QuarantineCalculator({
           <Label className='text-sm font-medium text-muted-foreground'>
             {t('tonnageCalc.grtLabel')}
           </Label>
-          <Input
-            type='number'
-            inputMode='decimal'
+          <NumberInput
             placeholder='0'
             value={grtText}
-            onChange={(e) => setGrtText(e.target.value)}
+            onValueChange={(_value, canonical) => setGrtText(canonical)}
             className='h-11 text-base tabular-nums'
           />
         </div>
@@ -189,12 +187,10 @@ export function TugCalculator({ tiers }: { tiers: LoaTier[] }) {
         <Label className='text-sm font-medium text-muted-foreground'>
           {t('tugCalc.loaLabel')}
         </Label>
-        <Input
-          type='number'
-          inputMode='decimal'
+        <NumberInput
           placeholder='0'
           value={loaText}
-          onChange={(e) => setLoaText(e.target.value)}
+          onValueChange={(_value, canonical) => setLoaText(canonical)}
           className='h-11 text-base tabular-nums'
         />
       </div>
@@ -213,12 +209,10 @@ export function TugCalculator({ tiers }: { tiers: LoaTier[] }) {
             <span className='text-sm font-medium text-muted-foreground'>
               USD
             </span>
-            <Input
-              type='number'
-              inputMode='decimal'
+            <NumberInput
               placeholder={fmtNum(matched!.amount)}
               value={customText}
-              onChange={(e) => setCustomText(e.target.value)}
+              onValueChange={(_value, canonical) => setCustomText(canonical)}
               className='h-9 w-32 text-right text-base font-bold tabular-nums'
             />
           </div>

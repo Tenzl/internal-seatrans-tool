@@ -1,7 +1,14 @@
 'use client'
 
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import {
+  useInfiniteQuery,
+  useMutation,
+  useQuery,
+  useQueryClient,
+} from '@tanstack/react-query'
+import { getNextPortPage } from '@/modules/logistics/components/portSearchPagination'
+import { formatPortDisplay } from '@/modules/logistics/portDisplay'
 import { portService } from '@/modules/logistics/services/portService'
 import { queryKeys } from '@/shared/config/react-query.config'
 import { useDebouncedValue } from '@/shared/hooks/useDebouncedValue'
@@ -112,17 +119,21 @@ export function BookingShippingScreen() {
   const portSearchReady =
     partnerId != null && portSearchKey.length >= BOOKING_SEARCH.minChars
 
-  const portOptionsQuery = useQuery({
+  const portOptionsQuery = useInfiniteQuery({
     queryKey: queryKeys.portOptionsSearch(portSearchKey),
-    queryFn: () =>
-      portService.listPortOptions({
+    queryFn: ({ pageParam }) =>
+      portService.listPortsPaginated({
+        page: pageParam,
+        size: BOOKING_SEARCH.limit,
         q: portSearchKey,
-        limit: BOOKING_SEARCH.limit,
+        searchIn: 'name',
+        active: true,
       }),
+    initialPageParam: 0,
+    getNextPageParam: getNextPortPage,
     enabled: portSearchReady,
     staleTime: BOOKING_SHIPPING_CACHE.optionsStaleMs,
     gcTime: BOOKING_SHIPPING_CACHE.gcMs,
-    placeholderData: (previous) => previous,
   })
 
   const portLabelsQuery = useQuery({
@@ -137,12 +148,17 @@ export function BookingShippingScreen() {
     gcTime: BOOKING_SHIPPING_CACHE.gcMs,
   })
 
+  const searchedPorts = useMemo(
+    () => portOptionsQuery.data?.pages.flatMap((page) => page.content) ?? [],
+    [portOptionsQuery.data]
+  )
+
   const portLabelById = useMemo(() => {
     const labels = new Map<number, string>()
     mergePortLabels(labels, portLabelsQuery.data)
-    mergePortLabels(labels, portOptionsQuery.data)
+    mergePortLabels(labels, searchedPorts)
     return labels
-  }, [portLabelsQuery.data, portOptionsQuery.data])
+  }, [portLabelsQuery.data, searchedPorts])
 
   const partnerOptions = useMemo(
     () =>
@@ -155,12 +171,12 @@ export function BookingShippingScreen() {
   )
   const portOptions = useMemo(
     () =>
-      (portOptionsQuery.data ?? []).map((port) => ({
+      searchedPorts.map((port) => ({
         value: port.id,
-        label: port.name,
+        label: formatPortDisplay(port),
         hint: port.provinceName,
       })),
-    [portOptionsQuery.data]
+    [searchedPorts]
   )
 
   useEffect(() => {
@@ -275,11 +291,16 @@ export function BookingShippingScreen() {
               portSearch={portSearch}
               portSearchReady={portSearchReady}
               portOptionsFetching={portOptionsQuery.isFetching}
+              portOptionsFetchingNextPage={portOptionsQuery.isFetchingNextPage}
+              portOptionsHasMore={portOptionsQuery.hasNextPage}
               portFieldsDisabled={
                 shippingQuery.isFetching && !shippingQuery.data
               }
               onActiveSectionChange={setActiveSection}
               onPortSearchChange={setPortSearch}
+              onLoadMorePortOptions={() => {
+                void portOptionsQuery.fetchNextPage()
+              }}
               onFieldChange={(key, value) =>
                 setForm((current) =>
                   setBookingShippingField(current, key, value)

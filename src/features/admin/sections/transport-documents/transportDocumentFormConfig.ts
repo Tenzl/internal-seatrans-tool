@@ -13,6 +13,7 @@ export type TransportDocumentFieldKind =
   | 'text'
   | 'textarea'
   | 'select'
+  | 'port-name'
 
 type TransportDocumentFieldKey = Exclude<
   | keyof ArrivalNoticePayload
@@ -49,25 +50,25 @@ export interface TransportDocumentDefinition {
   description: string
 }
 
-/** Lifecycle order: Order → BL → AN → DO */
+/** Workflow order branches after AN: Export -> BL, Import -> DO. */
 export const TRANSPORT_DOCUMENTS: TransportDocumentDefinition[] = [
   {
     type: 'booking',
-    shortLabel: 'Order',
-    label: 'Order',
-    description: 'Initial order / booking confirmation schedule',
-  },
-  {
-    type: 'bl',
-    shortLabel: 'BL',
-    label: 'Bill of Lading',
-    description: 'FIATA multimodal transport bill of lading',
+    shortLabel: 'Booking',
+    label: 'Booking',
+    description: 'Root booking confirmation and shipment schedule',
   },
   {
     type: 'an',
     shortLabel: 'AN',
     label: 'Arrival Notice',
     description: 'Incoming shipment notification',
+  },
+  {
+    type: 'bl',
+    shortLabel: 'BL',
+    label: 'Bill of Lading',
+    description: 'FIATA multimodal transport bill of lading',
   },
   {
     type: 'do',
@@ -96,11 +97,27 @@ export const TRANSPORT_DOCUMENT_FORM_SECTIONS: Record<
     {
       title: 'Route',
       fields: [
-        { key: 'placeOfReceipt', label: 'Place of receipt' },
-        { key: 'portOfLoading', label: 'Port of loading' },
-        { key: 'portOfDischarge', label: 'Port of discharge' },
-        { key: 'placeOfDelivery', label: 'Place of delivery' },
-        { key: 'transitPort', label: 'Transit port' },
+        {
+          key: 'placeOfReceipt',
+          label: 'Place of receipt',
+          kind: 'port-name',
+        },
+        {
+          key: 'portOfLoading',
+          label: 'Port of loading',
+          kind: 'port-name',
+        },
+        {
+          key: 'portOfDischarge',
+          label: 'Port of discharge',
+          kind: 'port-name',
+        },
+        {
+          key: 'placeOfDelivery',
+          label: 'Place of delivery',
+          kind: 'port-name',
+        },
+        { key: 'transitPort', label: 'Transit port', kind: 'port-name' },
       ],
     },
     {
@@ -117,8 +134,12 @@ export const TRANSPORT_DOCUMENT_FORM_SECTIONS: Record<
       title: 'Pickup and cut-offs',
       fields: [
         { key: 'pickupDate', label: 'Date of pickup', kind: 'date' },
-        { key: 'pickupPlace', label: 'Place of pickup' },
-        { key: 'dropoffPlace', label: 'Place of drop-off' },
+        { key: 'pickupPlace', label: 'Place of pickup', kind: 'port-name' },
+        {
+          key: 'dropoffPlace',
+          label: 'Place of drop-off',
+          kind: 'port-name',
+        },
         { key: 'closingTime', label: 'Closing time', kind: 'datetime-local' },
         { key: 'siCutoff', label: 'SI cut-off', kind: 'datetime-local' },
         { key: 'vgmCutoff', label: 'VGM cut-off', kind: 'datetime-local' },
@@ -164,7 +185,7 @@ export const TRANSPORT_DOCUMENT_FORM_SECTIONS: Record<
             { value: 'surrendered', label: 'Surrendered' },
           ],
         },
-        { key: 'placeOfIssue', label: 'Place of issue' },
+        { key: 'placeOfIssue', label: 'Place of issue', kind: 'port-name' },
         { key: 'dateOfIssue', label: 'Date of issue', kind: 'date' },
         { key: 'numberOfOriginals', label: "Number of Original FBL's" },
       ],
@@ -190,10 +211,26 @@ export const TRANSPORT_DOCUMENT_FORM_SECTIONS: Record<
     {
       title: 'Route',
       fields: [
-        { key: 'placeOfReceipt', label: 'Place of receipt' },
-        { key: 'portOfLoading', label: 'Port of loading' },
-        { key: 'portOfDischarge', label: 'Port of discharge' },
-        { key: 'placeOfDelivery', label: 'Place of delivery' },
+        {
+          key: 'placeOfReceipt',
+          label: 'Place of receipt',
+          kind: 'port-name',
+        },
+        {
+          key: 'portOfLoading',
+          label: 'Port of loading',
+          kind: 'port-name',
+        },
+        {
+          key: 'portOfDischarge',
+          label: 'Port of discharge',
+          kind: 'port-name',
+        },
+        {
+          key: 'placeOfDelivery',
+          label: 'Place of delivery',
+          kind: 'port-name',
+        },
       ],
     },
     {
@@ -298,11 +335,31 @@ export const TRANSPORT_DOCUMENT_FORM_SECTIONS: Record<
     {
       title: 'Route',
       fields: [
-        { key: 'placeOfReceipt', label: 'Place of receipt' },
-        { key: 'portOfLoading', label: 'Port of loading' },
-        { key: 'portOfDischarge', label: 'Port of discharge' },
-        { key: 'placeOfDelivery', label: 'Place of delivery' },
-        { key: 'finalDestination', label: 'Final destination' },
+        {
+          key: 'placeOfReceipt',
+          label: 'Place of receipt',
+          kind: 'port-name',
+        },
+        {
+          key: 'portOfLoading',
+          label: 'Port of loading',
+          kind: 'port-name',
+        },
+        {
+          key: 'portOfDischarge',
+          label: 'Port of discharge',
+          kind: 'port-name',
+        },
+        {
+          key: 'placeOfDelivery',
+          label: 'Place of delivery',
+          kind: 'port-name',
+        },
+        {
+          key: 'finalDestination',
+          label: 'Final destination',
+          kind: 'port-name',
+        },
       ],
     },
     {
@@ -361,11 +418,31 @@ export const TRANSPORT_DOCUMENT_FORM_SECTIONS: Record<
     {
       title: 'Route',
       fields: [
-        { key: 'placeOfReceipt', label: 'Place of receipt' },
-        { key: 'portOfLoading', label: 'Port of loading' },
-        { key: 'portOfDischarge', label: 'Port of discharge' },
-        { key: 'placeOfDelivery', label: 'Place of delivery' },
-        { key: 'finalDestination', label: 'Final destination' },
+        {
+          key: 'placeOfReceipt',
+          label: 'Place of receipt',
+          kind: 'port-name',
+        },
+        {
+          key: 'portOfLoading',
+          label: 'Port of loading',
+          kind: 'port-name',
+        },
+        {
+          key: 'portOfDischarge',
+          label: 'Port of discharge',
+          kind: 'port-name',
+        },
+        {
+          key: 'placeOfDelivery',
+          label: 'Place of delivery',
+          kind: 'port-name',
+        },
+        {
+          key: 'finalDestination',
+          label: 'Final destination',
+          kind: 'port-name',
+        },
       ],
     },
     {

@@ -4,6 +4,8 @@ import { apiClient } from '@/shared/utils/apiClient'
 import { unwrapApiResponse } from '@/shared/utils/apiUnwrap'
 import type {
   ArrivalNoticePayload,
+  BookingFlow,
+  BookingWorkflow,
   BookingConfirmationPayload,
   DeliveryOrderPayload,
   TransportDocumentPayloadMap,
@@ -30,6 +32,8 @@ async function readError(response: Response): Promise<string> {
 type UpsertBody<T extends TransportDocumentType> =
   TransportDocumentPayloadMap[T] & {
     status?: TransportDocumentStatus
+    bookingFlow?: BookingFlow
+    bookingId?: number
   }
 
 /** Drop legacy BL stamp toggles so they are never persisted. */
@@ -66,6 +70,13 @@ export const transportDocumentService = {
       API_CONFIG.BOOKING_DOCUMENTS.ADMIN_BY_ID(id)
     )
     return unwrapApiResponse<TransportDocumentRecord>(response)
+  },
+
+  async workflow(bookingId: number): Promise<BookingWorkflow> {
+    const response = await apiClient.get(
+      API_CONFIG.BOOKING_DOCUMENTS.ADMIN_WORKFLOW(bookingId)
+    )
+    return unwrapApiResponse<BookingWorkflow>(response)
   },
 
   async update<T extends TransportDocumentType>(

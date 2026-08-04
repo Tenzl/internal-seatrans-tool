@@ -1,5 +1,5 @@
 import { AdminPageShell } from '@/components/layout/admin-page-shell'
-import { TransportDocumentHistoryScreen } from './TransportDocumentHistoryScreen'
+import { BookingHistoryScreen } from './BookingHistoryScreen'
 import { TransportDocumentsScreen } from './TransportDocumentsScreen'
 import type { TransportDocumentType } from './transportDocument.types'
 
@@ -15,10 +15,10 @@ export function CreateTransportDocumentPage({
   )
 }
 
-export function TransportDocumentHistoryPage() {
+export function BookingHistoryPage() {
   return (
     <AdminPageShell>
-      <TransportDocumentHistoryScreen />
+      <BookingHistoryScreen />
     </AdminPageShell>
   )
 }

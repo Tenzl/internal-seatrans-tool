@@ -1,7 +1,6 @@
 'use client'
 
 import * as React from 'react'
-import { format } from 'date-fns'
 import {
   type ColumnDef,
   type ColumnFiltersState,
@@ -14,7 +13,9 @@ import {
   getSortedRowModel,
   useReactTable,
 } from '@tanstack/react-table'
-import { ChevronDown, Calendar, Trash2 } from 'lucide-react'
+import { DateTimePicker } from '@/shared/components/DateTimePicker'
+import { parseLocalDateTime } from '@/shared/utils/dateTimePicker'
+import { ChevronDown, Trash2 } from 'lucide-react'
 import {
   AlertDialog,
   AlertDialogAction,
@@ -26,7 +27,6 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog'
 import { Button } from '@/components/ui/button'
-import { Calendar as CalendarComponent } from '@/components/ui/calendar'
 import { Checkbox } from '@/components/ui/checkbox'
 import {
   DropdownMenu,
@@ -35,11 +35,6 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 import { Input } from '@/components/ui/input'
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from '@/components/ui/popover'
 import {
   Table,
   TableBody,
@@ -79,8 +74,8 @@ export function InquiryDataTable<TData extends { id: number }>({
     React.useState<VisibilityState>(() => initialColumnVisibility ?? {})
   const [rowSelection, setRowSelection] = React.useState({})
 
-  const [dateFrom, setDateFrom] = React.useState<Date>()
-  const [dateTo, setDateTo] = React.useState<Date>()
+  const [dateFrom, setDateFrom] = React.useState('')
+  const [dateTo, setDateTo] = React.useState('')
   const [showDeleteDialog, setShowDeleteDialog] = React.useState(false)
   const [pendingDeleteMode, setPendingDeleteMode] =
     React.useState<InquiryDeleteMode>('soft')
@@ -132,8 +127,12 @@ export function InquiryDataTable<TData extends { id: number }>({
           : null
       if (!submittedAt) return true
 
-      const from = dateFrom ? new Date(dateFrom.setHours(0, 0, 0, 0)) : null
-      const to = dateTo ? new Date(dateTo.setHours(23, 59, 59, 999)) : null
+      const parsedFrom = parseLocalDateTime(dateFrom)
+      const parsedTo = parseLocalDateTime(dateTo)
+      const from = parsedFrom ? new Date(parsedFrom) : null
+      const to = parsedTo ? new Date(parsedTo) : null
+      from?.setHours(0, 0, 0, 0)
+      to?.setHours(23, 59, 59, 999)
 
       if (from && submittedAt < from) return false
       if (to && submittedAt > to) return false
@@ -206,52 +205,27 @@ export function InquiryDataTable<TData extends { id: number }>({
 
             <div className='flex flex-wrap items-center gap-2'>
               {/* Date filters */}
-              <Popover>
-                <PopoverTrigger asChild>
-                  <Button
-                    variant='outline'
-                    className='h-10 gap-2 active:scale-[0.98] sm:h-9'
-                  >
-                    <Calendar className='h-4 w-4' />
-                    {dateFrom ? format(dateFrom, 'PP') : 'From date'}
-                  </Button>
-                </PopoverTrigger>
-                <PopoverContent className='w-auto p-0' align='start'>
-                  <CalendarComponent
-                    mode='single'
-                    selected={dateFrom}
-                    onSelect={setDateFrom}
-                    initialFocus
-                  />
-                </PopoverContent>
-              </Popover>
+              <DateTimePicker
+                value={dateFrom}
+                onValueChange={setDateFrom}
+                placeholder='From date'
+                className='h-10 w-[160px] active:scale-[0.98] sm:h-9'
+              />
 
-              <Popover>
-                <PopoverTrigger asChild>
-                  <Button
-                    variant='outline'
-                    className='h-10 gap-2 active:scale-[0.98] sm:h-9'
-                  >
-                    <Calendar className='h-4 w-4' />
-                    {dateTo ? format(dateTo, 'PP') : 'To date'}
-                  </Button>
-                </PopoverTrigger>
-                <PopoverContent className='w-auto p-0' align='start'>
-                  <CalendarComponent
-                    mode='single'
-                    selected={dateTo}
-                    onSelect={setDateTo}
-                    initialFocus
-                  />
-                </PopoverContent>
-              </Popover>
+              <DateTimePicker
+                value={dateTo}
+                onValueChange={setDateTo}
+                placeholder='To date'
+                minDate={parseLocalDateTime(dateFrom)}
+                className='h-10 w-[160px] active:scale-[0.98] sm:h-9'
+              />
 
               {(dateFrom || dateTo) && (
                 <Button
                   variant='ghost'
                   onClick={() => {
-                    setDateFrom(undefined)
-                    setDateTo(undefined)
+                    setDateFrom('')
+                    setDateTo('')
                   }}
                   className='h-10 px-2 active:scale-[0.98] sm:h-8'
                 >

@@ -1,11 +1,11 @@
 'use client'
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { useRouter, useSearchParams } from 'next/navigation'
 import { z } from 'zod'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { isAdminRole } from '@/config/section-catalog'
-import { useCurrentUser } from '@/hooks/use-current-user'
 import { PdfPreviewDialog } from '@/shared/components/PdfPreviewDialog'
+import { queryKeys } from '@/shared/config/react-query.config'
 import { delay, EPDA_PREVIEW_LOAD_DELAY_MS } from '@/shared/utils/epdaExport'
 import { toast } from '@/shared/utils/toast'
 import {
@@ -17,6 +17,8 @@ import {
   Save,
   Unlock,
 } from 'lucide-react'
+import { useRouter, useSearchParams } from 'next/navigation'
+import { useCurrentUser } from '@/hooks/use-current-user'
 import {
   AlertDialog,
   AlertDialogAction,
@@ -29,10 +31,17 @@ import {
 } from '@/components/ui/alert-dialog'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
+import { BookingWorkflowNav } from './BookingWorkflowNav'
 import { TransportDocumentForm } from './TransportDocumentForm'
 import { TransportDocumentPrefillDialog } from './TransportDocumentPrefillDialog'
+import {
+  buildBookingWorkflowUrl,
+  getWorkflowRecord,
+  recordBelongsToBooking,
+} from './bookingWorkflow'
 import type {
   CargoRow,
+  BookingFlow,
   TransportDocumentPayloadMap,
   TransportDocumentRecord,
   TransportDocumentStatus,
@@ -68,10 +77,13 @@ export function TransportDocumentsScreen({
   documentType,
 }: TransportDocumentsScreenProps) {
   const router = useRouter()
+  const queryClient = useQueryClient()
   const searchParams = useSearchParams()
   const currentUser = useCurrentUser()
   const isAdmin = isAdminRole(currentUser?.role)
   const recordIdParam = searchParams.get('recordId')
+  const bookingIdParam = searchParams.get('bookingId')
+  const flowParam = searchParams.get('flow')
   const previewParam = searchParams.get('preview')
   const parsedRecordId = recordIdParam
     ? Number.parseInt(recordIdParam, 10)
@@ -80,6 +92,23 @@ export function TransportDocumentsScreen({
     parsedRecordId != null && Number.isFinite(parsedRecordId)
       ? parsedRecordId
       : null
+  const parsedBookingId = bookingIdParam
+    ? Number.parseInt(bookingIdParam, 10)
+    : null
+  const validBookingId =
+    parsedBookingId != null && Number.isFinite(parsedBookingId)
+      ? parsedBookingId
+      : null
+  const requestedFlow: BookingFlow =
+    flowParam === 'IMPORT' ? 'IMPORT' : 'EXPORT'
+
+  const workflowQuery = useQuery({
+    queryKey: queryKeys.bookingWorkflow(validBookingId ?? 0),
+    queryFn: () => transportDocumentService.workflow(validBookingId as number),
+    enabled: validBookingId != null,
+  })
+  const workflow = workflowQuery.data ?? null
+  const workflowFlow = workflow?.flow ?? requestedFlow
 
   const [forms, setForms] = useState<TransportDocumentPayloadMap>(
     createEmptyTransportDocuments
@@ -97,15 +126,16 @@ export function TransportDocumentsScreen({
   const [prefillDialogOpen, setPrefillDialogOpen] = useState(false)
   const [prefillLoading, setPrefillLoading] = useState(false)
   const [prefillError, setPrefillError] = useState<string | null>(null)
-  const [prefillRecords, setPrefillRecords] = useState<TransportDocumentRecord[]>(
-    []
-  )
+  const [prefillRecords, setPrefillRecords] = useState<
+    TransportDocumentRecord[]
+  >([])
   const [pendingHref, setPendingHref] = useState<string | null>(null)
   const [savedSnapshot, setSavedSnapshot] = useState(() =>
     payloadSnapshot(createEmptyTransportDocuments()[documentType])
   )
   const [trackedRecordId, setTrackedRecordId] = useState(validRecordId)
   const autoPreviewDone = useRef(false)
+  const autoWorkflowPrefillKey = useRef<string | null>(null)
   const isDirtyRef = useRef(false)
 
   // Adjust session state when URL recordId changes (avoid setState-in-effect).
@@ -128,7 +158,8 @@ export function TransportDocumentsScreen({
   const activePayload = forms[documentType]
   const activeRecord = activePayload as unknown as Record<string, unknown>
   const cargoRows = getTransportDocumentCargoRows(documentType, forms)
-  const isLocked = Boolean(lockedAt)
+  const workflowRootLockedAt = workflow?.documents.booking?.lockedAt ?? null
+  const isLocked = Boolean(lockedAt || workflowRootLockedAt)
   const isDirty = useMemo(() => {
     if (isLocked) return false
     return payloadSnapshot(activePayload) !== savedSnapshot
@@ -152,6 +183,15 @@ export function TransportDocumentsScreen({
   }, [isDirty])
 
   useEffect(() => {
+    if (!workflowQuery.error) return
+    toast.error(
+      workflowQuery.error instanceof Error
+        ? workflowQuery.error.message
+        : 'Failed to load booking workflow'
+    )
+  }, [workflowQuery.error])
+
+  useEffect(() => {
     return () => {
       if (previewUrl) URL.revokeObjectURL(previewUrl)
     }
@@ -161,6 +201,15 @@ export function TransportDocumentsScreen({
     (record: TransportDocumentRecord) => {
       if (record.documentType !== documentType) {
         toast.error('This record belongs to a different document type')
+        router.replace('/booking/documents')
+        return
+      }
+      if (
+        validBookingId != null &&
+        !recordBelongsToBooking(record, validBookingId)
+      ) {
+        toast.error('This document belongs to a different booking')
+        router.replace('/booking/documents')
         return
       }
       const payload =
@@ -179,7 +228,7 @@ export function TransportDocumentsScreen({
       setLockedAt(record.lockedAt)
       setSavedSnapshot(payloadSnapshot(payload))
     },
-    [documentType]
+    [documentType, router, validBookingId]
   )
 
   const validatePayload = useCallback(() => {
@@ -200,19 +249,25 @@ export function TransportDocumentsScreen({
       validated: TransportDocumentPayloadMap[typeof documentType],
       nextStatus: TransportDocumentStatus
     ) => {
-      const body = { ...validated, status: nextStatus }
+      const body = {
+        ...validated,
+        status: nextStatus,
+        ...(documentType === 'booking'
+          ? { bookingFlow: workflowFlow }
+          : validBookingId != null
+            ? { bookingId: validBookingId }
+            : {}),
+      }
       if (activeRecordId != null) {
         return transportDocumentService.update(activeRecordId, body)
       }
       return transportDocumentService.create(documentType, body)
     },
-    [activeRecordId, documentType]
+    [activeRecordId, documentType, validBookingId, workflowFlow]
   )
 
   const openPreview = useCallback(
-    async (
-      payload?: TransportDocumentPayloadMap[typeof documentType]
-    ) => {
+    async (payload?: TransportDocumentPayloadMap[typeof documentType]) => {
       const validated = payload ?? validatePayload()
       if (!validated) return
 
@@ -227,8 +282,10 @@ export function TransportDocumentsScreen({
           documentType,
           validated
         )
-        // Same settle delay as EPDA before revealing preview.
-        await delay(EPDA_PREVIEW_LOAD_DELAY_MS)
+        // BL is already a complete backend-rendered PDF and needs no settle delay.
+        if (documentType !== 'bl') {
+          await delay(EPDA_PREVIEW_LOAD_DELAY_MS)
+        }
         setPreviewUrl(URL.createObjectURL(pdf))
       } catch (error) {
         setPreviewOpen(false)
@@ -249,9 +306,28 @@ export function TransportDocumentsScreen({
 
     setIsSaving(true)
     try {
+      const wasNew = activeRecordId == null
       const record = await persistRecord(validated, 'COMPLETED')
       applyRecord(record)
       markSaved(record.payload)
+      const rootBookingId =
+        documentType === 'booking' ? record.id : validBookingId
+      if (wasNew && rootBookingId != null) {
+        router.replace(
+          buildBookingWorkflowUrl(
+            workflowFlow,
+            rootBookingId,
+            documentType,
+            record
+          ),
+          { scroll: false }
+        )
+      }
+      if (rootBookingId != null) {
+        void queryClient.invalidateQueries({
+          queryKey: queryKeys.bookingWorkflow(rootBookingId),
+        })
+      }
       toast.success(`${document.label} saved`)
       await openPreview(record.payload)
       return true
@@ -262,13 +338,19 @@ export function TransportDocumentsScreen({
       setIsSaving(false)
     }
   }, [
+    activeRecordId,
     applyRecord,
     document.label,
+    documentType,
     isLocked,
     markSaved,
     openPreview,
     persistRecord,
+    queryClient,
+    router,
     validatePayload,
+    validBookingId,
+    workflowFlow,
   ])
 
   useEffect(() => {
@@ -398,7 +480,7 @@ export function TransportDocumentsScreen({
       (previous) =>
         ({ ...previous, [documentType]: empty }) as TransportDocumentPayloadMap
     )
-    markSaved(empty)
+    if (activeRecordId == null) markSaved(empty)
     setPreviewOpen(false)
     setPreviewUrl(null)
   }
@@ -423,11 +505,19 @@ export function TransportDocumentsScreen({
   }
 
   const handleUnlock = useCallback(async () => {
-    if (!activeRecordId || !isLocked || !isAdmin) return
+    const lockOwnerId = workflowRootLockedAt ? validBookingId : activeRecordId
+    if (!lockOwnerId || !isLocked || !isAdmin) return
     setIsUnlocking(true)
     try {
-      const unlocked = await transportDocumentService.unlock(activeRecordId)
-      setLockedAt(unlocked.lockedAt)
+      const unlocked = await transportDocumentService.unlock(lockOwnerId)
+      if (lockOwnerId === activeRecordId) {
+        setLockedAt(unlocked.lockedAt)
+      }
+      if (validBookingId != null) {
+        await queryClient.invalidateQueries({
+          queryKey: queryKeys.bookingWorkflow(validBookingId),
+        })
+      }
       toast.success('Document unlocked — you can edit again')
     } catch (error) {
       toast.error(
@@ -436,13 +526,25 @@ export function TransportDocumentsScreen({
     } finally {
       setIsUnlocking(false)
     }
-  }, [activeRecordId, isAdmin, isLocked])
+  }, [
+    activeRecordId,
+    isAdmin,
+    isLocked,
+    queryClient,
+    validBookingId,
+    workflowRootLockedAt,
+  ])
 
-  const busy = isGenerating || isSaving || isHydrating || isUnlocking
+  const busy =
+    isGenerating ||
+    isSaving ||
+    isHydrating ||
+    isUnlocking ||
+    workflowQuery.isLoading
   const prefillSourceType = getPrefillSourceType(documentType)
 
   const handlePrefillSelect = useCallback(
-    (record: TransportDocumentRecord) => {
+    (record: TransportDocumentRecord, announce = true) => {
       if (!prefillSourceType || isLocked) return
       const sourcePayload =
         prefillSourceType === 'bl'
@@ -461,15 +563,28 @@ export function TransportDocumentsScreen({
             [documentType]: next,
           }) as TransportDocumentPayloadMap
       )
-      toast.success(
-        `Prefilled from ${getTransportDocumentDefinition(prefillSourceType).label}`
-      )
+      if (announce) {
+        toast.success(
+          `Prefilled from ${getTransportDocumentDefinition(prefillSourceType).label}`
+        )
+      }
     },
     [activePayload, documentType, isLocked, prefillSourceType]
   )
 
   const openPrefillDialog = useCallback(async () => {
     if (!prefillSourceType || isLocked) return
+    if (validBookingId != null) {
+      const source = getWorkflowRecord(workflow, prefillSourceType)
+      if (!source) {
+        toast.error(
+          `Create ${getTransportDocumentDefinition(prefillSourceType).label} first`
+        )
+        return
+      }
+      handlePrefillSelect(source)
+      return
+    }
     setPrefillDialogOpen(true)
     setPrefillLoading(true)
     setPrefillError(null)
@@ -489,17 +604,52 @@ export function TransportDocumentsScreen({
     } finally {
       setPrefillLoading(false)
     }
-  }, [isLocked, prefillSourceType])
+  }, [
+    handlePrefillSelect,
+    isLocked,
+    prefillSourceType,
+    validBookingId,
+    workflow,
+  ])
+
+  useEffect(() => {
+    if (validBookingId == null || validRecordId != null || !prefillSourceType) {
+      return
+    }
+    const source = getWorkflowRecord(workflow, prefillSourceType)
+    if (!source) return
+    const key = `${validBookingId}:${documentType}:${source.id}`
+    if (autoWorkflowPrefillKey.current === key) return
+    autoWorkflowPrefillKey.current = key
+    handlePrefillSelect(source, false)
+  }, [
+    documentType,
+    handlePrefillSelect,
+    prefillSourceType,
+    validBookingId,
+    validRecordId,
+    workflow,
+  ])
 
   return (
     <div className='mx-auto max-w-7xl space-y-5 pb-8'>
+      {validBookingId != null ? (
+        <BookingWorkflowNav
+          activeType={documentType}
+          bookingId={validBookingId}
+          flow={workflowFlow}
+          workflow={workflow}
+        />
+      ) : null}
       <header className='flex flex-col gap-4 border-b border-border/60 pb-5 lg:flex-row lg:items-end lg:justify-between'>
         <div className='space-y-1'>
           <div className='flex flex-wrap items-center gap-2'>
             <h1 className='text-xl font-semibold tracking-tight'>
               {activeRecordId
                 ? `Edit ${document.label}`
-                : `Create ${document.label}`}
+                : documentType === 'booking'
+                  ? `Create ${workflowFlow === 'IMPORT' ? 'Import' : 'Export'} Booking`
+                  : `Create ${document.label}`}
             </h1>
             {status ? (
               <Badge
@@ -578,7 +728,11 @@ export function TransportDocumentsScreen({
                 ) : (
                   <Save className='mr-1.5 h-4 w-4' />
                 )}
-                Save & Preview
+                {activeRecordId
+                  ? 'Save & Preview'
+                  : documentType === 'booking'
+                    ? 'Create Booking'
+                    : `Create ${document.shortLabel}`}
               </Button>
             </>
           ) : (
@@ -632,6 +786,13 @@ export function TransportDocumentsScreen({
             onFieldChange={updateField}
             onCargoRowsChange={setCargoRows}
             onSubmit={() => void handleSave()}
+            submitLabel={
+              activeRecordId
+                ? `Save & Preview ${document.shortLabel}`
+                : documentType === 'booking'
+                  ? 'Create Booking'
+                  : `Create ${document.shortLabel}`
+            }
           />
         </fieldset>
       )}
@@ -651,7 +812,7 @@ export function TransportDocumentsScreen({
         fileName={fileName}
         isGenerating={isGenerating}
         loadingLabel={`Building ${document.label} preview…`}
-        actionMode="download"
+        actionMode='download'
       />
 
       <AlertDialog

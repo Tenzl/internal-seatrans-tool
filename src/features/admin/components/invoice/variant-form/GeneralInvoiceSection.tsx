@@ -1,7 +1,8 @@
 import type { CargoType } from '@/modules/gallery/services/commodityService'
 import { mergeEpdaFieldClasses } from '@/modules/inquiries/components/common/epdaCustomerFieldTracking'
+import { DateTimePicker } from '@/shared/components/DateTimePicker'
+import { NumberInput } from '@/shared/components/NumberInput'
 import { useI18n } from '@/shared/i18n/I18nProvider'
-import { DatePicker } from '@/components/ui/form-date-picker'
 import { Input } from '@/components/ui/input'
 import {
   Select,
@@ -144,10 +145,10 @@ export function GeneralInvoiceSection({
           >
             {t('epda.eta')}
           </FieldLabel>
-          <DatePicker
+          <DateTimePicker
             id='eta'
             value={values.eta}
-            onChange={handlers.setEta}
+            onValueChange={handlers.setEta}
             placeholder='TBN'
             className={getCustomerFieldClass?.('eta') ?? ''}
           />
@@ -275,14 +276,11 @@ export function GeneralInvoiceSection({
           >
             {t('epda.dwt')}
           </FieldLabel>
-          <Input
+          <NumberInput
             id='dwt'
-            type='number'
             value={values.dwt}
-            onChange={(event) => handlers.setDwt(event.target.value)}
+            onValueChange={(_value, canonical) => handlers.setDwt(canonical)}
             placeholder={t('ph.dwt')}
-            min='0'
-            step='any'
             className={customerClass('dwt', values.dwt)}
           />
         </div>
@@ -294,14 +292,11 @@ export function GeneralInvoiceSection({
           >
             {t('epda.grt')}
           </FieldLabel>
-          <Input
+          <NumberInput
             id='grt'
-            type='number'
             value={values.grt}
-            onChange={(event) => handlers.setGrt(event.target.value)}
+            onValueChange={(_value, canonical) => handlers.setGrt(canonical)}
             placeholder={t('ph.grt')}
-            min='0'
-            step='any'
             className={customerClass('grt', values.grt)}
           />
         </div>
@@ -314,14 +309,11 @@ export function GeneralInvoiceSection({
             {t('epda.loa')}
           </FieldLabel>
           <div className='relative'>
-            <Input
+            <NumberInput
               id='loa'
-              type='number'
               value={values.loa}
-              onChange={(event) => handlers.setLoa(event.target.value)}
+              onValueChange={(_value, canonical) => handlers.setLoa(canonical)}
               placeholder={t('ph.loa')}
-              min='0'
-              step='any'
               className={mergeEpdaFieldClasses(
                 'pr-8',
                 customerClass('loa', values.loa)
@@ -433,14 +425,13 @@ export function GeneralInvoiceSection({
           >
             {t('epda.qty')}
           </FieldLabel>
-          <Input
+          <NumberInput
             id='cargoQty'
-            type='number'
             value={values.cargoQty}
-            onChange={(event) => handlers.setCargoQty(event.target.value)}
+            onValueChange={(_value, canonical) =>
+              handlers.setCargoQty(canonical)
+            }
             placeholder={t('ph.qty')}
-            min='0'
-            step='any'
             className={customerClass('cargoQty', values.cargoQty)}
             required
           />

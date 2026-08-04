@@ -1,6 +1,6 @@
 import type { EpdaParameterValues } from '@/modules/inquiries/components/common/quoteParameters'
+import { NumberInput } from '@/shared/components/NumberInput'
 import { useI18n } from '@/shared/i18n/I18nProvider'
-import { Input } from '@/components/ui/input'
 import {
   Select,
   SelectContent,
@@ -116,16 +116,13 @@ export function AgencyFeeSection({
             <FieldLabel htmlFor='agencyLumpsumAmount'>
               {t('epda.lumpsum')}
             </FieldLabel>
-            <Input
+            <NumberInput
               id='agencyLumpsumAmount'
-              type='number'
               value={values.agencyLumpsumAmount}
-              onChange={(event) =>
-                handlers.setAgencyLumpsumAmount(event.target.value)
+              onValueChange={(_value, canonical) =>
+                handlers.setAgencyLumpsumAmount(canonical)
               }
               placeholder='0'
-              min='0'
-              step='any'
             />
           </div>
         </div>
@@ -137,15 +134,12 @@ export function AgencyFeeSection({
               <FieldLabel htmlFor='agencyDiscountPercent'>
                 {t('epda.discount')}
               </FieldLabel>
-              <Input
+              <NumberInput
                 id='agencyDiscountPercent'
-                type='number'
-                min='0'
-                max='100'
-                step='any'
+                max={100}
                 value={values.agencyDiscountPercent}
-                onChange={(event) =>
-                  handlers.setAgencyDiscountPercent(event.target.value)
+                onValueChange={(_value, canonical) =>
+                  handlers.setAgencyDiscountPercent(canonical)
                 }
                 placeholder='0'
               />
@@ -158,16 +152,13 @@ export function AgencyFeeSection({
               >
                 {t('epda.boatHireAgency')}
               </FieldLabel>
-              <Input
+              <NumberInput
                 id='boatHireAmount'
-                type='number'
                 value={values.boatHireAmount}
-                onChange={(event) =>
-                  handlers.setBoatHireAmount(event.target.value)
+                onValueChange={(_value, canonical) =>
+                  handlers.setBoatHireAmount(canonical)
                 }
                 placeholder={isBoatHireEnabled ? '0' : t('ph.boatHireAvail')}
-                min='0'
-                step='any'
                 disabled={!isBoatHireEnabled}
                 className={disabledFieldTextClass}
               />
@@ -177,16 +168,13 @@ export function AgencyFeeSection({
               <FieldLabel htmlFor='transportLs'>
                 {t('epda.transportLs')}
               </FieldLabel>
-              <Input
+              <NumberInput
                 id='transportLs'
-                type='number'
                 value={values.transportLs}
-                onChange={(event) =>
-                  handlers.setTransportLs(event.target.value)
+                onValueChange={(_value, canonical) =>
+                  handlers.setTransportLs(canonical)
                 }
                 placeholder='0'
-                min='0'
-                step='any'
               />
             </div>
           </div>

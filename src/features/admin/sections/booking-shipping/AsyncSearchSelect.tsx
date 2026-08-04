@@ -34,6 +34,9 @@ export function AsyncSearchSelect({
   onSearchChange,
   search,
   isLoading,
+  isLoadingMore,
+  hasMore,
+  onLoadMore,
   disabled,
   placeholder = 'Search…',
   emptyMessage = 'No results.',
@@ -49,6 +52,9 @@ export function AsyncSearchSelect({
   onSearchChange: (query: string) => void
   search: string
   isLoading?: boolean
+  isLoadingMore?: boolean
+  hasMore?: boolean
+  onLoadMore?: () => void
   disabled?: boolean
   placeholder?: string
   emptyMessage?: string
@@ -107,7 +113,15 @@ export function AsyncSearchSelect({
               value={search}
               onValueChange={onSearchChange}
             />
-            <CommandList>
+            <CommandList
+              onScroll={(event) => {
+                if (!hasMore || isLoadingMore || !onLoadMore) return
+                const list = event.currentTarget
+                const nearBottom =
+                  list.scrollHeight - list.scrollTop - list.clientHeight < 32
+                if (nearBottom) onLoadMore()
+              }}
+            >
               {awaitingSearch ? (
                 <p className='px-3 py-4 text-sm text-muted-foreground'>
                   {idleMessage}
@@ -159,6 +173,23 @@ export function AsyncSearchSelect({
                         </span>
                       </CommandItem>
                     ))}
+                    {hasMore && onLoadMore ? (
+                      <CommandItem
+                        value='load-more-options'
+                        disabled={isLoadingMore}
+                        onSelect={onLoadMore}
+                        className='justify-center text-muted-foreground'
+                      >
+                        {isLoadingMore ? (
+                          <>
+                            <Loader2 className='h-4 w-4 animate-spin' />
+                            Loading next 10 portsâ€¦
+                          </>
+                        ) : (
+                          'Load next 10 ports'
+                        )}
+                      </CommandItem>
+                    ) : null}
                   </CommandGroup>
                 </>
               )}

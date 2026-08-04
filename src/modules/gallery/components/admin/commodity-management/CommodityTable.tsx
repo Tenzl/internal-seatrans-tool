@@ -2,6 +2,7 @@ import type {
   CargoType,
   Commodity,
 } from '@/modules/gallery/services/commodityService'
+import { NumberInput } from '@/shared/components/NumberInput'
 import { Edit2, Package, Save, Trash2, X } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import BadgeButtonCombo from '@/components/ui/badge-button-combo'
@@ -137,13 +138,13 @@ export function CommodityTable({
                     </td>
                     <td className='px-4 py-3'>
                       {isEditing ? (
-                        <input
-                          type='number'
+                        <NumberInput
                           value={editingData.requiredImageCount}
-                          onChange={(event) =>
-                            onEditRequiredCountChange(event.target.value)
+                          decimalScale={0}
+                          onValueChange={(_value, canonical) =>
+                            onEditRequiredCountChange(canonical)
                           }
-                          min='1'
+                          min={1}
                           aria-label='Edit required image count'
                           className='w-full rounded border px-3 py-1 focus:ring-2 focus:ring-primary focus:outline-none'
                         />

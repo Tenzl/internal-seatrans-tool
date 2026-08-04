@@ -1,3 +1,4 @@
+import { DateTimePicker } from '@/shared/components/DateTimePicker'
 import { Anchor, Box, FileText, Plus, Route, Ship, Trash2 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
@@ -40,9 +41,12 @@ type BookingShippingEditorProps = {
   portSearch: string
   portSearchReady: boolean
   portOptionsFetching: boolean
+  portOptionsFetchingNextPage: boolean
+  portOptionsHasMore: boolean
   portFieldsDisabled: boolean
   onActiveSectionChange: (section: BookingShippingSectionId) => void
   onPortSearchChange: (search: string) => void
+  onLoadMorePortOptions: () => void
   onFieldChange: (
     key: BookingShippingFieldKey,
     value: string | number | null
@@ -60,9 +64,12 @@ export function BookingShippingEditor({
   portSearch,
   portSearchReady,
   portOptionsFetching,
+  portOptionsFetchingNextPage,
+  portOptionsHasMore,
   portFieldsDisabled,
   onActiveSectionChange,
   onPortSearchChange,
+  onLoadMorePortOptions,
   onFieldChange,
   onUpdateLeg,
   onAddLeg,
@@ -88,6 +95,9 @@ export function BookingShippingEditor({
       search={portSearch}
       onSearchChange={onPortSearchChange}
       isLoading={portOptionsFetching && portOptions.length === 0}
+      isLoadingMore={portOptionsFetchingNextPage}
+      hasMore={portOptionsHasMore}
+      onLoadMore={onLoadMorePortOptions}
       disabled={portFieldsDisabled}
       placeholder='Type port name…'
       requireSearch
@@ -345,6 +355,9 @@ export function BookingShippingEditor({
                 search={portSearch}
                 onSearchChange={onPortSearchChange}
                 isLoading={portSearchReady && portOptionsFetching}
+                isLoadingMore={portOptionsFetchingNextPage}
+                hasMore={portOptionsHasMore}
+                onLoadMore={onLoadMorePortOptions}
                 placeholder='Type port name…'
                 requireSearch
                 idleMessage='Type a port name to search.'
@@ -425,6 +438,12 @@ function FormField({
           onChange={(event) => onChange(event.target.value)}
           rows={3}
           className='min-h-[4.5rem] resize-y bg-background'
+        />
+      ) : type === 'date' || type === 'datetime-local' ? (
+        <DateTimePicker
+          value={String(value ?? '')}
+          onValueChange={onChange}
+          includeTime={type === 'datetime-local'}
         />
       ) : (
         <Input

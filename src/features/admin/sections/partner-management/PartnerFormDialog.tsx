@@ -1,4 +1,6 @@
 import type { Dispatch, ReactNode, SetStateAction } from 'react'
+import { DateTimePicker } from '@/shared/components/DateTimePicker'
+import { NumberInput } from '@/shared/components/NumberInput'
 import { Plus, Trash2, Lock } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
@@ -19,6 +21,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
+import { PartnerFieldChangeHistory } from './PartnerFieldChangeHistory'
 import {
   APPROVE_STATUS_OPTIONS,
   createEmptyPartnerContact,
@@ -28,7 +31,6 @@ import {
   PARTNER_ADDITION_TYPE_OPTIONS,
   type PartnerFormState,
 } from './partnerFormModel'
-import { PartnerFieldChangeHistory } from './PartnerFieldChangeHistory'
 import type {
   ApproveStatus,
   CustomerStatus,
@@ -138,19 +140,47 @@ function TextField({
 }: TextFieldProps) {
   return (
     <Field label={label} wide={wide}>
-      <Input
-        type={type}
-        min={min}
-        value={String(form[field] ?? '')}
-        disabled={disabled}
-        placeholder={placeholder}
-        onChange={(event) =>
-          onFormChange((current) => ({
-            ...current,
-            [field]: event.target.value,
-          }))
-        }
-      />
+      {type === 'number' ? (
+        <NumberInput
+          value={String(form[field] ?? '')}
+          decimalScale={0}
+          min={min ?? 0}
+          disabled={disabled}
+          placeholder={placeholder}
+          onValueChange={(_value, canonical) =>
+            onFormChange((current) => ({
+              ...current,
+              [field]: canonical,
+            }))
+          }
+        />
+      ) : type === 'date' ? (
+        <DateTimePicker
+          value={String(form[field] ?? '')}
+          disabled={disabled}
+          maxDate={new Date()}
+          placeholder={placeholder}
+          onValueChange={(value) =>
+            onFormChange((current) => ({
+              ...current,
+              [field]: value,
+            }))
+          }
+        />
+      ) : (
+        <Input
+          type={type}
+          value={String(form[field] ?? '')}
+          disabled={disabled}
+          placeholder={placeholder}
+          onChange={(event) =>
+            onFormChange((current) => ({
+              ...current,
+              [field]: event.target.value,
+            }))
+          }
+        />
+      )}
     </Field>
   )
 }
@@ -638,11 +668,19 @@ function ContactField({
 }) {
   return (
     <Field label={label}>
-      <Input
-        type={type}
-        value={value ?? ''}
-        onChange={(event) => onChange(event.target.value)}
-      />
+      {type === 'date' ? (
+        <DateTimePicker
+          value={value ?? ''}
+          onValueChange={onChange}
+          maxDate={new Date()}
+        />
+      ) : (
+        <Input
+          type={type}
+          value={value ?? ''}
+          onChange={(event) => onChange(event.target.value)}
+        />
+      )}
     </Field>
   )
 }

@@ -121,6 +121,28 @@ describe('transportDocumentService', () => {
     })
   })
 
+  it('loads all steps belonging to one booking workflow', async () => {
+    vi.mocked(apiClient.get).mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          data: {
+            id: 12,
+            flow: 'EXPORT',
+            documents: { booking: { id: 12, documentType: 'booking' } },
+          },
+        }),
+        { status: 200 }
+      )
+    )
+
+    const result = await transportDocumentService.workflow(12)
+
+    expect(apiClient.get).toHaveBeenCalledWith(
+      '/admin/booking-documents/bookings/12/workflow'
+    )
+    expect(result).toMatchObject({ id: 12, flow: 'EXPORT' })
+  })
+
   it('updates, locks, unlocks, archives, and permanently deletes records', async () => {
     vi.mocked(apiClient.get).mockResolvedValue(
       new Response(JSON.stringify({ data: { id: 5, status: 'PROCESSING' } }), {
@@ -144,7 +166,9 @@ describe('transportDocumentService', () => {
           status: 200,
         })
       )
-    vi.mocked(apiClient.delete).mockResolvedValue(new Response(null, { status: 204 }))
+    vi.mocked(apiClient.delete).mockResolvedValue(
+      new Response(null, { status: 204 })
+    )
 
     await transportDocumentService.getById(5)
     await transportDocumentService.update(5, {

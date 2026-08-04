@@ -83,6 +83,8 @@ export const API_CONFIG = {
       `/admin/booking-documents/${type}/records`,
     ADMIN_HISTORY: '/admin/booking-documents/records',
     ADMIN_BY_ID: (id: number) => `/admin/booking-documents/records/${id}`,
+    ADMIN_WORKFLOW: (bookingId: number) =>
+      `/admin/booking-documents/bookings/${bookingId}/workflow`,
     ADMIN_UPDATE: (id: number) => `/admin/booking-documents/records/${id}`,
     ADMIN_LOCK: (id: number) => `/admin/booking-documents/records/${id}/lock`,
     ADMIN_UNLOCK: (id: number) =>
