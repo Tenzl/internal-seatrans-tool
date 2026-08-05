@@ -11,15 +11,6 @@ export const TRANSPORT_DOCUMENT_STATUSES = ['PROCESSING', 'COMPLETED'] as const
 export type TransportDocumentStatus =
   (typeof TRANSPORT_DOCUMENT_STATUSES)[number]
 
-export const BILL_TO_MODES = [
-  'NONE',
-  'SAME_AS_SHIPPER',
-  'SAME_AS_NOTIFY_PARTY',
-  'SAME_AS_CONSIGNEE',
-] as const
-
-export type BillToMode = (typeof BILL_TO_MODES)[number]
-
 export interface CargoRow {
   containerSealNumber: string
   quantity: string
@@ -39,6 +30,7 @@ export interface ArrivalNoticePayload {
   consigneePartyId?: number | null
   notifyParty: string
   notifyPartyId?: number | null
+  notifyPartySameAsConsignee?: boolean
   mblNumber: string
   hblNumber: string
   vesselVoyage: string
@@ -65,6 +57,7 @@ export interface DeliveryOrderPayload {
   date: string
   to: string
   deliverTo: string
+  consigneePartyId?: number | null
   notifyParty: string
   notifyPartyId?: number | null
   mblNumber: string
@@ -91,16 +84,7 @@ export interface BookingConfirmationPayload {
   date: string
   bookingNumber: string
   to: string
-  shipper?: string
-  shipperPartyId?: number | null
-  agent?: string
-  agentPartyId?: number | null
-  consignee?: string
-  consigneePartyId?: number | null
-  notifyParty?: string
-  notifyPartyId?: number | null
-  notifyPartySameAsConsignee?: boolean
-  billToMode?: BillToMode
+  clientPartyId?: number | null
   vesselVoyage: string
   etd: string
   eta: string

@@ -41,7 +41,11 @@ export interface TransportDocumentFieldSpec {
   span?: 1 | 2 | 3
   options?: TransportDocumentFieldOption[]
   partyIdKey?:
-    'agentPartyId' | 'shipperPartyId' | 'consigneePartyId' | 'notifyPartyId'
+    | 'clientPartyId'
+    | 'agentPartyId'
+    | 'shipperPartyId'
+    | 'consigneePartyId'
+    | 'notifyPartyId'
   additionType?: PartnerAdditionType
   customerType?: CustomerType
 }
@@ -100,8 +104,17 @@ export const TRANSPORT_DOCUMENT_FORM_SECTIONS: Record<
       ],
     },
     {
-      title: 'Parties',
-      fields: [],
+      title: 'Client',
+      fields: [
+        {
+          key: 'to',
+          label: 'Client',
+          kind: 'party',
+          partyIdKey: 'clientPartyId',
+          additionType: 'CUSTOMER',
+          span: 2,
+        },
+      ],
     },
     {
       title: 'Route',
@@ -445,7 +458,9 @@ export const TRANSPORT_DOCUMENT_FORM_SECTIONS: Record<
         {
           key: 'deliverTo',
           label: 'Deliver shipment to',
-          kind: 'textarea',
+          kind: 'party',
+          partyIdKey: 'consigneePartyId',
+          additionType: 'CONSIGNEE',
           span: 2,
         },
         {

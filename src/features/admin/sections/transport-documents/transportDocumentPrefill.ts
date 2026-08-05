@@ -48,14 +48,6 @@ export function prefillArrivalNoticeFromBooking(
     .join(' / ')
   return {
     ...current,
-    agent: source.agent ?? '',
-    agentPartyId: source.agentPartyId ?? null,
-    shipper: source.shipper ?? '',
-    shipperPartyId: source.shipperPartyId ?? null,
-    consignee: source.consignee ?? '',
-    consigneePartyId: source.consigneePartyId ?? null,
-    notifyParty: source.notifyParty ?? '',
-    notifyPartyId: source.notifyPartyId ?? null,
     date: source.date,
     shipmentNumber: source.bookingNumber,
     referenceNumber: source.bookingNumber,
@@ -129,6 +121,8 @@ export function prefillDeliveryOrderFromAn(
   return {
     ...current,
     date: source.date,
+    deliverTo: source.consignee,
+    consigneePartyId: source.consigneePartyId ?? null,
     notifyParty: source.notifyParty,
     notifyPartyId: source.notifyPartyId ?? null,
     mblNumber: source.mblNumber,

@@ -37,14 +37,8 @@ describe('transportDocumentPrefill', () => {
     booking.date = '2026-08-05'
     booking.etd = '2026-08-06'
     booking.eta = '2026-08-12'
-    booking.agent = 'APEX\nTOKYO, JAPAN'
-    booking.agentPartyId = 46
-    booking.shipper = 'SHIPPER CO\nVIETNAM'
-    booking.shipperPartyId = 10
-    booking.consignee = 'CONSIGNEE CO\nJAPAN'
-    booking.consigneePartyId = 11
-    booking.notifyParty = booking.consignee
-    booking.notifyPartyId = booking.consigneePartyId
+    booking.to = 'CLIENT CO\nJAPAN'
+    booking.clientPartyId = 11
 
     const next = prefillArrivalNoticeFromBooking(booking, emptyArrivalNotice())
     expect(next.anNumber).toBe('')
@@ -53,10 +47,10 @@ describe('transportDocumentPrefill', () => {
     expect(next.vesselVoyage).toBe('YOUCAN / 001E')
     expect(next.etdEta).toBe('2026-08-06 / 2026-08-12')
     expect(next.cargoRows[0]?.descriptionOfGoods).toBe('STONE')
-    expect(next.agentPartyId).toBe(46)
-    expect(next.shipperPartyId).toBe(10)
-    expect(next.consigneePartyId).toBe(11)
-    expect(next.notifyPartyId).toBe(11)
+    expect(next.agentPartyId).toBeNull()
+    expect(next.shipperPartyId).toBeNull()
+    expect(next.consigneePartyId).toBeNull()
+    expect(next.notifyPartyId).toBeNull()
   })
 
   it('maps shared AN parties, route and cargo fields onto BL', () => {
@@ -64,10 +58,10 @@ describe('transportDocumentPrefill', () => {
     an.hblNumber = 'ST2607036'
     an.shipper = 'SHIPPER CO'
     an.shipperPartyId = 10
-    an.consignee = 'CONSIGNEE CO'
-    an.consigneePartyId = 11
     an.notifyParty = 'NOTIFY CO'
     an.notifyPartyId = 12
+    an.consignee = 'CONSIGNEE CO'
+    an.consigneePartyId = 11
     an.vesselVoyage = 'SITC / 2615N'
     an.marks = 'N/M'
     an.volume = '10 PKGS'
@@ -96,6 +90,8 @@ describe('transportDocumentPrefill', () => {
     const an = emptyArrivalNotice()
     an.mblNumber = 'MBL1'
     an.hblNumber = 'HBL1'
+    an.consignee = 'CONSIGNEE CO'
+    an.consigneePartyId = 11
     an.notifyPartyId = 12
     an.cargoRows = [
       {
@@ -110,6 +106,8 @@ describe('transportDocumentPrefill', () => {
     const next = prefillDeliveryOrderFromAn(an, emptyDeliveryOrder())
     expect(next.mblNumber).toBe('MBL1')
     expect(next.notifyPartyId).toBe(12)
+    expect(next.deliverTo).toBe('CONSIGNEE CO')
+    expect(next.consigneePartyId).toBe(11)
     expect(next.cargoRows).toEqual(an.cargoRows)
     expect(next.cargoRows).not.toBe(an.cargoRows)
     expect(next.doNumber).toBe('')

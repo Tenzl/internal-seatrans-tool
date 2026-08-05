@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest'
+import type { ArrivalNoticePayload } from './transportDocument.types'
 import {
   cargoRowSchema,
   emptyArrivalNotice,
@@ -41,6 +42,17 @@ describe('transport document schemas', () => {
     )
   })
 
+  it('defaults the AN same-as flag for records saved before Party linking', () => {
+    const legacy = emptyArrivalNotice() as ArrivalNoticePayload & {
+      notifyPartySameAsConsignee?: boolean
+    }
+    delete legacy.notifyPartySameAsConsignee
+
+    expect(
+      parseTransportDocument('an', legacy).notifyPartySameAsConsignee
+    ).toBe(false)
+  })
+
   it('keeps every AN, Booking and DO field in the backend contract', () => {
     expect(Object.keys(emptyArrivalNotice()).sort()).toEqual(
       [
@@ -62,6 +74,7 @@ describe('transport document schemas', () => {
         'note',
         'notifyParty',
         'notifyPartyId',
+        'notifyPartySameAsConsignee',
         'placeOfDelivery',
         'placeOfReceipt',
         'portOfDischarge',
@@ -78,7 +91,7 @@ describe('transport document schemas', () => {
     expect(Object.keys(emptyBookingConfirmation()).sort()).toEqual(
       [
         'bookingNumber',
-        'billToMode',
+        'clientPartyId',
         'closingTime',
         'commodity',
         'contact',
@@ -90,9 +103,6 @@ describe('transport document schemas', () => {
         'measurement',
         'motherVessel',
         'motherVoyage',
-        'notifyParty',
-        'notifyPartyId',
-        'notifyPartySameAsConsignee',
         'pic',
         'pickupDate',
         'pickupPlace',
@@ -100,12 +110,6 @@ describe('transport document schemas', () => {
         'placeOfReceipt',
         'portOfDischarge',
         'portOfLoading',
-        'agent',
-        'agentPartyId',
-        'consignee',
-        'consigneePartyId',
-        'shipper',
-        'shipperPartyId',
         'siCutoff',
         'specialRemark',
         'to',
@@ -122,6 +126,7 @@ describe('transport document schemas', () => {
         'customerAttention',
         'date',
         'deliverTo',
+        'consigneePartyId',
         'doNumber',
         'eta',
         'etd',

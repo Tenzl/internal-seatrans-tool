@@ -24,6 +24,7 @@ interface TransportDocumentFieldProps {
   selectedPartyId?: number | null
   onChange: (value: unknown) => void
   onPartyIdChange?: (value: number | null) => void
+  disabled?: boolean
 }
 
 export function TransportDocumentField({
@@ -32,6 +33,7 @@ export function TransportDocumentField({
   selectedPartyId,
   onChange,
   onPartyIdChange,
+  disabled = false,
 }: TransportDocumentFieldProps) {
   const id = `transport-document-${field.key}`
 
@@ -49,6 +51,7 @@ export function TransportDocumentField({
           documentValue={value}
           additionType={field.additionType}
           customerType={field.customerType}
+          disabled={disabled}
           onChange={(option: PartnerOption | null) => {
             onChange(option ? formatPartyDocumentValue(option) : '')
             onPartyIdChange?.(option?.id ?? null)

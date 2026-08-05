@@ -41,6 +41,7 @@ describe('transport document form config', () => {
     expect(fieldOrder('booking')).toEqual([
       'bookingNumber',
       'date',
+      'to',
       'placeOfReceipt',
       'portOfLoading',
       'portOfDischarge',
@@ -199,7 +200,13 @@ describe('transport document form config', () => {
     })
   })
 
-  it('uses customer type for Agent and addition tags for Arrival Notice parties', () => {
+  it('connects each document Party field to its matching Party role', () => {
+    expect(fieldSpec('booking', 'to')).toMatchObject({
+      label: 'Client',
+      kind: 'party',
+      partyIdKey: 'clientPartyId',
+      additionType: 'CUSTOMER',
+    })
     expect(fieldSpec('an', 'agent')).toMatchObject({
       kind: 'party',
       partyIdKey: 'agentPartyId',
@@ -239,6 +246,11 @@ describe('transport document form config', () => {
       kind: 'party',
       partyIdKey: 'notifyPartyId',
       additionType: 'NOTIFY_PARTY',
+    })
+    expect(fieldSpec('do', 'deliverTo')).toMatchObject({
+      kind: 'party',
+      partyIdKey: 'consigneePartyId',
+      additionType: 'CONSIGNEE',
     })
   })
 

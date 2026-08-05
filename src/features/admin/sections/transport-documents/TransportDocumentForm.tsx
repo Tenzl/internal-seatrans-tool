@@ -1,6 +1,7 @@
 import { Loader2, Save } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import { BookingPartySection } from './BookingPartySection'
+import { Checkbox } from '@/components/ui/checkbox'
+import { Label } from '@/components/ui/label'
 import { CargoRowsEditor } from './CargoRowsEditor'
 import { TransportDocumentField } from './TransportDocumentField'
 import type { CargoRow, TransportDocumentType } from './transportDocument.types'
@@ -31,6 +32,31 @@ export function TransportDocumentForm({
   submitLabel,
 }: TransportDocumentFormProps) {
   const document = getTransportDocumentDefinition(documentType)
+  const notifySameAsConsignee =
+    documentType === 'an' && values.notifyPartySameAsConsignee === true
+
+  const updateField = (key: string, value: unknown) => {
+    onFieldChange(key, value)
+    if (documentType !== 'an' || !notifySameAsConsignee) return
+    if (key === 'consignee') onFieldChange('notifyParty', value)
+    if (key === 'consigneePartyId') {
+      onFieldChange('notifyPartyId', value)
+      if (typeof value !== 'number') {
+        onFieldChange('notifyPartySameAsConsignee', false)
+      }
+    }
+  }
+
+  const updateNotifySameAsConsignee = (checked: boolean) => {
+    onFieldChange('notifyPartySameAsConsignee', checked)
+    onFieldChange('notifyParty', checked ? (values.consignee ?? '') : '')
+    onFieldChange(
+      'notifyPartyId',
+      checked && typeof values.consigneePartyId === 'number'
+        ? values.consigneePartyId
+        : null
+    )
+  }
 
   return (
     <form
@@ -53,34 +79,50 @@ export function TransportDocumentForm({
               </p>
             ) : null}
           </div>
-          {documentType === 'booking' && section.title === 'Parties' ? (
-            <BookingPartySection
-              values={values}
-              onFieldChange={onFieldChange}
-            />
-          ) : (
-            <div className='grid gap-x-4 gap-y-3 md:grid-cols-2 xl:grid-cols-3'>
-              {section.fields.map((field) => (
-                <TransportDocumentField
-                  key={field.key}
-                  field={field}
-                  value={String(values[field.key] ?? '')}
-                  selectedPartyId={
-                    field.partyIdKey &&
-                    typeof values[field.partyIdKey] === 'number'
-                      ? (values[field.partyIdKey] as number)
-                      : null
+          <div className='grid gap-x-4 gap-y-3 md:grid-cols-2 xl:grid-cols-3'>
+            {section.fields.map((field) => (
+              <TransportDocumentField
+                key={field.key}
+                field={field}
+                value={String(values[field.key] ?? '')}
+                selectedPartyId={
+                  field.partyIdKey &&
+                  typeof values[field.partyIdKey] === 'number'
+                    ? (values[field.partyIdKey] as number)
+                    : null
+                }
+                disabled={
+                  documentType === 'an' &&
+                  field.key === 'notifyParty' &&
+                  notifySameAsConsignee
+                }
+                onChange={(value) => updateField(field.key, value)}
+                onPartyIdChange={
+                  field.partyIdKey
+                    ? (value) => updateField(field.partyIdKey!, value)
+                    : undefined
+                }
+              />
+            ))}
+            {documentType === 'an' && section.title === 'Parties' ? (
+              <div className='flex items-center gap-2 md:col-span-2 xl:col-span-3'>
+                <Checkbox
+                  id='transport-document-notify-same-as-consignee'
+                  checked={notifySameAsConsignee}
+                  disabled={
+                    !notifySameAsConsignee &&
+                    typeof values.consigneePartyId !== 'number'
                   }
-                  onChange={(value) => onFieldChange(field.key, value)}
-                  onPartyIdChange={
-                    field.partyIdKey
-                      ? (value) => onFieldChange(field.partyIdKey!, value)
-                      : undefined
+                  onCheckedChange={(checked) =>
+                    updateNotifySameAsConsignee(checked === true)
                   }
                 />
-              ))}
-            </div>
-          )}
+                <Label htmlFor='transport-document-notify-same-as-consignee'>
+                  Notify Party same as Consignee
+                </Label>
+              </div>
+            ) : null}
+          </div>
         </section>
       ))}
 
