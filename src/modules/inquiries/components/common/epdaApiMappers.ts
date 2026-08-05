@@ -3,12 +3,18 @@ import {
   getDefaultGarbageUsdRate,
   resolveGarbageUsdRate,
 } from '@/modules/inquiries/components/common/garbageFeeDefaults'
-import { quoteFormFromStored, usesQnPilotage } from '@/modules/inquiries/components/common/quoteForm'
+import {
+  quoteFormFromStored,
+  usesQnPilotage,
+} from '@/modules/inquiries/components/common/quoteForm'
 import type {
   EpdaApiPayload,
   ShippingAgencyAdminInquiry,
 } from '@/modules/inquiries/types/shippingAgencyEpda'
-import { parseFiniteNumber, parseFiniteNumberOrUndefined } from '@/shared/utils/parseNumber'
+import {
+  parseFiniteNumber,
+  parseFiniteNumberOrUndefined,
+} from '@/shared/utils/parseNumber'
 
 export type {
   EpdaApiPayload,
@@ -18,7 +24,9 @@ export type {
 const toNum = (value: string | number | null | undefined): number | undefined =>
   parseFiniteNumberOrUndefined(value)
 
-const toStr = (value: string | number | null | undefined): string | undefined => {
+const toStr = (
+  value: string | number | null | undefined
+): string | undefined => {
   if (value === null || value === undefined) return undefined
   const s = String(value).trim()
   return s.length > 0 ? s : undefined
@@ -30,7 +38,9 @@ const toStr = (value: string | number | null | undefined): string | undefined =>
  * trailing ".00" so the form shows "12000" (and only shows decimals the user actually
  * entered, e.g. "130.5"). Non-numeric input falls back to toStr.
  */
-const toNumStr = (value: string | number | null | undefined): string | undefined => {
+const toNumStr = (
+  value: string | number | null | undefined
+): string | undefined => {
   if (value === null || value === undefined || value === '') return undefined
   const n = parseFiniteNumber(value)
   if (n === null) return toStr(value)
@@ -65,7 +75,7 @@ export function buildEpdaPatchPayload(
   params: BuildInvoiceQuoteDataParams & {
     boatHireQuarantineAmount: string
     transportQuarantine?: string
-  },
+  }
 ): EpdaApiPayload {
   const payload: EpdaApiPayload = {
     shipownerTo: params.toShipowner,
@@ -86,8 +96,8 @@ export function buildEpdaPatchPayload(
     berthHours: toNum(params.berthHours),
     anchorageHours: toNum(params.anchorageHours),
     pilotage3rdMiles: usesQnPilotage(params.quoteForm)
-        ? toNum(params.qnPilotageMiles)
-        : toNum(params.pilotageThirdMiles),
+      ? toNum(params.qnPilotageMiles)
+      : toNum(params.pilotageThirdMiles),
     epdaDocumentDate: params.formCreatedDate,
     shipType: params.shipType,
     shipownerNationality: params.shipownerNationality,
@@ -101,7 +111,9 @@ export function buildEpdaPatchPayload(
     agencyLumpsumAmount: toNum(params.agencyLumpsumAmount),
     boatHireAmount: toNum(params.boatHireAmount),
     tallyFeeAmount: toNum(params.tallyFeeAmount),
-    tugAssistanceAmount: params.isLoaOverTugMax ? toNum(params.tugAssistanceAmount) : undefined,
+    tugAssistanceAmount: params.isLoaOverTugMax
+      ? toNum(params.tugAssistanceAmount)
+      : undefined,
     tugAssistanceTrips: toNum(params.tugAssistanceTrips) === 1 ? 1 : 2,
     shorecraneHireUsdPerMt:
       params.otherExpenseType === 'SHORECRANE_HIRE'
@@ -109,11 +121,13 @@ export function buildEpdaPatchPayload(
         : null,
     transportLs: params.transportLs || undefined,
     transportQuarantine:
-      params.transportQuarantine ?? params.boatHireQuarantineAmount ?? undefined,
+      params.transportQuarantine ??
+      params.boatHireQuarantineAmount ??
+      undefined,
   }
 
   return Object.fromEntries(
-    Object.entries(payload).filter(([, v]) => v !== undefined && v !== ''),
+    Object.entries(payload).filter(([, v]) => v !== undefined && v !== '')
   )
 }
 
@@ -122,7 +136,7 @@ export function buildInternalCreatePayload(
   params: BuildInvoiceQuoteDataParams & {
     boatHireQuarantineAmount: string
   },
-  notes?: string,
+  notes?: string
 ): EpdaApiPayload {
   return {
     customerUserId,
@@ -148,8 +162,8 @@ export function buildInternalCreatePayload(
     berthHours: toNum(params.berthHours) ?? 96,
     anchorageHours: toNum(params.anchorageHours) ?? 24,
     pilotage3rdMiles: usesQnPilotage(params.quoteForm)
-        ? toNum(params.qnPilotageMiles) ?? 5
-        : toNum(params.pilotageThirdMiles) ?? 17,
+      ? (toNum(params.qnPilotageMiles) ?? 5)
+      : (toNum(params.pilotageThirdMiles) ?? 17),
     oceanFrtRateUsdPerMt: toNum(params.oceanFrtRateUsdPerMt),
     garbageUsdRate:
       toNum(params.garbageUsdRate) ??
@@ -158,10 +172,14 @@ export function buildInternalCreatePayload(
     agencyFeeMode: mapAgencyFeeModeToApi(params.agencyFeeMode),
     agencyDiscountPercent: toNum(params.agencyDiscountPercent),
     agencyLumpsumAmount: toNum(params.agencyLumpsumAmount),
-    tugAssistanceAmount: params.isLoaOverTugMax ? toNum(params.tugAssistanceAmount) : undefined,
+    tugAssistanceAmount: params.isLoaOverTugMax
+      ? toNum(params.tugAssistanceAmount)
+      : undefined,
     tugAssistanceTrips: toNum(params.tugAssistanceTrips) === 1 ? 1 : 2,
     shorecraneHireUsdPerMt:
-      params.otherExpenseType === 'SHORECRANE_HIRE' ? toNum(params.shorecraneHireUsdPerMt) : undefined,
+      params.otherExpenseType === 'SHORECRANE_HIRE'
+        ? toNum(params.shorecraneHireUsdPerMt)
+        : undefined,
   }
 }
 
@@ -200,7 +218,7 @@ export function applyAdminInquiryToForm(
     setOtherExpenseType: (v: string) => void
     setShorecraneHireUsdPerMt: (v: string) => void
     setTransportLs: (v: string) => void
-  },
+  }
 ) {
   const form = quoteFormFromStored(inquiry.quoteForm)
   // EPDA "DATE" = the day the inquiry was first created (submittedAt), not an
@@ -208,7 +226,7 @@ export function applyAdminInquiryToForm(
   setters.setFormCreatedDate(
     toStr(inquiry.submittedAt)?.slice(0, 10) ??
       toStr(inquiry.epdaDocumentDate) ??
-      new Date().toISOString().split('T')[0],
+      new Date().toISOString().split('T')[0]
   )
   setters.setToShipowner(toStr(inquiry.toName) ?? '')
   setters.setMv(toStr(inquiry.mv) ?? '')
@@ -219,38 +237,54 @@ export function applyAdminInquiryToForm(
   setters.setCargoQty(toNumStr(inquiry.cargoQuantity) ?? '')
   setters.setFrtTaxType(toStr(inquiry.frtTaxType) ?? '')
   setters.setPort(toStr(inquiry.portOfCall) ?? '')
-  setters.setDischargeLoadingLocation(toStr(inquiry.dischargeLoadingLocation) ?? '')
+  setters.setDischargeLoadingLocation(
+    toStr(inquiry.dischargeLoadingLocation) ?? ''
+  )
   setters.setPurposeOfCalling(toStr(inquiry.purposeOfCalling) ?? '')
   setters.setBerthHours(toNumStr(inquiry.berthHours) ?? '96')
   setters.setAnchorageHours(toNumStr(inquiry.anchorageHours) ?? '24')
-  const pilotage = toNumStr(inquiry.pilotage3rdMiles) ?? (usesQnPilotage(form) ? '5' : '47')
+  const pilotage =
+    toNumStr(inquiry.pilotage3rdMiles) ?? (usesQnPilotage(form) ? '5' : '47')
   setters.setPilotageThirdMiles(pilotage)
   setters.setQnPilotageMiles(pilotage)
   setters.setShipType(toStr(inquiry.shipType) ?? 'BULK_SHIP')
   const nationalityFromColumn = toStr(inquiry.shipownerNationality)
   const nationalityFromSnapshot = toStr(
-    (inquiry.epdaSnapshot?.shipowner_nationality as string | undefined) ?? null,
+    (inquiry.epdaSnapshot?.shipowner_nationality as string | undefined) ?? null
   )
-  const nationality = (nationalityFromColumn ?? nationalityFromSnapshot ?? 'OVERSEAS').toUpperCase()
-  setters.setShipownerNationality(nationality === 'VIETNAMESE' ? 'VIETNAMESE' : 'OVERSEAS')
+  const nationality = (
+    nationalityFromColumn ??
+    nationalityFromSnapshot ??
+    'OVERSEAS'
+  ).toUpperCase()
+  setters.setShipownerNationality(
+    nationality === 'VIETNAMESE' ? 'VIETNAMESE' : 'OVERSEAS'
+  )
   setters.setOceanFrtRateUsdPerMt(toNumStr(inquiry.oceanFrtRateUsdPerMt) ?? '')
   setters.setGarbageUsdRate(
-    toNumStr(inquiry.garbageUsdRate) ?? getDefaultGarbageUsdRate(form),
+    toNumStr(inquiry.garbageUsdRate) ?? getDefaultGarbageUsdRate(form)
   )
-  setters.setQuarantineCargoMode(mapQuarantineModeFromApi(inquiry.quarantineCargoMode))
+  setters.setQuarantineCargoMode(
+    mapQuarantineModeFromApi(inquiry.quarantineCargoMode)
+  )
   setters.setAgencyFeeMode(mapAgencyFeeModeFromApi(inquiry.agencyFeeMode))
-  setters.setAgencyDiscountPercent(toNumStr(inquiry.agencyDiscountPercent) ?? '')
+  setters.setAgencyDiscountPercent(
+    toNumStr(inquiry.agencyDiscountPercent) ?? ''
+  )
   setters.setAgencyLumpsumAmount(toNumStr(inquiry.agencyLumpsumAmount) ?? '')
   setters.setBoatHireAmount(toNumStr(inquiry.boatHireAmount) ?? '')
-  setters.setBoatHireQuarantineAmount(toNumStr(inquiry.transportQuarantine) ?? '')
+  setters.setBoatHireQuarantineAmount(
+    toNumStr(inquiry.transportQuarantine) ?? ''
+  )
   setters.setTallyFeeAmount(toNumStr(inquiry.tallyFeeAmount) ?? '')
   setters.setTugAssistanceAmount(toNumStr(inquiry.tugAssistanceAmount) ?? '')
   setters.setTugAssistanceTrips(
-    toNum(inquiry.tugAssistanceTrips) === 1 ? '1' : '2',
+    toNum(inquiry.tugAssistanceTrips) === 1 ? '1' : '2'
   )
   const shorecraneRate = toNumStr(inquiry.shorecraneHireUsdPerMt)
   const shorecraneFromSnapshot = toNumStr(
-    (inquiry.epdaSnapshot?.shorecrane_hire_usd_per_mt as string | number | undefined) ?? null,
+    (inquiry.epdaSnapshot?.shorecrane_hire_usd_per_mt as
+      string | number | undefined) ?? null
   )
   const resolvedShorecrane = shorecraneRate ?? shorecraneFromSnapshot
   if (resolvedShorecrane) {

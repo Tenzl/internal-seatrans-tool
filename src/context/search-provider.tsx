@@ -31,7 +31,7 @@ export function SearchProvider({ children }: SearchProviderProps) {
   return (
     <SearchContext value={{ open, setOpen }}>
       {children}
-      <CommandMenu />
+      <CommandMenu open={open} onOpenChange={setOpen} />
     </SearchContext>
   )
 }

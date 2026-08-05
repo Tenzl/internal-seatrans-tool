@@ -1,17 +1,16 @@
-import * as React from "react"
-
-import { Badge } from "@/components/ui/badge"
-import { Button, type ButtonProps } from "@/components/ui/button"
-import { cn } from "@/lib/utils"
+import * as React from 'react'
+import { cn } from '@/lib/utils'
+import { Badge } from '@/components/ui/badge'
+import { Button, type ButtonProps } from '@/components/ui/button'
 
 type BadgeButtonComboProps = {
   label: React.ReactNode
   badge?: React.ReactNode
   buttonClassName?: string
   badgeClassName?: string
-  variant?: ButtonProps["variant"]
-  size?: ButtonProps["size"]
-} & Omit<ButtonProps, "children" | "variant" | "size">
+  variant?: ButtonProps['variant']
+  size?: ButtonProps['size']
+} & Omit<ButtonProps, 'children' | 'variant' | 'size'>
 
 export default function BadgeButtonCombo({
   label,
@@ -19,17 +18,17 @@ export default function BadgeButtonCombo({
   buttonClassName,
   badgeClassName,
   className,
-  variant = "outline",
-  size = "default",
+  variant = 'outline',
+  size = 'default',
   ...rest
 }: BadgeButtonComboProps) {
   return (
-    <div className={cn("inline-flex items-center", className)}>
+    <div className={cn('inline-flex items-center', className)}>
       <Button
-        type="button"
+        type='button'
         variant={variant}
         size={size}
-        className={cn("rounded-r-none border-r-0", buttonClassName)}
+        className={cn('rounded-r-none border-r-0', buttonClassName)}
         {...rest}
       >
         {label}
@@ -37,10 +36,10 @@ export default function BadgeButtonCombo({
       {badge !== undefined && badge !== null && (
         <Badge
           className={cn(
-            "rounded-l-none rounded-r-md border border-l-0 px-2 py-0 h-9 flex items-center",
-            badgeClassName,
+            'flex h-9 items-center rounded-l-none rounded-r-md border border-l-0 px-2 py-0',
+            badgeClassName
           )}
-          variant={variant === "default" ? "default" : "outline"}
+          variant={variant === 'default' ? 'default' : 'outline'}
         >
           {badge}
         </Badge>

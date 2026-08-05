@@ -1,6 +1,6 @@
-import { apiClient } from '@/shared/utils/apiClient'
 import { API_CONFIG } from '@/shared/config/api.config'
 import type { ApiResponse } from '@/shared/types/api.types'
+import { apiClient } from '@/shared/utils/apiClient'
 
 export interface CategoryResponse {
   id: number
@@ -41,7 +41,8 @@ export interface PostRequest {
 type PostApiDto = Post & { authorFullName?: string }
 
 const mapPost = (raw: PostApiDto): Post => {
-  const words = typeof raw?.content === 'string' ? raw.content.split(/\s+/).length : 0
+  const words =
+    typeof raw?.content === 'string' ? raw.content.split(/\s+/).length : 0
   const readingTime = raw?.readingTime ?? Math.max(1, Math.round(words / 200))
   return {
     ...raw,
@@ -59,7 +60,7 @@ async function requestRecordPostView(id: number): Promise<number> {
   const response = await apiClient.post<ApiResponse<{ viewCount: number }>>(
     API_CONFIG.POSTS.PUBLIC_RECORD_VIEW(id),
     {},
-    { skipAuth: true },
+    { skipAuth: true }
   )
 
   if (!response.ok) {
@@ -74,20 +75,25 @@ export const postService = {
   // Admin endpoints
   getAllPosts: async (): Promise<Post[]> => {
     const response = await apiClient.get<ApiResponse<Post[]>>(
-      `${API_CONFIG.POSTS.ADMIN_BASE}?limit=100`,
+      `${API_CONFIG.POSTS.ADMIN_BASE}?limit=100`
     )
     const result = await response.json()
     return Array.isArray(result.data) ? result.data.map(mapPost) : []
   },
 
   getPostById: async (id: number): Promise<Post> => {
-    const response = await apiClient.get<ApiResponse<Post>>(API_CONFIG.POSTS.ADMIN_BY_ID(id))
+    const response = await apiClient.get<ApiResponse<Post>>(
+      API_CONFIG.POSTS.ADMIN_BY_ID(id)
+    )
     const result = await response.json()
     return mapPost(result.data)
   },
 
   createPost: async (postData: PostRequest): Promise<Post> => {
-    const response = await apiClient.post<ApiResponse<Post>>(API_CONFIG.POSTS.ADMIN_BASE, postData)
+    const response = await apiClient.post<ApiResponse<Post>>(
+      API_CONFIG.POSTS.ADMIN_BASE,
+      postData
+    )
 
     if (!response.ok) {
       const error = await response.json()
@@ -99,7 +105,10 @@ export const postService = {
   },
 
   updatePost: async (id: number, postData: PostRequest): Promise<Post> => {
-    const response = await apiClient.put<ApiResponse<Post>>(API_CONFIG.POSTS.ADMIN_BY_ID(id), postData)
+    const response = await apiClient.put<ApiResponse<Post>>(
+      API_CONFIG.POSTS.ADMIN_BY_ID(id),
+      postData
+    )
 
     if (!response.ok) {
       const error = await response.json()
@@ -142,7 +151,10 @@ export const postService = {
     })
   },
 
-  getPublishedPosts: async (category?: string, search?: string): Promise<Post[]> => {
+  getPublishedPosts: async (
+    category?: string,
+    search?: string
+  ): Promise<Post[]> => {
     const params = new URLSearchParams()
     params.set('page', '0')
     params.set('size', '100')
@@ -155,7 +167,9 @@ export const postService = {
     >(url, { skipAuth: true })
 
     if (!response.ok) {
-      throw new Error(`Failed to fetch published posts: ${response.status} ${response.statusText}`)
+      throw new Error(
+        `Failed to fetch published posts: ${response.status} ${response.statusText}`
+      )
     }
 
     const result = await response.json()
@@ -169,7 +183,10 @@ export const postService = {
   },
 
   getPublicPostById: async (id: number): Promise<Post> => {
-    const response = await apiClient.get<ApiResponse<Post>>(API_CONFIG.POSTS.PUBLIC_BY_ID(id), { skipAuth: true })
+    const response = await apiClient.get<ApiResponse<Post>>(
+      API_CONFIG.POSTS.PUBLIC_BY_ID(id),
+      { skipAuth: true }
+    )
 
     if (!response.ok) {
       throw new Error('Failed to fetch post')

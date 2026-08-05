@@ -1,7 +1,6 @@
-import { useCallback } from "react"
-import type { Column } from "@tanstack/react-table"
-
-import { DataTableSortHeader } from "@/components/ui/data-table"
+import { useCallback } from 'react'
+import type { Column } from '@tanstack/react-table'
+import { DataTableSortHeader } from '@/components/ui/data-table'
 
 export function useTableSortHeader<TData>() {
   return useCallback(

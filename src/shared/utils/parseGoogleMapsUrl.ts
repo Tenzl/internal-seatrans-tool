@@ -10,11 +10,7 @@
  * error because they require following a redirect that browsers block via CORS.
  */
 export type ParseMapsErrorCode =
-  | 'empty'
-  | 'shortLink'
-  | 'noCoordinates'
-  | 'outOfRange'
-  | 'invalidUrl'
+  'empty' | 'shortLink' | 'noCoordinates' | 'outOfRange' | 'invalidUrl'
 
 export interface ParsedMapsResult {
   ok: true

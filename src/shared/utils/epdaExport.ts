@@ -45,7 +45,9 @@ export async function printPreviewIframe(
     } catch (error) {
       frameWin.removeEventListener('afterprint', finish)
       reject(
-        error instanceof Error ? error : new Error('Failed to open print dialog')
+        error instanceof Error
+          ? error
+          : new Error('Failed to open print dialog')
       )
       return
     }

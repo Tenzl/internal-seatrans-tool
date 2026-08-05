@@ -72,8 +72,6 @@ export const API_CONFIG = {
     IMPORT_PREVIEW: '/admin/booking-management/partners/import/preview',
     IMPORT_COMMIT: '/admin/booking-management/partners/import/commit',
     IMPORT_TEMPLATE: '/admin/booking-management/partners/import/template',
-    BY_PARTNER: (partnerId: number) =>
-      `/admin/booking-management/partners/${partnerId}/shipping`,
   },
 
   BOOKING_DOCUMENTS: {
@@ -81,17 +79,24 @@ export const API_CONFIG = {
       `/admin/booking-documents/${type}/preview`,
     ADMIN_CREATE: (type: 'an' | 'booking' | 'do' | 'bl') =>
       `/admin/booking-documents/${type}/records`,
-    ADMIN_HISTORY: '/admin/booking-documents/records',
-    ADMIN_BY_ID: (id: number) => `/admin/booking-documents/records/${id}`,
+    ADMIN_HISTORY: (type: 'an' | 'booking' | 'do' | 'bl') =>
+      `/admin/booking-documents/${type}/records`,
+    ADMIN_BY_ID: (type: 'an' | 'booking' | 'do' | 'bl', id: number) =>
+      `/admin/booking-documents/${type}/records/${id}`,
     ADMIN_WORKFLOW: (bookingId: number) =>
       `/admin/booking-documents/bookings/${bookingId}/workflow`,
-    ADMIN_UPDATE: (id: number) => `/admin/booking-documents/records/${id}`,
-    ADMIN_LOCK: (id: number) => `/admin/booking-documents/records/${id}/lock`,
-    ADMIN_UNLOCK: (id: number) =>
-      `/admin/booking-documents/records/${id}/unlock`,
-    ADMIN_ARCHIVE: (id: number) => `/admin/booking-documents/records/${id}`,
-    ADMIN_PERMANENT_DELETE: (id: number) =>
-      `/admin/booking-documents/records/${id}/permanent`,
+    ADMIN_UPDATE: (type: 'an' | 'booking' | 'do' | 'bl', id: number) =>
+      `/admin/booking-documents/${type}/records/${id}`,
+    ADMIN_LOCK: (type: 'an' | 'booking' | 'do' | 'bl', id: number) =>
+      `/admin/booking-documents/${type}/records/${id}/lock`,
+    ADMIN_UNLOCK: (type: 'an' | 'booking' | 'do' | 'bl', id: number) =>
+      `/admin/booking-documents/${type}/records/${id}/unlock`,
+    ADMIN_ARCHIVE: (type: 'an' | 'booking' | 'do' | 'bl', id: number) =>
+      `/admin/booking-documents/${type}/records/${id}`,
+    ADMIN_PERMANENT_DELETE: (
+      type: 'an' | 'booking' | 'do' | 'bl',
+      id: number
+    ) => `/admin/booking-documents/${type}/records/${id}/permanent`,
   },
 
   SERVICE_TYPES: {

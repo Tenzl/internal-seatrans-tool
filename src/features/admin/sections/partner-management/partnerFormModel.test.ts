@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import {
+  PARTNER_ADDITION_TYPE_OPTIONS,
   createEmptyPartnerForm,
   partnerDetailToForm,
   partnerFormToRequest,
@@ -8,6 +9,9 @@ import {
 import type { BookingPartnerDetail } from './partnerManagementTypes'
 
 describe('partner form model', () => {
+  it('classifies Agent through customer type instead of an addition tag', () => {
+    expect(PARTNER_ADDITION_TYPE_OPTIONS).not.toContain('AGENT')
+  })
   it('creates independent empty form values', () => {
     const first = createEmptyPartnerForm()
     const second = createEmptyPartnerForm()

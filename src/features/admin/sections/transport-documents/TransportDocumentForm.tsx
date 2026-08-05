@@ -1,5 +1,6 @@
 import { Loader2, Save } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import { BookingPartySection } from './BookingPartySection'
 import { CargoRowsEditor } from './CargoRowsEditor'
 import { TransportDocumentField } from './TransportDocumentField'
 import type { CargoRow, TransportDocumentType } from './transportDocument.types'
@@ -13,7 +14,7 @@ interface TransportDocumentFormProps {
   values: Record<string, unknown>
   cargoRows: CargoRow[] | null
   isGenerating: boolean
-  onFieldChange: (key: string, value: string) => void
+  onFieldChange: (key: string, value: unknown) => void
   onCargoRowsChange: (rows: CargoRow[]) => void
   onSubmit: () => void
   submitLabel?: string
@@ -52,16 +53,34 @@ export function TransportDocumentForm({
               </p>
             ) : null}
           </div>
-          <div className='grid gap-x-4 gap-y-3 md:grid-cols-2 xl:grid-cols-3'>
-            {section.fields.map((field) => (
-              <TransportDocumentField
-                key={field.key}
-                field={field}
-                value={String(values[field.key] ?? '')}
-                onChange={(value) => onFieldChange(field.key, value)}
-              />
-            ))}
-          </div>
+          {documentType === 'booking' && section.title === 'Parties' ? (
+            <BookingPartySection
+              values={values}
+              onFieldChange={onFieldChange}
+            />
+          ) : (
+            <div className='grid gap-x-4 gap-y-3 md:grid-cols-2 xl:grid-cols-3'>
+              {section.fields.map((field) => (
+                <TransportDocumentField
+                  key={field.key}
+                  field={field}
+                  value={String(values[field.key] ?? '')}
+                  selectedPartyId={
+                    field.partyIdKey &&
+                    typeof values[field.partyIdKey] === 'number'
+                      ? (values[field.partyIdKey] as number)
+                      : null
+                  }
+                  onChange={(value) => onFieldChange(field.key, value)}
+                  onPartyIdChange={
+                    field.partyIdKey
+                      ? (value) => onFieldChange(field.partyIdKey!, value)
+                      : undefined
+                  }
+                />
+              ))}
+            </div>
+          )}
         </section>
       ))}
 

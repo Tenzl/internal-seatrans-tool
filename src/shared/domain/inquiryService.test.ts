@@ -1,5 +1,5 @@
-import { describe, expect, it } from 'vitest'
 import { API_CONFIG } from '@/shared/config/api.config'
+import { describe, expect, it } from 'vitest'
 import { toInquiryServiceSlug } from './inquiryService'
 
 describe('toInquiryServiceSlug', () => {
@@ -15,7 +15,7 @@ describe('toInquiryServiceSlug', () => {
 
   it('always scopes customer batch deletion by canonical service slug', () => {
     expect(API_CONFIG.INQUIRIES.USER_BATCH_DELETE('total-logistic')).toBe(
-      '/inquiries/batch?serviceSlug=total-logistic',
+      '/inquiries/batch?serviceSlug=total-logistic'
     )
   })
 })

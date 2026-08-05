@@ -1,4 +1,7 @@
-import type { CargoTypeCatalogItem, Commodity } from '@/modules/gallery/services/commodityService'
+import type {
+  CargoTypeCatalogItem,
+  Commodity,
+} from '@/modules/gallery/services/commodityService'
 
 export const CARGO_NAME_OTHER = 'OTHER'
 
@@ -8,8 +11,16 @@ export const CARGO_NAME_OTHER = 'OTHER'
  * Cargo *names* still come from the commodities table, keyed by these codes.
  */
 export const SHIPPING_AGENCY_CARGO_TYPES: CargoTypeCatalogItem[] = [
-  { code: 'IN_BAG_PACK', displayLabel: 'Bag/Pack', serviceTypeType: 'SHIPPING_AGENCY' },
-  { code: 'IN_EQUIPMENT', displayLabel: 'Equipment', serviceTypeType: 'SHIPPING_AGENCY' },
+  {
+    code: 'IN_BAG_PACK',
+    displayLabel: 'Bag/Pack',
+    serviceTypeType: 'SHIPPING_AGENCY',
+  },
+  {
+    code: 'IN_EQUIPMENT',
+    displayLabel: 'Equipment',
+    serviceTypeType: 'SHIPPING_AGENCY',
+  },
   { code: 'IN_BULK', displayLabel: 'Bulk', serviceTypeType: 'SHIPPING_AGENCY' },
 ]
 
@@ -20,13 +31,20 @@ export type InquiryCargoFields = {
 }
 
 const normalizeKey = (value: string) =>
-  value.trim().toUpperCase().replace(/[\s_-]+/g, '_')
+  value
+    .trim()
+    .toUpperCase()
+    .replace(/[\s_-]+/g, '_')
 
-export function isTallyFeeEligibleCargoType(cargoType?: string | null): boolean {
+export function isTallyFeeEligibleCargoType(
+  cargoType?: string | null
+): boolean {
   if (!cargoType?.trim()) return false
   const key = normalizeKey(cargoType)
   // Bag/Pack and Equipment incur a tally fee; Bulk does not.
-  return key === 'IN_BAG_PACK' || key === 'IN_EQUIPMENT' || key.includes('IN_BAG')
+  return (
+    key === 'IN_BAG_PACK' || key === 'IN_EQUIPMENT' || key.includes('IN_BAG')
+  )
 }
 
 export function legacyCargoTypeToCode(stored?: string | null): string {
@@ -60,13 +78,15 @@ function legacyCargoNameToCode(
   catalog: Commodity[],
   cargoTypeCode: string,
   cargoName?: string | null,
-  cargoNameOther?: string | null,
+  cargoNameOther?: string | null
 ): string {
   const rawLabel = (cargoNameOther?.trim() || cargoName?.trim() || '').trim()
   if (!rawLabel) return ''
 
   const pool = cargoTypeCode
-    ? catalog.filter((item) => (item.cargoType || 'IN_BULK').toUpperCase() === cargoTypeCode)
+    ? catalog.filter(
+        (item) => (item.cargoType || 'IN_BULK').toUpperCase() === cargoTypeCode
+      )
     : catalog
 
   const rawKey = normalizeKey(rawLabel)
@@ -75,7 +95,8 @@ function legacyCargoNameToCode(
     const nameKey = normalizeKey(item.name)
     if (nameKey === rawKey) return item.name
     const aliases = LEGACY_CARGO_NAME_ALIASES[nameKey] ?? []
-    if (aliases.some((alias) => normalizeKey(alias) === rawKey)) return item.name
+    if (aliases.some((alias) => normalizeKey(alias) === rawKey))
+      return item.name
     if (normalizeKey(item.displayName) === rawKey) return item.name
   }
 
@@ -85,16 +106,18 @@ function legacyCargoNameToCode(
 /** Map stored inquiry cargo → EPDA form values (canonical pass-through; legacy coercion only). */
 export function readInquiryCargoForEpda(
   raw: InquiryCargoFields,
-  catalog: Commodity[],
+  catalog: Commodity[]
 ): { cargoType: string; cargoName: string } {
   const catalogTypes = new Set(
-    catalog.map((item) => (item.cargoType || 'IN_BULK').toUpperCase()),
+    catalog.map((item) => (item.cargoType || 'IN_BULK').toUpperCase())
   )
 
   let cargoType = ''
   if (raw.cargoType?.trim()) {
     const key = raw.cargoType.trim().toUpperCase().replace(/\s+/g, '_')
-    cargoType = catalogTypes.has(key) ? key : legacyCargoTypeToCode(raw.cargoType)
+    cargoType = catalogTypes.has(key)
+      ? key
+      : legacyCargoTypeToCode(raw.cargoType)
   }
 
   if (normalizeKey(raw.cargoName ?? '') === CARGO_NAME_OTHER) {
@@ -108,9 +131,11 @@ export function readInquiryCargoForEpda(
   const inCatalog = catalog.some(
     (item) =>
       item.name === name &&
-      (!cargoType || (item.cargoType || 'IN_BULK').toUpperCase() === cargoType),
+      (!cargoType || (item.cargoType || 'IN_BULK').toUpperCase() === cargoType)
   )
-  const cargoName = inCatalog ? name : legacyCargoNameToCode(catalog, cargoType, name, raw.cargoNameOther)
+  const cargoName = inCatalog
+    ? name
+    : legacyCargoNameToCode(catalog, cargoType, name, raw.cargoNameOther)
 
   return { cargoType, cargoName }
 }

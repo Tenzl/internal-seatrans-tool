@@ -5,16 +5,10 @@
  * the form actually uses.
  */
 import {
-  DEFAULT_GARBAGE_USD_HCM,
-  DEFAULT_GARBAGE_USD_QN,
-} from '@/modules/inquiries/components/common/garbageFeeDefaults'
-import {
   defaultParameterValues,
   resolveGrtTier,
   type GrtTier,
-  type EpdaParameterValues,
 } from '@/modules/inquiries/components/common/quoteParameters'
-import { PURPOSE_OF_CALLING_OPTIONS } from '@/modules/inquiries/constants/shippingAgencyInquiryOptions'
 import {
   PORT_AREA_OPTIONS,
   getPortAreaLabel,
@@ -24,7 +18,7 @@ import {
 
 export { QUARANTINE_CARGO_OPTIONS } from '@/modules/inquiries/constants/epdaOptions'
 
-export type { EpdaParameterValues, GrtTier }
+export type { GrtTier }
 export { defaultParameterValues }
 
 /** Port areas. The EPDA template variant follows the area (no manual HCM/QN pick). */
@@ -45,8 +39,6 @@ export const AREA_TO_VARIANT: Record<AreaOption, 'HCM' | 'QN' | 'HN'> = {
   '2': 'QN',
   '3': 'HCM',
 }
-
-export const PURPOSE_OPTIONS = PURPOSE_OF_CALLING_OPTIONS
 
 export const SHIP_TYPE_OPTIONS = [
   { value: 'BULK_SHIP', label: 'Bulk-ship' },
@@ -116,5 +108,3 @@ export function getAgencyFeeByGrt(
     }
   )
 }
-
-export { DEFAULT_GARBAGE_USD_HCM, DEFAULT_GARBAGE_USD_QN }

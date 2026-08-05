@@ -6,8 +6,8 @@ import { isAdminRole } from '@/config/section-catalog'
 import { queryKeys } from '@/shared/config/react-query.config'
 import { useDebouncedValue } from '@/shared/hooks/useDebouncedValue'
 import { toast } from '@/shared/utils/toast'
-import { useCurrentUser } from '@/hooks/use-current-user'
 import { Loader2, Lock } from 'lucide-react'
+import { useCurrentUser } from '@/hooks/use-current-user'
 import {
   AlertDialog,
   AlertDialogAction,
@@ -21,6 +21,7 @@ import {
 import { PartnerFormDialog } from './PartnerFormDialog'
 import { PartnerImportDialog } from './PartnerImportDialog'
 import { PartnerTable } from './PartnerTable'
+import { hardResetPartnerCaches } from './partnerCache'
 import {
   createEmptyPartnerForm,
   partnerDetailToForm,
@@ -90,10 +91,8 @@ export function PartnerManagementScreen() {
   const pageCount = Math.max(1, partnersPage?.totalPages ?? 1)
   const loading = partnersQuery.isLoading || partnersQuery.isFetching
 
-  const invalidatePartners = useCallback(() => {
-    void queryClient.invalidateQueries({
-      queryKey: queryKeys.partnersListPrefix(),
-    })
+  const resetPartnerCaches = useCallback(() => {
+    return hardResetPartnerCaches(queryClient)
   }, [queryClient])
 
   const openCreateDialog = useCallback(() => {
@@ -140,7 +139,7 @@ export function PartnerManagementScreen() {
         toast.success('Partner created successfully')
       }
 
-      invalidatePartners()
+      await resetPartnerCaches()
       setFormDialogOpen(false)
       setForm(createEmptyPartnerForm())
       setEditingId(null)
@@ -160,7 +159,7 @@ export function PartnerManagementScreen() {
       const locked = await partnerManagementService.lock(editingId)
       setLockedAt(locked.lockedAt ?? new Date().toISOString())
       setFieldChangeHistoryKey((key) => key + 1)
-      invalidatePartners()
+      await resetPartnerCaches()
       setLockConfirmOpen(false)
       toast.success('Partner locked successfully')
     } catch (error) {
@@ -176,13 +175,13 @@ export function PartnerManagementScreen() {
 
       try {
         await partnerManagementService.delete(id)
-        invalidatePartners()
+        await resetPartnerCaches()
         toast.success('Partner deleted successfully')
       } catch (error) {
         toast.error('Failed to delete partner', error)
       }
     },
-    [invalidatePartners]
+    [resetPartnerCaches]
   )
 
   const deleteAllPartners = async () => {
@@ -201,7 +200,7 @@ export function PartnerManagementScreen() {
       const { deleted } =
         await partnerManagementService.deleteAll(totalElements)
       setPageIndex(0)
-      invalidatePartners()
+      await resetPartnerCaches()
       toast.success(`Deleted all ${deleted} partner(s)`)
     } catch (error) {
       toast.error('Failed to delete all partners', error)
@@ -312,7 +311,7 @@ export function PartnerManagementScreen() {
       <PartnerImportDialog
         open={importDialogOpen}
         onOpenChange={setImportDialogOpen}
-        onImported={invalidatePartners}
+        onImported={() => void resetPartnerCaches()}
       />
     </>
   )

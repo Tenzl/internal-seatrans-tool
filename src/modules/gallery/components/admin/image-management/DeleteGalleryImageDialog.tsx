@@ -36,7 +36,7 @@ export function DeleteGalleryImageDialog({
               <AlertTriangle className='h-5 w-5 text-orange-500' />
             ) : null}
             {warningType === 'below' ? (
-              <Info className='text-info h-5 w-5' />
+              <Info className='h-5 w-5 text-info' />
             ) : null}
             {warningType === 'over'
               ? 'Image Limit Exceeded'

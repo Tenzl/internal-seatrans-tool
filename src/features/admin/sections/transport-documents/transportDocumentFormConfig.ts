@@ -1,4 +1,8 @@
 import type {
+  CustomerType,
+  PartnerAdditionType,
+} from '../partner-management/partnerManagementTypes'
+import type {
   ArrivalNoticePayload,
   BillOfLadingPayload,
   BookingConfirmationPayload,
@@ -14,6 +18,7 @@ export type TransportDocumentFieldKind =
   | 'textarea'
   | 'select'
   | 'port-name'
+  | 'party'
 
 type TransportDocumentFieldKey = Exclude<
   | keyof ArrivalNoticePayload
@@ -35,6 +40,10 @@ export interface TransportDocumentFieldSpec {
   placeholder?: string
   span?: 1 | 2 | 3
   options?: TransportDocumentFieldOption[]
+  partyIdKey?:
+    'agentPartyId' | 'shipperPartyId' | 'consigneePartyId' | 'notifyPartyId'
+  additionType?: PartnerAdditionType
+  customerType?: CustomerType
 }
 
 export interface TransportDocumentFieldSection {
@@ -92,7 +101,7 @@ export const TRANSPORT_DOCUMENT_FORM_SECTIONS: Record<
     },
     {
       title: 'Parties',
-      fields: [{ key: 'to', label: 'To', kind: 'textarea', span: 3 }],
+      fields: [],
     },
     {
       title: 'Route',
@@ -193,17 +202,28 @@ export const TRANSPORT_DOCUMENT_FORM_SECTIONS: Record<
     {
       title: 'Parties',
       fields: [
-        { key: 'consignor', label: 'Consignor', kind: 'textarea', span: 3 },
+        {
+          key: 'consignor',
+          label: 'Consignor',
+          kind: 'party',
+          partyIdKey: 'shipperPartyId',
+          additionType: 'SHIPPER',
+          span: 3,
+        },
         {
           key: 'consignedToOrderOf',
           label: 'Consigned to order of',
-          kind: 'textarea',
+          kind: 'party',
+          partyIdKey: 'consigneePartyId',
+          additionType: 'CONSIGNEE',
           span: 3,
         },
         {
           key: 'notifyAddress',
           label: 'Notify address',
-          kind: 'textarea',
+          kind: 'party',
+          partyIdKey: 'notifyPartyId',
+          additionType: 'NOTIFY_PARTY',
           span: 3,
         },
       ],
@@ -311,15 +331,39 @@ export const TRANSPORT_DOCUMENT_FORM_SECTIONS: Record<
       fields: [
         { key: 'anNumber', label: 'AN No.' },
         { key: 'date', label: 'Date', kind: 'date' },
-        { key: 'agent', label: 'Agent' },
+        {
+          key: 'agent',
+          label: 'Agent',
+          kind: 'party',
+          partyIdKey: 'agentPartyId',
+          customerType: 'AGENT',
+        },
       ],
     },
     {
       title: 'Parties',
       fields: [
-        { key: 'shipper', label: 'Shipper', kind: 'textarea' },
-        { key: 'consignee', label: 'Consignee', kind: 'textarea' },
-        { key: 'notifyParty', label: 'Notify party', kind: 'textarea' },
+        {
+          key: 'shipper',
+          label: 'Shipper',
+          kind: 'party',
+          partyIdKey: 'shipperPartyId',
+          additionType: 'SHIPPER',
+        },
+        {
+          key: 'consignee',
+          label: 'Consignee',
+          kind: 'party',
+          partyIdKey: 'consigneePartyId',
+          additionType: 'CONSIGNEE',
+        },
+        {
+          key: 'notifyParty',
+          label: 'Notify party',
+          kind: 'party',
+          partyIdKey: 'notifyPartyId',
+          additionType: 'NOTIFY_PARTY',
+        },
       ],
     },
     {
@@ -404,7 +448,13 @@ export const TRANSPORT_DOCUMENT_FORM_SECTIONS: Record<
           kind: 'textarea',
           span: 2,
         },
-        { key: 'notifyParty', label: 'Notify party', kind: 'textarea' },
+        {
+          key: 'notifyParty',
+          label: 'Notify party',
+          kind: 'party',
+          partyIdKey: 'notifyPartyId',
+          additionType: 'NOTIFY_PARTY',
+        },
       ],
     },
     {

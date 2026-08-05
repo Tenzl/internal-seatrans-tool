@@ -11,7 +11,6 @@ export type DashboardIconKey =
   | 'newspaper'
   | 'package'
   | 'shield'
-  | 'ship'
   | 'tag'
   | 'users'
 
@@ -103,12 +102,6 @@ export const DASHBOARD_CATALOG: readonly NavigationCategory[] = [
         label: 'Partner',
         route: '/booking/partner',
         navigationIcon: 'briefcase',
-      },
-      {
-        key: 'booking-shipment',
-        label: 'Shipment',
-        route: '/booking/shipping',
-        navigationIcon: 'ship',
       },
       {
         key: 'users',

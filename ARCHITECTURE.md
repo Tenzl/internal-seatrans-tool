@@ -1,76 +1,40 @@
-# Dashboard Admin Architecture
+# Frontend architecture
 
-## Dependency direction
+The dashboard uses a one-way dependency flow:
 
 ```text
-app routes
-  -> features (dashboard workflows)
-    -> modules (business domains)
-      -> shared (UI primitives, API client, types, utilities)
+app -> features -> modules -> shared
+  \        \          \         \
+   +--------+----------+------> components/lib
 ```
 
-- `src/app`: thin Next.js route composition only. Pages select a screen and wrap
-  it with `AdminPageShell`; they do not own API or business rules.
-- `src/features`: administrator workflows that coordinate one or more domains.
-  Each large workflow has a domain folder under `features/admin/sections`.
-- `src/modules`: reusable domain UI, services, models, and domain hooks.
-- `src/shared`: framework-neutral configuration and utilities plus reusable UI.
-  Shared code must not import a feature or module.
+## Source ownership
 
-ESLint enforces the important dependency boundaries.
+- `app/`: thin Next.js routes and layouts. Routes compose screens; business
+  logic stays outside this directory.
+- `features/`: page-level workflows and admin screen orchestration.
+- `modules/`: reusable domain modules, services, domain types, and domain UI.
+- `shared/`: domain-neutral utilities, API infrastructure, shared types, hooks,
+  and components.
+- `components/`: application shell and low-level UI primitives. These must not
+  depend on a feature or domain module.
+- `config/`: canonical navigation, route, and permission metadata.
 
-## Component responsibilities
+`features` may import `modules`, but `modules` must never import `features`.
+`shared` and `components` must never import `features` or `modules`. Circular
+imports are prohibited. `pnpm architecture:check` enforces these rules.
 
-A screen may coordinate queries, mutations, and dialogs. Extract these parts
-when they develop independent state or rules:
+## File conventions
 
-- `*Service.ts`: HTTP requests and response mapping.
-- `use*.ts`: stateful workflow or query coordination.
-- `*.types.ts`: domain contracts shared by multiple files.
-- `*Rules.ts` / `*Model.ts`: pure validation, mapping, and calculations.
-- `*Dialog.tsx`, `*Table.tsx`, `*Toolbar.tsx`: focused presentation.
+- Keep route files declarative and small.
+- Keep tests beside the code they verify.
+- Prefer named exports for reusable modules.
+- Put API calls in a domain service rather than a React component.
+- Put pure mapping and validation logic in testable `.ts` modules.
+- Split screen components when state, server effects, and rendering can be
+  separated without creating pass-through abstractions.
 
-Keep comments short and use them for intent or a business rule that the code
-cannot make obvious. Do not narrate JSX or simple assignments.
+## Required validation
 
-## Authentication and authorization
-
-- The JWT is stored only in the backend-managed HttpOnly cookie.
-- Browser storage contains an optional user profile for placeholder UI, never a
-  token. `/auth/me` verifies it before a route is granted.
-- `authSession.ts` owns the shared React Query session cache and clears every
-  cached admin response on logout.
-- `dashboard-catalog.ts` is the single source of navigation and section metadata.
-- `section-catalog.ts` owns path authorization. The route guard is a UX layer;
-  backend authorization remains mandatory.
-
-To add a protected dashboard section:
-
-1. Add its metadata once in `dashboard-catalog.ts`.
-2. Add the matching backend section key.
-3. Add or update the catalog contract tests.
-
-## API boundaries
-
-- Use `apiClient` for JSON and download requests so cookies, timeouts, and 401
-  handling stay consistent.
-- Use `unwrapApiResponse` for required response data and
-  `unwrapNullableApiResponse` only when `data: null` is a valid lookup result.
-- Direct Axios usage is reserved for upload progress, which Fetch does not
-  expose consistently.
-
-## Verification
-
-Run before merging:
-
-```bash
-pnpm lint
-pnpm typecheck
-pnpm test:run
-pnpm build
-pnpm knip
-pnpm audit --prod
-```
-
-Migration and production database work belongs to `backend2.0`; the dashboard
-must never run schema migrations during startup.
+Run `pnpm validate` before merging. It checks formatting, architecture,
+linting, TypeScript, tests, and unused files/dependencies.

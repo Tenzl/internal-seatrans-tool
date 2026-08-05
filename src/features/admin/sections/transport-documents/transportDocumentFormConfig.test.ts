@@ -20,6 +20,11 @@ const fieldKind = (type: 'an' | 'booking' | 'do' | 'bl', key: string) =>
     .flatMap((section) => section.fields)
     .find((field) => field.key === key)?.kind
 
+const fieldSpec = (type: 'an' | 'booking' | 'do' | 'bl', key: string) =>
+  TRANSPORT_DOCUMENT_FORM_SECTIONS[type]
+    .flatMap((section) => section.fields)
+    .find((field) => field.key === key)
+
 describe('transport document form config', () => {
   it('lists Booking and AN before the two final document types', () => {
     expect(TRANSPORT_DOCUMENTS.map((document) => document.type)).toEqual([
@@ -36,7 +41,6 @@ describe('transport document form config', () => {
     expect(fieldOrder('booking')).toEqual([
       'bookingNumber',
       'date',
-      'to',
       'placeOfReceipt',
       'portOfLoading',
       'portOfDischarge',
@@ -192,6 +196,49 @@ describe('transport document form config', () => {
           'port-name'
         )
       })
+    })
+  })
+
+  it('uses customer type for Agent and addition tags for Arrival Notice parties', () => {
+    expect(fieldSpec('an', 'agent')).toMatchObject({
+      kind: 'party',
+      partyIdKey: 'agentPartyId',
+      customerType: 'AGENT',
+    })
+    expect(fieldSpec('an', 'shipper')).toMatchObject({
+      kind: 'party',
+      partyIdKey: 'shipperPartyId',
+      additionType: 'SHIPPER',
+    })
+    expect(fieldSpec('an', 'consignee')).toMatchObject({
+      kind: 'party',
+      partyIdKey: 'consigneePartyId',
+      additionType: 'CONSIGNEE',
+    })
+    expect(fieldSpec('an', 'notifyParty')).toMatchObject({
+      kind: 'party',
+      partyIdKey: 'notifyPartyId',
+      additionType: 'NOTIFY_PARTY',
+    })
+    expect(fieldSpec('bl', 'consignor')).toMatchObject({
+      kind: 'party',
+      partyIdKey: 'shipperPartyId',
+      additionType: 'SHIPPER',
+    })
+    expect(fieldSpec('bl', 'consignedToOrderOf')).toMatchObject({
+      kind: 'party',
+      partyIdKey: 'consigneePartyId',
+      additionType: 'CONSIGNEE',
+    })
+    expect(fieldSpec('bl', 'notifyAddress')).toMatchObject({
+      kind: 'party',
+      partyIdKey: 'notifyPartyId',
+      additionType: 'NOTIFY_PARTY',
+    })
+    expect(fieldSpec('do', 'notifyParty')).toMatchObject({
+      kind: 'party',
+      partyIdKey: 'notifyPartyId',
+      additionType: 'NOTIFY_PARTY',
     })
   })
 

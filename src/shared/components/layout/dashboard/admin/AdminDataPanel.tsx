@@ -1,8 +1,8 @@
-"use client"
+'use client'
 
-import type { ReactNode } from "react"
-import { Loader2 } from "lucide-react"
-import { cn } from "@/lib/utils"
+import type { ReactNode } from 'react'
+import { Loader2 } from 'lucide-react'
+import { cn } from '@/lib/utils'
 
 interface AdminDataPanelProps {
   children: ReactNode
@@ -19,26 +19,33 @@ export function AdminDataPanel({
   meta,
   loading = false,
   empty = false,
-  emptyMessage = "No records found.",
+  emptyMessage = 'No records found.',
   className,
 }: AdminDataPanelProps) {
   return (
-    <div className={cn("flex min-h-0 flex-1 flex-col pt-4", className)}>
+    <div className={cn('flex min-h-0 flex-1 flex-col pt-4', className)}>
       {meta ? (
-        <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
-          <p className="text-sm text-muted-foreground">{meta}</p>
+        <div className='mb-3 flex flex-wrap items-center justify-between gap-2'>
+          <p className='text-sm text-muted-foreground'>{meta}</p>
         </div>
       ) : null}
 
       {loading ? (
-        <div className="admin-data-empty">
-          <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" aria-hidden />
-          <p className="text-sm text-muted-foreground">Loading records…</p>
+        <div className='admin-data-empty'>
+          <Loader2
+            className='h-6 w-6 animate-spin text-muted-foreground'
+            aria-hidden
+          />
+          <p className='text-sm text-muted-foreground'>Loading records…</p>
         </div>
       ) : empty ? (
-        <div className="admin-data-empty">
-          <p className="text-sm font-medium text-foreground">Nothing here yet</p>
-          <p className="max-w-sm text-pretty text-sm text-muted-foreground">{emptyMessage}</p>
+        <div className='admin-data-empty'>
+          <p className='text-sm font-medium text-foreground'>
+            Nothing here yet
+          </p>
+          <p className='max-w-sm text-sm text-pretty text-muted-foreground'>
+            {emptyMessage}
+          </p>
         </div>
       ) : (
         children

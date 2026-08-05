@@ -1,6 +1,12 @@
 'use client'
 
-import { createContext, useCallback, useContext, useState, type ReactNode } from 'react'
+import {
+  createContext,
+  useCallback,
+  useContext,
+  useState,
+  type ReactNode,
+} from 'react'
 import { messages, type Lang } from './messages'
 
 const STORAGE_KEY = 'epda-lang'
@@ -25,15 +31,20 @@ export function I18nProvider({ children }: { children: ReactNode }) {
 
   const setLang = useCallback((next: Lang) => {
     setLangState(next)
-    if (typeof window !== 'undefined') window.localStorage.setItem(STORAGE_KEY, next)
+    if (typeof window !== 'undefined')
+      window.localStorage.setItem(STORAGE_KEY, next)
   }, [])
 
-  const toggle = useCallback(() => setLang(lang === 'vi' ? 'en' : 'vi'), [lang, setLang])
+  const toggle = useCallback(
+    () => setLang(lang === 'vi' ? 'en' : 'vi'),
+    [lang, setLang]
+  )
 
   const t = useCallback(
     (key: string, vars?: Record<string, string | number>) => {
       const table = messages[lang] as Record<string, string>
-      let value = table[key] ?? (messages.en as Record<string, string>)[key] ?? key
+      let value =
+        table[key] ?? (messages.en as Record<string, string>)[key] ?? key
       if (vars) {
         for (const [name, val] of Object.entries(vars)) {
           value = value.replace(new RegExp(`\\{${name}\\}`, 'g'), String(val))
@@ -41,10 +52,14 @@ export function I18nProvider({ children }: { children: ReactNode }) {
       }
       return value
     },
-    [lang],
+    [lang]
   )
 
-  return <I18nContext.Provider value={{ lang, setLang, toggle, t }}>{children}</I18nContext.Provider>
+  return (
+    <I18nContext.Provider value={{ lang, setLang, toggle, t }}>
+      {children}
+    </I18nContext.Provider>
+  )
 }
 
 export function useI18n(): I18nContextValue {
@@ -53,7 +68,9 @@ export function useI18n(): I18nContextValue {
     // Safe fallback when used outside the provider: English, no persistence.
     const t = (key: string, vars?: Record<string, string | number>) => {
       let value = (messages.en as Record<string, string>)[key] ?? key
-      if (vars) for (const [n, v] of Object.entries(vars)) value = value.replace(new RegExp(`\\{${n}\\}`, 'g'), String(v))
+      if (vars)
+        for (const [n, v] of Object.entries(vars))
+          value = value.replace(new RegExp(`\\{${n}\\}`, 'g'), String(v))
       return value
     }
     return { lang: 'en', setLang: () => {}, toggle: () => {}, t }

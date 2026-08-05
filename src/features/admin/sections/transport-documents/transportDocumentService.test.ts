@@ -170,38 +170,38 @@ describe('transportDocumentService', () => {
       new Response(null, { status: 204 })
     )
 
-    await transportDocumentService.getById(5)
-    await transportDocumentService.update(5, {
+    await transportDocumentService.getById('an', 5)
+    await transportDocumentService.update('an', 5, {
       ...emptyArrivalNotice(),
       status: 'COMPLETED',
     })
-    await transportDocumentService.lock(5)
-    await transportDocumentService.unlock(5)
-    await transportDocumentService.archive(5)
-    await transportDocumentService.permanentDelete(5)
+    await transportDocumentService.lock('an', 5)
+    await transportDocumentService.unlock('an', 5)
+    await transportDocumentService.archive('an', 5)
+    await transportDocumentService.permanentDelete('an', 5)
 
     expect(apiClient.get).toHaveBeenCalledWith(
-      '/admin/booking-documents/records/5'
+      '/admin/booking-documents/an/records/5'
     )
     expect(apiClient.put).toHaveBeenCalledWith(
-      '/admin/booking-documents/records/5',
+      '/admin/booking-documents/an/records/5',
       expect.objectContaining({ status: 'COMPLETED' })
     )
     expect(apiClient.post).toHaveBeenNthCalledWith(
       1,
-      '/admin/booking-documents/records/5/lock'
+      '/admin/booking-documents/an/records/5/lock'
     )
     expect(apiClient.post).toHaveBeenNthCalledWith(
       2,
-      '/admin/booking-documents/records/5/unlock'
+      '/admin/booking-documents/an/records/5/unlock'
     )
     expect(apiClient.delete).toHaveBeenNthCalledWith(
       1,
-      '/admin/booking-documents/records/5'
+      '/admin/booking-documents/an/records/5'
     )
     expect(apiClient.delete).toHaveBeenNthCalledWith(
       2,
-      '/admin/booking-documents/records/5/permanent'
+      '/admin/booking-documents/an/records/5/permanent'
     )
   })
 
@@ -228,7 +228,7 @@ describe('transportDocumentService', () => {
     })
 
     expect(apiClient.get).toHaveBeenCalledWith(
-      '/admin/booking-documents/records?type=do&page=2&size=10'
+      '/admin/booking-documents/do/records?page=2&size=10'
     )
   })
 })

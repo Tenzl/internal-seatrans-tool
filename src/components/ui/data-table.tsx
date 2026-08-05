@@ -1,8 +1,7 @@
-"use client"
+'use client'
 
-import * as React from "react"
-import { useEffect, useRef } from "react"
-import { usePathname, useRouter, useSearchParams } from "next/navigation"
+import * as React from 'react'
+import { useEffect, useRef } from 'react'
 import {
   type Column,
   type ColumnDef,
@@ -16,18 +15,24 @@ import {
   getPaginationRowModel,
   getSortedRowModel,
   useReactTable,
-} from "@tanstack/react-table"
-import { ArrowDown, ArrowUp, ArrowUpDown, ChevronDown, Loader2 } from "lucide-react"
-
-import { Button } from "@/components/ui/button"
-import { cn } from "@/lib/utils"
+} from '@tanstack/react-table'
+import {
+  ArrowDown,
+  ArrowUp,
+  ArrowUpDown,
+  ChevronDown,
+  Loader2,
+} from 'lucide-react'
+import { usePathname, useRouter, useSearchParams } from 'next/navigation'
+import { cn } from '@/lib/utils'
+import { Button } from '@/components/ui/button'
 import {
   DropdownMenu,
   DropdownMenuCheckboxItem,
   DropdownMenuContent,
   DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu"
-import { Input } from "@/components/ui/input"
+} from '@/components/ui/dropdown-menu'
+import { Input } from '@/components/ui/input'
 import {
   Table,
   TableBody,
@@ -35,14 +40,13 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-} from "@/components/ui/table"
+} from '@/components/ui/table'
 
 // ---------------------------------------------------------------------------
 // DataTableSortHeader — ghost-style sortable column header button
 // ---------------------------------------------------------------------------
 
 export function DataTableSortHeader<TData, TValue>({
-   
   column,
   children,
 }: {
@@ -51,17 +55,17 @@ export function DataTableSortHeader<TData, TValue>({
 }) {
   return (
     <Button
-      variant="ghost"
-      className="h-auto w-full justify-start p-0 font-medium hover:bg-transparent"
-      onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
+      variant='ghost'
+      className='h-auto w-full justify-start p-0 font-medium hover:bg-transparent'
+      onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}
     >
       {children}
-      {column.getIsSorted() === "asc" ? (
-        <ArrowUp className="ml-2 h-3.5 w-3.5" />
-      ) : column.getIsSorted() === "desc" ? (
-        <ArrowDown className="ml-2 h-3.5 w-3.5" />
+      {column.getIsSorted() === 'asc' ? (
+        <ArrowUp className='ml-2 h-3.5 w-3.5' />
+      ) : column.getIsSorted() === 'desc' ? (
+        <ArrowDown className='ml-2 h-3.5 w-3.5' />
       ) : (
-        <ArrowUpDown className="ml-2 h-3.5 w-3.5 opacity-40" />
+        <ArrowUpDown className='ml-2 h-3.5 w-3.5 opacity-40' />
       )}
     </Button>
   )
@@ -84,7 +88,7 @@ interface DataTableContentProps<TData> {
    * `type` is 'header' for <th> and 'cell' for <td> — use it to apply
    * different classes (e.g. align-top only on cells, not headers).
    */
-  columnClassName?: (columnId: string, type: "header" | "cell") => string
+  columnClassName?: (columnId: string, type: 'header' | 'cell') => string
   /** Extra className on the outer scroll container */
   containerClassName?: string
   /** Extra className on the <Table> element (e.g. "w-max min-w-full" for sticky cols) */
@@ -95,29 +99,32 @@ export function DataTableContent<TData>({
   table,
   columnCount,
   loading = false,
-  emptyMessage = "No results.",
-  maxHeight = "min(52dvh, 520px)",
+  emptyMessage = 'No results.',
+  maxHeight = 'min(52dvh, 520px)',
   columnClassName,
   containerClassName,
   tableClassName,
 }: DataTableContentProps<TData>) {
   return (
     <div
-      className={cn("admin-data-table", containerClassName)}
+      className={cn('admin-data-table', containerClassName)}
       style={maxHeight ? { maxHeight } : undefined}
     >
-      <table className={cn("w-full caption-bottom text-sm", tableClassName)}>
+      <table className={cn('w-full caption-bottom text-sm', tableClassName)}>
         <TableHeader>
           {table.getHeaderGroups().map((headerGroup) => (
             <TableRow key={headerGroup.id}>
               {headerGroup.headers.map((header) => (
                 <TableHead
                   key={header.id}
-                  className={columnClassName?.(header.column.id, "header")}
+                  className={columnClassName?.(header.column.id, 'header')}
                 >
                   {header.isPlaceholder
                     ? null
-                    : flexRender(header.column.columnDef.header, header.getContext())}
+                    : flexRender(
+                        header.column.columnDef.header,
+                        header.getContext()
+                      )}
                 </TableHead>
               ))}
             </TableRow>
@@ -126,13 +133,13 @@ export function DataTableContent<TData>({
         <TableBody>
           {loading ? (
             <TableRow>
-              <TableCell colSpan={columnCount} className="h-24 text-center">
-                <Loader2 className="mx-auto h-5 w-5 animate-spin" />
+              <TableCell colSpan={columnCount} className='h-24 text-center'>
+                <Loader2 className='mx-auto h-5 w-5 animate-spin' />
               </TableCell>
             </TableRow>
           ) : table.getRowModel().rows.length === 0 ? (
             <TableRow>
-              <TableCell colSpan={columnCount} className="h-24 text-center">
+              <TableCell colSpan={columnCount} className='h-24 text-center'>
                 {emptyMessage}
               </TableCell>
             </TableRow>
@@ -142,7 +149,7 @@ export function DataTableContent<TData>({
                 {row.getVisibleCells().map((cell) => (
                   <TableCell
                     key={cell.id}
-                    className={columnClassName?.(cell.column.id, "cell")}
+                    className={columnClassName?.(cell.column.id, 'cell')}
                   >
                     {flexRender(cell.column.columnDef.cell, cell.getContext())}
                   </TableCell>
@@ -193,7 +200,10 @@ export function DataTablePagination<TData>({
   const shownRows = table.getRowModel().rows.length
   const filteredRows = totalRowCount ?? table.getFilteredRowModel().rows.length
   const rangeStart = filteredRows === 0 ? 0 : pageIndex * pageSize + 1
-  const rangeEnd = filteredRows === 0 ? 0 : Math.min(pageIndex * pageSize + shownRows, filteredRows)
+  const rangeEnd =
+    filteredRows === 0
+      ? 0
+      : Math.min(pageIndex * pageSize + shownRows, filteredRows)
 
   const pathname = usePathname()
   const router = useRouter()
@@ -203,18 +213,23 @@ export function DataTablePagination<TData>({
 
   // Phase: "restoring" = waiting for data before applying URL page
   //        "syncing"   = normal operation, write pageIndex → URL
-  const phaseRef = useRef<"restoring" | "syncing">(persistKey ? "restoring" : "syncing")
+  const phaseRef = useRef<'restoring' | 'syncing'>(
+    persistKey ? 'restoring' : 'syncing'
+  )
   const targetPageRef = useRef(0)
 
   // On mount: read target page from URL
   useEffect(() => {
     if (!persistKey) return
-    const urlPage = parseInt(initialSearchParamsRef.current.get(persistKey) ?? "0", 10)
+    const urlPage = parseInt(
+      initialSearchParamsRef.current.get(persistKey) ?? '0',
+      10
+    )
     if (Number.isFinite(urlPage) && urlPage > 0) {
       targetPageRef.current = urlPage
       table.setPageIndex(urlPage)
     } else {
-      phaseRef.current = "syncing"
+      phaseRef.current = 'syncing'
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
@@ -222,29 +237,33 @@ export function DataTablePagination<TData>({
   // RESTORING phase: when data loads (filteredRows changes) or autoResetPageIndex
   // fires, re-apply the target page until we land on it.
   useEffect(() => {
-    if (phaseRef.current !== "restoring") return
+    if (phaseRef.current !== 'restoring') return
     const target = targetPageRef.current
-    if (target === 0) { phaseRef.current = "syncing"; return }
+    if (target === 0) {
+      phaseRef.current = 'syncing'
+      return
+    }
 
     if (pageIndex === target) {
-      phaseRef.current = "syncing"
+      phaseRef.current = 'syncing'
       return
     }
 
     if (filteredRows > 0) {
-      const maxPage = Math.ceil(filteredRows / table.getState().pagination.pageSize) - 1
+      const maxPage =
+        Math.ceil(filteredRows / table.getState().pagination.pageSize) - 1
       if (target <= maxPage) {
         table.setPageIndex(target)
       } else {
-        phaseRef.current = "syncing"
+        phaseRef.current = 'syncing'
       }
     }
   }, [filteredRows, pageIndex, table])
 
   // SYNCING phase: write pageIndex → URL
   useEffect(() => {
-    if (!persistKey || phaseRef.current !== "syncing") return
-    const currentUrlPage = parseInt(searchParams.get(persistKey) ?? "0", 10)
+    if (!persistKey || phaseRef.current !== 'syncing') return
+    const currentUrlPage = parseInt(searchParams.get(persistKey) ?? '0', 10)
     if (currentUrlPage === pageIndex) return
 
     const params = new URLSearchParams(searchParams.toString())
@@ -259,48 +278,50 @@ export function DataTablePagination<TData>({
 
   // Manual navigation immediately switches to syncing phase
   const navigate = (action: () => void) => {
-    phaseRef.current = "syncing"
+    phaseRef.current = 'syncing'
     targetPageRef.current = 0
     action()
   }
 
   return (
-    <div className="dashboard-pagination-bar">
-      <div className="text-sm text-muted-foreground">
+    <div className='dashboard-pagination-bar'>
+      <div className='text-sm text-muted-foreground'>
         {isFetching ? (
-          <span className="inline-flex items-center gap-2">
-            <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden />
+          <span className='inline-flex items-center gap-2'>
+            <Loader2 className='h-3.5 w-3.5 animate-spin' aria-hidden />
             Updating…
           </span>
         ) : filteredRows === 0 ? (
-          "No records"
+          'No records'
         ) : (
           <>
-            <span className="font-mono-data tabular-nums text-foreground/90">
+            <span className='font-mono-data text-foreground/90 tabular-nums'>
               {rangeStart}–{rangeEnd}
             </span>
             <span> of </span>
-            <span className="font-mono-data tabular-nums text-foreground/90">{filteredRows}</span>
-            <span className="hidden sm:inline"> records</span>
-            <span className="mx-2 hidden text-border sm:inline">·</span>
-            <span className="hidden sm:inline">
+            <span className='font-mono-data text-foreground/90 tabular-nums'>
+              {filteredRows}
+            </span>
+            <span className='hidden sm:inline'> records</span>
+            <span className='mx-2 hidden text-border sm:inline'>·</span>
+            <span className='hidden sm:inline'>
               Page {pageIndex + 1} of {pageCount}
             </span>
           </>
         )}
       </div>
-      <div className="flex gap-2">
+      <div className='flex gap-2'>
         <Button
-          variant="outline"
-          size="sm"
+          variant='outline'
+          size='sm'
           onClick={() => navigate(() => table.previousPage())}
           disabled={!table.getCanPreviousPage()}
         >
           Previous
         </Button>
         <Button
-          variant="outline"
-          size="sm"
+          variant='outline'
+          size='sm'
           onClick={() => navigate(() => table.nextPage())}
           disabled={!table.getCanNextPage()}
         >
@@ -322,11 +343,14 @@ export function DataTable<TData, TValue>({
   columns,
   data,
   searchKey,
-  searchPlaceholder = "Search...",
+  searchPlaceholder = 'Search...',
 }: DataTableProps<TData, TValue>) {
   const [sorting, setSorting] = React.useState<SortingState>([])
-  const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>([])
-  const [columnVisibility, setColumnVisibility] = React.useState<VisibilityState>({})
+  const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>(
+    []
+  )
+  const [columnVisibility, setColumnVisibility] =
+    React.useState<VisibilityState>({})
   const [rowSelection, setRowSelection] = React.useState({})
 
   const table = useReactTable({
@@ -349,25 +373,27 @@ export function DataTable<TData, TValue>({
   })
 
   return (
-    <div className="w-full">
-      <div className="flex items-center py-4 gap-2">
+    <div className='w-full'>
+      <div className='flex items-center gap-2 py-4'>
         {searchKey && (
           <Input
             placeholder={searchPlaceholder}
-            value={(table.getColumn(searchKey)?.getFilterValue() as string) ?? ""}
+            value={
+              (table.getColumn(searchKey)?.getFilterValue() as string) ?? ''
+            }
             onChange={(event) =>
               table.getColumn(searchKey)?.setFilterValue(event.target.value)
             }
-            className="max-w-sm"
+            className='max-w-sm'
           />
         )}
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <Button variant="outline" className="ml-auto">
-              Columns <ChevronDown className="ml-2 h-4 w-4" />
+            <Button variant='outline' className='ml-auto'>
+              Columns <ChevronDown className='ml-2 h-4 w-4' />
             </Button>
           </DropdownMenuTrigger>
-          <DropdownMenuContent align="end">
+          <DropdownMenuContent align='end'>
             {table
               .getAllColumns()
               .filter((column) => column.getCanHide())
@@ -375,7 +401,7 @@ export function DataTable<TData, TValue>({
                 return (
                   <DropdownMenuCheckboxItem
                     key={column.id}
-                    className="capitalize"
+                    className='capitalize'
                     checked={column.getIsVisible()}
                     onCheckedChange={(value) =>
                       column.toggleVisibility(!!value)
@@ -388,7 +414,7 @@ export function DataTable<TData, TValue>({
           </DropdownMenuContent>
         </DropdownMenu>
       </div>
-      <div className="rounded-md border">
+      <div className='rounded-md border'>
         <Table>
           <TableHeader>
             {table.getHeaderGroups().map((headerGroup) => (
@@ -413,7 +439,7 @@ export function DataTable<TData, TValue>({
               table.getRowModel().rows.map((row) => (
                 <TableRow
                   key={row.id}
-                  data-state={row.getIsSelected() && "selected"}
+                  data-state={row.getIsSelected() && 'selected'}
                 >
                   {row.getVisibleCells().map((cell) => (
                     <TableCell key={cell.id}>
@@ -429,7 +455,7 @@ export function DataTable<TData, TValue>({
               <TableRow>
                 <TableCell
                   colSpan={columns.length}
-                  className="h-24 text-center"
+                  className='h-24 text-center'
                 >
                   No results.
                 </TableCell>
@@ -438,23 +464,23 @@ export function DataTable<TData, TValue>({
           </TableBody>
         </Table>
       </div>
-      <div className="flex items-center justify-end space-x-2 py-4">
-        <div className="flex-1 text-sm text-muted-foreground">
-          {table.getFilteredSelectedRowModel().rows.length} of{" "}
+      <div className='flex items-center justify-end space-x-2 py-4'>
+        <div className='flex-1 text-sm text-muted-foreground'>
+          {table.getFilteredSelectedRowModel().rows.length} of{' '}
           {table.getFilteredRowModel().rows.length} row(s) selected.
         </div>
-        <div className="space-x-2">
+        <div className='space-x-2'>
           <Button
-            variant="outline"
-            size="sm"
+            variant='outline'
+            size='sm'
             onClick={() => table.previousPage()}
             disabled={!table.getCanPreviousPage()}
           >
             Previous
           </Button>
           <Button
-            variant="outline"
-            size="sm"
+            variant='outline'
+            size='sm'
             onClick={() => table.nextPage()}
             disabled={!table.getCanNextPage()}
           >

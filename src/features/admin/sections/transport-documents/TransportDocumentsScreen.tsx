@@ -31,6 +31,7 @@ import {
 } from '@/components/ui/alert-dialog'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
+import { subscribeToPartnerCacheResets } from '../partner-management/partnerCache'
 import { BookingWorkflowNav } from './BookingWorkflowNav'
 import { TransportDocumentForm } from './TransportDocumentForm'
 import { TransportDocumentPrefillDialog } from './TransportDocumentPrefillDialog'
@@ -182,6 +183,8 @@ export function TransportDocumentsScreen({
     isDirtyRef.current = isDirty
   }, [isDirty])
 
+  useEffect(() => subscribeToPartnerCacheResets(queryClient), [queryClient])
+
   useEffect(() => {
     if (!workflowQuery.error) return
     toast.error(
@@ -259,7 +262,11 @@ export function TransportDocumentsScreen({
             : {}),
       }
       if (activeRecordId != null) {
-        return transportDocumentService.update(activeRecordId, body)
+        return transportDocumentService.update(
+          documentType,
+          activeRecordId,
+          body
+        )
       }
       return transportDocumentService.create(documentType, body)
     },
@@ -363,7 +370,7 @@ export function TransportDocumentsScreen({
     autoPreviewDone.current = false
 
     void transportDocumentService
-      .getById(validRecordId)
+      .getById(documentType, validRecordId)
       .then((record) => {
         if (cancelled) return
         applyRecord(record)
@@ -383,7 +390,7 @@ export function TransportDocumentsScreen({
     return () => {
       cancelled = true
     }
-  }, [applyRecord, validRecordId])
+  }, [applyRecord, documentType, validRecordId])
 
   useEffect(() => {
     if (
@@ -450,7 +457,7 @@ export function TransportDocumentsScreen({
       window.document.removeEventListener('click', onDocumentClick, true)
   }, [isLocked])
 
-  const updateField = (key: string, value: string) => {
+  const updateField = (key: string, value: unknown) => {
     if (isLocked) return
     setForms(
       (previous) =>
@@ -509,7 +516,11 @@ export function TransportDocumentsScreen({
     if (!lockOwnerId || !isLocked || !isAdmin) return
     setIsUnlocking(true)
     try {
-      const unlocked = await transportDocumentService.unlock(lockOwnerId)
+      const lockOwnerType = workflowRootLockedAt ? 'booking' : documentType
+      const unlocked = await transportDocumentService.unlock(
+        lockOwnerType,
+        lockOwnerId
+      )
       if (lockOwnerId === activeRecordId) {
         setLockedAt(unlocked.lockedAt)
       }
@@ -528,6 +539,7 @@ export function TransportDocumentsScreen({
     }
   }, [
     activeRecordId,
+    documentType,
     isAdmin,
     isLocked,
     queryClient,

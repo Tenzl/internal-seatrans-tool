@@ -571,7 +571,7 @@ export function EpdaEditorScreen({
       fileName={preview.fileName}
       isGenerating={preview.isPdfGenerating}
       onEdit={handleEditFromPreview}
-      actionMode="print"
+      actionMode='print'
     />
   )
 

@@ -16,7 +16,6 @@ import {
   Newspaper,
   Package,
   ShieldCheck,
-  Ship,
   Tag,
   Users,
 } from 'lucide-react'
@@ -33,7 +32,6 @@ const iconByKey: Record<DashboardIconKey, React.ElementType> = {
   newspaper: Newspaper,
   package: Package,
   shield: ShieldCheck,
-  ship: Ship,
   tag: Tag,
   users: Users,
 }

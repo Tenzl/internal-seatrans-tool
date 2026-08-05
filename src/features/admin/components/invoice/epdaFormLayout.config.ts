@@ -11,8 +11,7 @@ export const EPDA_CUSTOMER_SECTION = {
 } as const
 
 export type EpdaSectionId =
-  | (typeof EPDA_SECTIONS)[number]['id']
-  | typeof EPDA_CUSTOMER_SECTION.id
+  (typeof EPDA_SECTIONS)[number]['id'] | typeof EPDA_CUSTOMER_SECTION.id
 
 /** Display number for the rail/section badge: customer is 00; others are 1-based. */
 export function epdaSectionNumber(id: EpdaSectionId): string {

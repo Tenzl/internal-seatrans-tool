@@ -112,15 +112,14 @@ describe('dashboard route policy', () => {
     ])
   })
 
-  it('moves Partner and Shipment into Data Management', () => {
+  it('keeps Partner in Data Management without the retired Shipment page', () => {
     expect(
       SECTION_CATALOG.find((section) => section.key === 'booking-partner')
         ?.group
     ).toBe('Data Management')
     expect(
       SECTION_CATALOG.find((section) => section.key === 'booking-shipment')
-        ?.group
-    ).toBe('Data Management')
+    ).toBeUndefined()
 
     const general = sidebarData.navGroups.find(
       (group) => group.title === 'General'
@@ -131,7 +130,7 @@ describe('dashboard route policy', () => {
     const dataTitles = (dataManagement?.items ?? []).map((item) => item.title)
 
     expect(dataTitles).toContain('Partner')
-    expect(dataTitles).toContain('Shipment')
+    expect(dataTitles).not.toContain('Shipment')
   })
 
   it('keeps admin access while denying anonymous access by default', () => {

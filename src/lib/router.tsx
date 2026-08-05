@@ -10,11 +10,7 @@
  * Feature code ported from the legacy Next.js app should import directly from
  * `next/navigation` / `next/link` — this shim exists only for the template.
  */
-import {
-  forwardRef,
-  type AnchorHTMLAttributes,
-  type ReactNode,
-} from 'react'
+import { forwardRef, type AnchorHTMLAttributes, type ReactNode } from 'react'
 import NextLink from 'next/link'
 import {
   usePathname,
@@ -40,7 +36,8 @@ function encodeValue(value: unknown): string {
 }
 
 export function parseSearch(
-  params: URLSearchParams | { forEach: (cb: (v: string, k: string) => void) => void }
+  params:
+    URLSearchParams | { forEach: (cb: (v: string, k: string) => void) => void }
 ): SearchRecord {
   const out: SearchRecord = {}
   params.forEach((value, key) => {
@@ -49,7 +46,9 @@ export function parseSearch(
   return out
 }
 
-export function serializeSearch(search: SearchRecord | undefined | null): string {
+export function serializeSearch(
+  search: SearchRecord | undefined | null
+): string {
   if (!search) return ''
   const sp = new URLSearchParams()
   for (const [key, value] of Object.entries(search)) {
@@ -61,7 +60,10 @@ export function serializeSearch(search: SearchRecord | undefined | null): string
 }
 
 /** Substitute `$param` placeholders in a path (TanStack-style dynamic segments). */
-function applyParams(path: string, params?: Record<string, string | number>): string {
+function applyParams(
+  path: string,
+  params?: Record<string, string | number>
+): string {
   if (!params) return path
   let out = path
   for (const [key, value] of Object.entries(params)) {
@@ -70,10 +72,7 @@ function applyParams(path: string, params?: Record<string, string | number>): st
   return out
 }
 
-type SearchInput =
-  | true
-  | SearchRecord
-  | ((prev: SearchRecord) => SearchRecord)
+type SearchInput = true | SearchRecord | ((prev: SearchRecord) => SearchRecord)
 
 export type NavigateOptions = {
   to?: string

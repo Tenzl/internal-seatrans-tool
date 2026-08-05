@@ -1,5 +1,12 @@
-import { portService, type Port, type PortArea } from '@/modules/logistics/services/portService'
-import { isPortAreaCode, type PortAreaCode as AreaOption } from '@/shared/domain/portArea'
+import {
+  portService,
+  type Port,
+  type PortArea,
+} from '@/modules/logistics/services/portService'
+import {
+  isPortAreaCode,
+  type PortAreaCode as AreaOption,
+} from '@/shared/domain/portArea'
 
 const AREAS: PortArea[] = ['1', '2', '3']
 
@@ -8,8 +15,13 @@ const normalizePortKey = (value: string) => value.trim().toUpperCase()
 /** Find area + port list for a stored inquiry port (canonical `portOfCall` when in catalog). */
 export async function findPortSelectionFromInquiry(
   portOfCall: string | null | undefined,
-  portId?: number | null,
-): Promise<{ area: AreaOption | ''; ports: Port[]; portId: number | null; portOfCall: string }> {
+  portId?: number | null
+): Promise<{
+  area: AreaOption | ''
+  ports: Port[]
+  portId: number | null
+  portOfCall: string
+}> {
   const stored = portOfCall?.trim() ?? ''
 
   if (portId != null && Number.isInteger(portId) && portId > 0) {
@@ -18,7 +30,8 @@ export async function findPortSelectionFromInquiry(
       const area = String(canonicalPort.provinceArea ?? '')
       if (isPortAreaCode(area)) {
         const ports = await portService.getPortsByArea(area)
-        const selected = ports.find((port) => port.id === portId) ?? canonicalPort
+        const selected =
+          ports.find((port) => port.id === portId) ?? canonicalPort
         return {
           area,
           ports,
@@ -43,7 +56,7 @@ export async function findPortSelectionFromInquiry(
     const matched = ports.find(
       (p) =>
         (p.portOfCall?.trim() && normalizePortKey(p.portOfCall) === key) ||
-        (p.name?.trim() && normalizePortKey(p.name) === key),
+        (p.name?.trim() && normalizePortKey(p.name) === key)
     )
     if (matched?.portOfCall) {
       return {

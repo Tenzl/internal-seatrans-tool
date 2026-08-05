@@ -46,11 +46,6 @@ describe('dashboard section catalog contract', () => {
         },
         {
           "group": "Data Management",
-          "key": "booking-shipment",
-          "label": "Shipment",
-        },
-        {
-          "group": "Data Management",
           "key": "users",
           "label": "Users",
         },

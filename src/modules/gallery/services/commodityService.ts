@@ -1,7 +1,7 @@
-import { apiClient } from '@/shared/utils/apiClient'
+import { galleryService } from '@/modules/gallery/services/galleryService'
 import { API_CONFIG } from '@/shared/config/api.config'
 import type { ApiResponse } from '@/shared/types/api.types'
-import { galleryService } from '@/modules/gallery/services/galleryService'
+import { apiClient } from '@/shared/utils/apiClient'
 
 export type CargoType = string
 
@@ -67,10 +67,12 @@ function mapCommodity(raw: Record<string, unknown>): Commodity {
 }
 
 export const commodityService = {
-  getCommoditiesByServiceType: async (serviceTypeId: number): Promise<Commodity[]> => {
-    const response = await apiClient.get<ApiResponse<Record<string, unknown>[]>>(
-      API_CONFIG.COMMODITIES.BY_SERVICE_TYPE(serviceTypeId),
-    )
+  getCommoditiesByServiceType: async (
+    serviceTypeId: number
+  ): Promise<Commodity[]> => {
+    const response = await apiClient.get<
+      ApiResponse<Record<string, unknown>[]>
+    >(API_CONFIG.COMMODITIES.BY_SERVICE_TYPE(serviceTypeId))
     const rows = await unwrapList<Record<string, unknown>>(response)
     return rows.map(mapCommodity)
   },
@@ -79,7 +81,7 @@ export const commodityService = {
     commodityId: number,
     provinceId?: number,
     portId?: number,
-    serviceTypeId?: number,
+    serviceTypeId?: number
   ): Promise<CommodityImageCount> => {
     const commodities = serviceTypeId
       ? await commodityService.getCommoditiesByServiceType(serviceTypeId)
@@ -93,7 +95,7 @@ export const commodityService = {
       serviceTypeId,
       commodityId,
       0,
-      1,
+      1
     )
 
     return { commodityId, current: page.totalElements ?? 0, required }
@@ -102,24 +104,31 @@ export const commodityService = {
   createCommodity: async (data: CreateCommodityRequest): Promise<Commodity> => {
     const response = await apiClient.post<ApiResponse<Record<string, unknown>>>(
       API_CONFIG.COMMODITIES.ADMIN_BASE,
-      data,
+      data
     )
     return mapCommodity(await unwrapOne<Record<string, unknown>>(response))
   },
 
-  updateCommodity: async (id: number, data: CreateCommodityRequest): Promise<Commodity> => {
+  updateCommodity: async (
+    id: number,
+    data: CreateCommodityRequest
+  ): Promise<Commodity> => {
     const response = await apiClient.put<ApiResponse<Record<string, unknown>>>(
       API_CONFIG.COMMODITIES.ADMIN_BY_ID(id),
-      data,
+      data
     )
     return mapCommodity(await unwrapOne<Record<string, unknown>>(response))
   },
 
   deleteCommodity: async (id: number): Promise<void> => {
-    const response = await apiClient.delete(API_CONFIG.COMMODITIES.ADMIN_BY_ID(id))
+    const response = await apiClient.delete(
+      API_CONFIG.COMMODITIES.ADMIN_BY_ID(id)
+    )
     if (!response.ok) {
       const result = await response.json().catch(() => ({}))
-      throw new Error((result as { message?: string }).message || 'Failed to delete commodity')
+      throw new Error(
+        (result as { message?: string }).message || 'Failed to delete commodity'
+      )
     }
   },
 }

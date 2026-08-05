@@ -16,7 +16,7 @@ export function CategoryFeedback({
   return (
     <>
       {successMessage && (
-        <div className='border-success bg-success/10 text-success flex items-center justify-between rounded-lg border-2 p-4'>
+        <div className='flex items-center justify-between rounded-lg border-2 border-success bg-success/10 p-4 text-success'>
           <span className='font-medium'>{successMessage}</span>
           <button
             type='button'

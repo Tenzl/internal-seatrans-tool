@@ -31,12 +31,27 @@ export const queryKeys = {
       customerType,
     ] as const,
   partnersListPrefix: () => ['partners', 'list'] as const,
+  partnerDocumentPickerPrefix: () =>
+    ['partners', 'document-party-picker'] as const,
+  partnerDocumentOptions: (
+    additionType: string | null,
+    customerType: string | null,
+    q: string
+  ) =>
+    [
+      'partners',
+      'document-party-picker',
+      'options',
+      additionType,
+      customerType,
+      q,
+    ] as const,
+  partnerDocumentSelected: (id: number) =>
+    ['partners', 'document-party-picker', 'selected', id] as const,
   user: (id: number | string) => ['user', id] as const,
   dashboardAdmin: () => ['dashboard', 'admin'] as const,
   dashboardCustomer: () => ['dashboard', 'customer'] as const,
-  bookingShipping: (partnerId: number) =>
-    ['bookingShipping', partnerId] as const,
-  /** Cached partner typeahead (q = normalized search string) */
+  /** Legacy cached partner typeahead (q = normalized search string). */
   partnerOptions: (q = '') => [...queryKeys.partners(), 'options', q] as const,
   /** Cached port typeahead */
   portOptionsSearch: (q = '') =>

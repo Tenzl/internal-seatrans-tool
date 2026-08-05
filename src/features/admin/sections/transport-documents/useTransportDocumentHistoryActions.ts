@@ -44,10 +44,16 @@ export function useTransportDocumentHistoryActions(options: {
     setIsDeleting(true)
     try {
       if (deleteMode === 'hard') {
-        await transportDocumentService.permanentDelete(deleteTarget.id)
+        await transportDocumentService.permanentDelete(
+          deleteTarget.documentType,
+          deleteTarget.id
+        )
         toast.success('Document record deleted')
       } else {
-        await transportDocumentService.archive(deleteTarget.id)
+        await transportDocumentService.archive(
+          deleteTarget.documentType,
+          deleteTarget.id
+        )
         toast.success('Document record archived')
       }
       setDeleteTarget(null)
@@ -75,7 +81,10 @@ export function useTransportDocumentHistoryActions(options: {
     if (!lockTarget) return
     setIsLocking(true)
     try {
-      await transportDocumentService.lock(lockTarget.id)
+      await transportDocumentService.lock(
+        lockTarget.documentType,
+        lockTarget.id
+      )
       toast.success('Document record locked')
       setLockTarget(null)
       await options.onMutated()
@@ -100,7 +109,10 @@ export function useTransportDocumentHistoryActions(options: {
     if (!unlockTarget) return
     setIsUnlocking(true)
     try {
-      await transportDocumentService.unlock(unlockTarget.id)
+      await transportDocumentService.unlock(
+        unlockTarget.documentType,
+        unlockTarget.id
+      )
       toast.success('Document record unlocked')
       setUnlockTarget(null)
       await options.onMutated()

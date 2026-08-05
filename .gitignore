@@ -1,30 +1,44 @@
-# See https://help.github.com/articles/ignoring-files/ for more about ignoring files.
-
 # Dependencies
-/node_modules
-/.pnp
+/node_modules/
+/.pnp/
 .pnp.*
-.yarn/*
-!.yarn/patches
-!.yarn/plugins
-!.yarn/releases
-!.yarn/versions
+/.pnpm-store/
+/.yarn/*
+!/.yarn/patches/
+!/.yarn/plugins/
+!/.yarn/releases/
+!/.yarn/versions/
 
-# Testing / coverage
-/coverage
-
-# Next.js
+# Next.js build output and generated types
 /.next/
+/.next-*/
 /out/
-/build
+/build/
+/dist/
 next-env.d.ts
+*.tsbuildinfo
 
-# Misc
-.DS_Store
-*.pem
+# Test and analysis output
+/coverage/
+/playwright-report/
+/test-results/
+/blob-report/
+/.nyc_output/
 
-# Debug logs
-logs
+# Tool caches
+/.cache/
+/.turbo/
+/.swc/
+.eslintcache
+.stylelintcache
+
+# Environment files (keep the documented template)
+.env*
+!.env.example
+*.local
+
+# Logs
+/logs/
 *.log
 npm-debug.log*
 yarn-debug.log*
@@ -32,24 +46,33 @@ yarn-error.log*
 pnpm-debug.log*
 lerna-debug.log*
 
-# Local env files
-.env
-.env*.local
-*.local
+# Deployment metadata
+/.vercel/
 
-# Vercel
-.vercel
+# Local certificates and keys
+*.pem
+*.key
+*.p12
 
-# TypeScript build info
-*.tsbuildinfo
+# Operating system files
+.DS_Store
+Thumbs.db
+Desktop.ini
 
-# Editor directories and files
-.vscode/*
-!.vscode/extensions.json
-!.vscode/settings.json
-.idea
+# Editors and IDEs
+/.idea/
+/.vscode/*
+!/.vscode/extensions.json
+!/.vscode/settings.json
 *.suo
 *.ntvs*
 *.njsproj
 *.sln
 *.sw?
+
+# Temporary files
+*.tmp
+*.temp
+*.bak
+*.orig
+*~

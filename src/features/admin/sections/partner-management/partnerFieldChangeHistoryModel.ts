@@ -1,7 +1,5 @@
 export type PartnerFieldChangeAction =
-  | 'PARTNER_CREATE'
-  | 'PARTNER_UPDATE'
-  | 'PARTNER_LOCK'
+  'PARTNER_CREATE' | 'PARTNER_UPDATE' | 'PARTNER_LOCK'
 
 export type PartnerFieldChangeLogEntry = {
   id: number

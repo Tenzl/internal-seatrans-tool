@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { findPortSelectionFromInquiry } from './shippingAgencyPortCatalog'
 
 const { getPortById, getPortsByArea } = vi.hoisted(() => ({
   getPortById: vi.fn(),
@@ -8,8 +9,6 @@ const { getPortById, getPortsByArea } = vi.hoisted(() => ({
 vi.mock('@/modules/logistics/services/portService', () => ({
   portService: { getPortById, getPortsByArea },
 }))
-
-import { findPortSelectionFromInquiry } from './shippingAgencyPortCatalog'
 
 describe('findPortSelectionFromInquiry', () => {
   beforeEach(() => {
@@ -33,6 +32,10 @@ describe('findPortSelectionFromInquiry', () => {
 
     expect(getPortById).toHaveBeenCalledWith(38)
     expect(getPortsByArea).toHaveBeenCalledWith('2')
-    expect(selection).toMatchObject({ area: '2', portId: 38, portOfCall: 'CHAN MAY' })
+    expect(selection).toMatchObject({
+      area: '2',
+      portId: 38,
+      portOfCall: 'CHAN MAY',
+    })
   })
 })

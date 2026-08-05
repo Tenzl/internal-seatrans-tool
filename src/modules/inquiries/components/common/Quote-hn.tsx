@@ -1,6 +1,9 @@
-import { renderQuoteHtml as renderQuoteHtmlHcm, type QuoteData } from './Quote-hcm'
+import {
+  renderQuoteHtml as renderQuoteHtmlHcm,
+  type QuoteData,
+} from './Quote-hcm'
 
-export type { QuoteData, QuoteRow } from './Quote-hcm'
+export type { QuoteData } from './Quote-hcm'
 
 /**
  * Area 1 (HN) quote — HCM port-charge layout with QN single-rate pilotage.

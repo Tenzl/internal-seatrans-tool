@@ -46,7 +46,7 @@ const ACTION_LABELS: Record<InquiryFieldChangeLogEntry['action'], string> = {
 }
 
 export function formatFieldChangeAction(
-  action: InquiryFieldChangeLogEntry['action'],
+  action: InquiryFieldChangeLogEntry['action']
 ): string {
   return ACTION_LABELS[action] ?? action
 }

@@ -12,9 +12,7 @@ const sectionsByRoute = [...SECTION_CATALOG].sort(
 )
 
 export type GateUser =
-  | { role?: string | null; sections?: string[] | null }
-  | null
-  | undefined
+  { role?: string | null; sections?: string[] | null } | null | undefined
 
 const SELF_SERVICE_ROUTES = ['/', '/settings', '/errors'] as const
 

@@ -1,7 +1,6 @@
-import { apiClient } from '@/shared/utils/apiClient'
 import { API_CONFIG } from '@/shared/config/api.config'
 import type { ApiResponse, PageResponse } from '@/shared/types/api.types'
-import { commodityService, type Commodity } from '@/modules/gallery/services/commodityService'
+import { apiClient } from '@/shared/utils/apiClient'
 
 /** Gallery image shape returned by backend2.0 (flat DTO). */
 export interface GalleryImageApiDto {
@@ -62,19 +61,12 @@ const toGalleryImage = (raw: GalleryImageApiDto): GalleryImage => ({
 })
 
 export const galleryService = {
-  getCommoditiesByServiceType: async (
-    serviceTypeId: number,
-    _signal?: AbortSignal,
-  ): Promise<Commodity[]> => {
-    return commodityService.getCommoditiesByServiceType(serviceTypeId)
-  },
-
   getPublicImages: async (
     serviceTypeId?: number,
     commodityId?: number,
     page: number = 0,
     size: number = 100,
-    signal?: AbortSignal,
+    signal?: AbortSignal
   ): Promise<GalleryImage[]> => {
     const params = new URLSearchParams()
     if (serviceTypeId) params.append('serviceTypeId', serviceTypeId.toString())
@@ -82,13 +74,17 @@ export const galleryService = {
     params.append('page', page.toString())
     params.append('size', size.toString())
 
-    const response = await apiClient.get<ApiResponse<PageResponse<GalleryImageApiDto>>>(
-      `${API_CONFIG.GALLERY.PUBLIC_IMAGES}?${params.toString()}`,
-      { signal, skipAuth: true },
-    )
+    const response = await apiClient.get<
+      ApiResponse<PageResponse<GalleryImageApiDto>>
+    >(`${API_CONFIG.GALLERY.PUBLIC_IMAGES}?${params.toString()}`, {
+      signal,
+      skipAuth: true,
+    })
 
     if (!response.ok) {
-      throw new Error(`Failed to load gallery images: ${response.status} ${response.statusText}`)
+      throw new Error(
+        `Failed to load gallery images: ${response.status} ${response.statusText}`
+      )
     }
 
     const result = await response.json()
@@ -107,7 +103,7 @@ export const galleryService = {
     serviceTypeId?: number,
     commodityId?: number,
     page: number = 0,
-    size: number = 20,
+    size: number = 20
   ): Promise<PageResponse<GalleryImage>> => {
     const params = new URLSearchParams()
     if (provinceId) params.append('provinceId', provinceId.toString())
@@ -117,9 +113,9 @@ export const galleryService = {
     params.append('page', page.toString())
     params.append('size', size.toString())
 
-    const response = await apiClient.get<ApiResponse<PageResponse<GalleryImageApiDto>>>(
-      `${API_CONFIG.GALLERY.ADMIN_BASE}?${params.toString()}`,
-    )
+    const response = await apiClient.get<
+      ApiResponse<PageResponse<GalleryImageApiDto>>
+    >(`${API_CONFIG.GALLERY.ADMIN_BASE}?${params.toString()}`)
 
     const result = await response.json()
 
@@ -134,7 +130,7 @@ export const galleryService = {
     provinceId: number,
     portId: number,
     serviceTypeId: number,
-    commodityId: number,
+    commodityId: number
   ): Promise<GalleryImage> => {
     const formData = new FormData()
     formData.append('file', file)
@@ -150,7 +146,7 @@ export const galleryService = {
 
     const response = await apiClient.post<ApiResponse<GalleryImageApiDto>>(
       `${API_CONFIG.GALLERY.ADMIN_BASE}?${params.toString()}`,
-      formData,
+      formData
     )
 
     const result = await response.json().catch(() => null)
@@ -160,16 +156,24 @@ export const galleryService = {
       const rawDetails = result?.error?.details ?? result?.details
       const details = Array.isArray(rawDetails)
         ? rawDetails
-            .map((d: { field?: string; message?: string }) => `${d.field}: ${d.message}`)
+            .map(
+              (d: { field?: string; message?: string }) =>
+                `${d.field}: ${d.message}`
+            )
             .join('; ')
         : ''
       throw new Error(
-        details || result?.error?.message || result?.message || `Upload failed (HTTP ${response.status})`,
+        details ||
+          result?.error?.message ||
+          result?.message ||
+          `Upload failed (HTTP ${response.status})`
       )
     }
     const dto = (result?.data ?? null) as GalleryImageApiDto | null
     if (!dto || dto.id == null) {
-      throw new Error(result?.message || 'Upload failed: unexpected server response')
+      throw new Error(
+        result?.message || 'Upload failed: unexpected server response'
+      )
     }
     return toGalleryImage(dto)
   },
@@ -179,7 +183,7 @@ export const galleryService = {
     provinceId: number,
     portId: number,
     serviceTypeId: number,
-    commodityId: number,
+    commodityId: number
   ): Promise<GalleryImage[]> => {
     const formData = new FormData()
     files.forEach((file) => formData.append('files', file))
@@ -190,22 +194,27 @@ export const galleryService = {
 
     const response = await apiClient.post<ApiResponse<GalleryImageApiDto[]>>(
       API_CONFIG.GALLERY.ADMIN_BATCH,
-      formData,
+      formData
     )
 
     if (!response.ok) {
       const error = await response.json().catch(() => ({}))
-      throw new Error((error as { message?: string }).message || 'Upload failed')
+      throw new Error(
+        (error as { message?: string }).message || 'Upload failed'
+      )
     }
 
     const result = await response.json()
     return Array.isArray(result.data) ? result.data.map(toGalleryImage) : []
   },
 
-  updateImage: async (id: number, data: UpdateImageRequest): Promise<GalleryImage> => {
+  updateImage: async (
+    id: number,
+    data: UpdateImageRequest
+  ): Promise<GalleryImage> => {
     const response = await apiClient.put<ApiResponse<GalleryImageApiDto>>(
       API_CONFIG.GALLERY.ADMIN_BY_ID(id),
-      data,
+      data
     )
 
     const result = await response.json()

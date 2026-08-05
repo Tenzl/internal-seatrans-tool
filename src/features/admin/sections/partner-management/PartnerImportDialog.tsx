@@ -368,7 +368,7 @@ export function PartnerImportDialog({
               </div>
               {selectedFile &&
                 (unknownHeaders.length > 0 ? (
-                  <p className='text-warning text-xs'>
+                  <p className='text-xs text-warning'>
                     Unrecognized columns:{' '}
                     <strong>{unknownHeaders.join(', ')}</strong>
                   </p>

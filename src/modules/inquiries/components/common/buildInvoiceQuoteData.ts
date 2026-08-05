@@ -1,10 +1,12 @@
+import type {
+  CargoTypeCatalogItem,
+  Commodity,
+} from '@/modules/gallery/services/commodityService'
+import { resolveGarbageUsdRate } from '@/modules/inquiries/components/common/garbageFeeDefaults'
 import type { QuoteData } from '@/modules/inquiries/components/common/quoteCommon'
-import type { EpdaParameterValues } from '@/modules/inquiries/components/common/quoteParameters'
-import {
-  resolveGarbageUsdRate,
-} from '@/modules/inquiries/components/common/garbageFeeDefaults'
-import type { CargoTypeCatalogItem, Commodity } from '@/modules/gallery/services/commodityService'
 import { getEpdaVariantConfig } from '@/modules/inquiries/components/common/quoteForm'
+import type { EpdaParameterValues } from '@/modules/inquiries/components/common/quoteParameters'
+import { parseFiniteNumberOrUndefined } from '@/shared/utils/parseNumber'
 
 type InvoiceQuoteData = QuoteData
 
@@ -65,15 +67,24 @@ export interface BuildInvoiceQuoteDataParams {
   params?: EpdaParameterValues
 }
 
-import { parseFiniteNumberOrUndefined } from '@/shared/utils/parseNumber'
-
-function getCargoTypeLabel(value: string, options: CargoTypeCatalogItem[]): string {
+function getCargoTypeLabel(
+  value: string,
+  options: CargoTypeCatalogItem[]
+): string {
   return options.find((option) => option.code === value)?.displayLabel ?? value
 }
 
-export function buildInvoiceQuoteData(params: BuildInvoiceQuoteDataParams): InvoiceQuoteData {
-  const selectedCargo = params.filteredCargoNames.find((item) => item.name === params.cargoName)
-  const cargoDisplayName = (selectedCargo?.displayName || params.cargoName || '').trim()
+export function buildInvoiceQuoteData(
+  params: BuildInvoiceQuoteDataParams
+): InvoiceQuoteData {
+  const selectedCargo = params.filteredCargoNames.find(
+    (item) => item.name === params.cargoName
+  )
+  const cargoDisplayName = (
+    selectedCargo?.displayName ||
+    params.cargoName ||
+    ''
+  ).trim()
   const variantConfig = getEpdaVariantConfig(params.quoteForm)
   const usesQnPilotageField = variantConfig.pilotageMode === 'SINGLE_RATE'
 
@@ -89,7 +100,9 @@ export function buildInvoiceQuoteData(params: BuildInvoiceQuoteDataParams): Invo
     eta: params.eta || 'TBN',
     cargo_qty_mt: params.cargoQty,
     cargo_name_upper: cargoDisplayName.toUpperCase(),
-    cargo_type: params.cargoType ? getCargoTypeLabel(params.cargoType, params.cargoTypeOptions) : '',
+    cargo_type: params.cargoType
+      ? getCargoTypeLabel(params.cargoType, params.cargoTypeOptions)
+      : '',
     ship_type: params.shipType,
     port_upper: params.port.toUpperCase(),
     loading_term: params.frtTaxType,
@@ -97,27 +110,38 @@ export function buildInvoiceQuoteData(params: BuildInvoiceQuoteDataParams): Invo
       params.shouldIncludeOceanFrtRate && params.oceanFrtRateUsdPerMt
         ? parseFiniteNumberOrUndefined(params.oceanFrtRateUsdPerMt)
         : undefined,
-    garbage_usd_rate: resolveGarbageUsdRate(params.quoteForm, params.garbageUsdRate),
+    garbage_usd_rate: resolveGarbageUsdRate(
+      params.quoteForm,
+      params.garbageUsdRate
+    ),
     purpose_of_calling: params.purposeOfCalling,
     at_berth: params.dischargeLoadingLocation === 'Berth' ? 'X' : undefined,
-    at_anchorage: params.dischargeLoadingLocation === 'Anchorage' ? 'X' : undefined,
+    at_anchorage:
+      params.dischargeLoadingLocation === 'Anchorage' ? 'X' : undefined,
     transport_ls: parseFiniteNumberOrUndefined(params.transportLs),
-    transport_quarantine: parseFiniteNumberOrUndefined(params.boatHireQuarantineAmount),
+    transport_quarantine: parseFiniteNumberOrUndefined(
+      params.boatHireQuarantineAmount
+    ),
     quarantine_cargo_trips:
-      params.quarantineCargoOptions.find((option) => option.value === params.quarantineCargoMode)?.trips ?? 1,
+      params.quarantineCargoOptions.find(
+        (option) => option.value === params.quarantineCargoMode
+      )?.trips ?? 1,
     boat_hire_entry: parseFiniteNumberOrUndefined(params.boatHireAmount),
     agency_fee_mode: params.agencyFeeMode,
-    agency_discount_percent: parseFiniteNumberOrUndefined(params.agencyDiscountPercent),
-    agency_lumpsum_amount: parseFiniteNumberOrUndefined(params.agencyLumpsumAmount),
-    tally_fee:
-      params.isTallyFeeEligible
-        ? parseFiniteNumberOrUndefined(params.tallyFeeAmount)
-        : undefined,
-    tug_assistance:
-      params.isLoaOverTugMax
-        ? parseFiniteNumberOrUndefined(params.tugAssistanceAmount)
-        : undefined,
-    tug_assistance_trips: parseFiniteNumberOrUndefined(params.tugAssistanceTrips) ?? 2,
+    agency_discount_percent: parseFiniteNumberOrUndefined(
+      params.agencyDiscountPercent
+    ),
+    agency_lumpsum_amount: parseFiniteNumberOrUndefined(
+      params.agencyLumpsumAmount
+    ),
+    tally_fee: params.isTallyFeeEligible
+      ? parseFiniteNumberOrUndefined(params.tallyFeeAmount)
+      : undefined,
+    tug_assistance: params.isLoaOverTugMax
+      ? parseFiniteNumberOrUndefined(params.tugAssistanceAmount)
+      : undefined,
+    tug_assistance_trips:
+      parseFiniteNumberOrUndefined(params.tugAssistanceTrips) ?? 2,
     shorecrane_hire_usd_per_mt:
       params.otherExpenseType === 'SHORECRANE_HIRE'
         ? parseFiniteNumberOrUndefined(params.shorecraneHireUsdPerMt)
@@ -136,9 +160,13 @@ export function buildInvoiceQuoteData(params: BuildInvoiceQuoteDataParams): Invo
     buoy_due_hours: parseFiniteNumberOrUndefined(params.buoyDueHours),
     anchorage_hours: parseFiniteNumberOrUndefined(params.anchorageHours),
     pilotage_miles: usesQnPilotageField
-      ? parseFiniteNumberOrUndefined(params.qnPilotageMiles) ?? variantConfig.defaultPilotageMiles
+      ? (parseFiniteNumberOrUndefined(params.qnPilotageMiles) ??
+        variantConfig.defaultPilotageMiles)
       : undefined,
-    pilotage_third_miles: params.quoteForm === 'HCM' ? parseFiniteNumberOrUndefined(params.pilotageThirdMiles) : undefined,
+    pilotage_third_miles:
+      params.quoteForm === 'HCM'
+        ? parseFiniteNumberOrUndefined(params.pilotageThirdMiles)
+        : undefined,
     params: params.params,
   }
 }

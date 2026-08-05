@@ -10,7 +10,7 @@ export function getDefaultGarbageUsdRate(quoteForm?: string | null): string {
 
 export function resolveGarbageUsdRate(
   quoteForm: string | null | undefined,
-  stored: string | number | null | undefined,
+  stored: string | number | null | undefined
 ): string {
   if (stored != null && String(stored).trim() !== '') {
     const parsed = Number(stored)

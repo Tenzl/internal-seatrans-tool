@@ -15,7 +15,7 @@ const QUOTE_RENDERERS: Record<QuoteFormVariant, QuoteRenderer> = {
 export function renderQuoteHtmlForVariant(
   variant: QuoteFormVariant,
   template: string,
-  data: QuoteData,
+  data: QuoteData
 ) {
   return QUOTE_RENDERERS[variant](template, data)
 }

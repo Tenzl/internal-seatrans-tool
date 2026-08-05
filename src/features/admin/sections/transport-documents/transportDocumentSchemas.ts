@@ -11,6 +11,7 @@ import type {
 const shortText = z.string().trim().max(500, 'Use 500 characters or fewer')
 const longText = z.string().trim().max(2_000, 'Use 2,000 characters or fewer')
 const xlText = z.string().trim().max(4_000, 'Use 4,000 characters or fewer')
+const partyId = z.number().int().positive().nullable().optional()
 
 export const cargoRowSchema = z.object({
   containerSealNumber: shortText,
@@ -22,11 +23,15 @@ export const cargoRowSchema = z.object({
 
 export const arrivalNoticeSchema = z.object({
   agent: shortText,
+  agentPartyId: partyId,
   date: shortText,
   anNumber: shortText,
   shipper: longText,
+  shipperPartyId: partyId,
   consignee: longText,
+  consigneePartyId: partyId,
   notifyParty: longText,
+  notifyPartyId: partyId,
   mblNumber: shortText,
   hblNumber: shortText,
   vesselVoyage: shortText,
@@ -56,6 +61,7 @@ export const deliveryOrderSchema = z.object({
   to: longText,
   deliverTo: longText,
   notifyParty: longText,
+  notifyPartyId: partyId,
   mblNumber: shortText,
   hblNumber: shortText,
   etd: shortText,
@@ -82,6 +88,21 @@ export const bookingConfirmationSchema = z.object({
   date: shortText,
   bookingNumber: shortText,
   to: longText,
+  shipper: longText,
+  shipperPartyId: partyId,
+  agent: longText,
+  agentPartyId: partyId,
+  consignee: longText,
+  consigneePartyId: partyId,
+  notifyParty: longText,
+  notifyPartyId: partyId,
+  notifyPartySameAsConsignee: z.boolean(),
+  billToMode: z.enum([
+    'NONE',
+    'SAME_AS_SHIPPER',
+    'SAME_AS_NOTIFY_PARTY',
+    'SAME_AS_CONSIGNEE',
+  ]),
   vesselVoyage: shortText,
   etd: shortText,
   eta: shortText,
@@ -117,11 +138,15 @@ export const emptyCargoRow = () => ({
 
 export const emptyArrivalNotice = (): ArrivalNoticePayload => ({
   agent: '',
+  agentPartyId: null,
   date: '',
   anNumber: '',
   shipper: '',
+  shipperPartyId: null,
   consignee: '',
+  consigneePartyId: null,
   notifyParty: '',
+  notifyPartyId: null,
   mblNumber: '',
   hblNumber: '',
   vesselVoyage: '',
@@ -149,6 +174,7 @@ export const emptyDeliveryOrder = (): DeliveryOrderPayload => ({
   to: '',
   deliverTo: '',
   notifyParty: '',
+  notifyPartyId: null,
   mblNumber: '',
   hblNumber: '',
   etd: '',
@@ -173,6 +199,16 @@ export const emptyBookingConfirmation = (): BookingConfirmationPayload => ({
   date: '',
   bookingNumber: '',
   to: '',
+  shipper: '',
+  shipperPartyId: null,
+  agent: '',
+  agentPartyId: null,
+  consignee: '',
+  consigneePartyId: null,
+  notifyParty: '',
+  notifyPartyId: null,
+  notifyPartySameAsConsignee: false,
+  billToMode: 'NONE',
   vesselVoyage: '',
   etd: '',
   eta: '',
@@ -201,8 +237,11 @@ export const emptyBookingConfirmation = (): BookingConfirmationPayload => ({
 export const billOfLadingSchema = z.object({
   fblNumber: shortText,
   consignor: longText,
+  shipperPartyId: partyId,
   consignedToOrderOf: longText,
+  consigneePartyId: partyId,
   notifyAddress: longText,
+  notifyPartyId: partyId,
   placeOfReceipt: shortText,
   oceanVessel: shortText,
   voyageNumber: shortText,
@@ -231,8 +270,11 @@ export const billOfLadingSchema = z.object({
 export const emptyBillOfLading = (): BillOfLadingPayload => ({
   fblNumber: '',
   consignor: '',
+  shipperPartyId: null,
   consignedToOrderOf: '',
+  consigneePartyId: null,
   notifyAddress: '',
+  notifyPartyId: null,
   placeOfReceipt: '',
   oceanVessel: '',
   voyageNumber: '',
@@ -322,9 +364,10 @@ export function parseTransportDocument<T extends TransportDocumentType>(
         payload
       ) as TransportDocumentPayloadMap[T]
     case 'booking':
-      return bookingConfirmationSchema.parse(
-        payload
-      ) as TransportDocumentPayloadMap[T]
+      return bookingConfirmationSchema.parse({
+        ...emptyBookingConfirmation(),
+        ...payload,
+      }) as TransportDocumentPayloadMap[T]
     case 'do':
       return deliveryOrderSchema.parse(
         payload

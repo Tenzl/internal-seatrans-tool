@@ -65,9 +65,12 @@ export const transportDocumentService = {
     return unwrapApiResponse<TransportDocumentRecord>(response)
   },
 
-  async getById(id: number): Promise<TransportDocumentRecord> {
+  async getById(
+    type: TransportDocumentType,
+    id: number
+  ): Promise<TransportDocumentRecord> {
     const response = await apiClient.get(
-      API_CONFIG.BOOKING_DOCUMENTS.ADMIN_BY_ID(id)
+      API_CONFIG.BOOKING_DOCUMENTS.ADMIN_BY_ID(type, id)
     )
     return unwrapApiResponse<TransportDocumentRecord>(response)
   },
@@ -80,57 +83,64 @@ export const transportDocumentService = {
   },
 
   async update<T extends TransportDocumentType>(
+    type: T,
     id: number,
     payload: UpsertBody<T>
   ): Promise<TransportDocumentRecord> {
     const response = await apiClient.put(
-      API_CONFIG.BOOKING_DOCUMENTS.ADMIN_UPDATE(id),
+      API_CONFIG.BOOKING_DOCUMENTS.ADMIN_UPDATE(type, id),
       sanitizeUpsertBody(payload)
     )
     return unwrapApiResponse<TransportDocumentRecord>(response)
   },
 
-  async lock(id: number): Promise<TransportDocumentRecord> {
+  async lock(
+    type: TransportDocumentType,
+    id: number
+  ): Promise<TransportDocumentRecord> {
     const response = await apiClient.post(
-      API_CONFIG.BOOKING_DOCUMENTS.ADMIN_LOCK(id)
+      API_CONFIG.BOOKING_DOCUMENTS.ADMIN_LOCK(type, id)
     )
     return unwrapApiResponse<TransportDocumentRecord>(response)
   },
 
-  async unlock(id: number): Promise<TransportDocumentRecord> {
+  async unlock(
+    type: TransportDocumentType,
+    id: number
+  ): Promise<TransportDocumentRecord> {
     const response = await apiClient.post(
-      API_CONFIG.BOOKING_DOCUMENTS.ADMIN_UNLOCK(id)
+      API_CONFIG.BOOKING_DOCUMENTS.ADMIN_UNLOCK(type, id)
     )
     return unwrapApiResponse<TransportDocumentRecord>(response)
   },
 
-  async archive(id: number): Promise<void> {
+  async archive(type: TransportDocumentType, id: number): Promise<void> {
     const response = await apiClient.delete(
-      API_CONFIG.BOOKING_DOCUMENTS.ADMIN_ARCHIVE(id)
+      API_CONFIG.BOOKING_DOCUMENTS.ADMIN_ARCHIVE(type, id)
     )
     if (!response.ok) throw new Error(await readError(response))
   },
 
-  async permanentDelete(id: number): Promise<void> {
+  async permanentDelete(
+    type: TransportDocumentType,
+    id: number
+  ): Promise<void> {
     const response = await apiClient.delete(
-      API_CONFIG.BOOKING_DOCUMENTS.ADMIN_PERMANENT_DELETE(id)
+      API_CONFIG.BOOKING_DOCUMENTS.ADMIN_PERMANENT_DELETE(type, id)
     )
     if (!response.ok) throw new Error(await readError(response))
   },
 
-  async history(
-    options: {
-      type?: TransportDocumentType
-      page?: number
-      size?: number
-    } = {}
-  ): Promise<PageResponse<TransportDocumentRecord>> {
+  async history(options: {
+    type: TransportDocumentType
+    page?: number
+    size?: number
+  }): Promise<PageResponse<TransportDocumentRecord>> {
     const params = new URLSearchParams()
-    if (options.type) params.set('type', options.type)
     params.set('page', String(options.page ?? 0))
     params.set('size', String(options.size ?? 10))
     const response = await apiClient.get(
-      `${API_CONFIG.BOOKING_DOCUMENTS.ADMIN_HISTORY}?${params.toString()}`
+      `${API_CONFIG.BOOKING_DOCUMENTS.ADMIN_HISTORY(options.type)}?${params.toString()}`
     )
     return unwrapApiResponse<PageResponse<TransportDocumentRecord>>(response)
   },

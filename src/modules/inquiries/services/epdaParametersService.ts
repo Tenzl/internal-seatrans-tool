@@ -4,8 +4,6 @@ import {
   sanitizePartialParameterValues,
   type EpdaParameterValues,
   type PartialEpdaParameterValues,
-  type GrtTier,
-  type LoaTier,
 } from '@/modules/inquiries/components/common/quoteParameters'
 import { API_CONFIG } from '@/shared/config/api.config'
 import { apiClient } from '@/shared/utils/apiClient'
@@ -14,12 +12,7 @@ import {
   unwrapNullableApiResponse,
 } from '@/shared/utils/apiUnwrap'
 
-export type {
-  EpdaParameterValues,
-  PartialEpdaParameterValues,
-  GrtTier,
-  LoaTier,
-}
+export type { EpdaParameterValues, PartialEpdaParameterValues }
 
 export type EpdaParameterScope = 'AREA' | 'GROUP' | 'PORT'
 

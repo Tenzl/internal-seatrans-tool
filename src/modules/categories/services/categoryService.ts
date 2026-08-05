@@ -1,6 +1,6 @@
-import { apiClient } from '@/shared/utils/apiClient'
 import { API_CONFIG } from '@/shared/config/api.config'
 import type { ApiResponse } from '@/shared/types/api.types'
+import { apiClient } from '@/shared/utils/apiClient'
 
 export interface Category {
   id: number
@@ -38,13 +38,15 @@ export const categoryService = {
   // Admin: Get all categories (with fallback to public endpoint)
   getAdminCategories: async (): Promise<Category[]> => {
     try {
-      const response = await apiClient.get<ApiResponse<Category[]>>(API_CONFIG.CATEGORIES.ADMIN_BASE)
-      
+      const response = await apiClient.get<ApiResponse<Category[]>>(
+        API_CONFIG.CATEGORIES.ADMIN_BASE
+      )
+
       if (response.ok) {
         const result: ApiResponse<Category[]> = await response.json()
         return result.data
       }
-      
+
       return await categoryService.getAllCategories()
     } catch {
       return await categoryService.getAllCategories()
@@ -53,7 +55,10 @@ export const categoryService = {
 
   // Admin: Create category
   createCategory: async (data: CategoryRequest): Promise<Category> => {
-    const response = await apiClient.post<ApiResponse<Category>>(API_CONFIG.CATEGORIES.ADMIN_BASE, data)
+    const response = await apiClient.post<ApiResponse<Category>>(
+      API_CONFIG.CATEGORIES.ADMIN_BASE,
+      data
+    )
 
     if (!response.ok) {
       const error = await response.json()
@@ -65,7 +70,10 @@ export const categoryService = {
   },
 
   // Admin: Update category
-  updateCategory: async (id: number, data: CategoryRequest): Promise<Category> => {
+  updateCategory: async (
+    id: number,
+    data: CategoryRequest
+  ): Promise<Category> => {
     const response = await apiClient.put<ApiResponse<Category>>(
       `${API_CONFIG.CATEGORIES.ADMIN_BASE}/${id}`,
       data
@@ -82,7 +90,9 @@ export const categoryService = {
 
   // Admin: Delete category
   deleteCategory: async (id: number): Promise<void> => {
-    const response = await apiClient.delete(`${API_CONFIG.CATEGORIES.ADMIN_BASE}/${id}`)
+    const response = await apiClient.delete(
+      `${API_CONFIG.CATEGORIES.ADMIN_BASE}/${id}`
+    )
 
     if (!response.ok) {
       const error = await response.json()

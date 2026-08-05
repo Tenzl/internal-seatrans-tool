@@ -20,7 +20,9 @@ const SERVICE_SLUG_ALIASES: Record<string, InquiryServiceSlug> = {
   logistics: 'total-logistic',
 }
 
-export function toInquiryServiceSlug(value?: string | null): InquiryServiceSlug | undefined {
+export function toInquiryServiceSlug(
+  value?: string | null
+): InquiryServiceSlug | undefined {
   if (!value?.trim()) return undefined
   return SERVICE_SLUG_ALIASES[value.trim().toLowerCase()]
 }

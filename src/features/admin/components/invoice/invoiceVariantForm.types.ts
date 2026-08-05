@@ -24,9 +24,7 @@ export type PurposeOption =
 export type ShipTypeOption = 'BULK_SHIP' | 'TANKER_SHIP'
 
 export type FrtTaxTypeOption =
-  | 'Import'
-  | 'Export - Pls Advise'
-  | 'Export - Freight rate declaration'
+  'Import' | 'Export - Pls Advise' | 'Export - Freight rate declaration'
 
 export type QuarantineCargoOption = 'ONE_LEG' | 'BOTH_LEGS' | 'OTHER'
 export type AgencyFeeModeOption = 'TARRIF_AGENCY' | 'AGENCY_IN_LUMPSUM'

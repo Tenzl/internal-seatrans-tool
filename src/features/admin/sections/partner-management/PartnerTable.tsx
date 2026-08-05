@@ -216,7 +216,7 @@ export function PartnerTable({
       }
       toolbar={
         <div className='space-y-3'>
-          <div className='flex gap-1 overflow-x-auto pb-0.5 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden'>
+          <div className='flex [scrollbar-width:none] gap-1 overflow-x-auto pb-0.5 [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden'>
             <Button
               className='h-8 shrink-0 px-2.5 text-[11px] font-medium'
               variant={additionType === 'ALL' ? 'default' : 'outline'}

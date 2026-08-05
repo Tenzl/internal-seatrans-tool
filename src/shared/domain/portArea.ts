@@ -15,5 +15,7 @@ export function getPortAreaLabel(value: PortAreaCode): string {
 }
 
 export function getPortAreaShortLabel(value: PortAreaCode): string {
-  return PORT_AREA_OPTIONS.find((area) => area.value === value)?.shortLabel ?? value
+  return (
+    PORT_AREA_OPTIONS.find((area) => area.value === value)?.shortLabel ?? value
+  )
 }

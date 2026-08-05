@@ -64,7 +64,8 @@ export interface QuoteData {
 }
 
 export const escapeHtml = (value: unknown) => {
-  const raw = value === undefined || value === null || value === '' ? '' : String(value)
+  const raw =
+    value === undefined || value === null || value === '' ? '' : String(value)
   return raw
     .replace(/&/g, '&amp;')
     .replace(/</g, '&lt;')
@@ -79,7 +80,10 @@ export const formatAmount = (value: unknown) => {
   const num = toNumber(value)
   if (num === null) return escapeHtml(value)
   const rounded = Math.ceil(num * 100) / 100
-  return rounded.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+  return rounded.toLocaleString('en-US', {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  })
 }
 
 export const formatLoaDisplay = (value: unknown) => {
@@ -103,19 +107,22 @@ export const isMeaningfulQuoteRow = (row: QuoteRow) =>
   [row.item, row.details, row.add, row.remark, row.amount].some(hasText)
 
 export const normalizeCustomRows = (rows: QuoteRow[], reindex = false) => {
-  const visible = rows
-    .filter(isMeaningfulQuoteRow)
-    .filter(shouldIncludeFeeRow)
-  return reindex ? visible.map((row, index) => ({ ...row, no: index + 1 })) : visible
+  const visible = rows.filter(isMeaningfulQuoteRow).filter(shouldIncludeFeeRow)
+  return reindex
+    ? visible.map((row, index) => ({ ...row, no: index + 1 }))
+    : visible
 }
 
 export const reindexNumberedRows = (rows: QuoteRow[]) => {
   let currentNo = 1
-  return rows.map((row) => row.no === '' ? row : { ...row, no: currentNo++ })
+  return rows.map((row) => (row.no === '' ? row : { ...row, no: currentNo++ }))
 }
 
 const normalizeCode = (value: unknown) =>
-  String(value || '').trim().toUpperCase().replace(/[\s-]+/g, '_')
+  String(value || '')
+    .trim()
+    .toUpperCase()
+    .replace(/[\s-]+/g, '_')
 
 export const normalizePurpose = normalizeCode
 export const normalizeFrtTaxType = normalizeCode
@@ -127,14 +134,23 @@ export const isExportPlsAdviseMode = (frtTaxType?: string) =>
 
 export const isExportTotalAmountMode = (frtTaxType?: string) => {
   const normalized = normalizeFrtTaxType(frtTaxType)
-  return normalized === 'EXPORT' || normalized === 'EXPORT_FREIGHT_RATE_DECLARATION'
+  return (
+    normalized === 'EXPORT' || normalized === 'EXPORT_FREIGHT_RATE_DECLARATION'
+  )
 }
 
-export const shouldShowOceanFrtTax = (purposeOfCalling?: string, frtTaxType?: string) => {
+export const shouldShowOceanFrtTax = (
+  purposeOfCalling?: string,
+  frtTaxType?: string
+) => {
   if (normalizeFrtTaxType(frtTaxType) === 'IMPORT') return false
   const purpose = normalizePurpose(purposeOfCalling)
-  return purpose === 'NHAP_XUAT' || purpose === 'CHUYEN_CANG_XUAT' ||
-    isExportTotalAmountMode(frtTaxType) || isExportPlsAdviseMode(frtTaxType)
+  return (
+    purpose === 'NHAP_XUAT' ||
+    purpose === 'CHUYEN_CANG_XUAT' ||
+    isExportTotalAmountMode(frtTaxType) ||
+    isExportPlsAdviseMode(frtTaxType)
+  )
 }
 
 export const isTallyFeeEligibleCargo = (cargoType?: string) => {
@@ -142,7 +158,8 @@ export const isTallyFeeEligibleCargo = (cargoType?: string) => {
   return code === 'IN_BAG_PACK' || code === 'IN_EQUIPMENT'
 }
 
-export const isTankerShip = (value?: string) => normalizeCode(value) === 'TANKER_SHIP'
+export const isTankerShip = (value?: string) =>
+  normalizeCode(value) === 'TANKER_SHIP'
 
 export const getShipQuarantineTrips = (purposeOfCalling?: string) => {
   const purpose = normalizePurpose(purposeOfCalling)
@@ -154,25 +171,29 @@ export const getShipQuarantineTrips = (purposeOfCalling?: string) => {
 export function resolveQuoteTotals(
   totalA: unknown,
   totalB: unknown,
-  grandTotal?: string,
+  grandTotal?: string
 ) {
   const totalANum = toNumber(totalA)
   const totalBNum = toNumber(totalB)
-  const grandNumeric = totalANum !== null && totalBNum !== null
-    ? totalANum + totalBNum
-    : totalANum ?? totalBNum
+  const grandNumeric =
+    totalANum !== null && totalBNum !== null
+      ? totalANum + totalBNum
+      : (totalANum ?? totalBNum)
   return {
     totalA: escapeHtml(totalA),
     totalB: escapeHtml(totalB),
-    grandTotal: grandTotal || (grandNumeric ? formatAmount(grandNumeric) : undefined),
+    grandTotal:
+      grandTotal || (grandNumeric ? formatAmount(grandNumeric) : undefined),
   }
 }
 
 export function applyQuoteReplacements(
   template: string,
-  replacements: Record<string, string>,
+  replacements: Record<string, string>
 ) {
-  return template.replace(/{{\s*([A-Za-z0-9_]+)\s*}}/g, (_match, key: string) =>
-    replacements[key] === undefined ? '—' : replacements[key],
+  return template.replace(
+    /{{\s*([A-Za-z0-9_]+)\s*}}/g,
+    (_match, key: string) =>
+      replacements[key] === undefined ? '—' : replacements[key]
   )
 }

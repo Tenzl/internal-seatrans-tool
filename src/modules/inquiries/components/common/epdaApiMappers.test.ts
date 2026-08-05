@@ -1,5 +1,5 @@
-import { describe, expect, it } from 'vitest'
 import type { BuildInvoiceQuoteDataParams } from '@/modules/inquiries/components/common/buildInvoiceQuoteData'
+import { describe, expect, it } from 'vitest'
 import {
   applyAdminInquiryToForm,
   buildEpdaPatchPayload,
@@ -36,17 +36,12 @@ describe('EPDA quantity API contract', () => {
     const setters = new Proxy(
       {},
       {
-        get:
-          (_, setterName: string) =>
-          (value: string) =>
-            appliedValues.set(setterName, value),
-      },
+        get: (_, setterName: string) => (value: string) =>
+          appliedValues.set(setterName, value),
+      }
     ) as Parameters<typeof applyAdminInquiryToForm>[1]
 
-    applyAdminInquiryToForm(
-      { id: 11, cargoQuantity: '12,500.50' },
-      setters,
-    )
+    applyAdminInquiryToForm({ id: 11, cargoQuantity: '12,500.50' }, setters)
 
     expect(appliedValues.get('setCargoQty')).toBe('12500.5')
   })
@@ -62,6 +57,10 @@ describe('EPDA quantity API contract', () => {
       boatHireQuarantineAmount: string
     })
 
-    expect(payload).toMatchObject({ portId: 38, portOfCall: 'CHAN MAY', quoteForm: 'QN' })
+    expect(payload).toMatchObject({
+      portId: 38,
+      portOfCall: 'CHAN MAY',
+      quoteForm: 'QN',
+    })
   })
 })

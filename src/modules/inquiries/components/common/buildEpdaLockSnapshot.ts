@@ -1,30 +1,37 @@
-import { buildInvoiceQuoteData } from '@/modules/inquiries/components/common/buildInvoiceQuoteData'
+import type { Commodity } from '@/modules/gallery/services/commodityService'
 import {
-  getDefaultGarbageUsdRate,
-} from '@/modules/inquiries/components/common/garbageFeeDefaults'
-import { QUARANTINE_CARGO_OPTIONS } from '@/modules/inquiries/constants/epdaOptions'
+  isTallyFeeEligibleCargoType,
+  SHIPPING_AGENCY_CARGO_TYPES,
+} from '@/modules/gallery/shippingAgencyCargoCatalog'
+import { buildInvoiceQuoteData } from '@/modules/inquiries/components/common/buildInvoiceQuoteData'
 import {
   mapAgencyFeeModeFromApi,
   mapQuarantineModeFromApi,
   type ShippingAgencyAdminInquiry,
 } from '@/modules/inquiries/components/common/epdaApiMappers'
+import { getDefaultGarbageUsdRate } from '@/modules/inquiries/components/common/garbageFeeDefaults'
 import {
   isHcmWorksheet,
   quoteFormFromStored,
 } from '@/modules/inquiries/components/common/quoteForm'
-import { isTallyFeeEligibleCargoType, SHIPPING_AGENCY_CARGO_TYPES } from '@/modules/gallery/shippingAgencyCargoCatalog'
-import type { Commodity } from '@/modules/gallery/services/commodityService'
 import type { EpdaParameterValues } from '@/modules/inquiries/components/common/quoteParameters'
+import { QUARANTINE_CARGO_OPTIONS } from '@/modules/inquiries/constants/epdaOptions'
 import { parseFiniteNumber } from '@/shared/utils/parseNumber'
 
-function toStr(value: string | number | null | undefined, fallback = ''): string {
+function toStr(
+  value: string | number | null | undefined,
+  fallback = ''
+): string {
   if (value === null || value === undefined) return fallback
   const s = String(value).trim()
   return s.length > 0 ? s : fallback
 }
 
 function isExportFreightRateDeclaration(frtTaxType: string): boolean {
-  const normalized = frtTaxType.trim().toUpperCase().replace(/[\s-]+/g, '_')
+  const normalized = frtTaxType
+    .trim()
+    .toUpperCase()
+    .replace(/[\s-]+/g, '_')
   return normalized === 'EXPORT_FREIGHT_RATE_DECLARATION'
 }
 
@@ -44,7 +51,7 @@ function isLoaOverTugMax(loa: string, params: EpdaParameterValues): boolean {
  */
 export function buildEpdaLockSnapshotFromAdminInquiry(
   inquiry: ShippingAgencyAdminInquiry,
-  params: EpdaParameterValues,
+  params: EpdaParameterValues
 ): Record<string, unknown> {
   const quoteForm = quoteFormFromStored(inquiry.quoteForm)
   const cargoType = toStr(inquiry.cargoType)
@@ -53,8 +60,12 @@ export function buildEpdaLockSnapshotFromAdminInquiry(
   const dischargeLoadingLocation = toStr(inquiry.dischargeLoadingLocation)
   const berthHours = toStr(inquiry.berthHours, '96')
   const loa = toStr(inquiry.loa)
-  const nationalityRaw = toStr(inquiry.shipownerNationality, 'OVERSEAS').toUpperCase()
-  const shipownerNationality = nationalityRaw === 'VIETNAMESE' ? 'VIETNAMESE' : 'OVERSEAS'
+  const nationalityRaw = toStr(
+    inquiry.shipownerNationality,
+    'OVERSEAS'
+  ).toUpperCase()
+  const shipownerNationality =
+    nationalityRaw === 'VIETNAMESE' ? 'VIETNAMESE' : 'OVERSEAS'
   const overTugMax = isLoaOverTugMax(loa, params)
   const shorecrane = toStr(inquiry.shorecraneHireUsdPerMt)
 
@@ -93,7 +104,10 @@ export function buildEpdaLockSnapshotFromAdminInquiry(
     frtTaxType,
     shouldIncludeOceanFrtRate: isExportFreightRateDeclaration(frtTaxType),
     oceanFrtRateUsdPerMt: toStr(inquiry.oceanFrtRateUsdPerMt),
-    garbageUsdRate: toStr(inquiry.garbageUsdRate, String(getDefaultGarbageUsdRate(quoteForm))),
+    garbageUsdRate: toStr(
+      inquiry.garbageUsdRate,
+      String(getDefaultGarbageUsdRate(quoteForm))
+    ),
     purposeOfCalling: toStr(inquiry.purposeOfCalling),
     dischargeLoadingLocation,
     transportLs: toStr(inquiry.transportLs),
@@ -113,9 +127,14 @@ export function buildEpdaLockSnapshotFromAdminInquiry(
     shorecraneHireUsdPerMt: shorecrane,
     berthHours,
     buoyDueHours:
-      isHcmWorksheet(quoteForm) && dischargeLoadingLocation === 'Anchorage' ? berthHours : '',
+      isHcmWorksheet(quoteForm) && dischargeLoadingLocation === 'Anchorage'
+        ? berthHours
+        : '',
     anchorageHours: toStr(inquiry.anchorageHours, '24'),
-    qnPilotageMiles: toStr(inquiry.pilotage3rdMiles, quoteForm === 'QN' || quoteForm === 'HN' ? '5' : '47'),
+    qnPilotageMiles: toStr(
+      inquiry.pilotage3rdMiles,
+      quoteForm === 'QN' || quoteForm === 'HN' ? '5' : '47'
+    ),
     pilotageThirdMiles: toStr(inquiry.pilotage3rdMiles, '47'),
     params,
   }) as unknown as Record<string, unknown>

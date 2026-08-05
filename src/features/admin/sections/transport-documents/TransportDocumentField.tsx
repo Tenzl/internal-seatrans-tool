@@ -10,6 +10,9 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { Textarea } from '@/components/ui/textarea'
+import type { PartnerOption } from '../partner-management/partnerManagementService'
+import { PartySearchSelect } from './PartySearchSelect'
+import { formatPartyDocumentValue } from './partyPickerModel'
 import {
   TRANSPORT_FIELD_SPAN_CLASS,
   type TransportDocumentFieldSpec,
@@ -18,13 +21,17 @@ import {
 interface TransportDocumentFieldProps {
   field: TransportDocumentFieldSpec
   value: string
-  onChange: (value: string) => void
+  selectedPartyId?: number | null
+  onChange: (value: unknown) => void
+  onPartyIdChange?: (value: number | null) => void
 }
 
 export function TransportDocumentField({
   field,
   value,
+  selectedPartyId,
   onChange,
+  onPartyIdChange,
 }: TransportDocumentFieldProps) {
   const id = `transport-document-${field.key}`
 
@@ -35,7 +42,20 @@ export function TransportDocumentField({
       <Label htmlFor={id} className='text-xs font-medium text-muted-foreground'>
         {field.label}
       </Label>
-      {field.kind === 'textarea' ? (
+      {field.kind === 'party' ? (
+        <PartySearchSelect
+          id={id}
+          value={selectedPartyId ?? null}
+          documentValue={value}
+          additionType={field.additionType}
+          customerType={field.customerType}
+          onChange={(option: PartnerOption | null) => {
+            onChange(option ? formatPartyDocumentValue(option) : '')
+            onPartyIdChange?.(option?.id ?? null)
+          }}
+          placeholder={field.placeholder ?? `Search ${field.label} name...`}
+        />
+      ) : field.kind === 'textarea' ? (
         <Textarea
           id={id}
           value={value}

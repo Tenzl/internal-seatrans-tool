@@ -1,3 +1,4 @@
+import type { StorageObject } from '@/modules/storage/types/storage.types'
 import {
   Archive,
   File,
@@ -10,7 +11,6 @@ import {
   Folder,
   type LucideIcon,
 } from 'lucide-react'
-import type { StorageObject } from '@/modules/storage/types/storage.types'
 
 /** Normalize prefix: no leading slash, trailing slash for non-empty folders. */
 export function normalizePrefix(prefix: string): string {
@@ -38,7 +38,10 @@ export function formatBytes(bytes?: number): string {
   if (bytes == null || Number.isNaN(bytes)) return '—'
   if (bytes === 0) return '0 B'
   const units = ['B', 'KB', 'MB', 'GB', 'TB']
-  const i = Math.min(Math.floor(Math.log(bytes) / Math.log(1024)), units.length - 1)
+  const i = Math.min(
+    Math.floor(Math.log(bytes) / Math.log(1024)),
+    units.length - 1
+  )
   const value = bytes / 1024 ** i
   return `${value < 10 && i > 0 ? value.toFixed(1) : Math.round(value)} ${units[i]}`
 }
@@ -66,37 +69,75 @@ export function iconForStorageObject(obj: StorageObject): LucideIcon {
   const ext = extOf(obj.name)
   const mime = (obj.contentType ?? '').toLowerCase()
 
-  if (mime.startsWith('image/') || ['jpg', 'jpeg', 'png', 'gif', 'webp', 'svg', 'bmp'].includes(ext)) {
+  if (
+    mime.startsWith('image/') ||
+    ['jpg', 'jpeg', 'png', 'gif', 'webp', 'svg', 'bmp'].includes(ext)
+  ) {
     return FileImage
   }
-  if (mime.startsWith('video/') || ['mp4', 'webm', 'mov', 'avi', 'mkv'].includes(ext)) {
+  if (
+    mime.startsWith('video/') ||
+    ['mp4', 'webm', 'mov', 'avi', 'mkv'].includes(ext)
+  ) {
     return FileVideo
   }
-  if (mime.startsWith('audio/') || ['mp3', 'wav', 'ogg', 'flac', 'aac'].includes(ext)) {
+  if (
+    mime.startsWith('audio/') ||
+    ['mp3', 'wav', 'ogg', 'flac', 'aac'].includes(ext)
+  ) {
     return FileAudio
   }
-  if (['pdf', 'doc', 'docx', 'txt', 'rtf', 'md'].includes(ext) || mime.includes('pdf') || mime.includes('text')) {
+  if (
+    ['pdf', 'doc', 'docx', 'txt', 'rtf', 'md'].includes(ext) ||
+    mime.includes('pdf') ||
+    mime.includes('text')
+  ) {
     return FileText
   }
-  if (['xls', 'xlsx', 'csv'].includes(ext) || mime.includes('spreadsheet') || mime.includes('excel')) {
+  if (
+    ['xls', 'xlsx', 'csv'].includes(ext) ||
+    mime.includes('spreadsheet') ||
+    mime.includes('excel')
+  ) {
     return FileSpreadsheet
   }
-  if (['zip', 'rar', '7z', 'tar', 'gz'].includes(ext) || mime.includes('zip') || mime.includes('archive')) {
+  if (
+    ['zip', 'rar', '7z', 'tar', 'gz'].includes(ext) ||
+    mime.includes('zip') ||
+    mime.includes('archive')
+  ) {
     return Archive
   }
-  if (['js', 'ts', 'tsx', 'jsx', 'json', 'xml', 'html', 'css', 'py', 'java'].includes(ext)) {
+  if (
+    [
+      'js',
+      'ts',
+      'tsx',
+      'jsx',
+      'json',
+      'xml',
+      'html',
+      'css',
+      'py',
+      'java',
+    ].includes(ext)
+  ) {
     return FileCode
   }
   return File
 }
 
 /** Breadcrumb segments from a prefix. */
-export function prefixSegments(prefix: string): { label: string; prefix: string }[] {
+export function prefixSegments(
+  prefix: string
+): { label: string; prefix: string }[] {
   const normalized = normalizePrefix(prefix)
   if (!normalized) return [{ label: 'Root', prefix: '' }]
 
   const parts = normalized.replace(/\/$/, '').split('/')
-  const segments: { label: string; prefix: string }[] = [{ label: 'Root', prefix: '' }]
+  const segments: { label: string; prefix: string }[] = [
+    { label: 'Root', prefix: '' },
+  ]
   let acc = ''
   for (const part of parts) {
     acc = acc ? `${acc}${part}/` : `${part}/`

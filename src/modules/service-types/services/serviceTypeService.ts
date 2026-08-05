@@ -1,6 +1,6 @@
-import { apiClient } from '@/shared/utils/apiClient'
 import { API_CONFIG } from '@/shared/config/api.config'
 import type { ApiResponse } from '@/shared/types/api.types'
+import { apiClient } from '@/shared/utils/apiClient'
 
 interface ServiceType {
   id: number
@@ -14,7 +14,9 @@ interface ServiceType {
 
 export const serviceTypeService = {
   getAllServiceTypes: async (): Promise<ServiceType[]> => {
-    const response = await apiClient.get<ApiResponse<ServiceType[]>>(API_CONFIG.SERVICE_TYPES.BASE)
+    const response = await apiClient.get<ApiResponse<ServiceType[]>>(
+      API_CONFIG.SERVICE_TYPES.BASE
+    )
 
     if (!response.ok) {
       throw new Error('Failed to fetch service types')
@@ -25,7 +27,9 @@ export const serviceTypeService = {
   },
 
   getActiveServiceTypes: async (): Promise<ServiceType[]> => {
-    const response = await apiClient.get<ApiResponse<ServiceType[]>>(API_CONFIG.SERVICE_TYPES.ACTIVE)
+    const response = await apiClient.get<ApiResponse<ServiceType[]>>(
+      API_CONFIG.SERVICE_TYPES.ACTIVE
+    )
 
     if (!response.ok) {
       throw new Error('Failed to fetch active service types')

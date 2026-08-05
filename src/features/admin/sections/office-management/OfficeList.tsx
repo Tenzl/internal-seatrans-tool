@@ -28,7 +28,7 @@ export function OfficeList({
                 <Building2 className='h-4 w-4' />
                 {office.city}
                 {office.isHeadquarter ? (
-                  <span className='bg-warning/20 text-warning rounded px-2 py-0.5 text-xs'>
+                  <span className='rounded bg-warning/20 px-2 py-0.5 text-xs text-warning'>
                     HQ
                   </span>
                 ) : null}

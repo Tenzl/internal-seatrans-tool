@@ -136,9 +136,7 @@ export function useInquiryData(options: UseInquiryDataOptions = {}) {
         }
 
         const data = (await response.json()) as
-          | PageResponse<InquiryRecord>
-          | InquiryRecord[]
-          | InquiryPageEnvelope
+          PageResponse<InquiryRecord> | InquiryRecord[] | InquiryPageEnvelope
         setInquiries(extractInquiries(data))
       } else {
         // Admin endpoint - can see all inquiries
@@ -159,9 +157,7 @@ export function useInquiryData(options: UseInquiryDataOptions = {}) {
         }
 
         const data = (await response.json()) as
-          | PageResponse<InquiryRecord>
-          | InquiryRecord[]
-          | InquiryPageEnvelope
+          PageResponse<InquiryRecord> | InquiryRecord[] | InquiryPageEnvelope
         setInquiries(extractInquiries(data))
       }
     } catch (err) {

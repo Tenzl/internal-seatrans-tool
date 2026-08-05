@@ -14,6 +14,8 @@ import type {
   BookingPartnerPageData,
   BookingPartnerUpsertRequest,
   CustomerStatus,
+  CustomerType,
+  PartnerAdditionType,
 } from './partnerManagementTypes'
 
 /** Rows fetched per table page (server-side pagination). */
@@ -100,7 +102,7 @@ const adaptCommit = (raw: RawImportCommit): PartnerImportCommitData => ({
   })),
 })
 
-const buildListQuery = (params: BookingPartnerListParams) => {
+export const buildPartnerListQuery = (params: BookingPartnerListParams) => {
   const query = new URLSearchParams()
 
   query.set('page', String(params.page ?? 0))
@@ -124,32 +126,68 @@ export interface PartnerOption {
   id: number
   name: string
   customerId: string
+  address: string | null
+  city: string | null
+  country: string | null
+  phone: string | null
+  fax: string | null
+}
+
+export interface PartnerOptionPage {
+  content: PartnerOption[]
+  page: number
+  size: number
+  hasNext: boolean
+}
+
+export interface PartnerOptionsParams {
+  page?: number
+  q?: string
+  additionType?: PartnerAdditionType
+  customerType?: CustomerType
+}
+
+export const PARTNER_OPTIONS_PAGE_SIZE = 10
+
+export const buildPartnerOptionsQuery = (params: PartnerOptionsParams) => {
+  const search = new URLSearchParams()
+  search.set('page', String(params.page ?? 0))
+  search.set('limit', String(PARTNER_OPTIONS_PAGE_SIZE))
+  if (params.q?.trim()) search.set('q', params.q.trim())
+  if (params.additionType) search.set('additionType', params.additionType)
+  if (params.customerType) search.set('customerType', params.customerType)
+  return search.toString()
 }
 
 export const partnerManagementService = {
-  async listOptions(q?: string, limit = 30): Promise<PartnerOption[]> {
-    const search = new URLSearchParams()
-    if (q?.trim()) search.set('q', q.trim())
-    search.set('limit', String(limit))
+  async listOptions(
+    params: PartnerOptionsParams,
+    signal?: AbortSignal
+  ): Promise<PartnerOptionPage> {
+    const search = buildPartnerOptionsQuery(params)
     const response = await apiClient.get(
-      `${API_CONFIG.BOOKING_PARTNERS.OPTIONS}?${search.toString()}`
+      `${API_CONFIG.BOOKING_PARTNERS.OPTIONS}?${search}`,
+      { signal }
     )
-    return unwrapApiResponse<PartnerOption[]>(response)
+    return unwrapApiResponse<PartnerOptionPage>(response)
   },
 
   async list(
     params: BookingPartnerListParams
   ): Promise<BookingPartnerPageData> {
-    const query = buildListQuery(params)
+    const query = buildPartnerListQuery(params)
     const response = await apiClient.get(
       `${API_CONFIG.BOOKING_PARTNERS.ADMIN_BASE}?${query}`
     )
     return unwrapApiResponse<BookingPartnerPageData>(response)
   },
 
-  async detail(id: number): Promise<BookingPartnerDetail> {
+  async detail(
+    id: number,
+    includeArchived = true
+  ): Promise<BookingPartnerDetail> {
     const response = await apiClient.get(
-      API_CONFIG.BOOKING_PARTNERS.ADMIN_BY_ID(id)
+      `${API_CONFIG.BOOKING_PARTNERS.ADMIN_BY_ID(id)}?includeArchived=${includeArchived}`
     )
     return unwrapApiResponse<BookingPartnerDetail>(response)
   },

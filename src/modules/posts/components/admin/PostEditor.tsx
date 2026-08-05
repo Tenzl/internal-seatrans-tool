@@ -1,24 +1,38 @@
 'use client'
 
 import { useState, useEffect, useRef } from 'react'
-import type { Editor as TinyMCEEditor } from 'tinymce'
-import { useRouter } from 'next/navigation'
+import {
+  categoryService,
+  type Category,
+} from '@/modules/categories/services/categoryService'
+import {
+  postService,
+  type PostRequest,
+} from '@/modules/posts/services/postService'
+import {
+  TINYMCE_PLUGINS,
+  TINYMCE_SCRIPT_SRC,
+} from '@/modules/posts/tinymce-config'
+import { ImageWithFallback } from '@/shared/components/ImageWithFallback'
+import { API_CONFIG } from '@/shared/config/api.config'
+import { toast } from '@/shared/utils/toast'
+import { Save, X, ChevronDown, Plus } from 'lucide-react'
 import dynamic from 'next/dynamic'
+import { useRouter } from 'next/navigation'
+import type { Editor as TinyMCEEditor } from 'tinymce'
+import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { Badge } from '@/components/ui/badge'
-import { ImageWithFallback } from '@/shared/components/ImageWithFallback'
-import { postService, type PostRequest } from '@/modules/posts/services/postService'
-import { categoryService, type Category } from '@/modules/categories/services/categoryService'
-import { toast } from '@/shared/utils/toast'
-import { Save, X, ChevronDown, Plus } from 'lucide-react'
-import { API_CONFIG } from '@/shared/config/api.config'
-import { TINYMCE_PLUGINS, TINYMCE_SCRIPT_SRC } from '@/modules/posts/tinymce-config'
 
 const Editor = dynamic(
   () => import('@tinymce/tinymce-react').then((mod) => mod.Editor),
-  { ssr: false, loading: () => <div className="text-sm text-muted-foreground">Loading editor...</div> }
+  {
+    ssr: false,
+    loading: () => (
+      <div className='text-sm text-muted-foreground'>Loading editor...</div>
+    ),
+  }
 )
 
 // Helper function to construct proper image URL
@@ -26,7 +40,9 @@ const getImageUrl = (url: string) => {
   if (!url) return ''
   if (url.startsWith('http')) return url
   const normalizedPath = url.replace(/\\/g, '/')
-  const path = normalizedPath.startsWith('/') ? normalizedPath : `/${normalizedPath}`
+  const path = normalizedPath.startsWith('/')
+    ? normalizedPath
+    : `/${normalizedPath}`
   return `${API_CONFIG.ASSET_BASE_URL}${path}`
 }
 
@@ -50,8 +66,10 @@ export function PostEditorPage({ postId }: PostEditorPageProps) {
   const categoryDropdownRef = useRef<HTMLDivElement>(null)
   const editorRef = useRef<TinyMCEEditor | null>(null)
 
-  const handleImageUpload = (blobInfo: { blob: () => Blob }, _progress: (percent: number) => void) =>
-    postService.uploadImage(blobInfo.blob() as File)
+  const handleImageUpload = (
+    blobInfo: { blob: () => Blob },
+    _progress: (percent: number) => void
+  ) => postService.uploadImage(blobInfo.blob() as File)
 
   useEffect(() => {
     let cancelled = false
@@ -90,7 +108,10 @@ export function PostEditorPage({ postId }: PostEditorPageProps) {
   // Close dropdown when clicking outside
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
-      if (categoryDropdownRef.current && !categoryDropdownRef.current.contains(event.target as Node)) {
+      if (
+        categoryDropdownRef.current &&
+        !categoryDropdownRef.current.contains(event.target as Node)
+      ) {
         setCategoryDropdownOpen(false)
       }
     }
@@ -105,7 +126,7 @@ export function PostEditorPage({ postId }: PostEditorPageProps) {
     if (!formData.categoryIds?.includes(categoryId)) {
       setFormData({
         ...formData,
-        categoryIds: [...(formData.categoryIds || []), categoryId]
+        categoryIds: [...(formData.categoryIds || []), categoryId],
       })
     }
     setCategoryDropdownOpen(false)
@@ -114,111 +135,121 @@ export function PostEditorPage({ postId }: PostEditorPageProps) {
   const handleRemoveCategory = (categoryId: number) => {
     setFormData({
       ...formData,
-      categoryIds: formData.categoryIds?.filter(id => id !== categoryId) || []
+      categoryIds:
+        formData.categoryIds?.filter((id) => id !== categoryId) || [],
     })
   }
 
   const availableCategoriesFiltered = availableCategories.filter(
-    cat => !formData.categoryIds?.includes(cat.id)
+    (cat) => !formData.categoryIds?.includes(cat.id)
   )
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setLoading(true)
-    
+
     try {
       if (postId) {
         // Update existing post
         await postService.updatePost(postId, formData)
-        toast.success("Post updated successfully! Returning to posts...")
+        toast.success('Post updated successfully! Returning to posts...')
       } else {
         // Create new post as draft first to get ID
         await postService.createPost({
           ...formData,
-          isPublished: false // Force draft on creation
+          isPublished: false, // Force draft on creation
         })
-        toast.success("Post created successfully! Returning to posts...")
+        toast.success('Post created successfully! Returning to posts...')
       }
 
       setTimeout(() => {
         router.push('/content/posts')
       }, 600)
     } catch (error: unknown) {
-      toast.error(error instanceof Error ? error.message : 'Failed to save post')
+      toast.error(
+        error instanceof Error ? error.message : 'Failed to save post'
+      )
       setLoading(false)
     }
   }
 
   if (loading && postId && !formData.title) {
-    return <div className="px-8 pb-8 pt-32 text-center">Loading post data...</div>
+    return (
+      <div className='px-8 pt-32 pb-8 text-center'>Loading post data...</div>
+    )
   }
 
   return (
-    <div className="min-h-screen bg-muted px-8 pb-8 pt-32">
-      <div className="max-w-5xl mx-auto bg-card rounded-lg shadow-lg overflow-hidden">
-        <div className="bg-primary px-6 py-4 flex justify-between items-center">
-          <h1 className="text-xl font-bold text-white">
+    <div className='min-h-screen bg-muted px-8 pt-32 pb-8'>
+      <div className='mx-auto max-w-5xl overflow-hidden rounded-lg bg-card shadow-lg'>
+        <div className='flex items-center justify-between bg-primary px-6 py-4'>
+          <h1 className='text-xl font-bold text-white'>
             {postId ? 'Edit Post' : 'Create New Post'}
           </h1>
-          <Button 
-            variant="ghost" 
-            className="text-primary-foreground hover:bg-primary/90 cursor-pointer"
+          <Button
+            variant='ghost'
+            className='cursor-pointer text-primary-foreground hover:bg-primary/90'
             onClick={() => router.push('/content/posts')}
           >
-            <X className="h-5 w-5" />
+            <X className='h-5 w-5' />
           </Button>
         </div>
 
-        <div className="p-6">
-          <form onSubmit={handleSubmit} className="space-y-6">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div className="space-y-4">
+        <div className='p-6'>
+          <form onSubmit={handleSubmit} className='space-y-6'>
+            <div className='grid grid-cols-1 gap-6 md:grid-cols-2'>
+              <div className='space-y-4'>
                 <div>
-                  <Label htmlFor="title">Title *</Label>
+                  <Label htmlFor='title'>Title *</Label>
                   <Input
-                    id="title"
+                    id='title'
                     value={formData.title}
-                    onChange={(e) => setFormData({ ...formData, title: e.target.value })}
+                    onChange={(e) =>
+                      setFormData({ ...formData, title: e.target.value })
+                    }
                     required
                     maxLength={500}
-                    className="mt-1"
+                    className='mt-1'
                   />
                 </div>
 
                 <div>
                   <Label>Categories</Label>
-                  <div className="mt-1 grid grid-cols-2 gap-4">
+                  <div className='mt-1 grid grid-cols-2 gap-4'>
                     {/* Left Column: Add Category Dropdown */}
-                    <div className="relative" ref={categoryDropdownRef}>
+                    <div className='relative' ref={categoryDropdownRef}>
                       <Button
-                        type="button"
-                        variant="outline"
-                        onClick={() => setCategoryDropdownOpen(!categoryDropdownOpen)}
-                        className="w-full justify-between cursor-pointer"
+                        type='button'
+                        variant='outline'
+                        onClick={() =>
+                          setCategoryDropdownOpen(!categoryDropdownOpen)
+                        }
+                        className='w-full cursor-pointer justify-between'
                       >
-                        <span className="text-sm text-muted-foreground">Select category...</span>
-                        <ChevronDown className="h-4 w-4" />
+                        <span className='text-sm text-muted-foreground'>
+                          Select category...
+                        </span>
+                        <ChevronDown className='h-4 w-4' />
                       </Button>
-                      
+
                       {categoryDropdownOpen && (
-                        <div className="absolute z-50 mt-2 w-full bg-popover border border-border rounded-md shadow-lg max-h-60 overflow-auto">
+                        <div className='absolute z-50 mt-2 max-h-60 w-full overflow-auto rounded-md border border-border bg-popover shadow-lg'>
                           {availableCategoriesFiltered.length === 0 ? (
-                            <div className="p-3 text-sm text-muted-foreground text-center">
-                              {availableCategories.length === 0 
+                            <div className='p-3 text-center text-sm text-muted-foreground'>
+                              {availableCategories.length === 0
                                 ? 'No categories available. Create categories first.'
-                                : 'All categories selected'
-                              }
+                                : 'All categories selected'}
                             </div>
                           ) : (
-                            <div className="py-1">
+                            <div className='py-1'>
                               {availableCategoriesFiltered.map((cat) => (
                                 <button
                                   key={cat.id}
-                                  type="button"
+                                  type='button'
                                   onClick={() => handleAddCategory(cat.id)}
-                                  className="w-full px-4 py-2 text-left text-sm hover:bg-muted flex items-center gap-2 cursor-pointer"
+                                  className='flex w-full cursor-pointer items-center gap-2 px-4 py-2 text-left text-sm hover:bg-muted'
                                 >
-                                  <Plus className="h-4 w-4" />
+                                  <Plus className='h-4 w-4' />
                                   {cat.name}
                                 </button>
                               ))}
@@ -229,17 +260,21 @@ export function PostEditorPage({ postId }: PostEditorPageProps) {
                     </div>
 
                     {/* Right Column: Selected Categories */}
-                    <div className="flex flex-wrap gap-2 content-start">
+                    <div className='flex flex-wrap content-start gap-2'>
                       {formData.categoryIds?.length === 0 ? (
-                        <p className="text-sm text-muted-foreground">No categories selected</p>
+                        <p className='text-sm text-muted-foreground'>
+                          No categories selected
+                        </p>
                       ) : (
                         formData.categoryIds?.map((categoryId) => {
-                          const category = availableCategories.find(c => c.id === categoryId)
+                          const category = availableCategories.find(
+                            (c) => c.id === categoryId
+                          )
                           return category ? (
-                            <Badge 
-                              key={categoryId} 
-                              variant="secondary"
-                              className="cursor-pointer hover:bg-red-100"
+                            <Badge
+                              key={categoryId}
+                              variant='secondary'
+                              className='cursor-pointer hover:bg-red-100'
                               onClick={() => handleRemoveCategory(categoryId)}
                             >
                               {category.name} ×
@@ -252,26 +287,30 @@ export function PostEditorPage({ postId }: PostEditorPageProps) {
                 </div>
               </div>
 
-              <div className="space-y-4">
+              <div className='space-y-4'>
                 <div>
-                  <Label htmlFor="thumbnailUrl">Thumbnail URL</Label>
+                  <Label htmlFor='thumbnailUrl'>Thumbnail URL</Label>
                   <Input
-                    id="thumbnailUrl"
+                    id='thumbnailUrl'
                     value={formData.thumbnailUrl}
-                    onChange={(e) => setFormData({ ...formData, thumbnailUrl: e.target.value })}
-                    placeholder="https://..."
-                    className="mt-1"
+                    onChange={(e) =>
+                      setFormData({ ...formData, thumbnailUrl: e.target.value })
+                    }
+                    placeholder='https://...'
+                    className='mt-1'
                   />
                   {formData.thumbnailUrl && (
-                    <div className="mt-3">
-                      <Label className="text-sm text-muted-foreground mb-2 block">Preview:</Label>
-                      <div className="relative rounded-lg overflow-hidden border bg-muted aspect-video max-w-md">
+                    <div className='mt-3'>
+                      <Label className='mb-2 block text-sm text-muted-foreground'>
+                        Preview:
+                      </Label>
+                      <div className='relative aspect-video max-w-md overflow-hidden rounded-lg border bg-muted'>
                         <ImageWithFallback
                           src={getImageUrl(formData.thumbnailUrl)}
-                          alt="Thumbnail preview"
+                          alt='Thumbnail preview'
                           width={800}
                           height={450}
-                          className="w-full h-full object-cover"
+                          className='h-full w-full object-cover'
                         />
                       </div>
                     </div>
@@ -281,19 +320,22 @@ export function PostEditorPage({ postId }: PostEditorPageProps) {
             </div>
 
             <div>
-              <Label className="mb-2 block">Content *</Label>
-              <div className="border rounded-md overflow-hidden">
+              <Label className='mb-2 block'>Content *</Label>
+              <div className='overflow-hidden rounded-md border'>
                 <Editor
                   tinymceScriptSrc={TINYMCE_SCRIPT_SRC}
                   licenseKey='gpl'
                   onInit={(_evt, editor) => (editorRef.current = editor)}
                   value={formData.content}
-                  onEditorChange={(content: string) => setFormData({ ...formData, content })}
+                  onEditorChange={(content: string) =>
+                    setFormData({ ...formData, content })
+                  }
                   init={{
                     height: 600,
                     menubar: true,
                     plugins: [...TINYMCE_PLUGINS],
-                    toolbar: 'undo redo | blocks | ' +
+                    toolbar:
+                      'undo redo | blocks | ' +
                       'bold italic forecolor backcolor | alignleft aligncenter ' +
                       'alignright alignjustify | bullist numlist outdent indent | ' +
                       'link image media table | removeformat | help',
@@ -308,39 +350,50 @@ export function PostEditorPage({ postId }: PostEditorPageProps) {
                     images_upload_handler: handleImageUpload,
                     image_caption: true,
                     image_title: true,
-                    image_description: false
+                    image_description: false,
                   }}
                 />
               </div>
             </div>
 
-            <div className="flex items-center justify-between pt-4 border-t">
-              <div className="flex items-center space-x-2">
+            <div className='flex items-center justify-between border-t pt-4'>
+              <div className='flex items-center space-x-2'>
                 <input
-                  type="checkbox"
-                  id="isPublished"
+                  type='checkbox'
+                  id='isPublished'
                   checked={formData.isPublished}
-                  onChange={(e) => setFormData({ ...formData, isPublished: e.target.checked })}
-                  className="h-5 w-5 text-primary rounded focus:ring-ring"
+                  onChange={(e) =>
+                    setFormData({ ...formData, isPublished: e.target.checked })
+                  }
+                  className='h-5 w-5 rounded text-primary focus:ring-ring'
                 />
-                <Label htmlFor="isPublished" className="cursor-pointer text-base">
+                <Label
+                  htmlFor='isPublished'
+                  className='cursor-pointer text-base'
+                >
                   Publish immediately
                 </Label>
               </div>
 
-              <div className="flex space-x-3">
+              <div className='flex space-x-3'>
                 <Button
-                  type="button"
-                  variant="outline"
+                  type='button'
+                  variant='outline'
                   onClick={() => router.push('/content/posts')}
-                  className="cursor-pointer"
+                  className='cursor-pointer'
                 >
                   Cancel
                 </Button>
-                <Button type="submit" disabled={loading} className="min-w-[120px] cursor-pointer disabled:cursor-not-allowed">
-                  {loading ? 'Saving...' : (
+                <Button
+                  type='submit'
+                  disabled={loading}
+                  className='min-w-[120px] cursor-pointer disabled:cursor-not-allowed'
+                >
+                  {loading ? (
+                    'Saving...'
+                  ) : (
                     <>
-                      <Save className="mr-2 h-4 w-4" />
+                      <Save className='mr-2 h-4 w-4' />
                       {postId ? 'Update Post' : 'Create Post'}
                     </>
                   )}

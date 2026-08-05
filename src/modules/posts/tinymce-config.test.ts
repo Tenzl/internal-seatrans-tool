@@ -15,7 +15,9 @@ describe('TinyMCE self-hosted runtime', () => {
   it('keeps every asset loaded by the editor', async () => {
     const publicRoot = path.resolve(process.cwd(), 'public')
 
-    await expect(access(path.join(publicRoot, TINYMCE_SCRIPT_SRC))).resolves.toBeUndefined()
+    await expect(
+      access(path.join(publicRoot, TINYMCE_SCRIPT_SRC))
+    ).resolves.toBeUndefined()
     await expect(
       Promise.all(
         TINYMCE_RUNTIME_ASSETS.map((asset) =>

@@ -1,7 +1,6 @@
-"use client"
+'use client'
 
 import { useState, useEffect, useMemo } from 'react'
-import { useRouter } from 'next/navigation'
 import {
   type ColumnDef,
   type ColumnFiltersState,
@@ -14,34 +13,24 @@ import {
   getSortedRowModel,
   useReactTable,
 } from '@tanstack/react-table'
-import { ChevronDown, Pencil, Trash2, Eye, Plus, MoreVertical } from 'lucide-react'
-
-import { Button } from '@/components/ui/button'
-import { Badge } from '@/components/ui/badge'
-import { Input } from '@/components/ui/input'
+import { postService, type Post } from '@/modules/posts/services/postService'
 import {
   AdminDataPanel,
   AdminSection,
   AdminToolbar,
   AdminToolbarGroup,
 } from '@/shared/components/layout/dashboard/admin'
-import { DataTablePagination } from '@/components/ui/data-table'
+import { useTableSortHeader } from '@/shared/hooks/useTableSortHeader'
+import { toast } from '@/shared/utils/toast'
 import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table'
-import {
-  DropdownMenu,
-  DropdownMenuCheckboxItem,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu'
+  ChevronDown,
+  Pencil,
+  Trash2,
+  Eye,
+  Plus,
+  MoreVertical,
+} from 'lucide-react'
+import { useRouter } from 'next/navigation'
 import {
   AlertDialog,
   AlertDialogAction,
@@ -52,9 +41,26 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog'
-import { useTableSortHeader } from '@/shared/hooks/useTableSortHeader'
-import { postService, type Post } from '@/modules/posts/services/postService'
-import { toast } from '@/shared/utils/toast'
+import { Badge } from '@/components/ui/badge'
+import { Button } from '@/components/ui/button'
+import { DataTablePagination } from '@/components/ui/data-table'
+import {
+  DropdownMenu,
+  DropdownMenuCheckboxItem,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu'
+import { Input } from '@/components/ui/input'
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table'
 
 const POSTS_PAGE_SIZE = 10
 
@@ -62,7 +68,10 @@ export function ManagePosts() {
   const router = useRouter()
   const [posts, setPosts] = useState<Post[]>([])
   const [loading, setLoading] = useState(true)
-  const [deleteDialog, setDeleteDialog] = useState<{ isOpen: boolean; post: Post | null }>({
+  const [deleteDialog, setDeleteDialog] = useState<{
+    isOpen: boolean
+    post: Post | null
+  }>({
     isOpen: false,
     post: null,
   })
@@ -89,7 +98,8 @@ export function ManagePosts() {
       const sortedByIdAsc = [...data].sort((a, b) => a.id - b.id)
       setPosts(sortedByIdAsc)
     } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : 'Failed to load posts'
+      const errorMessage =
+        error instanceof Error ? error.message : 'Failed to load posts'
       toast.error(errorMessage)
     } finally {
       setLoading(false)
@@ -98,9 +108,7 @@ export function ManagePosts() {
 
   const handleOpenEditor = (post?: Post) => {
     // Navigate in same tab
-    const url = post
-      ? `/content/posts/${post.id}/edit`
-      : '/content/posts/new'
+    const url = post ? `/content/posts/${post.id}/edit` : '/content/posts/new'
     router.push(url)
   }
 
@@ -108,15 +116,15 @@ export function ManagePosts() {
     try {
       if (post.isPublished) {
         await postService.unpublishPost(post.id)
-        toast.success("Post unpublished successfully")
+        toast.success('Post unpublished successfully')
       } else {
         await postService.publishPost(post.id)
-        toast.success("Post published successfully")
+        toast.success('Post published successfully')
       }
 
       loadPosts()
     } catch {
-      toast.error("Failed to update publish status")
+      toast.error('Failed to update publish status')
     }
   }
 
@@ -129,10 +137,10 @@ export function ManagePosts() {
 
     try {
       await postService.deletePost(deleteDialog.post.id)
-      toast.success("Post deleted successfully")
+      toast.success('Post deleted successfully')
       loadPosts()
     } catch {
-      toast.error("Failed to delete post")
+      toast.error('Failed to delete post')
     } finally {
       setDeleteDialog({ isOpen: false, post: null })
     }
@@ -160,13 +168,18 @@ export function ManagePosts() {
       {
         accessorKey: 'id',
         header: renderSortableHeader('ID'),
-        cell: ({ row }) => <span className="tabular-nums">{row.original.id}</span>,
+        cell: ({ row }) => (
+          <span className='tabular-nums'>{row.original.id}</span>
+        ),
       },
       {
         accessorKey: 'title',
         header: renderSortableHeader('Title'),
         cell: ({ row }) => (
-          <span className="font-medium block max-w-xs truncate" title={row.original.title}>
+          <span
+            className='block max-w-xs truncate font-medium'
+            title={row.original.title}
+          >
             {row.original.title}
           </span>
         ),
@@ -178,13 +191,17 @@ export function ManagePosts() {
         cell: ({ row }) => {
           const categories = row.original.categories
           return (
-            <div className="flex flex-wrap gap-1">
+            <div className='flex flex-wrap gap-1'>
               {categories && categories.length > 0 ? (
                 categories.map((cat) => (
-                  <Badge key={cat.id} variant="outline" className="text-xs">{cat.name}</Badge>
+                  <Badge key={cat.id} variant='outline' className='text-xs'>
+                    {cat.name}
+                  </Badge>
                 ))
               ) : (
-                <span className="text-xs text-muted-foreground">No categories</span>
+                <span className='text-xs text-muted-foreground'>
+                  No categories
+                </span>
               )}
             </div>
           )
@@ -194,7 +211,9 @@ export function ManagePosts() {
         accessorKey: 'updatedAt',
         header: renderSortableHeader('Updated At'),
         cell: ({ row }) => (
-          <span className="text-sm text-muted-foreground">{formatDate(row.original.updatedAt)}</span>
+          <span className='text-sm text-muted-foreground'>
+            {formatDate(row.original.updatedAt)}
+          </span>
         ),
       },
       {
@@ -204,8 +223,8 @@ export function ManagePosts() {
           const post = row.original
           return (
             <Badge
-              variant={post.isPublished ? "default" : "secondary"}
-              className="cursor-pointer hover-primary-effect"
+              variant={post.isPublished ? 'default' : 'secondary'}
+              className='hover-primary-effect cursor-pointer'
               onClick={() => handleTogglePublish(post)}
             >
               {post.isPublished ? 'Published' : 'Draft'}
@@ -221,28 +240,34 @@ export function ManagePosts() {
         cell: ({ row }) => {
           const post = row.original
           return (
-            <div className="flex items-center justify-end">
+            <div className='flex items-center justify-end'>
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
-                    <MoreVertical className="h-4 w-4" />
+                  <Button variant='ghost' size='sm' className='h-8 w-8 p-0'>
+                    <MoreVertical className='h-4 w-4' />
                   </Button>
                 </DropdownMenuTrigger>
-                <DropdownMenuContent align="end">
-                  <DropdownMenuItem onClick={() => handlePreview(post)} className="cursor-pointer">
-                    <Eye className="mr-2 h-4 w-4" />
+                <DropdownMenuContent align='end'>
+                  <DropdownMenuItem
+                    onClick={() => handlePreview(post)}
+                    className='cursor-pointer'
+                  >
+                    <Eye className='mr-2 h-4 w-4' />
                     Preview
                   </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => handleOpenEditor(post)} className="cursor-pointer">
-                    <Pencil className="mr-2 h-4 w-4" />
+                  <DropdownMenuItem
+                    onClick={() => handleOpenEditor(post)}
+                    className='cursor-pointer'
+                  >
+                    <Pencil className='mr-2 h-4 w-4' />
                     Edit
                   </DropdownMenuItem>
                   <DropdownMenuSeparator />
                   <DropdownMenuItem
                     onClick={() => handleDelete(post)}
-                    className="cursor-pointer text-destructive focus:text-destructive"
+                    className='cursor-pointer text-destructive focus:text-destructive'
                   >
-                    <Trash2 className="mr-2 h-4 w-4" />
+                    <Trash2 className='mr-2 h-4 w-4' />
                     Delete
                   </DropdownMenuItem>
                 </DropdownMenuContent>
@@ -253,7 +278,7 @@ export function ManagePosts() {
       },
     ],
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [],
+    []
   )
 
   const table = useReactTable({
@@ -279,10 +304,13 @@ export function ManagePosts() {
   return (
     <>
       <AdminSection
-        description="Manage insight posts. Search runs across titles; sort columns and toggle visibility as needed."
+        description='Manage insight posts. Search runs across titles; sort columns and toggle visibility as needed.'
         actions={
-          <Button onClick={() => handleOpenEditor()} className="gap-2 transition-transform active:scale-[0.98]">
-            <Plus className="h-4 w-4" />
+          <Button
+            onClick={() => handleOpenEditor()}
+            className='gap-2 transition-transform active:scale-[0.98]'
+          >
+            <Plus className='h-4 w-4' />
             Create Post
           </Button>
         }
@@ -290,38 +318,45 @@ export function ManagePosts() {
           <AdminToolbar>
             <AdminToolbarGroup>
               <Input
-                placeholder="Search posts by title"
+                placeholder='Search posts by title'
                 value={search}
-                onChange={(e) => table.getColumn('title')?.setFilterValue(e.target.value)}
-                className="h-9 w-full md:w-[300px]"
+                onChange={(e) =>
+                  table.getColumn('title')?.setFilterValue(e.target.value)
+                }
+                className='h-9 w-full md:w-[300px]'
               />
               {search.trim() ? (
                 <Button
-                  variant="ghost"
-                  size="sm"
+                  variant='ghost'
+                  size='sm'
                   onClick={() => table.getColumn('title')?.setFilterValue('')}
                 >
                   Clear
                 </Button>
               ) : null}
             </AdminToolbarGroup>
-            <AdminToolbarGroup align="end">
+            <AdminToolbarGroup align='end'>
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <Button variant="outline" size="sm" className="h-9">
-                    Columns <ChevronDown className="ml-2 h-4 w-4" />
+                  <Button variant='outline' size='sm' className='h-9'>
+                    Columns <ChevronDown className='ml-2 h-4 w-4' />
                   </Button>
                 </DropdownMenuTrigger>
-                <DropdownMenuContent align="end">
-                  {table.getAllColumns().filter((c) => c.getCanHide()).map((column) => (
-                    <DropdownMenuCheckboxItem
-                      key={column.id}
-                      checked={column.getIsVisible()}
-                      onCheckedChange={(value) => column.toggleVisibility(!!value)}
-                    >
-                      {column.id}
-                    </DropdownMenuCheckboxItem>
-                  ))}
+                <DropdownMenuContent align='end'>
+                  {table
+                    .getAllColumns()
+                    .filter((c) => c.getCanHide())
+                    .map((column) => (
+                      <DropdownMenuCheckboxItem
+                        key={column.id}
+                        checked={column.getIsVisible()}
+                        onCheckedChange={(value) =>
+                          column.toggleVisibility(!!value)
+                        }
+                      >
+                        {column.id}
+                      </DropdownMenuCheckboxItem>
+                    ))}
                 </DropdownMenuContent>
               </DropdownMenu>
             </AdminToolbarGroup>
@@ -332,25 +367,30 @@ export function ManagePosts() {
           meta={tableTitle}
           loading={loading && posts.length === 0}
           empty={!loading && posts.length === 0}
-          emptyMessage="No posts found. Create your first post!"
+          emptyMessage='No posts found. Create your first post!'
         >
-          <div className="overflow-x-auto rounded-md border">
+          <div className='overflow-x-auto rounded-md border'>
             <Table>
-              <TableHeader className="sticky top-0 z-20 bg-background">
+              <TableHeader className='sticky top-0 z-20 bg-background'>
                 {table.getHeaderGroups().map((headerGroup) => (
                   <TableRow key={headerGroup.id}>
                     {headerGroup.headers.map((header) => {
-                      const isActions = header.column.id === "actions"
+                      const isActions = header.column.id === 'actions'
                       return (
                         <TableHead
                           key={header.id}
                           className={`bg-background whitespace-nowrap${
-                            isActions ? " sticky right-0 z-30 border-l text-right shadow-[-6px_0_6px_-6px_rgba(0,0,0,0.15)]" : ""
+                            isActions
+                              ? 'sticky right-0 z-30 border-l text-right shadow-[-6px_0_6px_-6px_rgba(0,0,0,0.15)]'
+                              : ''
                           }`}
                         >
                           {header.isPlaceholder
                             ? null
-                            : flexRender(header.column.columnDef.header, header.getContext())}
+                            : flexRender(
+                                header.column.columnDef.header,
+                                header.getContext()
+                              )}
                         </TableHead>
                       )
                     })}
@@ -360,19 +400,22 @@ export function ManagePosts() {
               <TableBody>
                 {table.getRowModel().rows?.length ? (
                   table.getRowModel().rows.map((row) => (
-                    <TableRow key={row.id} className="group">
+                    <TableRow key={row.id} className='group'>
                       {row.getVisibleCells().map((cell) => {
-                        const isActions = cell.column.id === "actions"
+                        const isActions = cell.column.id === 'actions'
                         return (
                           <TableCell
                             key={cell.id}
                             className={`whitespace-nowrap align-top${
                               isActions
-                                ? " sticky right-0 z-10 border-l bg-background shadow-[-6px_0_6px_-6px_rgba(0,0,0,0.15)] group-hover:bg-muted/50"
-                                : ""
+                                ? 'sticky right-0 z-10 border-l bg-background shadow-[-6px_0_6px_-6px_rgba(0,0,0,0.15)] group-hover:bg-muted/50'
+                                : ''
                             }`}
                           >
-                            {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                            {flexRender(
+                              cell.column.columnDef.cell,
+                              cell.getContext()
+                            )}
                           </TableCell>
                         )
                       })}
@@ -380,7 +423,10 @@ export function ManagePosts() {
                   ))
                 ) : (
                   <TableRow>
-                    <TableCell colSpan={columns.length} className="h-24 text-center">
+                    <TableCell
+                      colSpan={columns.length}
+                      className='h-24 text-center'
+                    >
                       No posts found.
                     </TableCell>
                   </TableRow>
@@ -388,22 +434,31 @@ export function ManagePosts() {
               </TableBody>
             </Table>
           </div>
-          <DataTablePagination table={table} persistKey="posts-page" />
+          <DataTablePagination table={table} persistKey='posts-page' />
         </AdminDataPanel>
       </AdminSection>
 
-      <AlertDialog open={deleteDialog.isOpen} onOpenChange={(open) => !open && setDeleteDialog({ isOpen: false, post: null })}>
+      <AlertDialog
+        open={deleteDialog.isOpen}
+        onOpenChange={(open) =>
+          !open && setDeleteDialog({ isOpen: false, post: null })
+        }
+      >
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Are you sure?</AlertDialogTitle>
             <AlertDialogDescription>
-              Are you sure you want to delete post "<strong>{deleteDialog.post?.title}</strong>"?
-              This action cannot be undone.
+              Are you sure you want to delete post "
+              <strong>{deleteDialog.post?.title}</strong>"? This action cannot
+              be undone.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={confirmDelete} className="bg-destructive hover:bg-destructive/90">
+            <AlertDialogAction
+              onClick={confirmDelete}
+              className='bg-destructive hover:bg-destructive/90'
+            >
               Delete
             </AlertDialogAction>
           </AlertDialogFooter>
