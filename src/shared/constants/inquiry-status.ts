@@ -20,7 +20,7 @@ export const STATUS_BADGE_CONFIG: Record<InquiryStatus, StatusBadgeConfig> = {
   [STATUS_PROCESSING]: {
     variant: 'default',
     label: 'Processing',
-    className: 'bg-warning hover:bg-warning/90 text-warning-foreground',
+    className: 'bg-warning hover:bg-warning/90 text-white',
   },
   [STATUS_QUOTED]: {
     variant: 'default',

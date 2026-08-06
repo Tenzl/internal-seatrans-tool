@@ -1,4 +1,5 @@
 import type {
+  AnContainer,
   CargoRow,
   TransportDocumentPayloadMap,
   TransportDocumentType,
@@ -33,17 +34,32 @@ export function buildTransportDocumentFileName(
   return `${safeLabel}${safeReference ? `-${safeReference}` : ''}.pdf`
 }
 
+/** Legacy cargo table rows. AN/BL/DO all use containers now. */
 export function getTransportDocumentCargoRows(
   type: TransportDocumentType,
   forms: TransportDocumentPayloadMap
 ): CargoRow[] | null {
   switch (type) {
     case 'an':
-      return forms.an.cargoRows
-    case 'do':
-      return forms.do.cargoRows
     case 'booking':
     case 'bl':
+    case 'do':
+      return null
+  }
+}
+
+export function getTransportDocumentContainers(
+  type: TransportDocumentType,
+  forms: TransportDocumentPayloadMap
+): AnContainer[] | null {
+  switch (type) {
+    case 'an':
+      return forms.an.containers
+    case 'bl':
+      return forms.bl.containers
+    case 'do':
+      return forms.do.containers
+    case 'booking':
       return null
   }
 }

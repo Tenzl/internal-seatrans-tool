@@ -1,5 +1,6 @@
 import { buildBookingWorkflowUrl } from './bookingWorkflow'
 import type {
+  AnContainer,
   CargoRow,
   TransportDocumentActionPermissions,
   TransportDocumentRecord,
@@ -10,6 +11,7 @@ import {
   TRANSPORT_DOCUMENT_FORM_SECTIONS,
   type TransportDocumentFieldSpec,
 } from './transportDocumentFormConfig'
+import { normalizeAnContainers } from './anContainerModel'
 
 export interface HistoryDocumentField {
   label: string
@@ -20,6 +22,7 @@ export interface HistoryDocumentSection {
   title: string
   fields?: HistoryDocumentField[]
   cargoRows?: CargoRow[]
+  containers?: AnContainer[]
 }
 
 const EDITOR_PATH_BY_TYPE: Record<TransportDocumentType, string> = {
@@ -54,11 +57,16 @@ export function getHistoryDocumentSections(
     })),
   }))
 
-  if (record.documentType !== 'booking' && record.documentType !== 'bl') {
-    const cargoRows = Array.isArray(payload.cargoRows)
-      ? (payload.cargoRows as CargoRow[])
-      : []
-    sections.push({ title: 'Cargo rows', cargoRows })
+  if (
+    record.documentType === 'an' ||
+    record.documentType === 'bl' ||
+    record.documentType === 'do'
+  ) {
+    const containers = normalizeAnContainers({
+      containers: payload.containers,
+      cargoRows: payload.cargoRows,
+    })
+    sections.push({ title: 'Containers', containers })
   }
 
   return sections

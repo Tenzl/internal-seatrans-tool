@@ -16,6 +16,9 @@ describe('booking workflow routing', () => {
   })
 
   it('builds create and existing step URLs with workflow identity', () => {
+    expect(buildCreateBookingUrl()).toBe(
+      '/booking/documents/booking-confirmation'
+    )
     expect(buildCreateBookingUrl('IMPORT')).toBe(
       '/booking/documents/booking-confirmation?flow=IMPORT'
     )

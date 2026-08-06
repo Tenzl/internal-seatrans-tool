@@ -65,7 +65,7 @@ describe('transportDocumentService', () => {
     vi.mocked(apiClient.post).mockResolvedValue(
       new Response(
         JSON.stringify({
-          message: ['cargoRows must contain no more than 20 elements'],
+          message: ['containers must contain no more than 20 elements'],
         }),
         {
           status: 400,
@@ -76,7 +76,7 @@ describe('transportDocumentService', () => {
 
     await expect(
       transportDocumentService.preview('an', emptyArrivalNotice())
-    ).rejects.toThrow('cargoRows must contain no more than 20 elements')
+    ).rejects.toThrow('containers must contain no more than 20 elements')
   })
 
   it('creates a transport-document record with status', async () => {

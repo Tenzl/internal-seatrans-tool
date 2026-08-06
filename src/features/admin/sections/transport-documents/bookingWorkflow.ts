@@ -24,8 +24,12 @@ export function getBookingWorkflowSteps(flow: BookingFlow) {
   return BOOKING_WORKFLOW_STEPS[flow]
 }
 
-export function buildCreateBookingUrl(flow: BookingFlow): string {
-  return `${EDITOR_PATH_BY_TYPE.booking}?flow=${flow}`
+/** Create Booking entry (flow chosen on the page). */
+export const CREATE_BOOKING_PATH = EDITOR_PATH_BY_TYPE.booking
+
+export function buildCreateBookingUrl(flow?: BookingFlow): string {
+  if (!flow) return CREATE_BOOKING_PATH
+  return `${CREATE_BOOKING_PATH}?flow=${flow}`
 }
 
 export function buildBookingWorkflowUrl(

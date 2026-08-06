@@ -78,15 +78,11 @@ export const DASHBOARD_CATALOG: readonly NavigationCategory[] = [
         route: '/booking/documents',
         navigation: [
           {
-            title: 'Create Import Booking',
-            url: '/booking/documents/booking-confirmation?flow=IMPORT',
+            title: 'Create Booking',
+            url: '/booking/documents/booking-confirmation',
           },
           {
-            title: 'Create Export Booking',
-            url: '/booking/documents/booking-confirmation?flow=EXPORT',
-          },
-          {
-            title: 'History Record',
+            title: 'History',
             url: '/booking/documents/history',
           },
         ],

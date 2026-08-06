@@ -1,5 +1,5 @@
 import { redirect } from 'next/navigation'
 
 export default function Page() {
-  redirect('/booking/documents/history')
+  redirect('/booking/documents/booking-confirmation')
 }

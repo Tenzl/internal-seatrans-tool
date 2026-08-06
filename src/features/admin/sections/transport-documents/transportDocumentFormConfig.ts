@@ -3,6 +3,7 @@ import type {
   PartnerAdditionType,
 } from '../partner-management/partnerManagementTypes'
 import type {
+  AnContainer,
   ArrivalNoticePayload,
   BillOfLadingPayload,
   BookingConfirmationPayload,
@@ -25,7 +26,7 @@ type TransportDocumentFieldKey = Exclude<
   | keyof BookingConfirmationPayload
   | keyof DeliveryOrderPayload
   | keyof BillOfLadingPayload,
-  'cargoRows'
+  'cargoRows' | 'cargoVolumes' | 'containers'
 >
 
 export interface TransportDocumentFieldOption {
@@ -48,6 +49,18 @@ export interface TransportDocumentFieldSpec {
     | 'notifyPartyId'
   additionType?: PartnerAdditionType
   customerType?: CustomerType
+  /** `name` = fill partner name only (Booking Client). Default full block. */
+  partyValueMode?: 'full' | 'name'
+  /**
+   * Field-label weight. Default `medium` (light bold for HBL/MBL/etc.).
+   * Use `strong` for Reference so it stays heavier than sibling identity labels.
+   */
+  labelEmphasis?: 'medium' | 'strong'
+  /**
+   * True when this field's value is synced from Arrival Notice and must stay
+   * read-only outside AN (e.g. Service Mode / Description of goods on BL/DO).
+   */
+  syncedFromAn?: boolean
 }
 
 export interface TransportDocumentFieldSection {
@@ -63,7 +76,7 @@ export interface TransportDocumentDefinition {
   description: string
 }
 
-/** Workflow order branches after AN: Export -> BL, Import -> DO. */
+/** Workflow order branches after Arrival Notice: Export -> Bill of Lading, Import -> Delivery Order. */
 export const TRANSPORT_DOCUMENTS: TransportDocumentDefinition[] = [
   {
     type: 'booking',
@@ -73,22 +86,32 @@ export const TRANSPORT_DOCUMENTS: TransportDocumentDefinition[] = [
   },
   {
     type: 'an',
-    shortLabel: 'AN',
+    shortLabel: 'Arrival Notice',
     label: 'Arrival Notice',
     description: 'Incoming shipment notification',
   },
   {
     type: 'bl',
-    shortLabel: 'BL',
+    shortLabel: 'Bill of Lading',
     label: 'Bill of Lading',
     description: 'FIATA multimodal transport bill of lading',
   },
   {
     type: 'do',
-    shortLabel: 'DO',
+    shortLabel: 'Delivery Order',
     label: 'Delivery Order',
     description: 'Cargo release instruction',
   },
+]
+
+/** Service mode dropdown values shared by the AN and DO forms. */
+export const SERVICE_MODE_OPTIONS: TransportDocumentFieldOption[] = [
+  { value: 'LCL/LCL - CFS/DOOR', label: 'LCL/LCL - CFS/DOOR' },
+  { value: 'FCL/FCL - CY/DOOR', label: 'FCL/FCL - CY/DOOR' },
+  { value: 'FCL/FCL - CY/CY', label: 'FCL/FCL - CY/CY' },
+  { value: 'FCL/LCL - CY/CFS', label: 'FCL/LCL - CY/CFS' },
+  { value: 'LCL/FCL - CFS/CY', label: 'LCL/FCL - CFS/CY' },
+  { value: 'LCL/LCL - CFS/CFS', label: 'LCL/LCL - CFS/CFS' },
 ]
 
 export const TRANSPORT_DOCUMENT_FORM_SECTIONS: Record<
@@ -112,6 +135,7 @@ export const TRANSPORT_DOCUMENT_FORM_SECTIONS: Record<
           kind: 'party',
           partyIdKey: 'clientPartyId',
           additionType: 'CUSTOMER',
+          partyValueMode: 'name',
           span: 2,
         },
       ],
@@ -171,14 +195,13 @@ export const TRANSPORT_DOCUMENT_FORM_SECTIONS: Record<
       title: 'Cargo',
       fields: [
         { key: 'commodity', label: 'Commodity', kind: 'textarea', span: 2 },
-        { key: 'volume', label: 'Volume' },
         { key: 'grossWeight', label: 'Gross weight (KGS)' },
         { key: 'measurement', label: 'Measurement (CBM)' },
         {
           key: 'specialRemark',
           label: 'Special remark',
           kind: 'textarea',
-          span: 3,
+          span: 2,
         },
       ],
     },
@@ -194,19 +217,9 @@ export const TRANSPORT_DOCUMENT_FORM_SECTIONS: Record<
     {
       title: 'Identity',
       description:
-        'Choose a blank BL form; fields and the author signature overlay onto it.',
+        'Fields and the author signature overlay onto the Bill of Lading form selected in the bottom bar.',
       fields: [
         { key: 'fblNumber', label: 'FBL No.' },
-        {
-          key: 'blFormVariant',
-          label: 'BL form',
-          kind: 'select',
-          options: [
-            { value: 'non_negotiable', label: 'Non-negotiable' },
-            { value: 'original', label: 'Original' },
-            { value: 'surrendered', label: 'Surrendered' },
-          ],
-        },
         { key: 'placeOfIssue', label: 'Place of issue', kind: 'port-name' },
         { key: 'dateOfIssue', label: 'Date of issue', kind: 'date' },
         { key: 'numberOfOriginals', label: "Number of Original FBL's" },
@@ -221,7 +234,6 @@ export const TRANSPORT_DOCUMENT_FORM_SECTIONS: Record<
           kind: 'party',
           partyIdKey: 'shipperPartyId',
           additionType: 'SHIPPER',
-          span: 3,
         },
         {
           key: 'consignedToOrderOf',
@@ -229,7 +241,6 @@ export const TRANSPORT_DOCUMENT_FORM_SECTIONS: Record<
           kind: 'party',
           partyIdKey: 'consigneePartyId',
           additionType: 'CONSIGNEE',
-          span: 3,
         },
         {
           key: 'notifyAddress',
@@ -237,7 +248,6 @@ export const TRANSPORT_DOCUMENT_FORM_SECTIONS: Record<
           kind: 'party',
           partyIdKey: 'notifyPartyId',
           additionType: 'NOTIFY_PARTY',
-          span: 3,
         },
       ],
     },
@@ -275,26 +285,30 @@ export const TRANSPORT_DOCUMENT_FORM_SECTIONS: Record<
     },
     {
       title: 'Cargo',
+      description:
+        'Service mode and description of goods are synced from Arrival Notice. Shipping mark is edited here for the BL PDF.',
       fields: [
         {
-          key: 'marksAndNumbers',
-          label: 'Marks and numbers',
-          kind: 'textarea',
-          span: 2,
+          key: 'serviceMode',
+          label: 'Service mode',
+          kind: 'select',
+          options: SERVICE_MODE_OPTIONS,
+          syncedFromAn: true,
         },
         {
-          key: 'numberAndKindOfPackages',
-          label: 'Number and kind of packages',
+          key: 'shippingMark',
+          label: 'Shipping mark',
           kind: 'textarea',
+          span: 2,
+          placeholder: 'e.g. N/M or marks as shown on cargo',
         },
         {
           key: 'descriptionOfGoods',
           label: 'Description of goods',
           kind: 'textarea',
           span: 3,
+          syncedFromAn: true,
         },
-        { key: 'grossWeight', label: 'Gross weight' },
-        { key: 'measurement', label: 'Measurement' },
       ],
     },
     {
@@ -342,15 +356,8 @@ export const TRANSPORT_DOCUMENT_FORM_SECTIONS: Record<
     {
       title: 'Identity',
       fields: [
-        { key: 'anNumber', label: 'AN No.' },
+        { key: 'anNumber', label: 'Arrival Notice No.' },
         { key: 'date', label: 'Date', kind: 'date' },
-        {
-          key: 'agent',
-          label: 'Agent',
-          kind: 'party',
-          partyIdKey: 'agentPartyId',
-          customerType: 'AGENT',
-        },
       ],
     },
     {
@@ -372,10 +379,17 @@ export const TRANSPORT_DOCUMENT_FORM_SECTIONS: Record<
         },
         {
           key: 'notifyParty',
-          label: 'Notify party',
+          label: 'Notify Party',
           kind: 'party',
           partyIdKey: 'notifyPartyId',
           additionType: 'NOTIFY_PARTY',
+        },
+        {
+          key: 'agent',
+          label: 'Agent',
+          kind: 'party',
+          partyIdKey: 'agentPartyId',
+          customerType: 'AGENT',
         },
       ],
     },
@@ -385,8 +399,12 @@ export const TRANSPORT_DOCUMENT_FORM_SECTIONS: Record<
         { key: 'mblNumber', label: 'MBL No.' },
         { key: 'hblNumber', label: 'HBL No.' },
         { key: 'shipmentNumber', label: 'Shipment No.' },
-        { key: 'referenceNumber', label: 'Reference No.' },
-        { key: 'billOfLadingType', label: 'Type of B/L' },
+        {
+          key: 'referenceNumber',
+          label: 'Reference No.',
+          labelEmphasis: 'strong',
+        },
+        { key: 'billOfLadingType', label: 'Type of Bill of Lading' },
       ],
     },
     {
@@ -423,22 +441,32 @@ export const TRANSPORT_DOCUMENT_FORM_SECTIONS: Record<
       title: 'Schedule / ops',
       fields: [
         { key: 'vesselVoyage', label: 'Vessel / Voyage No.' },
-        { key: 'etdEta', label: 'ETD / ETA' },
-        { key: 'serviceMode', label: 'Service mode' },
+        { key: 'etd', label: 'ETD', kind: 'date' },
+        { key: 'eta', label: 'ETA', kind: 'date' },
+        {
+          key: 'serviceMode',
+          label: 'Service mode',
+          kind: 'select',
+          options: SERVICE_MODE_OPTIONS,
+        },
         { key: 'cfsTerminal', label: 'CFS terminal' },
       ],
     },
     {
       title: 'Cargo',
       fields: [
-        { key: 'marks', label: 'Marks', kind: 'textarea', span: 2 },
-        { key: 'volume', label: 'Volume' },
-        { key: 'note', label: 'Note', kind: 'textarea', span: 3 },
+        {
+          key: 'descriptionOfGoods',
+          label: 'Description of goods',
+          kind: 'textarea',
+        },
+        { key: 'marks', label: 'Marks', kind: 'textarea' },
+        { key: 'note', label: 'Note', kind: 'textarea', span: 2 },
         {
           key: 'customerAttention',
           label: "For customer's attention",
           kind: 'textarea',
-          span: 3,
+          span: 2,
         },
       ],
     },
@@ -447,7 +475,7 @@ export const TRANSPORT_DOCUMENT_FORM_SECTIONS: Record<
     {
       title: 'Identity',
       fields: [
-        { key: 'doNumber', label: 'DO No.' },
+        { key: 'doNumber', label: 'Delivery Order No.' },
         { key: 'date', label: 'Date', kind: 'date' },
         { key: 'to', label: 'To', kind: 'textarea' },
       ],
@@ -516,22 +544,35 @@ export const TRANSPORT_DOCUMENT_FORM_SECTIONS: Record<
         { key: 'vesselVoyage', label: 'Vessel / Voyage No.' },
         { key: 'etd', label: 'ETD', kind: 'date' },
         { key: 'eta', label: 'ETA', kind: 'date' },
-        { key: 'serviceMode', label: 'Service mode' },
+        {
+          key: 'serviceMode',
+          label: 'Service mode',
+          kind: 'select',
+          options: SERVICE_MODE_OPTIONS,
+          syncedFromAn: true,
+        },
         { key: 'cfsTerminal', label: 'CFS terminal' },
       ],
     },
     {
       title: 'Cargo',
+      description:
+        'Description of goods is mapped from Arrival Notice and read-only here.',
       fields: [
-        { key: 'marks', label: 'Marks', kind: 'textarea', span: 2 },
-        { key: 'volume', label: 'Volume' },
-        { key: 'note', label: 'Note', kind: 'textarea', span: 3 },
+        {
+          key: 'descriptionOfGoods',
+          label: 'Description of goods',
+          kind: 'textarea',
+          span: 2,
+          syncedFromAn: true,
+        },
+        { key: 'marks', label: 'Marks', kind: 'textarea' },
         {
           key: 'customerAttention',
           label: "For customer's attention",
           kind: 'textarea',
-          span: 3,
         },
+        { key: 'note', label: 'Note', kind: 'textarea', span: 2 },
       ],
     },
   ],
@@ -561,6 +602,44 @@ export const CARGO_ROW_COLUMNS: Array<{
   { key: 'grossWeight', label: 'Gross weight', maxLength: 500 },
   { key: 'measurement', label: 'Measurement', maxLength: 500 },
 ]
+
+export const AN_CONTAINER_COLUMNS: Array<{
+  key: keyof AnContainer
+  label: string
+  maxLength: number
+}> = [
+  { key: 'type', label: 'Type', maxLength: 20 },
+  { key: 'containerNo', label: 'Container No.', maxLength: 500 },
+  { key: 'sealNo', label: 'Seal No.', maxLength: 500 },
+  { key: 'grossWeight', label: 'Gross Weight (KGS)', maxLength: 500 },
+  { key: 'measurement', label: 'Measurement (CBM)', maxLength: 500 },
+  { key: 'tare', label: 'Tare', maxLength: 500 },
+  { key: 'noOfPkgs', label: 'No of Pkgs', maxLength: 500 },
+  { key: 'packageType', label: 'Package type', maxLength: 500 },
+  { key: 'note', label: 'Note', maxLength: 2_000 },
+  { key: 'method', label: 'Method', maxLength: 500 },
+]
+
+export const BL_FORM_VARIANT_OPTIONS: TransportDocumentFieldOption[] = [
+  { value: 'non_negotiable', label: 'Non-negotiable' },
+  { value: 'original', label: 'Original' },
+  { value: 'surrendered', label: 'Surrendered' },
+]
+
+/**
+ * Keep a stored legacy value selectable even when it predates the current
+ * option list (e.g. Service Mode text saved before this dropdown existed),
+ * so old records render the saved value instead of a blank Select.
+ */
+export function resolveSelectFieldOptions(
+  options: TransportDocumentFieldOption[],
+  value: string
+): TransportDocumentFieldOption[] {
+  if (!value || options.some((option) => option.value === value)) {
+    return options
+  }
+  return [{ value, label: value }, ...options]
+}
 
 export function getTransportDocumentDefinition(type: TransportDocumentType) {
   return (

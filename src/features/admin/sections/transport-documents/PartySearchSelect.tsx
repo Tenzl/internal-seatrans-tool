@@ -30,9 +30,10 @@ import type {
   PartnerAdditionType,
 } from '@/features/admin/sections/partner-management/partnerManagementTypes'
 import {
-  formatPartyDocumentValue,
+  formatPartyFieldValue,
   getNextPartyOptionPage,
   mergePartyOptionPages,
+  type PartyValueMode,
 } from './partyPickerModel'
 
 interface PartySearchSelectProps {
@@ -41,6 +42,7 @@ interface PartySearchSelectProps {
   documentValue: string
   additionType?: PartnerAdditionType
   customerType?: CustomerType
+  partyValueMode?: PartyValueMode
   onChange: (option: PartnerOption | null) => void
   placeholder?: string
   disabled?: boolean
@@ -52,6 +54,7 @@ export function PartySearchSelect({
   documentValue,
   additionType,
   customerType,
+  partyValueMode = 'full',
   onChange,
   placeholder = 'Search Party name...',
   disabled = false,
@@ -120,7 +123,7 @@ export function PartySearchSelect({
   const triggerLabel =
     resolvedOption?.name || documentValue.split(/\r?\n/, 1)[0]?.trim() || ''
   const details = resolvedOption
-    ? formatPartyDocumentValue(resolvedOption)
+    ? formatPartyFieldValue(resolvedOption, partyValueMode)
     : documentValue
 
   const select = (option: PartnerOption | null) => {
@@ -265,9 +268,13 @@ export function PartySearchSelect({
         <Textarea
           value={details}
           readOnly
-          rows={3}
+          rows={partyValueMode === 'name' ? 1 : 3}
           aria-label={`${triggerLabel || 'Party'} details`}
-          className='min-h-20 resize-none bg-muted/30 text-sm'
+          className={
+            partyValueMode === 'name'
+              ? 'min-h-0 resize-none bg-muted/30 text-sm'
+              : 'min-h-20 resize-none bg-muted/30 text-sm'
+          }
         />
       ) : null}
     </div>

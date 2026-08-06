@@ -9,12 +9,9 @@ import { queryKeys } from '@/shared/config/react-query.config'
 import { delay, EPDA_PREVIEW_LOAD_DELAY_MS } from '@/shared/utils/epdaExport'
 import { toast } from '@/shared/utils/toast'
 import {
-  ClipboardPaste,
   FileOutput,
   Loader2,
   Lock,
-  RotateCcw,
-  Save,
   Unlock,
 } from 'lucide-react'
 import { useRouter, useSearchParams } from 'next/navigation'
@@ -32,16 +29,20 @@ import {
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { subscribeToPartnerCacheResets } from '../partner-management/partnerCache'
+import { BookingFlowChooser } from './BookingFlowChooser'
 import { BookingWorkflowNav } from './BookingWorkflowNav'
 import { TransportDocumentForm } from './TransportDocumentForm'
-import { TransportDocumentPrefillDialog } from './TransportDocumentPrefillDialog'
 import {
   buildBookingWorkflowUrl,
   getWorkflowRecord,
   recordBelongsToBooking,
 } from './bookingWorkflow'
 import type {
+  AnContainer,
+  ArrivalNoticePayload,
+  BillOfLadingPayload,
   CargoRow,
+  DeliveryOrderPayload,
   BookingFlow,
   TransportDocumentPayloadMap,
   TransportDocumentRecord,
@@ -52,14 +53,20 @@ import { getTransportDocumentDefinition } from './transportDocumentFormConfig'
 import {
   buildTransportDocumentFileName,
   getTransportDocumentCargoRows,
+  getTransportDocumentContainers,
 } from './transportDocumentFormRules'
 import {
   applyPrefillFromPrevious,
   getPrefillSourceType,
+  syncBillOfLadingCargoFromArrivalNotice,
+  syncDeliveryOrderCargoFromArrivalNotice,
 } from './transportDocumentPrefill'
 import {
   createEmptyTransportDocuments,
+  normalizeArrivalNoticePayload,
   normalizeBillOfLadingPayload,
+  normalizeBookingConfirmationPayload,
+  normalizeDeliveryOrderPayload,
   parseTransportDocument,
 } from './transportDocumentSchemas'
 import { transportDocumentService } from './transportDocumentService'
@@ -100,8 +107,8 @@ export function TransportDocumentsScreen({
     parsedBookingId != null && Number.isFinite(parsedBookingId)
       ? parsedBookingId
       : null
-  const requestedFlow: BookingFlow =
-    flowParam === 'IMPORT' ? 'IMPORT' : 'EXPORT'
+  const flowFromUrl: BookingFlow | null =
+    flowParam === 'IMPORT' || flowParam === 'EXPORT' ? flowParam : null
 
   const workflowQuery = useQuery({
     queryKey: queryKeys.bookingWorkflow(validBookingId ?? 0),
@@ -109,7 +116,13 @@ export function TransportDocumentsScreen({
     enabled: validBookingId != null,
   })
   const workflow = workflowQuery.data ?? null
-  const workflowFlow = workflow?.flow ?? requestedFlow
+  const selectedFlow: BookingFlow | null = workflow?.flow ?? flowFromUrl
+  const needsFlowSelection =
+    documentType === 'booking' &&
+    validRecordId == null &&
+    validBookingId == null
+  const canEditFlow = needsFlowSelection
+  const workflowFlow = selectedFlow ?? 'EXPORT'
 
   const [forms, setForms] = useState<TransportDocumentPayloadMap>(
     createEmptyTransportDocuments
@@ -124,12 +137,6 @@ export function TransportDocumentsScreen({
   const [isSaving, setIsSaving] = useState(false)
   const [isUnlocking, setIsUnlocking] = useState(false)
   const [leaveDialogOpen, setLeaveDialogOpen] = useState(false)
-  const [prefillDialogOpen, setPrefillDialogOpen] = useState(false)
-  const [prefillLoading, setPrefillLoading] = useState(false)
-  const [prefillError, setPrefillError] = useState<string | null>(null)
-  const [prefillRecords, setPrefillRecords] = useState<
-    TransportDocumentRecord[]
-  >([])
   const [pendingHref, setPendingHref] = useState<string | null>(null)
   const [savedSnapshot, setSavedSnapshot] = useState(() =>
     payloadSnapshot(createEmptyTransportDocuments()[documentType])
@@ -137,11 +144,15 @@ export function TransportDocumentsScreen({
   const [trackedRecordId, setTrackedRecordId] = useState(validRecordId)
   const autoPreviewDone = useRef(false)
   const autoWorkflowPrefillKey = useRef<string | null>(null)
+  const blCargoSyncKey = useRef<string | null>(null)
+  const doCargoSyncKey = useRef<string | null>(null)
   const isDirtyRef = useRef(false)
 
   // Adjust session state when URL recordId changes (avoid setState-in-effect).
   if (trackedRecordId !== validRecordId) {
     setTrackedRecordId(validRecordId)
+    blCargoSyncKey.current = null
+    doCargoSyncKey.current = null
     if (validRecordId == null) {
       setActiveRecordId(null)
       setStatus(null)
@@ -159,6 +170,7 @@ export function TransportDocumentsScreen({
   const activePayload = forms[documentType]
   const activeRecord = activePayload as unknown as Record<string, unknown>
   const cargoRows = getTransportDocumentCargoRows(documentType, forms)
+  const containers = getTransportDocumentContainers(documentType, forms)
   const workflowRootLockedAt = workflow?.documents.booking?.lockedAt ?? null
   const isLocked = Boolean(lockedAt || workflowRootLockedAt)
   const isDirty = useMemo(() => {
@@ -218,7 +230,13 @@ export function TransportDocumentsScreen({
       const payload =
         documentType === 'bl'
           ? normalizeBillOfLadingPayload(record.payload)
-          : record.payload
+          : documentType === 'do'
+            ? normalizeDeliveryOrderPayload(record.payload)
+            : documentType === 'booking'
+              ? normalizeBookingConfirmationPayload(record.payload)
+              : documentType === 'an'
+                ? normalizeArrivalNoticePayload(record.payload)
+                : record.payload
       setForms(
         (previous) =>
           ({
@@ -234,9 +252,38 @@ export function TransportDocumentsScreen({
     [documentType, router, validBookingId]
   )
 
+  const getWorkflowArrivalNotice = useCallback((): ArrivalNoticePayload | null => {
+    const source = getWorkflowRecord(workflow, 'an')
+    if (!source) return null
+    return normalizeArrivalNoticePayload(source.payload)
+  }, [workflow])
+
+  /** Overwrite BL / DO cargo from linked AN whenever we persist or preview. */
+  const withCargoFromAn = useCallback(
+    (
+      payload: TransportDocumentPayloadMap[typeof documentType]
+    ): TransportDocumentPayloadMap[typeof documentType] => {
+      if (documentType !== 'bl' && documentType !== 'do') return payload
+      const an = getWorkflowArrivalNotice()
+      if (!an) return payload
+      if (documentType === 'bl') {
+        return syncBillOfLadingCargoFromArrivalNotice(
+          an,
+          payload as BillOfLadingPayload
+        ) as TransportDocumentPayloadMap[typeof documentType]
+      }
+      return syncDeliveryOrderCargoFromArrivalNotice(
+        an,
+        payload as DeliveryOrderPayload
+      ) as TransportDocumentPayloadMap[typeof documentType]
+    },
+    [documentType, getWorkflowArrivalNotice]
+  )
+
   const validatePayload = useCallback(() => {
     try {
-      return parseTransportDocument(documentType, activePayload)
+      const synced = withCargoFromAn(activePayload)
+      return parseTransportDocument(documentType, synced)
     } catch (error) {
       const message =
         error instanceof z.ZodError
@@ -245,7 +292,44 @@ export function TransportDocumentsScreen({
       toast.error(message)
       return null
     }
-  }, [activePayload, documentType])
+  }, [activePayload, documentType, withCargoFromAn])
+
+  /** After AN save: patch sibling BL cargo so Download BL stays correct. */
+  const syncSiblingBlCargoFromAn = useCallback(
+    async (anPayload: ArrivalNoticePayload) => {
+      if (validBookingId == null) return
+      const blRecord = getWorkflowRecord(workflow, 'bl')
+      if (!blRecord || blRecord.lockedAt) return
+      const currentBl = normalizeBillOfLadingPayload(blRecord.payload)
+      const synced = syncBillOfLadingCargoFromArrivalNotice(anPayload, currentBl)
+      await transportDocumentService.update('bl', blRecord.id, {
+        ...synced,
+        status: blRecord.status,
+        bookingId: validBookingId,
+      })
+    },
+    [validBookingId, workflow]
+  )
+
+  /** After AN save: patch sibling DO cargo so Download DO stays correct. */
+  const syncSiblingDoCargoFromAn = useCallback(
+    async (anPayload: ArrivalNoticePayload) => {
+      if (validBookingId == null) return
+      const doRecord = getWorkflowRecord(workflow, 'do')
+      if (!doRecord || doRecord.lockedAt) return
+      const currentDo = normalizeDeliveryOrderPayload(doRecord.payload)
+      const synced = syncDeliveryOrderCargoFromArrivalNotice(
+        anPayload,
+        currentDo
+      )
+      await transportDocumentService.update('do', doRecord.id, {
+        ...synced,
+        status: doRecord.status,
+        bookingId: validBookingId,
+      })
+    },
+    [validBookingId, workflow]
+  )
 
   const persistRecord = useCallback(
     async (
@@ -256,7 +340,7 @@ export function TransportDocumentsScreen({
         ...validated,
         status: nextStatus,
         ...(documentType === 'booking'
-          ? { bookingFlow: workflowFlow }
+          ? { bookingFlow: selectedFlow ?? workflowFlow }
           : validBookingId != null
             ? { bookingId: validBookingId }
             : {}),
@@ -270,7 +354,7 @@ export function TransportDocumentsScreen({
       }
       return transportDocumentService.create(documentType, body)
     },
-    [activeRecordId, documentType, validBookingId, workflowFlow]
+    [activeRecordId, documentType, selectedFlow, validBookingId, workflowFlow]
   )
 
   const openPreview = useCallback(
@@ -308,6 +392,10 @@ export function TransportDocumentsScreen({
 
   const handleSave = useCallback(async () => {
     if (isLocked) return false
+    if (documentType === 'booking' && selectedFlow == null) {
+      toast.error('Choose Import or Export before creating the booking')
+      return false
+    }
     const validated = validatePayload()
     if (!validated) return false
 
@@ -315,14 +403,37 @@ export function TransportDocumentsScreen({
     try {
       const wasNew = activeRecordId == null
       const record = await persistRecord(validated, 'COMPLETED')
+      // applyRecord normalizes payload and sets savedSnapshot to that same
+      // value so isDirty clears. Do not markSaved(record.payload): the raw
+      // API payload often differs from the normalized form (defaults,
+      // cargoVolumes compact, BL/AN migrations) and would leave the leave
+      // guard thinking there are unsaved changes.
       applyRecord(record)
-      markSaved(record.payload)
+      // Click / beforeunload guards read the ref before React re-renders.
+      isDirtyRef.current = false
+      if (documentType === 'an') {
+        const anPayload = normalizeArrivalNoticePayload(record.payload)
+        try {
+          await syncSiblingBlCargoFromAn(anPayload)
+        } catch {
+          toast.error(
+            'Arrival Notice saved, but Bill of Lading cargo could not be synced'
+          )
+        }
+        try {
+          await syncSiblingDoCargoFromAn(anPayload)
+        } catch {
+          toast.error(
+            'Arrival Notice saved, but Delivery Order cargo could not be synced'
+          )
+        }
+      }
       const rootBookingId =
         documentType === 'booking' ? record.id : validBookingId
-      if (wasNew && rootBookingId != null) {
+      if (wasNew && rootBookingId != null && selectedFlow != null) {
         router.replace(
           buildBookingWorkflowUrl(
-            workflowFlow,
+            selectedFlow,
             rootBookingId,
             documentType,
             record
@@ -336,7 +447,6 @@ export function TransportDocumentsScreen({
         })
       }
       toast.success(`${document.label} saved`)
-      await openPreview(record.payload)
       return true
     } catch (error) {
       toast.error(error instanceof Error ? error.message : 'Failed to save')
@@ -350,14 +460,14 @@ export function TransportDocumentsScreen({
     document.label,
     documentType,
     isLocked,
-    markSaved,
-    openPreview,
     persistRecord,
     queryClient,
     router,
+    selectedFlow,
+    syncSiblingBlCargoFromAn,
+    syncSiblingDoCargoFromAn,
     validatePayload,
     validBookingId,
-    workflowFlow,
   ])
 
   useEffect(() => {
@@ -457,25 +567,56 @@ export function TransportDocumentsScreen({
       window.document.removeEventListener('click', onDocumentClick, true)
   }, [isLocked])
 
-  const updateField = (key: string, value: unknown) => {
+  const updateFields = (patch: Record<string, unknown>) => {
     if (isLocked) return
+    // BL / DO container rows are AN-owned; strip any client edits.
+    const nextPatch =
+      documentType === 'bl'
+        ? Object.fromEntries(
+            Object.entries(patch).filter(
+              ([key]) =>
+                key !== 'containers' &&
+                key !== 'descriptionOfGoods' &&
+                key !== 'numberAndKindOfPackages' &&
+                key !== 'grossWeight' &&
+                key !== 'measurement'
+            )
+          )
+        : documentType === 'do'
+          ? Object.fromEntries(
+              Object.entries(patch).filter(
+                ([key]) => key !== 'containers' && key !== 'cargoRows'
+              )
+            )
+          : patch
+    if (Object.keys(nextPatch).length === 0) return
     setForms(
       (previous) =>
         ({
           ...previous,
-          [documentType]: { ...previous[documentType], [key]: value },
+          [documentType]: { ...previous[documentType], ...nextPatch },
         }) as TransportDocumentPayloadMap
     )
   }
 
-  const setCargoRows = (rows: CargoRow[]) => {
+  const updateField = (key: string, value: unknown) => {
+    updateFields({ [key]: value })
+  }
+
+  // Legacy per-row editor is unused: AN/BL/DO all use the containers editor.
+  const setCargoRows = (_rows: CargoRow[]) => {
+    void _rows
+  }
+
+  const setContainers = (rows: AnContainer[]) => {
     if (isLocked) return
-    if (documentType !== 'an' && documentType !== 'do') return
+    // BL / DO cargo is owned by Arrival Notice — never edit containers there.
+    if (documentType !== 'an') return
     setForms(
       (previous) =>
         ({
           ...previous,
-          [documentType]: { ...previous[documentType], cargoRows: rows },
+          [documentType]: { ...previous[documentType], containers: rows },
         }) as TransportDocumentPayloadMap
     )
   }
@@ -547,82 +688,57 @@ export function TransportDocumentsScreen({
     workflowRootLockedAt,
   ])
 
+  const selectFlow = useCallback(
+    (flow: BookingFlow) => {
+      if (!canEditFlow) return
+      const params = new URLSearchParams(searchParams.toString())
+      params.set('flow', flow)
+      router.replace(
+        `/booking/documents/booking-confirmation?${params.toString()}`,
+        { scroll: false }
+      )
+    },
+    [canEditFlow, router, searchParams]
+  )
+
   const busy =
     isGenerating ||
     isSaving ||
     isHydrating ||
     isUnlocking ||
     workflowQuery.isLoading
+  const formReady = !needsFlowSelection || selectedFlow != null
   const prefillSourceType = getPrefillSourceType(documentType)
 
-  const handlePrefillSelect = useCallback(
-    (record: TransportDocumentRecord, announce = true) => {
-      if (!prefillSourceType || isLocked) return
+  const applyWorkflowPrefill = useCallback(
+    (record: TransportDocumentRecord) => {
+      // Create-only path (validRecordId == null). Do not gate on isLocked:
+      // a locked booking root used to skip prefill after the effect key was
+      // set, so AN never received cargoVolumes → containers seeding.
+      if (!prefillSourceType) return
       const sourcePayload =
         prefillSourceType === 'bl'
           ? normalizeBillOfLadingPayload(record.payload)
-          : record.payload
-      const next = applyPrefillFromPrevious(
-        documentType,
-        prefillSourceType,
-        sourcePayload as TransportDocumentPayloadMap[typeof prefillSourceType],
-        activePayload
-      )
-      setForms(
-        (previous) =>
-          ({
-            ...previous,
-            [documentType]: next,
-          }) as TransportDocumentPayloadMap
-      )
-      if (announce) {
-        toast.success(
-          `Prefilled from ${getTransportDocumentDefinition(prefillSourceType).label}`
+          : prefillSourceType === 'booking'
+            ? normalizeBookingConfirmationPayload(record.payload)
+            : prefillSourceType === 'an'
+              ? normalizeArrivalNoticePayload(record.payload)
+              : record.payload
+      setForms((previous) => {
+        const next = applyPrefillFromPrevious(
+          documentType,
+          prefillSourceType,
+          sourcePayload as TransportDocumentPayloadMap[typeof prefillSourceType],
+          previous[documentType]
         )
-      }
-    },
-    [activePayload, documentType, isLocked, prefillSourceType]
-  )
-
-  const openPrefillDialog = useCallback(async () => {
-    if (!prefillSourceType || isLocked) return
-    if (validBookingId != null) {
-      const source = getWorkflowRecord(workflow, prefillSourceType)
-      if (!source) {
-        toast.error(
-          `Create ${getTransportDocumentDefinition(prefillSourceType).label} first`
-        )
-        return
-      }
-      handlePrefillSelect(source)
-      return
-    }
-    setPrefillDialogOpen(true)
-    setPrefillLoading(true)
-    setPrefillError(null)
-    setPrefillRecords([])
-    try {
-      const page = await transportDocumentService.history({
-        type: prefillSourceType,
-        page: 0,
-        size: 20,
+        return {
+          ...previous,
+          [documentType]: next,
+        } as TransportDocumentPayloadMap
       })
-      setPrefillRecords(page.content)
-    } catch (error) {
-      setPrefillRecords([])
-      setPrefillError(
-        error instanceof Error ? error.message : 'Failed to load records'
-      )
-    } finally {
-      setPrefillLoading(false)
-    }
-  }, [
-    handlePrefillSelect,
-    isLocked,
-    prefillSourceType,
-    validBookingId,
-    workflow,
-  ])
+    },
+    [documentType, prefillSourceType]
+  )
 
   useEffect(() => {
     if (validBookingId == null || validRecordId != null || !prefillSourceType) {
@@ -633,11 +749,95 @@ export function TransportDocumentsScreen({
     const key = `${validBookingId}:${documentType}:${source.id}`
     if (autoWorkflowPrefillKey.current === key) return
     autoWorkflowPrefillKey.current = key
-    handlePrefillSelect(source, false)
+    applyWorkflowPrefill(source)
   }, [
+    applyWorkflowPrefill,
     documentType,
-    handlePrefillSelect,
     prefillSourceType,
+    validBookingId,
+    validRecordId,
+    workflow,
+  ])
+
+  /**
+   * On BL open/create: refresh cargo from linked AN so the form never shows
+   * stale stored cargo. Existing records also refresh savedSnapshot cargo so
+   * load alone does not mark the form dirty.
+   */
+  useEffect(() => {
+    if (documentType !== 'bl' || isHydrating) return
+    if (validRecordId != null && activeRecordId == null) return
+    const anSource = getWorkflowRecord(workflow, 'an')
+    if (!anSource) return
+    const key = `${validBookingId ?? 'x'}:${activeRecordId ?? 'new'}:${anSource.id}:${anSource.updatedAt}`
+    if (blCargoSyncKey.current === key) return
+    blCargoSyncKey.current = key
+    const an = normalizeArrivalNoticePayload(anSource.payload)
+    setForms((previous) => {
+      const synced = syncBillOfLadingCargoFromArrivalNotice(
+        an,
+        previous.bl as BillOfLadingPayload
+      )
+      return { ...previous, bl: synced } as TransportDocumentPayloadMap
+    })
+    if (activeRecordId != null) {
+      setSavedSnapshot((previous) => {
+        try {
+          const saved = JSON.parse(previous) as BillOfLadingPayload
+          return payloadSnapshot(
+            syncBillOfLadingCargoFromArrivalNotice(an, saved)
+          )
+        } catch {
+          return previous
+        }
+      })
+    }
+  }, [
+    activeRecordId,
+    documentType,
+    isHydrating,
+    validBookingId,
+    validRecordId,
+    workflow,
+  ])
+
+  /**
+   * On DO open/create: refresh cargo from linked AN so the form never shows
+   * stale stored cargo. Existing records also refresh savedSnapshot cargo so
+   * load alone does not mark the form dirty.
+   */
+  useEffect(() => {
+    if (documentType !== 'do' || isHydrating) return
+    if (validRecordId != null && activeRecordId == null) return
+    const anSource = getWorkflowRecord(workflow, 'an')
+    if (!anSource) return
+    const key = `${validBookingId ?? 'x'}:${activeRecordId ?? 'new'}:${anSource.id}:${anSource.updatedAt}`
+    if (doCargoSyncKey.current === key) return
+    doCargoSyncKey.current = key
+    const an = normalizeArrivalNoticePayload(anSource.payload)
+    setForms((previous) => {
+      const synced = syncDeliveryOrderCargoFromArrivalNotice(
+        an,
+        previous.do as DeliveryOrderPayload
+      )
+      return { ...previous, do: synced } as TransportDocumentPayloadMap
+    })
+    if (activeRecordId != null) {
+      setSavedSnapshot((previous) => {
+        try {
+          const saved = JSON.parse(previous) as DeliveryOrderPayload
+          return payloadSnapshot(
+            syncDeliveryOrderCargoFromArrivalNotice(an, saved)
+          )
+        } catch {
+          return previous
+        }
+      })
+    }
+  }, [
+    activeRecordId,
+    documentType,
+    isHydrating,
     validBookingId,
     validRecordId,
     workflow,
@@ -645,11 +845,11 @@ export function TransportDocumentsScreen({
 
   return (
     <div className='mx-auto max-w-7xl space-y-5 pb-8'>
-      {validBookingId != null ? (
+      {validBookingId != null && selectedFlow != null ? (
         <BookingWorkflowNav
           activeType={documentType}
           bookingId={validBookingId}
-          flow={workflowFlow}
+          flow={selectedFlow}
           workflow={workflow}
         />
       ) : null}
@@ -660,16 +860,21 @@ export function TransportDocumentsScreen({
               {activeRecordId
                 ? `Edit ${document.label}`
                 : documentType === 'booking'
-                  ? `Create ${workflowFlow === 'IMPORT' ? 'Import' : 'Export'} Booking`
+                  ? 'Create Booking'
                   : `Create ${document.label}`}
             </h1>
+            {selectedFlow && documentType === 'booking' ? (
+              <Badge variant='outline' className='font-medium'>
+                {selectedFlow === 'IMPORT' ? 'Import' : 'Export'}
+              </Badge>
+            ) : null}
             {status ? (
               <Badge
                 variant={status === 'COMPLETED' ? 'default' : 'secondary'}
                 className={
                   status === 'COMPLETED'
                     ? 'bg-success text-success-foreground hover:bg-success/90'
-                    : 'bg-warning text-warning-foreground hover:bg-warning/90'
+                    : 'bg-warning text-white hover:bg-warning/90'
                 }
               >
                 {status === 'COMPLETED' ? 'Completed' : 'Processing'}
@@ -685,129 +890,89 @@ export function TransportDocumentsScreen({
               </Badge>
             ) : null}
           </div>
-          <p className='max-w-2xl text-sm leading-relaxed text-muted-foreground'>
-            {document.description}. Preview opens the PDF without saving. Save
-            &amp; Preview stores a Completed record and opens the PDF.
+          <p className='max-w-2xl text-sm leading-relaxed text-muted-foreground text-pretty'>
+            {needsFlowSelection
+              ? 'Select Import or Export, then complete the booking confirmation. Download opens the PDF without saving; Create Booking stores a completed record.'
+              : `${document.description}. Download opens the PDF without saving. Save stores a Completed record.`}
           </p>
         </div>
-        <div className='flex flex-wrap gap-2'>
-          {!isLocked ? (
-            <>
-              {prefillSourceType ? (
-                <Button
-                  type='button'
-                  variant='outline'
-                  size='sm'
-                  onClick={() => void openPrefillDialog()}
-                  disabled={busy}
-                >
-                  <ClipboardPaste className='mr-1.5 h-4 w-4' />
-                  Prefill from previous
-                </Button>
-              ) : null}
+        {formReady && isLocked ? (
+          <div className='flex flex-wrap gap-2'>
+            <Button
+              type='button'
+              size='sm'
+              onClick={() => void openPreview()}
+              disabled={busy}
+            >
+              {isGenerating ? (
+                <Loader2 className='mr-1.5 h-4 w-4 animate-spin' />
+              ) : (
+                <FileOutput className='mr-1.5 h-4 w-4' />
+              )}
+              View PDF
+            </Button>
+            {isAdmin ? (
               <Button
                 type='button'
                 variant='outline'
                 size='sm'
-                onClick={resetActiveForm}
+                onClick={() => void handleUnlock()}
                 disabled={busy}
+                className='gap-2'
               >
-                <RotateCcw className='mr-1.5 h-4 w-4' /> Reset{' '}
-                {document.shortLabel}
-              </Button>
-              <Button
-                type='button'
-                variant='outline'
-                size='sm'
-                onClick={() => void openPreview()}
-                disabled={busy}
-              >
-                {isGenerating ? (
-                  <Loader2 className='mr-1.5 h-4 w-4 animate-spin' />
+                {isUnlocking ? (
+                  <Loader2 className='h-4 w-4 animate-spin' />
                 ) : (
-                  <FileOutput className='mr-1.5 h-4 w-4' />
+                  <Unlock className='h-4 w-4' />
                 )}
-                Preview
+                Unlock edit
               </Button>
-              <Button
-                type='button'
-                size='sm'
-                onClick={() => void handleSave()}
-                disabled={busy}
-              >
-                {isSaving || isGenerating ? (
-                  <Loader2 className='mr-1.5 h-4 w-4 animate-spin' />
-                ) : (
-                  <Save className='mr-1.5 h-4 w-4' />
-                )}
-                {activeRecordId
-                  ? 'Save & Preview'
-                  : documentType === 'booking'
-                    ? 'Create Booking'
-                    : `Create ${document.shortLabel}`}
-              </Button>
-            </>
-          ) : (
-            <div className='flex flex-wrap gap-2'>
-              <Button
-                type='button'
-                size='sm'
-                onClick={() => void openPreview()}
-                disabled={busy}
-              >
-                {isGenerating ? (
-                  <Loader2 className='mr-1.5 h-4 w-4 animate-spin' />
-                ) : (
-                  <FileOutput className='mr-1.5 h-4 w-4' />
-                )}
-                View PDF
-              </Button>
-              {isAdmin ? (
-                <Button
-                  type='button'
-                  variant='outline'
-                  size='sm'
-                  onClick={() => void handleUnlock()}
-                  disabled={busy}
-                  className='gap-2'
-                >
-                  {isUnlocking ? (
-                    <Loader2 className='h-4 w-4 animate-spin' />
-                  ) : (
-                    <Unlock className='h-4 w-4' />
-                  )}
-                  Unlock edit
-                </Button>
-              ) : null}
-            </div>
-          )}
-        </div>
+            ) : null}
+          </div>
+        ) : null}
       </header>
+
+      {needsFlowSelection ? (
+        <BookingFlowChooser
+          value={selectedFlow}
+          disabled={busy}
+          onChange={selectFlow}
+        />
+      ) : null}
 
       {isHydrating ? (
         <div className='flex min-h-40 items-center justify-center'>
           <Loader2 className='h-6 w-6 animate-spin text-muted-foreground' />
         </div>
-      ) : (
+      ) : formReady ? (
         <fieldset disabled={isLocked || busy} className='min-w-0 border-0 p-0'>
           <TransportDocumentForm
             documentType={documentType}
             values={activeRecord}
             cargoRows={cargoRows}
+            containers={containers}
             isGenerating={busy}
+            isSaving={isSaving}
+            isDownloading={isGenerating}
             onFieldChange={updateField}
+            onFieldsChange={updateFields}
             onCargoRowsChange={setCargoRows}
+            onContainersChange={setContainers}
             onSubmit={() => void handleSave()}
+            onDownload={() => void openPreview()}
+            onReset={resetActiveForm}
             submitLabel={
               activeRecordId
-                ? `Save & Preview ${document.shortLabel}`
+                ? 'Save'
                 : documentType === 'booking'
                   ? 'Create Booking'
                   : `Create ${document.shortLabel}`
             }
+            resetLabel={`Reset ${document.shortLabel}`}
+            submitDisabled={needsFlowSelection && !selectedFlow}
           />
         </fieldset>
-      )}
+      ) : null}
 
       <PdfPreviewDialog
         open={previewOpen}
@@ -870,25 +1035,6 @@ export function TransportDocumentsScreen({
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-
-      {prefillSourceType ? (
-        <TransportDocumentPrefillDialog
-          open={prefillDialogOpen}
-          sourceType={prefillSourceType}
-          loading={prefillLoading}
-          error={prefillError}
-          records={prefillRecords}
-          onOpenChange={(open) => {
-            setPrefillDialogOpen(open)
-            if (!open) {
-              setPrefillError(null)
-              setPrefillRecords([])
-              setPrefillLoading(false)
-            }
-          }}
-          onSelect={handlePrefillSelect}
-        />
-      ) : null}
     </div>
   )
 }

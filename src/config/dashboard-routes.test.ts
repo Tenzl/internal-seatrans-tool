@@ -58,7 +58,7 @@ describe('dashboard route policy', () => {
         role: 'ROLE_OPERATOR',
         sections: ['booking-documents'],
       })
-    ).toBe('/booking/documents/booking-confirmation?flow=IMPORT')
+    ).toBe('/booking/documents/booking-confirmation')
     expect(
       firstAccessibleDashboardPath({
         role: 'ROLE_OPERATOR',
@@ -88,7 +88,7 @@ describe('dashboard route policy', () => {
     expect(canAccessPath('/booking/documents', operator)).toBe(false)
   })
 
-  it('shows the three Booking Management actions', () => {
+  it('shows Create Booking and History under Booking Management', () => {
     const general = sidebarData.navGroups.find(
       (group) => group.title === 'General'
     )
@@ -98,15 +98,11 @@ describe('dashboard route policy', () => {
 
     expect(booking?.items).toEqual([
       {
-        title: 'Create Import Booking',
-        url: '/booking/documents/booking-confirmation?flow=IMPORT',
+        title: 'Create Booking',
+        url: '/booking/documents/booking-confirmation',
       },
       {
-        title: 'Create Export Booking',
-        url: '/booking/documents/booking-confirmation?flow=EXPORT',
-      },
-      {
-        title: 'History Record',
+        title: 'History',
         url: '/booking/documents/history',
       },
     ])

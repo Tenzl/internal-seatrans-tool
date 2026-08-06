@@ -118,8 +118,8 @@ describe('dashboard section catalog contract', () => {
       .find((item) => item.title === 'Booking Management')
     expect(
       booking?.items?.map((item) => sectionForPath(item.url ?? '')?.key)
-    ).toEqual(['booking-documents', 'booking-documents', 'booking-documents'])
-    expect(booking?.items).toHaveLength(3)
+    ).toEqual(['booking-documents', 'booking-documents'])
+    expect(booking?.items).toHaveLength(2)
   })
 
   it('produces the same permission-filtered model for sidebar and command menu', () => {
@@ -133,9 +133,8 @@ describe('dashboard section catalog contract', () => {
       'Booking Management',
     ])
     expect(groups[0]?.items[0]?.items?.map((item) => item.title)).toEqual([
-      'Create Import Booking',
-      'Create Export Booking',
-      'History Record',
+      'Create Booking',
+      'History',
     ])
   })
 })

@@ -8,13 +8,18 @@ import {
   getTransportDocumentRowCapabilities,
 } from './transportDocumentHistoryRules'
 
-const cargoRows = [
+const containers = [
   {
-    containerSealNumber: 'CONT-1',
-    quantity: '2',
-    descriptionOfGoods: 'Parts',
+    type: "20'DC",
+    containerNo: 'CONT-1',
+    sealNo: '',
     grossWeight: '100',
     measurement: '1',
+    tare: '',
+    packageType: '',
+    noOfPkgs: '2',
+    note: 'Parts',
+    method: '',
   },
 ]
 
@@ -32,7 +37,8 @@ const record: TransportDocumentRecord = {
     mblNumber: '',
     hblNumber: '',
     vesselVoyage: '',
-    etdEta: '',
+    etd: '',
+    eta: '',
     cfsTerminal: '',
     shipmentNumber: '',
     referenceNumber: '',
@@ -45,9 +51,10 @@ const record: TransportDocumentRecord = {
     serviceMode: '',
     note: '',
     marks: '',
+    descriptionOfGoods: '',
     volume: '',
     customerAttention: '',
-    cargoRows,
+    containers,
   },
   status: 'PROCESSING',
   createdByUserId: 3,
@@ -60,9 +67,44 @@ const record: TransportDocumentRecord = {
   createdBy: null,
 }
 
+const doRecord: TransportDocumentRecord = {
+  ...record,
+  id: 13,
+  documentType: 'do',
+  payload: {
+    doNumber: 'DO 24/001',
+    date: '2026-07-30',
+    to: '',
+    deliverTo: '',
+    notifyParty: '',
+    mblNumber: '',
+    hblNumber: '',
+    etd: '',
+    eta: '',
+    shipmentNumber: '',
+    vesselVoyage: '',
+    placeOfReceipt: '',
+    portOfLoading: '',
+    portOfDischarge: '',
+    placeOfDelivery: '',
+    finalDestination: '',
+    serviceMode: '',
+    cfsTerminal: '',
+    note: '',
+    marks: '',
+    descriptionOfGoods: '',
+    volume: '',
+    customerAttention: '',
+    containers,
+    cargoRows: [],
+  },
+}
+
 describe('transport document history actions', () => {
   it('builds a safe PDF file name from the immutable record', () => {
-    expect(buildHistoryDocumentFileName(record)).toBe('AN-AN-24-001.pdf')
+    expect(buildHistoryDocumentFileName(record)).toBe(
+      'Arrival-Notice-AN-24-001.pdf'
+    )
   })
 
   it('maps the saved payload to labelled detail sections', () => {
@@ -71,14 +113,30 @@ describe('transport document history actions', () => {
     expect(sections[0]).toMatchObject({
       title: 'Identity',
       fields: [
-        { label: 'AN No.', value: 'AN 24/001' },
+        { label: 'Arrival Notice No.', value: 'AN 24/001' },
         { label: 'Date', value: '2026-07-30' },
+      ],
+    })
+    expect(sections[1]).toMatchObject({
+      title: 'Parties',
+      fields: [
+        { label: 'Shipper', value: expect.any(String) },
+        { label: 'Consignee', value: expect.any(String) },
+        { label: 'Notify Party', value: expect.any(String) },
         { label: 'Agent', value: 'SeaTrans' },
       ],
     })
     expect(sections.at(-1)).toMatchObject({
-      title: 'Cargo rows',
-      cargoRows,
+      title: 'Containers',
+      containers,
+    })
+  })
+
+  it('shows a Containers section (not legacy cargo rows) for Delivery Order', () => {
+    const sections = getHistoryDocumentSections(doRecord)
+    expect(sections.at(-1)).toMatchObject({
+      title: 'Containers',
+      containers,
     })
   })
 

@@ -7,11 +7,31 @@ import type {
   TransportDocumentPayloadMap,
   TransportDocumentType,
 } from './transportDocument.types'
+import {
+  AN_CONTAINER_MAX_ROWS,
+  anContainersToBlCargoTextFields,
+  anContainersToCargoRows,
+  anContainersToVolumeText,
+  emptyAnContainer,
+  legacyBlCargoTextToContainers,
+  normalizeAnContainers,
+  resolveDescriptionOfGoods,
+} from './anContainerModel'
+import {
+  compactCargoVolumes,
+  normalizeBookingCargoVolumes,
+} from './cargoVolumeModel'
+import { deriveNotifySameAsConsignee } from './notifyPartySameAsConsignee'
 
 const shortText = z.string().trim().max(500, 'Use 500 characters or fewer')
 const longText = z.string().trim().max(2_000, 'Use 2,000 characters or fewer')
 const xlText = z.string().trim().max(4_000, 'Use 4,000 characters or fewer')
 const partyId = z.number().int().positive().nullable().optional()
+
+const cargoVolumesSchema = z
+  .record(z.string(), z.number().int().nonnegative())
+  .default({})
+  .transform((value) => compactCargoVolumes(value))
 
 export const cargoRowSchema = z.object({
   containerSealNumber: shortText,
@@ -19,6 +39,19 @@ export const cargoRowSchema = z.object({
   descriptionOfGoods: longText,
   grossWeight: shortText,
   measurement: shortText,
+})
+
+export const anContainerSchema = z.object({
+  type: z.string().trim().max(20),
+  containerNo: shortText,
+  sealNo: shortText,
+  grossWeight: shortText,
+  measurement: shortText,
+  tare: shortText,
+  packageType: shortText,
+  noOfPkgs: shortText,
+  note: longText,
+  method: shortText,
 })
 
 export const arrivalNoticeSchema = z.object({
@@ -36,7 +69,8 @@ export const arrivalNoticeSchema = z.object({
   mblNumber: shortText,
   hblNumber: shortText,
   vesselVoyage: shortText,
-  etdEta: shortText,
+  etd: shortText,
+  eta: shortText,
   cfsTerminal: shortText,
   shipmentNumber: shortText,
   referenceNumber: shortText,
@@ -49,11 +83,15 @@ export const arrivalNoticeSchema = z.object({
   serviceMode: shortText,
   note: longText,
   marks: longText,
+  descriptionOfGoods: xlText,
   volume: shortText,
   customerAttention: longText,
-  cargoRows: z
-    .array(cargoRowSchema)
-    .max(20, 'A maximum of 20 cargo rows is allowed'),
+  containers: z
+    .array(anContainerSchema)
+    .max(
+      AN_CONTAINER_MAX_ROWS,
+      `A maximum of ${AN_CONTAINER_MAX_ROWS} container rows is allowed`
+    ),
 })
 
 export const deliveryOrderSchema = z.object({
@@ -79,8 +117,17 @@ export const deliveryOrderSchema = z.object({
   cfsTerminal: shortText,
   note: longText,
   marks: longText,
+  descriptionOfGoods: xlText,
   volume: shortText,
   customerAttention: longText,
+  /** Canonical multi-container rows (shared with Arrival Notice / BL). */
+  containers: z
+    .array(anContainerSchema)
+    .max(
+      AN_CONTAINER_MAX_ROWS,
+      `A maximum of ${AN_CONTAINER_MAX_ROWS} container rows is allowed`
+    ),
+  /** Legacy row shape; derived from `containers` for PDF rendering. */
   cargoRows: z
     .array(cargoRowSchema)
     .max(20, 'A maximum of 20 cargo rows is allowed'),
@@ -107,6 +154,7 @@ export const bookingConfirmationSchema = z.object({
   contact: shortText,
   commodity: longText,
   volume: shortText,
+  cargoVolumes: cargoVolumesSchema,
   grossWeight: shortText,
   measurement: shortText,
   transitPort: shortText,
@@ -124,6 +172,8 @@ export const emptyCargoRow = () => ({
   measurement: '',
 })
 
+export { emptyAnContainer }
+
 export const emptyArrivalNotice = (): ArrivalNoticePayload => ({
   agent: '',
   agentPartyId: null,
@@ -139,7 +189,8 @@ export const emptyArrivalNotice = (): ArrivalNoticePayload => ({
   mblNumber: '',
   hblNumber: '',
   vesselVoyage: '',
-  etdEta: '',
+  etd: '',
+  eta: '',
   cfsTerminal: '',
   shipmentNumber: '',
   referenceNumber: '',
@@ -152,9 +203,10 @@ export const emptyArrivalNotice = (): ArrivalNoticePayload => ({
   serviceMode: '',
   note: '',
   marks: '',
+  descriptionOfGoods: '',
   volume: '',
   customerAttention: '',
-  cargoRows: [emptyCargoRow()],
+  containers: [emptyAnContainer()],
 })
 
 export const emptyDeliveryOrder = (): DeliveryOrderPayload => ({
@@ -180,8 +232,10 @@ export const emptyDeliveryOrder = (): DeliveryOrderPayload => ({
   cfsTerminal: '',
   note: '',
   marks: '',
+  descriptionOfGoods: '',
   volume: '',
   customerAttention: '',
+  containers: [emptyAnContainer()],
   cargoRows: [emptyCargoRow()],
 })
 
@@ -206,6 +260,7 @@ export const emptyBookingConfirmation = (): BookingConfirmationPayload => ({
   contact: '',
   commodity: '',
   volume: '',
+  cargoVolumes: {},
   grossWeight: '',
   measurement: '',
   transitPort: '',
@@ -229,11 +284,18 @@ export const billOfLadingSchema = z.object({
   portOfLoading: shortText,
   portOfDischarge: shortText,
   placeOfDelivery: shortText,
-  marksAndNumbers: longText,
+  serviceMode: shortText,
+  shippingMark: longText,
   numberAndKindOfPackages: longText,
   descriptionOfGoods: xlText,
   grossWeight: shortText,
   measurement: shortText,
+  containers: z
+    .array(anContainerSchema)
+    .max(
+      AN_CONTAINER_MAX_ROWS,
+      `A maximum of ${AN_CONTAINER_MAX_ROWS} container rows is allowed`
+    ),
   freightTerms: shortText,
   cleanOnBoard: shortText,
   declarationOfInterest: shortText,
@@ -262,11 +324,13 @@ export const emptyBillOfLading = (): BillOfLadingPayload => ({
   portOfLoading: '',
   portOfDischarge: '',
   placeOfDelivery: '',
-  marksAndNumbers: '',
+  serviceMode: '',
+  shippingMark: '',
   numberAndKindOfPackages: '',
   descriptionOfGoods: '',
   grossWeight: '',
   measurement: '',
+  containers: [emptyAnContainer()],
   freightTerms: '',
   cleanOnBoard: '',
   declarationOfInterest: '',
@@ -281,7 +345,11 @@ export const emptyBillOfLading = (): BillOfLadingPayload => ({
   blFormVariant: 'non_negotiable',
 })
 
-/** Normalize BL payloads and drop legacy stamp toggle keys. */
+/**
+ * Normalize BL payloads: migrate free-text cargo → containers when missing,
+ * derive PDF GW / measurement from containers, keep shipment descriptionOfGoods
+ * as free-text (legacy fill from container note when empty).
+ */
 export function normalizeBillOfLadingPayload(
   payload: unknown
 ): BillOfLadingPayload {
@@ -292,6 +360,8 @@ export function normalizeBillOfLadingPayload(
   const {
     showSurrendered: legacySurrendered,
     includeCompanyStamp: _ignoredStamp,
+    cargoRows: legacyCargoRows,
+    marksAndNumbers: legacyMarksAndNumbers,
     ...rest
   } = raw
   void _ignoredStamp
@@ -303,11 +373,219 @@ export function normalizeBillOfLadingPayload(
       : legacySurrendered === 'yes'
         ? 'surrendered'
         : 'non_negotiable'
+
+  let containers = normalizeAnContainers({
+    containers: rest.containers,
+    cargoRows: legacyCargoRows,
+  })
+  if (containers.length === 0) {
+    containers = legacyBlCargoTextToContainers({
+      descriptionOfGoods: rest.descriptionOfGoods,
+      grossWeight: rest.grossWeight,
+      measurement: rest.measurement,
+      numberAndKindOfPackages: rest.numberAndKindOfPackages,
+    })
+  }
+  if (containers.length === 0) {
+    containers = [emptyAnContainer()]
+  }
+
+  const descriptionOfGoods = resolveDescriptionOfGoods({
+    descriptionOfGoods: rest.descriptionOfGoods,
+    containers,
+  })
+  const derived = anContainersToBlCargoTextFields(
+    containers,
+    descriptionOfGoods
+  )
+  const hasStructuredCargo = containers.some(
+    (row) =>
+      row.type ||
+      row.containerNo ||
+      row.sealNo ||
+      row.grossWeight ||
+      row.measurement ||
+      row.tare ||
+      row.packageType ||
+      row.noOfPkgs ||
+      row.note ||
+      row.method
+  )
+  // Prefer shippingMark; migrate legacy marksAndNumbers when absent.
+  const shippingMark =
+    typeof rest.shippingMark === 'string'
+      ? rest.shippingMark
+      : typeof legacyMarksAndNumbers === 'string'
+        ? legacyMarksAndNumbers
+        : ''
+
   return billOfLadingSchema.parse({
     ...emptyBillOfLading(),
     ...rest,
     blFormVariant,
+    containers,
+    descriptionOfGoods,
+    shippingMark,
+    grossWeight: hasStructuredCargo
+      ? derived.grossWeight
+      : typeof rest.grossWeight === 'string'
+        ? rest.grossWeight
+        : '',
+    measurement: hasStructuredCargo
+      ? derived.measurement
+      : typeof rest.measurement === 'string'
+        ? rest.measurement
+        : '',
   })
+}
+
+/**
+ * Normalize DO payloads: migrate legacy `cargoRows` → `containers` when
+ * missing, re-derive `cargoRows` (PDF table input) from containers and the
+ * (AN-synced) shipment `descriptionOfGoods`.
+ */
+export function normalizeDeliveryOrderPayload(
+  payload: unknown
+): DeliveryOrderPayload {
+  const raw =
+    typeof payload === 'object' && payload !== null
+      ? (payload as Record<string, unknown>)
+      : {}
+  const { cargoRows: legacyCargoRows, ...rest } = raw
+  let containers = normalizeAnContainers({
+    containers: rest.containers,
+    cargoRows: legacyCargoRows,
+  })
+  if (containers.length === 0) {
+    containers = [emptyAnContainer()]
+  }
+  const descriptionOfGoods =
+    typeof rest.descriptionOfGoods === 'string' ? rest.descriptionOfGoods : ''
+  return deliveryOrderSchema.parse({
+    ...emptyDeliveryOrder(),
+    ...rest,
+    containers,
+    descriptionOfGoods,
+    cargoRows: anContainersToCargoRows(containers, descriptionOfGoods),
+  })
+}
+
+/** Normalize Booking payloads: hydrate cargoVolumes from legacy volume text. */
+export function normalizeBookingConfirmationPayload(
+  payload: unknown
+): BookingConfirmationPayload {
+  const raw =
+    typeof payload === 'object' && payload !== null
+      ? (payload as Record<string, unknown>)
+      : {}
+  const merged = {
+    ...emptyBookingConfirmation(),
+    ...raw,
+  }
+  const normalized = normalizeBookingCargoVolumes({
+    cargoVolumes:
+      merged.cargoVolumes && typeof merged.cargoVolumes === 'object'
+        ? (merged.cargoVolumes as Record<string, unknown>)
+        : {},
+    volume: typeof merged.volume === 'string' ? merged.volume : '',
+  })
+  return bookingConfirmationSchema.parse({
+    ...merged,
+    ...normalized,
+  })
+}
+
+/**
+ * Strip a leading ETD/ETA label from a single schedule date string.
+ * Used when migrating legacy combined `etdEta` values into separate fields.
+ */
+export function stripScheduleDatePrefix(value: string): string {
+  return value.replace(/^\s*(ETD|ETA)\b[:\s-]*/i, '').trim()
+}
+
+/**
+ * Split legacy combined `etdEta` ("a / b") into separate ETD and ETA strings.
+ * Prefers already-split `etd` / `eta` when either is present.
+ */
+export function resolveArrivalNoticeScheduleFields(raw: {
+  etd?: unknown
+  eta?: unknown
+  etdEta?: unknown
+}): { etd: string; eta: string } {
+  const etd =
+    typeof raw.etd === 'string' ? stripScheduleDatePrefix(raw.etd) : ''
+  const eta =
+    typeof raw.eta === 'string' ? stripScheduleDatePrefix(raw.eta) : ''
+  if (etd || eta) {
+    return { etd, eta }
+  }
+  if (typeof raw.etdEta !== 'string' || !raw.etdEta.trim()) {
+    return { etd: '', eta: '' }
+  }
+  const parts = raw.etdEta
+    .split('/')
+    .map((part) => stripScheduleDatePrefix(part))
+    .filter(Boolean)
+  return {
+    etd: parts[0] ?? '',
+    eta: parts.slice(1).join(' / '),
+  }
+}
+
+/**
+ * Normalize AN payloads: migrate legacy cargoRows → containers,
+ * hydrate shipment descriptionOfGoods (legacy from container note),
+ * derive Volume from typed containers (keep legacy text when none),
+ * split legacy combined `etdEta` into `etd` / `eta`,
+ * drop cargoRows from the persisted shape.
+ */
+export function normalizeArrivalNoticePayload(
+  payload: unknown
+): ArrivalNoticePayload {
+  const raw =
+    typeof payload === 'object' && payload !== null
+      ? (payload as Record<string, unknown>)
+      : {}
+  const { cargoRows: legacyCargoRows, etdEta: legacyEtdEta, ...rest } = raw
+  const containers = normalizeAnContainers({
+    containers: rest.containers,
+    cargoRows: legacyCargoRows,
+  })
+  const derivedVolume = anContainersToVolumeText(containers)
+  const legacyVolume = typeof rest.volume === 'string' ? rest.volume : ''
+  const descriptionOfGoods = resolveDescriptionOfGoods({
+    descriptionOfGoods: rest.descriptionOfGoods,
+    containers,
+  })
+  const schedule = resolveArrivalNoticeScheduleFields({
+    etd: rest.etd,
+    eta: rest.eta,
+    etdEta: legacyEtdEta,
+  })
+  const withDefaults = {
+    ...emptyArrivalNotice(),
+    ...rest,
+    ...schedule,
+    containers,
+    descriptionOfGoods,
+    volume: derivedVolume || legacyVolume,
+  }
+  const parsed = arrivalNoticeSchema.parse(withDefaults)
+  return {
+    ...parsed,
+    notifyPartySameAsConsignee: deriveNotifySameAsConsignee({
+      // Prefer the raw flag when present so an explicit false survives parse
+      // (schema default would otherwise turn a missing key into false first).
+      notifyPartySameAsConsignee:
+        typeof rest.notifyPartySameAsConsignee === 'boolean'
+          ? rest.notifyPartySameAsConsignee
+          : undefined,
+      consignee: parsed.consignee,
+      consigneePartyId: parsed.consigneePartyId,
+      notifyParty: parsed.notifyParty,
+      notifyPartyId: parsed.notifyPartyId,
+    }),
+  }
 }
 
 /** Strip legacy stamp keys before persisting a BL payload. */
@@ -341,16 +619,15 @@ export function parseTransportDocument<T extends TransportDocumentType>(
 ): TransportDocumentPayloadMap[T] {
   switch (type) {
     case 'an':
-      return arrivalNoticeSchema.parse(
+      return normalizeArrivalNoticePayload(
         payload
       ) as TransportDocumentPayloadMap[T]
     case 'booking':
-      return bookingConfirmationSchema.parse({
-        ...emptyBookingConfirmation(),
-        ...payload,
-      }) as TransportDocumentPayloadMap[T]
+      return normalizeBookingConfirmationPayload(
+        payload
+      ) as TransportDocumentPayloadMap[T]
     case 'do':
-      return deliveryOrderSchema.parse(
+      return normalizeDeliveryOrderPayload(
         payload
       ) as TransportDocumentPayloadMap[T]
     case 'bl':

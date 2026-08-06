@@ -6,6 +6,7 @@ import { isAdminRole } from '@/config/section-catalog'
 import { queryKeys } from '@/shared/config/react-query.config'
 import { toast } from '@/shared/utils/toast'
 import { AlertCircle, History, Loader2, RefreshCw } from 'lucide-react'
+import Link from 'next/link'
 import { useCurrentUser } from '@/hooks/use-current-user'
 import { useIsMobile } from '@/hooks/use-mobile'
 import { Alert, AlertDescription } from '@/components/ui/alert'
@@ -111,10 +112,11 @@ export function BookingHistoryScreen() {
             <div className='min-w-0 flex-1 space-y-1.5'>
               <CardTitle className='flex items-center gap-2 text-lg font-semibold tracking-tight'>
                 <History className='h-5 w-5' />
-                History Record
+                History
               </CardTitle>
               <CardDescription className='max-w-2xl text-sm leading-relaxed'>
-                View and manage Import and Export booking workflow records.
+                Booking workflow records for Import and Export. Open a booking to
+                continue Arrival Notice, Bill of Lading, or Delivery Order.
               </CardDescription>
             </div>
             <div className='flex flex-wrap gap-2'>
@@ -147,8 +149,15 @@ export function BookingHistoryScreen() {
               <AlertDescription>{errorMessage}</AlertDescription>
             </Alert>
           ) : records.length === 0 ? (
-            <div className='py-8 text-center text-muted-foreground'>
-              No bookings yet. Create an Import or Export booking to begin.
+            <div className='space-y-3 py-8 text-center'>
+              <p className='text-muted-foreground'>
+                No bookings yet. Create a booking to begin.
+              </p>
+              <Button asChild variant='outline' size='sm'>
+                <Link href='/booking/documents/booking-confirmation'>
+                  Create Booking
+                </Link>
+              </Button>
             </div>
           ) : (
             <TransportDocumentHistoryDataTable

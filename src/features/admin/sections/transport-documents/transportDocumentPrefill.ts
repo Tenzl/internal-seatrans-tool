@@ -1,4 +1,5 @@
 import type {
+  AnContainer,
   ArrivalNoticePayload,
   BillOfLadingPayload,
   BookingConfirmationPayload,
@@ -6,7 +7,15 @@ import type {
   TransportDocumentPayloadMap,
   TransportDocumentType,
 } from './transportDocument.types'
-import { emptyCargoRow } from './transportDocumentSchemas'
+import {
+  anContainersToBlCargoTextFields,
+  anContainersToCargoRows,
+  anContainersToVolumeText,
+  emptyAnContainer,
+  normalizeAnContainers,
+  seedAnContainersFromVolumes,
+} from './anContainerModel'
+import { normalizeBookingCargoVolumes } from './cargoVolumeModel'
 
 /** Previous document type used to prefill the target form. */
 export const PREFILL_SOURCE_TYPE: Partial<
@@ -39,35 +48,90 @@ function splitVesselVoyage(vesselVoyage: string): {
   return { oceanVessel: trimmed, voyageNumber: '' }
 }
 
+/**
+ * Booking cargo totals are shipment-level (one GW KGS + one CBM), not per
+ * container. Put them on the first AN row only — do not invent equal splits.
+ * Commodity maps to shipment `descriptionOfGoods` (not container note).
+ * Never invent containerNo / sealNo.
+ */
+function applyBookingCargoTotalsToFirstRow(
+  rows: AnContainer[],
+  source: BookingConfirmationPayload
+): AnContainer[] {
+  if (rows.length === 0) {
+    return [
+      {
+        ...emptyAnContainer(),
+        grossWeight: source.grossWeight,
+        measurement: source.measurement,
+      },
+    ]
+  }
+  return rows.map((row, index) =>
+    index === 0
+      ? {
+          ...row,
+          grossWeight: source.grossWeight,
+          measurement: source.measurement,
+        }
+      : row
+  )
+}
+
 export function prefillArrivalNoticeFromBooking(
   source: BookingConfirmationPayload,
   current: ArrivalNoticePayload
 ): ArrivalNoticePayload {
-  const schedule = [source.etd.trim(), source.eta.trim()]
-    .filter(Boolean)
-    .join(' / ')
+  const { cargoVolumes } = normalizeBookingCargoVolumes(source)
+  const seeded = seedAnContainersFromVolumes(cargoVolumes)
+  const containers = applyBookingCargoTotalsToFirstRow(seeded, source)
+
   return {
     ...current,
     date: source.date,
     shipmentNumber: source.bookingNumber,
     referenceNumber: source.bookingNumber,
     vesselVoyage: source.vesselVoyage,
-    etdEta: schedule,
+    etd: source.etd,
+    eta: source.eta,
     placeOfReceipt: source.placeOfReceipt,
     portOfLoading: source.portOfLoading,
     portOfDischarge: source.portOfDischarge,
     placeOfDelivery: source.placeOfDelivery,
     finalDestination: source.placeOfDelivery,
-    volume: source.volume,
-    cargoRows: [
-      {
-        ...emptyCargoRow(),
-        quantity: source.volume,
-        descriptionOfGoods: source.commodity,
-        grossWeight: source.grossWeight,
-        measurement: source.measurement,
-      },
-    ],
+    descriptionOfGoods: source.commodity,
+    // Volume is derived from containers (no free-text Cargo field).
+    volume: anContainersToVolumeText(containers),
+    containers,
+  }
+}
+
+/**
+ * BL Cargo is owned by Arrival Notice: containers + description + derived
+ * packages / GW / measurement. Shipping mark is BL-owned and is not
+ * overwritten here. Call on BL open, BL save, and after AN save so the
+ * sibling BL cargo never drifts.
+ */
+export function syncBillOfLadingCargoFromArrivalNotice(
+  source: ArrivalNoticePayload,
+  current: BillOfLadingPayload
+): BillOfLadingPayload {
+  const containers = normalizeAnContainers({
+    containers: source.containers,
+  }).map((row) => ({ ...row }))
+  const seeded =
+    containers.length > 0 ? containers : [{ ...emptyAnContainer() }]
+  const descriptionOfGoods = source.descriptionOfGoods.trim()
+  const cargoText = anContainersToBlCargoTextFields(seeded, descriptionOfGoods)
+  const volumeText = anContainersToVolumeText(seeded) || source.volume.trim()
+  return {
+    ...current,
+    serviceMode: source.serviceMode,
+    numberAndKindOfPackages: volumeText,
+    containers: seeded,
+    descriptionOfGoods: cargoText.descriptionOfGoods,
+    grossWeight: cargoText.grossWeight,
+    measurement: cargoText.measurement,
   }
 }
 
@@ -76,15 +140,9 @@ export function prefillBillOfLadingFromArrivalNotice(
   current: BillOfLadingPayload
 ): BillOfLadingPayload {
   const { oceanVessel, voyageNumber } = splitVesselVoyage(source.vesselVoyage)
-  const cargoValues = (
-    key: 'descriptionOfGoods' | 'grossWeight' | 'measurement'
-  ) =>
-    source.cargoRows
-      .map((row) => row[key].trim())
-      .filter(Boolean)
-      .join('\n')
+  const synced = syncBillOfLadingCargoFromArrivalNotice(source, current)
   return {
-    ...current,
+    ...synced,
     fblNumber: source.hblNumber,
     consignor: source.shipper,
     shipperPartyId: source.shipperPartyId ?? null,
@@ -98,14 +156,38 @@ export function prefillBillOfLadingFromArrivalNotice(
     placeOfDelivery: source.placeOfDelivery,
     oceanVessel,
     voyageNumber,
-    marksAndNumbers: source.marks,
-    numberAndKindOfPackages: source.volume,
-    descriptionOfGoods: cargoValues('descriptionOfGoods'),
-    grossWeight: cargoValues('grossWeight'),
-    measurement: cargoValues('measurement'),
     dateOfIssue: source.date,
     placeOfIssue: source.portOfLoading,
     freightPayableAt: source.placeOfDelivery,
+    // Optional one-time seed from AN marks; never forced to "N/M".
+    shippingMark: synced.shippingMark.trim()
+      ? synced.shippingMark
+      : source.marks,
+  }
+}
+
+/**
+ * DO cargo/containers mirror BL: owned by Arrival Notice. Overwrite
+ * `containers` + derived `cargoRows` (PDF table), plus `serviceMode` and
+ * `descriptionOfGoods` (read-only mirrors of AN, not editable on DO); leave
+ * all other DO fields. Call on DO open, DO save, and after AN save so the
+ * sibling DO never drifts.
+ */
+export function syncDeliveryOrderCargoFromArrivalNotice(
+  source: ArrivalNoticePayload,
+  current: DeliveryOrderPayload
+): DeliveryOrderPayload {
+  const containers = normalizeAnContainers({
+    containers: source.containers,
+  }).map((row) => ({ ...row }))
+  const seeded =
+    containers.length > 0 ? containers : [{ ...emptyAnContainer() }]
+  return {
+    ...current,
+    serviceMode: source.serviceMode,
+    descriptionOfGoods: source.descriptionOfGoods,
+    containers: seeded,
+    cargoRows: anContainersToCargoRows(seeded, source.descriptionOfGoods),
   }
 }
 
@@ -113,13 +195,12 @@ export function prefillDeliveryOrderFromAn(
   source: ArrivalNoticePayload,
   current: DeliveryOrderPayload
 ): DeliveryOrderPayload {
-  const cargoRows =
-    source.cargoRows.length > 0
-      ? source.cargoRows.map((row) => ({ ...row }))
-      : [emptyCargoRow()]
+  const containers = normalizeAnContainers({ containers: source.containers })
+  const volumeText =
+    anContainersToVolumeText(containers) || source.volume.trim()
 
   return {
-    ...current,
+    ...syncDeliveryOrderCargoFromArrivalNotice(source, current),
     date: source.date,
     deliverTo: source.consignee,
     consigneePartyId: source.consigneePartyId ?? null,
@@ -129,18 +210,18 @@ export function prefillDeliveryOrderFromAn(
     hblNumber: source.hblNumber,
     shipmentNumber: source.shipmentNumber,
     vesselVoyage: source.vesselVoyage,
+    etd: source.etd,
+    eta: source.eta,
     placeOfReceipt: source.placeOfReceipt,
     portOfLoading: source.portOfLoading,
     portOfDischarge: source.portOfDischarge,
     placeOfDelivery: source.placeOfDelivery,
     finalDestination: source.finalDestination,
-    serviceMode: source.serviceMode,
     cfsTerminal: source.cfsTerminal,
     marks: source.marks,
-    volume: source.volume,
+    volume: volumeText,
     note: source.note,
     customerAttention: source.customerAttention,
-    cargoRows,
   }
 }
 

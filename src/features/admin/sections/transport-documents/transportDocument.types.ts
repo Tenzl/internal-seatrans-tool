@@ -19,6 +19,20 @@ export interface CargoRow {
   measurement: string
 }
 
+/** Arrival Notice actual-container row (payload JSON). */
+export interface AnContainer {
+  type: string
+  containerNo: string
+  sealNo: string
+  grossWeight: string
+  measurement: string
+  tare: string
+  packageType: string
+  noOfPkgs: string
+  note: string
+  method: string
+}
+
 export interface ArrivalNoticePayload {
   agent: string
   agentPartyId?: number | null
@@ -34,7 +48,8 @@ export interface ArrivalNoticePayload {
   mblNumber: string
   hblNumber: string
   vesselVoyage: string
-  etdEta: string
+  etd: string
+  eta: string
   cfsTerminal: string
   shipmentNumber: string
   referenceNumber: string
@@ -47,9 +62,15 @@ export interface ArrivalNoticePayload {
   serviceMode: string
   note: string
   marks: string
+  /**
+   * Shipment-level goods description (PDF cargo “Description of Goods”).
+   * Separate from per-container `containers[].note`.
+   */
+  descriptionOfGoods: string
   volume: string
   customerAttention: string
-  cargoRows: CargoRow[]
+  /** Canonical multi-container rows (0..N). */
+  containers: AnContainer[]
 }
 
 export interface DeliveryOrderPayload {
@@ -71,14 +92,44 @@ export interface DeliveryOrderPayload {
   portOfDischarge: string
   placeOfDelivery: string
   finalDestination: string
+  /**
+   * AN service mode (e.g. `FCL/FCL - CY/CY`). Synced from Arrival Notice;
+   * not edited on DO.
+   */
   serviceMode: string
   cfsTerminal: string
   note: string
   marks: string
+  /**
+   * Shipment-level goods description mirrored from Arrival Notice (aligned
+   * with Bill of Lading). Synced from AN; not edited on DO. Also feeds the
+   * first cargo row's description cell (see `anContainersToCargoRows`).
+   */
+  descriptionOfGoods: string
   volume: string
   customerAttention: string
+  /** Canonical multi-container rows (shared with Arrival Notice / BL). */
+  containers: AnContainer[]
+  /** Legacy row shape; derived from `containers` for PDF rendering. */
   cargoRows: CargoRow[]
 }
+
+/** Sparse map of container type → qty (> 0 only). See cargoVolumeModel. */
+export type BookingCargoVolumes = Partial<
+  Record<
+    | "45'RF"
+    | "20'DC"
+    | "40'DC"
+    | "20'RF"
+    | "40'RF"
+    | "20'FR"
+    | "40'FR"
+    | "40'HC"
+    | "45'HC"
+    | "40'HQ",
+    number
+  >
+>
 
 export interface BookingConfirmationPayload {
   date: string
@@ -100,7 +151,10 @@ export interface BookingConfirmationPayload {
   vgmCutoff: string
   contact: string
   commodity: string
+  /** Derived multiline display / PDF / prefill string (e.g. `3 x 20'DC`). */
   volume: string
+  /** Structured cargo volumes; only types with qty > 0 are stored. */
+  cargoVolumes: BookingCargoVolumes
   grossWeight: string
   measurement: string
   transitPort: string
@@ -124,11 +178,28 @@ export interface BillOfLadingPayload {
   portOfLoading: string
   portOfDischarge: string
   placeOfDelivery: string
-  marksAndNumbers: string
+  /**
+   * AN service mode (e.g. `FCL/FCL - CY/CY`) — PDF marks column first line.
+   * Synced from Arrival Notice; not edited on BL.
+   */
+  serviceMode: string
+  /**
+   * Editable shipping mark printed in the BL marks column beside
+   * descriptionOfGoods. BL-owned (not continuously synced from AN).
+   * Empty prints blank — never auto-injected as "N/M".
+   */
+  shippingMark: string
   numberAndKindOfPackages: string
+  /**
+   * PDF overlay free-text description. Persisted shipment-level field
+   * (aligned with Arrival Notice); GW / measurement still derive from
+   * `containers` when structured rows are present.
+   */
   descriptionOfGoods: string
   grossWeight: string
   measurement: string
+  /** Canonical multi-container rows (shared with Arrival Notice). */
+  containers: AnContainer[]
   freightTerms: string
   cleanOnBoard: string
   declarationOfInterest: string

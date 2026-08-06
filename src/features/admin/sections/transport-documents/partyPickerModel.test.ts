@@ -2,6 +2,8 @@ import { describe, expect, it } from 'vitest'
 import type { PartnerOption } from '../partner-management/partnerManagementService'
 import {
   formatPartyDocumentValue,
+  formatPartyFieldValue,
+  formatPartyNameValue,
   getNextPartyOptionPage,
   mergePartyOptionPages,
 } from './partyPickerModel'
@@ -22,6 +24,12 @@ describe('Party picker model', () => {
     expect(formatPartyDocumentValue(option(1, 'APEX'))).toBe(
       'APEX\n1 Main Street, Tokyo, Japan\nTEL: +81 1  FAX: +81 2'
     )
+  })
+
+  it('formats name-only values for Booking Client', () => {
+    expect(formatPartyNameValue(option(1, 'APEX'))).toBe('APEX')
+    expect(formatPartyFieldValue(option(1, 'APEX'), 'name')).toBe('APEX')
+    expect(formatPartyFieldValue(option(1, 'APEX'), 'full')).toContain('TEL:')
   })
 
   it('deduplicates Party rows across ten-row pages', () => {

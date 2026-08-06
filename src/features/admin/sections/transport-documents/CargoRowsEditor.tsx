@@ -23,8 +23,8 @@ export function CargoRowsEditor({ rows, onChange }: CargoRowsEditorProps) {
     <section className='space-y-3 border-t border-border/60 pt-5'>
       <div className='flex flex-wrap items-center justify-between gap-3'>
         <div>
-          <h2 className='text-sm font-semibold'>Cargo / container rows</h2>
-          <p className='text-xs text-muted-foreground'>
+          <h2 className='text-base font-semibold'>Cargo / container rows</h2>
+          <p className='text-sm text-muted-foreground'>
             Up to 20 rows. Values print exactly as entered.
           </p>
         </div>
@@ -40,7 +40,7 @@ export function CargoRowsEditor({ rows, onChange }: CargoRowsEditorProps) {
       </div>
       <div className='overflow-x-auto rounded-md border border-border/70'>
         <div className='min-w-[920px]'>
-          <div className='grid grid-cols-[1.25fr_.7fr_1.5fr_.85fr_.85fr_2.5rem] gap-px bg-border text-[0.68rem] font-semibold tracking-wide text-muted-foreground uppercase'>
+          <div className='grid grid-cols-[1.25fr_.7fr_1.5fr_.85fr_.85fr_2.5rem] gap-px bg-border text-xs font-medium tracking-wide text-muted-foreground uppercase'>
             {[...CARGO_ROW_COLUMNS.map((column) => column.label), ''].map(
               (label) => (
                 <div

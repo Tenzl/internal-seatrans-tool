@@ -1,12 +1,16 @@
 import { describe, expect, it } from 'vitest'
 import {
+  AN_CONTAINER_COLUMNS,
   CARGO_ROW_COLUMNS,
+  resolveSelectFieldOptions,
+  SERVICE_MODE_OPTIONS,
   TRANSPORT_DOCUMENT_FORM_SECTIONS,
   TRANSPORT_DOCUMENTS,
 } from './transportDocumentFormConfig'
 import {
   buildTransportDocumentFileName,
   getTransportDocumentCargoRows,
+  getTransportDocumentContainers,
 } from './transportDocumentFormRules'
 import { createEmptyTransportDocuments } from './transportDocumentSchemas'
 
@@ -26,7 +30,7 @@ const fieldSpec = (type: 'an' | 'booking' | 'do' | 'bl', key: string) =>
     .find((field) => field.key === key)
 
 describe('transport document form config', () => {
-  it('lists Booking and AN before the two final document types', () => {
+  it('lists Booking and Arrival Notice before the two final document types', () => {
     expect(TRANSPORT_DOCUMENTS.map((document) => document.type)).toEqual([
       'booking',
       'an',
@@ -35,6 +39,9 @@ describe('transport document form config', () => {
     ])
     expect(TRANSPORT_DOCUMENTS[0]?.label).toBe('Booking')
     expect(TRANSPORT_DOCUMENTS[0]?.shortLabel).toBe('Booking')
+    expect(TRANSPORT_DOCUMENTS[1]?.shortLabel).toBe('Arrival Notice')
+    expect(TRANSPORT_DOCUMENTS[2]?.shortLabel).toBe('Bill of Lading')
+    expect(TRANSPORT_DOCUMENTS[3]?.shortLabel).toBe('Delivery Order')
   })
 
   it('keeps the official field order for every document', () => {
@@ -59,7 +66,6 @@ describe('transport document form config', () => {
       'siCutoff',
       'vgmCutoff',
       'commodity',
-      'volume',
       'grossWeight',
       'measurement',
       'specialRemark',
@@ -68,7 +74,6 @@ describe('transport document form config', () => {
     ])
     expect(fieldOrder('bl')).toEqual([
       'fblNumber',
-      'blFormVariant',
       'placeOfIssue',
       'dateOfIssue',
       'numberOfOriginals',
@@ -81,11 +86,9 @@ describe('transport document form config', () => {
       'placeOfDelivery',
       'oceanVessel',
       'voyageNumber',
-      'marksAndNumbers',
-      'numberAndKindOfPackages',
+      'serviceMode',
+      'shippingMark',
       'descriptionOfGoods',
-      'grossWeight',
-      'measurement',
       'freightTerms',
       'cleanOnBoard',
       'freightAmount',
@@ -98,10 +101,10 @@ describe('transport document form config', () => {
     expect(fieldOrder('an')).toEqual([
       'anNumber',
       'date',
-      'agent',
       'shipper',
       'consignee',
       'notifyParty',
+      'agent',
       'mblNumber',
       'hblNumber',
       'shipmentNumber',
@@ -113,11 +116,12 @@ describe('transport document form config', () => {
       'placeOfDelivery',
       'finalDestination',
       'vesselVoyage',
-      'etdEta',
+      'etd',
+      'eta',
       'serviceMode',
       'cfsTerminal',
+      'descriptionOfGoods',
       'marks',
-      'volume',
       'note',
       'customerAttention',
     ])
@@ -140,10 +144,85 @@ describe('transport document form config', () => {
       'eta',
       'serviceMode',
       'cfsTerminal',
+      'descriptionOfGoods',
       'marks',
-      'volume',
-      'note',
       'customerAttention',
+      'note',
+    ])
+  })
+
+  it('uses the Booking date picker for AN and DO ETD/ETA fields', () => {
+    expect(fieldKind('booking', 'etd')).toBe('date')
+    expect(fieldKind('booking', 'eta')).toBe('date')
+    expect(fieldKind('an', 'etd')).toBe('date')
+    expect(fieldKind('an', 'eta')).toBe('date')
+    expect(fieldKind('do', 'etd')).toBe('date')
+    expect(fieldKind('do', 'eta')).toBe('date')
+    expect(fieldOrder('an')).not.toContain('etdEta')
+  })
+
+  it('omits free-text Volume from AN and DO Cargo (derived from containers)', () => {
+    expect(fieldOrder('an')).not.toContain('volume')
+    expect(fieldOrder('do')).not.toContain('volume')
+  })
+
+  it('pairs AN descriptionOfGoods with marks, and DO marks with customerAttention', () => {
+    expect(fieldSpec('an', 'descriptionOfGoods')?.span).toBeUndefined()
+    expect(fieldSpec('an', 'marks')?.span).toBeUndefined()
+    expect(fieldSpec('an', 'note')?.span).toBe(2)
+    expect(fieldSpec('an', 'customerAttention')?.span).toBe(2)
+
+    expect(fieldSpec('do', 'descriptionOfGoods')?.span).toBe(2)
+    expect(fieldSpec('do', 'marks')?.span).toBeUndefined()
+    expect(fieldSpec('do', 'customerAttention')?.span).toBeUndefined()
+    expect(fieldSpec('do', 'note')?.span).toBe(2)
+    expect(
+      TRANSPORT_DOCUMENT_FORM_SECTIONS.do
+        .find((section) => section.title === 'Cargo')
+        ?.fields.map((field) => field.key)
+    ).toEqual([
+      'descriptionOfGoods',
+      'marks',
+      'customerAttention',
+      'note',
+    ])
+  })
+
+  it('exposes editable Shipping mark on BL Cargo; packages stay omitted', () => {
+    expect(fieldOrder('bl')).toContain('shippingMark')
+    expect(fieldOrder('bl')).not.toContain('marksAndNumbers')
+    expect(fieldOrder('bl')).not.toContain('numberAndKindOfPackages')
+    const cargoFields =
+      TRANSPORT_DOCUMENT_FORM_SECTIONS.bl.find(
+        (section) => section.title === 'Cargo'
+      )?.fields ?? []
+    expect(cargoFields.map((field) => field.key)).toEqual([
+      'serviceMode',
+      'shippingMark',
+      'descriptionOfGoods',
+    ])
+    expect(fieldSpec('bl', 'shippingMark')?.label).toBe('Shipping mark')
+    expect(fieldSpec('bl', 'shippingMark')?.kind).toBe('textarea')
+    expect(fieldSpec('bl', 'shippingMark')?.syncedFromAn).toBeUndefined()
+  })
+
+  it('keeps Booking Volume as CargoVolumeEditor (no free-text volume field)', () => {
+    expect(
+      TRANSPORT_DOCUMENT_FORM_SECTIONS.booking.map((section) => section.title)
+    ).toContain('Cargo')
+    expect(
+      TRANSPORT_DOCUMENT_FORM_SECTIONS.booking.map((section) => section.title)
+    ).not.toContain('Cargo volume')
+    expect(fieldOrder('booking')).not.toContain('volume')
+    const cargoFields =
+      TRANSPORT_DOCUMENT_FORM_SECTIONS.booking.find(
+        (section) => section.title === 'Cargo'
+      )?.fields ?? []
+    expect(cargoFields.map((field) => field.key)).toEqual([
+      'commodity',
+      'grossWeight',
+      'measurement',
+      'specialRemark',
     ])
   })
 
@@ -155,6 +234,33 @@ describe('transport document form config', () => {
       'grossWeight',
       'measurement',
     ])
+  })
+
+  it('keeps AN container columns in the slim Actual Container order', () => {
+    expect(AN_CONTAINER_COLUMNS.map((column) => column.key)).toEqual([
+      'type',
+      'containerNo',
+      'sealNo',
+      'grossWeight',
+      'measurement',
+      'tare',
+      'noOfPkgs',
+      'packageType',
+      'note',
+      'method',
+    ])
+    expect(
+      AN_CONTAINER_COLUMNS.find((column) => column.key === 'grossWeight')?.label
+    ).toBe('Gross Weight (KGS)')
+    expect(
+      AN_CONTAINER_COLUMNS.find((column) => column.key === 'measurement')?.label
+    ).toBe('Measurement (CBM)')
+    expect(
+      AN_CONTAINER_COLUMNS.find((column) => column.key === 'noOfPkgs')?.label
+    ).toBe('No of Pkgs')
+    expect(
+      AN_CONTAINER_COLUMNS.find((column) => column.key === 'packageType')?.label
+    ).toBe('Package type')
   })
 
   it('uses paginated port search for every port and place field', () => {
@@ -206,12 +312,14 @@ describe('transport document form config', () => {
       kind: 'party',
       partyIdKey: 'clientPartyId',
       additionType: 'CUSTOMER',
+      partyValueMode: 'name',
     })
     expect(fieldSpec('an', 'agent')).toMatchObject({
       kind: 'party',
       partyIdKey: 'agentPartyId',
       customerType: 'AGENT',
     })
+    expect(fieldSpec('an', 'agent').partyValueMode).toBeUndefined()
     expect(fieldSpec('an', 'shipper')).toMatchObject({
       kind: 'party',
       partyIdKey: 'shipperPartyId',
@@ -259,20 +367,84 @@ describe('transport document form config', () => {
     forms.an.anNumber = ' AN 25/01 '
     forms.booking.bookingNumber = 'BK_100'
 
-    expect(buildTransportDocumentFileName('an', forms, 'AN')).toBe(
-      'AN-AN-25-01.pdf'
-    )
+    expect(
+      buildTransportDocumentFileName('an', forms, 'Arrival Notice')
+    ).toBe('Arrival-Notice-AN-25-01.pdf')
     expect(buildTransportDocumentFileName('booking', forms, 'Booking')).toBe(
       'Booking-BK_100.pdf'
     )
-    expect(buildTransportDocumentFileName('do', forms, 'DO')).toBe('DO.pdf')
+    expect(
+      buildTransportDocumentFileName('do', forms, 'Delivery Order')
+    ).toBe('Delivery-Order.pdf')
   })
 
-  it('only exposes cargo rows for AN and DO forms', () => {
+  it('renders Service Mode as a select with the six canonical options on AN, DO, and read-only on BL', () => {
+    expect(fieldSpec('an', 'serviceMode')).toMatchObject({
+      kind: 'select',
+      options: SERVICE_MODE_OPTIONS,
+    })
+    expect(fieldSpec('do', 'serviceMode')).toMatchObject({
+      kind: 'select',
+      options: SERVICE_MODE_OPTIONS,
+    })
+    expect(fieldSpec('bl', 'serviceMode')).toMatchObject({
+      kind: 'select',
+      options: SERVICE_MODE_OPTIONS,
+    })
+    expect(SERVICE_MODE_OPTIONS.map((option) => option.value)).toEqual([
+      'LCL/LCL - CFS/DOOR',
+      'FCL/FCL - CY/DOOR',
+      'FCL/FCL - CY/CY',
+      'FCL/LCL - CY/CFS',
+      'LCL/FCL - CFS/CY',
+      'LCL/LCL - CFS/CFS',
+    ])
+  })
+
+  it('marks Service Mode and Description of goods read-only (synced from AN) on BL and DO only', () => {
+    expect(fieldSpec('an', 'serviceMode')?.syncedFromAn).toBeUndefined()
+    expect(fieldSpec('do', 'serviceMode')?.syncedFromAn).toBe(true)
+    expect(fieldSpec('bl', 'serviceMode')?.syncedFromAn).toBe(true)
+    expect(fieldSpec('an', 'descriptionOfGoods')?.syncedFromAn).toBeUndefined()
+    expect(fieldSpec('do', 'descriptionOfGoods')?.syncedFromAn).toBe(true)
+    expect(fieldSpec('bl', 'descriptionOfGoods')?.syncedFromAn).toBe(true)
+  })
+
+  it('exposes containers for AN, BL and DO; legacy cargo rows are unused', () => {
     const forms = createEmptyTransportDocuments()
 
-    expect(getTransportDocumentCargoRows('an', forms)).toBe(forms.an.cargoRows)
-    expect(getTransportDocumentCargoRows('do', forms)).toBe(forms.do.cargoRows)
+    expect(getTransportDocumentCargoRows('an', forms)).toBeNull()
+    expect(getTransportDocumentContainers('an', forms)).toBe(
+      forms.an.containers
+    )
+    expect(getTransportDocumentContainers('bl', forms)).toBe(
+      forms.bl.containers
+    )
+    expect(getTransportDocumentCargoRows('do', forms)).toBeNull()
+    expect(getTransportDocumentContainers('do', forms)).toBe(
+      forms.do.containers
+    )
     expect(getTransportDocumentCargoRows('booking', forms)).toBeNull()
+    expect(getTransportDocumentCargoRows('bl', forms)).toBeNull()
+  })
+
+  describe('resolveSelectFieldOptions', () => {
+    it('returns the original options when the value is empty or already listed', () => {
+      expect(resolveSelectFieldOptions(SERVICE_MODE_OPTIONS, '')).toBe(
+        SERVICE_MODE_OPTIONS
+      )
+      expect(
+        resolveSelectFieldOptions(SERVICE_MODE_OPTIONS, 'FCL/FCL - CY/CY')
+      ).toBe(SERVICE_MODE_OPTIONS)
+    })
+
+    it('prepends an unrecognized legacy value as a selectable option', () => {
+      expect(
+        resolveSelectFieldOptions(SERVICE_MODE_OPTIONS, 'LEGACY MODE')
+      ).toEqual([
+        { value: 'LEGACY MODE', label: 'LEGACY MODE' },
+        ...SERVICE_MODE_OPTIONS,
+      ])
+    })
   })
 })
