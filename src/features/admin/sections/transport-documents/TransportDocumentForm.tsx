@@ -26,7 +26,6 @@ import type {
 } from './transportDocument.types'
 import {
   BL_FORM_VARIANT_OPTIONS,
-  getTransportDocumentDefinition,
   TRANSPORT_DOCUMENT_FORM_SECTIONS,
   type TransportDocumentFieldSpec,
 } from './transportDocumentFormConfig'
@@ -77,7 +76,6 @@ export function TransportDocumentForm({
   resetLabel,
   submitDisabled = false,
 }: TransportDocumentFormProps) {
-  const document = getTransportDocumentDefinition(documentType)
   const notifySameAsConsignee =
     documentType === 'an' && values.notifyPartySameAsConsignee === true
   const blFormVariant =
