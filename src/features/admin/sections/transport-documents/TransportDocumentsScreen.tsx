@@ -142,17 +142,17 @@ export function TransportDocumentsScreen({
     payloadSnapshot(createEmptyTransportDocuments()[documentType])
   )
   const [trackedRecordId, setTrackedRecordId] = useState(validRecordId)
+  const [blCargoSyncKey, setBlCargoSyncKey] = useState<string | null>(null)
+  const [doCargoSyncKey, setDoCargoSyncKey] = useState<string | null>(null)
   const autoPreviewDone = useRef(false)
   const autoWorkflowPrefillKey = useRef<string | null>(null)
-  const blCargoSyncKey = useRef<string | null>(null)
-  const doCargoSyncKey = useRef<string | null>(null)
   const isDirtyRef = useRef(false)
 
   // Adjust session state when URL recordId changes (avoid setState-in-effect).
   if (trackedRecordId !== validRecordId) {
     setTrackedRecordId(validRecordId)
-    blCargoSyncKey.current = null
-    doCargoSyncKey.current = null
+    setBlCargoSyncKey(null)
+    setDoCargoSyncKey(null)
     if (validRecordId == null) {
       setActiveRecordId(null)
       setStatus(null)
@@ -163,6 +163,71 @@ export function TransportDocumentsScreen({
       )
     } else {
       setIsHydrating(true)
+    }
+  }
+
+  /**
+   * Refresh BL/DO cargo from linked AN during render (not an effect) so load
+   * alone does not mark the form dirty — existing records also patch
+   * savedSnapshot cargo in the same update.
+   */
+  if (
+    (documentType === 'bl' || documentType === 'do') &&
+    !isHydrating &&
+    !(validRecordId != null && activeRecordId == null)
+  ) {
+    const anSource = getWorkflowRecord(workflow, 'an')
+    if (anSource) {
+      const key = `${validBookingId ?? 'x'}:${activeRecordId ?? 'new'}:${anSource.id}:${anSource.updatedAt}`
+      const currentKey =
+        documentType === 'bl' ? blCargoSyncKey : doCargoSyncKey
+      if (currentKey !== key) {
+        if (documentType === 'bl') {
+          setBlCargoSyncKey(key)
+          const an = normalizeArrivalNoticePayload(anSource.payload)
+          setForms((previous) => {
+            const synced = syncBillOfLadingCargoFromArrivalNotice(
+              an,
+              previous.bl as BillOfLadingPayload
+            )
+            return { ...previous, bl: synced } as TransportDocumentPayloadMap
+          })
+          if (activeRecordId != null) {
+            setSavedSnapshot((previous) => {
+              try {
+                const saved = JSON.parse(previous) as BillOfLadingPayload
+                return payloadSnapshot(
+                  syncBillOfLadingCargoFromArrivalNotice(an, saved)
+                )
+              } catch {
+                return previous
+              }
+            })
+          }
+        } else {
+          setDoCargoSyncKey(key)
+          const an = normalizeArrivalNoticePayload(anSource.payload)
+          setForms((previous) => {
+            const synced = syncDeliveryOrderCargoFromArrivalNotice(
+              an,
+              previous.do as DeliveryOrderPayload
+            )
+            return { ...previous, do: synced } as TransportDocumentPayloadMap
+          })
+          if (activeRecordId != null) {
+            setSavedSnapshot((previous) => {
+              try {
+                const saved = JSON.parse(previous) as DeliveryOrderPayload
+                return payloadSnapshot(
+                  syncDeliveryOrderCargoFromArrivalNotice(an, saved)
+                )
+              } catch {
+                return previous
+              }
+            })
+          }
+        }
+      }
     }
   }
 
@@ -754,90 +819,6 @@ export function TransportDocumentsScreen({
     applyWorkflowPrefill,
     documentType,
     prefillSourceType,
-    validBookingId,
-    validRecordId,
-    workflow,
-  ])
-
-  /**
-   * On BL open/create: refresh cargo from linked AN so the form never shows
-   * stale stored cargo. Existing records also refresh savedSnapshot cargo so
-   * load alone does not mark the form dirty.
-   */
-  useEffect(() => {
-    if (documentType !== 'bl' || isHydrating) return
-    if (validRecordId != null && activeRecordId == null) return
-    const anSource = getWorkflowRecord(workflow, 'an')
-    if (!anSource) return
-    const key = `${validBookingId ?? 'x'}:${activeRecordId ?? 'new'}:${anSource.id}:${anSource.updatedAt}`
-    if (blCargoSyncKey.current === key) return
-    blCargoSyncKey.current = key
-    const an = normalizeArrivalNoticePayload(anSource.payload)
-    setForms((previous) => {
-      const synced = syncBillOfLadingCargoFromArrivalNotice(
-        an,
-        previous.bl as BillOfLadingPayload
-      )
-      return { ...previous, bl: synced } as TransportDocumentPayloadMap
-    })
-    if (activeRecordId != null) {
-      setSavedSnapshot((previous) => {
-        try {
-          const saved = JSON.parse(previous) as BillOfLadingPayload
-          return payloadSnapshot(
-            syncBillOfLadingCargoFromArrivalNotice(an, saved)
-          )
-        } catch {
-          return previous
-        }
-      })
-    }
-  }, [
-    activeRecordId,
-    documentType,
-    isHydrating,
-    validBookingId,
-    validRecordId,
-    workflow,
-  ])
-
-  /**
-   * On DO open/create: refresh cargo from linked AN so the form never shows
-   * stale stored cargo. Existing records also refresh savedSnapshot cargo so
-   * load alone does not mark the form dirty.
-   */
-  useEffect(() => {
-    if (documentType !== 'do' || isHydrating) return
-    if (validRecordId != null && activeRecordId == null) return
-    const anSource = getWorkflowRecord(workflow, 'an')
-    if (!anSource) return
-    const key = `${validBookingId ?? 'x'}:${activeRecordId ?? 'new'}:${anSource.id}:${anSource.updatedAt}`
-    if (doCargoSyncKey.current === key) return
-    doCargoSyncKey.current = key
-    const an = normalizeArrivalNoticePayload(anSource.payload)
-    setForms((previous) => {
-      const synced = syncDeliveryOrderCargoFromArrivalNotice(
-        an,
-        previous.do as DeliveryOrderPayload
-      )
-      return { ...previous, do: synced } as TransportDocumentPayloadMap
-    })
-    if (activeRecordId != null) {
-      setSavedSnapshot((previous) => {
-        try {
-          const saved = JSON.parse(previous) as DeliveryOrderPayload
-          return payloadSnapshot(
-            syncDeliveryOrderCargoFromArrivalNotice(an, saved)
-          )
-        } catch {
-          return previous
-        }
-      })
-    }
-  }, [
-    activeRecordId,
-    documentType,
-    isHydrating,
     validBookingId,
     validRecordId,
     workflow,

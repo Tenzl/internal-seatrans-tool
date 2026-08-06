@@ -37,7 +37,7 @@ export function buildTransportDocumentFileName(
 /** Legacy cargo table rows. AN/BL/DO all use containers now. */
 export function getTransportDocumentCargoRows(
   type: TransportDocumentType,
-  forms: TransportDocumentPayloadMap
+  _forms: TransportDocumentPayloadMap
 ): CargoRow[] | null {
   switch (type) {
     case 'an':
