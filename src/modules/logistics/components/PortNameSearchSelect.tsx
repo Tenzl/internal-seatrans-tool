@@ -38,7 +38,7 @@ export function PortNameSearchSelect({
   id,
   value,
   onValueChange,
-  placeholder = 'Search port name...',
+  placeholder = 'Search port name or code...',
   disabled = false,
 }: PortNameSearchSelectProps) {
   const [open, setOpen] = React.useState(false)
@@ -110,7 +110,7 @@ export function PortNameSearchSelect({
       >
         <Command shouldFilter={false}>
           <CommandInput
-            placeholder='Type a port name...'
+            placeholder='Type a port name or code...'
             value={search}
             onValueChange={setSearch}
           />

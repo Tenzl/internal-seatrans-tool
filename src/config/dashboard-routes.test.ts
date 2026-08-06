@@ -11,6 +11,7 @@ import {
   canAccessAuthenticatedPath,
   canAccessPath,
   firstAccessibleDashboardPath,
+  resolvePostLoginPath,
   SECTION_CATALOG,
 } from './section-catalog'
 
@@ -64,8 +65,23 @@ describe('dashboard route policy', () => {
         role: 'ROLE_OPERATOR',
         sections: [],
       })
-    ).toBe('/settings')
+    ).toBeNull()
     expect(firstAccessibleDashboardPath(null)).toBeNull()
+  })
+
+  it('resolves post-login navigation without defaulting to settings', () => {
+    expect(
+      resolvePostLoginPath({ role: 'ROLE_OPERATOR', sections: ['epda-create'] })
+    ).toBe(CANONICAL_CREATE_EPDA_PATH)
+    expect(
+      resolvePostLoginPath({ role: 'ROLE_OPERATOR', sections: [] })
+    ).toBe('/')
+    expect(
+      resolvePostLoginPath(
+        { role: 'ROLE_OPERATOR', sections: [] },
+        '/data/ports'
+      )
+    ).toBe('/data/ports')
   })
 
   it('maps transport documents to its own role section', () => {

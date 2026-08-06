@@ -245,9 +245,19 @@ export function anContainersToCargoRows(
     ]
       .filter(Boolean)
       .join('\n'),
-    grossWeight: container.grossWeight,
-    measurement: container.measurement,
+    grossWeight: withCargoUnit(container.grossWeight, 'KGS'),
+    measurement: withCargoUnit(container.measurement, 'CBM'),
   }))
+}
+
+function withCargoUnit(value: string, unit: string): string {
+  const trimmed = value.trim()
+  if (!trimmed) return ''
+  const unitRe = new RegExp(`\\b${unit}\\b`, 'i')
+  if (unitRe.test(trimmed)) {
+    return trimmed.replace(unitRe, unit)
+  }
+  return `${trimmed} ${unit}`
 }
 
 /**

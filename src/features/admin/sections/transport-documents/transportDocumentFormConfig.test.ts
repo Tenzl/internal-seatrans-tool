@@ -70,7 +70,6 @@ describe('transport document form config', () => {
       'measurement',
       'specialRemark',
       'contact',
-      'pic',
     ])
     expect(fieldOrder('bl')).toEqual([
       'fblNumber',

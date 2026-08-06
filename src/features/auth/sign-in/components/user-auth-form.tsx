@@ -3,6 +3,7 @@ import { z } from 'zod'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useQueryClient } from '@tanstack/react-query'
+import { resolvePostLoginPath } from '@/config/section-catalog'
 import { authService } from '@/modules/auth/services/authService'
 import { cacheAuthSession } from '@/modules/auth/services/authSession'
 import { Loader2, LogIn } from 'lucide-react'
@@ -63,8 +64,17 @@ export function UserAuthForm({
       const u = res.data.user
       cacheAuthSession(queryClient, u)
 
-      toast.success(`Welcome back, ${u.email ?? data.identifier}!`)
-      navigate({ to: redirectTo || '/epda/create-epda', replace: true })
+      const me = await authService.getCurrentUser()
+      const sessionUser = me.success && me.data ? me.data : u
+      if (me.success && me.data) {
+        cacheAuthSession(queryClient, me.data)
+      }
+
+      toast.success(`Welcome back, ${sessionUser.email ?? data.identifier}!`)
+      navigate({
+        to: resolvePostLoginPath(sessionUser, redirectTo),
+        replace: true,
+      })
     } catch (err) {
       toast.error(err instanceof Error ? err.message : 'Login failed')
     } finally {

@@ -33,6 +33,8 @@ describe('partner form model', () => {
       additionTypes: [],
       paymentDueDays: 30,
       customerId: undefined,
+      approveStatus: undefined,
+      approveBy: undefined,
     })
   })
 

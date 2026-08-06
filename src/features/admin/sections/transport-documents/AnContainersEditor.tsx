@@ -142,35 +142,39 @@ export function AnContainersEditor({
                 {AN_CONTAINER_COLUMNS.map((column) => {
                   if (column.key === 'type') {
                     return (
-                      <Select
+                      <div
                         key={column.key}
-                        value={row.type || TYPE_EMPTY_VALUE}
-                        disabled={readOnly}
-                        onValueChange={(next) =>
-                          updateRow(
-                            index,
-                            'type',
-                            next === TYPE_EMPTY_VALUE ? '' : next
-                          )
-                        }
+                        className='bg-background'
                       >
-                        <SelectTrigger
-                          aria-label={`Type, container row ${index + 1}`}
-                          className={typeSelectTriggerClassName}
+                        <Select
+                          value={row.type || TYPE_EMPTY_VALUE}
+                          disabled={readOnly}
+                          onValueChange={(next) =>
+                            updateRow(
+                              index,
+                              'type',
+                              next === TYPE_EMPTY_VALUE ? '' : next
+                            )
+                          }
                         >
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {AN_CONTAINER_TYPE_OPTIONS.map((option) => (
-                            <SelectItem
-                              key={option.value || 'empty'}
-                              value={option.value || TYPE_EMPTY_VALUE}
-                            >
-                              {option.label}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
+                          <SelectTrigger
+                            aria-label={`Type, container row ${index + 1}`}
+                            className={typeSelectTriggerClassName}
+                          >
+                            <SelectValue placeholder='—' />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {AN_CONTAINER_TYPE_OPTIONS.map((option) => (
+                              <SelectItem
+                                key={option.value || 'empty'}
+                                value={option.value || TYPE_EMPTY_VALUE}
+                              >
+                                {option.label}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
                     )
                   }
 

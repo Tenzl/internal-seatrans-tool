@@ -41,6 +41,7 @@ import type {
   AnContainer,
   ArrivalNoticePayload,
   BillOfLadingPayload,
+  BookingConfirmationPayload,
   CargoRow,
   DeliveryOrderPayload,
   BookingFlow,
@@ -58,6 +59,8 @@ import {
 import {
   applyPrefillFromPrevious,
   getPrefillSourceType,
+  mapArrivalNoticeCargoFromBooking,
+  prefillArrivalNoticeHeaderFromBooking,
   syncBillOfLadingCargoFromArrivalNotice,
   syncDeliveryOrderCargoFromArrivalNotice,
 } from './transportDocumentPrefill'
@@ -70,6 +73,7 @@ import {
   parseTransportDocument,
 } from './transportDocumentSchemas'
 import { transportDocumentService } from './transportDocumentService'
+import { resolveBookingPic } from './bookingPic'
 
 interface TransportDocumentsScreenProps {
   documentType: TransportDocumentType
@@ -138,6 +142,9 @@ export function TransportDocumentsScreen({
   const [isUnlocking, setIsUnlocking] = useState(false)
   const [leaveDialogOpen, setLeaveDialogOpen] = useState(false)
   const [pendingHref, setPendingHref] = useState<string | null>(null)
+  const [recordCreator, setRecordCreator] = useState<
+    TransportDocumentRecord['createdBy']
+  >(null)
   const [savedSnapshot, setSavedSnapshot] = useState(() =>
     payloadSnapshot(createEmptyTransportDocuments()[documentType])
   )
@@ -157,6 +164,7 @@ export function TransportDocumentsScreen({
       setActiveRecordId(null)
       setStatus(null)
       setLockedAt(null)
+      setRecordCreator(null)
       setIsHydrating(false)
       setSavedSnapshot(
         payloadSnapshot(createEmptyTransportDocuments()[documentType])
@@ -312,6 +320,7 @@ export function TransportDocumentsScreen({
       setActiveRecordId(record.id)
       setStatus(record.status)
       setLockedAt(record.lockedAt)
+      setRecordCreator(record.createdBy ?? null)
       setSavedSnapshot(payloadSnapshot(payload))
     },
     [documentType, router, validBookingId]
@@ -345,19 +354,83 @@ export function TransportDocumentsScreen({
     [documentType, getWorkflowArrivalNotice]
   )
 
-  const validatePayload = useCallback(() => {
-    try {
-      const synced = withCargoFromAn(activePayload)
-      return parseTransportDocument(documentType, synced)
-    } catch (error) {
-      const message =
-        error instanceof z.ZodError
-          ? (error.issues[0]?.message ?? 'Please review the form values')
-          : 'Please review the form values'
-      toast.error(message)
-      return null
-    }
-  }, [activePayload, documentType, withCargoFromAn])
+  const withBookingPic = useCallback(
+    (
+      payload: TransportDocumentPayloadMap[typeof documentType]
+    ): TransportDocumentPayloadMap[typeof documentType] => {
+      if (documentType !== 'booking') return payload
+      const bookingPayload = payload as BookingConfirmationPayload
+      const creator =
+        recordCreator ??
+        (currentUser
+          ? {
+              id: currentUser.id,
+              fullName: currentUser.fullName,
+              email: currentUser.email,
+            }
+          : null)
+      return {
+        ...bookingPayload,
+        pic: resolveBookingPic(creator, bookingPayload.pic),
+      } as TransportDocumentPayloadMap[typeof documentType]
+    },
+    [currentUser, documentType, recordCreator]
+  )
+
+  const resolvePayloadForPersist = useCallback(
+    (options?: { mapAnCargoFromBooking?: boolean }) => {
+      let payload = activePayload
+      if (documentType === 'bl' || documentType === 'do') {
+        payload = withCargoFromAn(payload)
+      }
+      if (documentType === 'booking') {
+        payload = withBookingPic(payload)
+      }
+      if (
+        options?.mapAnCargoFromBooking &&
+        documentType === 'an' &&
+        activeRecordId == null &&
+        validBookingId != null
+      ) {
+        const bookingRecord = getWorkflowRecord(workflow, 'booking')
+        if (bookingRecord) {
+          payload = mapArrivalNoticeCargoFromBooking(
+            normalizeBookingConfirmationPayload(bookingRecord.payload),
+            payload as ArrivalNoticePayload
+          ) as TransportDocumentPayloadMap[typeof documentType]
+        }
+      }
+      return payload
+    },
+    [
+      activePayload,
+      activeRecordId,
+      documentType,
+      validBookingId,
+      withBookingPic,
+      withCargoFromAn,
+      workflow,
+    ]
+  )
+
+  const validatePayload = useCallback(
+    (options?: { mapAnCargoFromBooking?: boolean }) => {
+      try {
+        return parseTransportDocument(
+          documentType,
+          resolvePayloadForPersist(options)
+        )
+      } catch (error) {
+        const message =
+          error instanceof z.ZodError
+            ? (error.issues[0]?.message ?? 'Please review the form values')
+            : 'Please review the form values'
+        toast.error(message)
+        return null
+      }
+    },
+    [documentType, resolvePayloadForPersist]
+  )
 
   /** After AN save: patch sibling BL cargo so Download BL stays correct. */
   const syncSiblingBlCargoFromAn = useCallback(
@@ -461,12 +534,14 @@ export function TransportDocumentsScreen({
       toast.error('Choose Import or Export before creating the booking')
       return false
     }
-    const validated = validatePayload()
+    const wasNew = activeRecordId == null
+    const validated = validatePayload({
+      mapAnCargoFromBooking: documentType === 'an' && wasNew,
+    })
     if (!validated) return false
 
     setIsSaving(true)
     try {
-      const wasNew = activeRecordId == null
       const record = await persistRecord(validated, 'COMPLETED')
       // applyRecord normalizes payload and sets savedSnapshot to that same
       // value so isDirty clears. Do not markSaved(record.payload): the raw
@@ -779,7 +854,7 @@ export function TransportDocumentsScreen({
     (record: TransportDocumentRecord) => {
       // Create-only path (validRecordId == null). Do not gate on isLocked:
       // a locked booking root used to skip prefill after the effect key was
-      // set, so AN never received cargoVolumes → containers seeding.
+      // set, so AN never received route/schedule seeding.
       if (!prefillSourceType) return
       const sourcePayload =
         prefillSourceType === 'bl'
@@ -790,12 +865,18 @@ export function TransportDocumentsScreen({
               ? normalizeArrivalNoticePayload(record.payload)
               : record.payload
       setForms((previous) => {
-        const next = applyPrefillFromPrevious(
-          documentType,
-          prefillSourceType,
-          sourcePayload as TransportDocumentPayloadMap[typeof prefillSourceType],
-          previous[documentType]
-        )
+        const next =
+          documentType === 'an' && prefillSourceType === 'booking'
+            ? prefillArrivalNoticeHeaderFromBooking(
+                sourcePayload as BookingConfirmationPayload,
+                previous.an as ArrivalNoticePayload
+              )
+            : applyPrefillFromPrevious(
+                documentType,
+                prefillSourceType,
+                sourcePayload as TransportDocumentPayloadMap[typeof prefillSourceType],
+                previous[documentType]
+              )
         return {
           ...previous,
           [documentType]: next,

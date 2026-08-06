@@ -74,6 +74,19 @@ export function firstAccessibleDashboardPath(user: GateUser): string | null {
     }
   }
 
-  // Users without business sections can still manage their own account.
-  return '/settings'
+  // Account settings remain reachable via profile navigation; never use them
+  // as the automatic landing page for `/`.
+  return null
+}
+
+/** Preferred post-login destination (explicit redirect wins, then first module). */
+export function resolvePostLoginPath(
+  user: GateUser,
+  redirectTo?: string | null
+): string {
+  const explicit = redirectTo?.trim()
+  if (explicit && explicit.startsWith('/') && !explicit.startsWith('//')) {
+    return explicit
+  }
+  return firstAccessibleDashboardPath(user) ?? '/'
 }

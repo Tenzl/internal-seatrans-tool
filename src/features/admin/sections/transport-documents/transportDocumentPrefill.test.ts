@@ -2,7 +2,9 @@ import { describe, expect, it } from 'vitest'
 import {
   applyPrefillFromPrevious,
   getPrefillSourceType,
+  mapArrivalNoticeCargoFromBooking,
   prefillArrivalNoticeFromBooking,
+  prefillArrivalNoticeHeaderFromBooking,
   prefillBillOfLadingFromArrivalNotice,
   prefillDeliveryOrderFromAn,
   syncBillOfLadingCargoFromArrivalNotice,
@@ -25,7 +27,7 @@ describe('transportDocumentPrefill', () => {
     expect(getPrefillSourceType('do')).toBe('an')
   })
 
-  it('maps shared Booking route, schedule and seeds typed empty containers', () => {
+  it('maps shared Booking route and schedule without cargo on create', () => {
     const booking = emptyBookingConfirmation()
     booking.bookingNumber = 'BK-101'
     booking.placeOfReceipt = 'QUI NHON'
@@ -39,18 +41,42 @@ describe('transportDocumentPrefill', () => {
     booking.date = '2026-08-05'
     booking.etd = '2026-08-06'
     booking.eta = '2026-08-12'
-    booking.to = 'CLIENT CO\nJAPAN'
-    booking.clientPartyId = 11
     booking.cargoVolumes = { "20'DC": 3, "40'RF": 1 }
     booking.volume = "3 x 20'DC\n1 x 40'RF"
 
-    const next = prefillArrivalNoticeFromBooking(booking, emptyArrivalNotice())
-    expect(next.anNumber).toBe('')
+    const next = prefillArrivalNoticeHeaderFromBooking(
+      booking,
+      emptyArrivalNotice()
+    )
     expect(next.shipmentNumber).toBe('BK-101')
     expect(next.placeOfReceipt).toBe('QUI NHON')
     expect(next.vesselVoyage).toBe('YOUCAN / 001E')
     expect(next.etd).toBe('2026-08-06')
     expect(next.eta).toBe('2026-08-12')
+    expect(next.volume).toBe('')
+    expect(next.descriptionOfGoods).toBe('')
+    expect(next.containers).toHaveLength(1)
+    expect(next.containers[0]?.type).toBe('')
+  })
+
+  it('maps Booking cargo onto AN on first save with typed container rows', () => {
+    const booking = emptyBookingConfirmation()
+    booking.bookingNumber = 'BK-101'
+    booking.placeOfReceipt = 'QUI NHON'
+    booking.portOfLoading = 'DA NANG'
+    booking.portOfDischarge = 'KOBE'
+    booking.placeOfDelivery = 'KOBE'
+    booking.vesselVoyage = 'YOUCAN / 001E'
+    booking.grossWeight = '24000'
+    booking.measurement = '20'
+    booking.commodity = 'STONE'
+    booking.date = '2026-08-05'
+    booking.etd = '2026-08-06'
+    booking.eta = '2026-08-12'
+    booking.cargoVolumes = { "20'DC": 3, "40'RF": 1 }
+    booking.volume = "3 x 20'DC\n1 x 40'RF"
+
+    const next = mapArrivalNoticeCargoFromBooking(booking, emptyArrivalNotice())
     expect(next.volume).toBe("3 x 20'DC\n1 x 40'RF")
     expect(next.containers).toHaveLength(4)
     expect(next.containers.map((row) => row.type)).toEqual([
@@ -69,10 +95,20 @@ describe('transportDocumentPrefill', () => {
     expect(next.containers[1]?.grossWeight).toBe('')
     expect(next.containers[1]?.measurement).toBe('')
     expect(next.containers[1]?.note).toBe('')
-    expect(next.agentPartyId).toBeNull()
-    expect(next.shipperPartyId).toBeNull()
-    expect(next.consigneePartyId).toBeNull()
-    expect(next.notifyPartyId).toBeNull()
+  })
+
+  it('prefillArrivalNoticeFromBooking still applies header + cargo together', () => {
+    const booking = emptyBookingConfirmation()
+    booking.bookingNumber = 'BK-101'
+    booking.cargoVolumes = { "20'DC": 1 }
+    booking.grossWeight = '1000'
+    booking.commodity = 'STONE'
+
+    const next = prefillArrivalNoticeFromBooking(booking, emptyArrivalNotice())
+    expect(next.shipmentNumber).toBe('BK-101')
+    expect(next.containers).toHaveLength(1)
+    expect(next.containers[0]?.type).toBe("20'DC")
+    expect(next.descriptionOfGoods).toBe('STONE')
   })
 
   it('seeds 3 typed rows from 20\'DC: 3 with GW/measurement on first row only', () => {

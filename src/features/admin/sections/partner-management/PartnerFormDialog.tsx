@@ -316,7 +316,14 @@ export function PartnerFormDialog({
             </FieldGrid>
           </FormSection>
 
-          <FormSection step={2} title='Classification & approval'>
+          <FormSection
+            step={2}
+            title={
+              editingId != null
+                ? 'Classification & approval'
+                : 'Classification'
+            }
+          >
             <FieldGrid>
               <Field label='Customer status'>
                 <Select
@@ -361,35 +368,39 @@ export function PartnerFormDialog({
                   </SelectContent>
                 </Select>
               </Field>
-              <Field label='Approve status'>
-                <Select
-                  value={form.approveStatus || 'NONE'}
-                  onValueChange={(value) =>
-                    updateSelect(
-                      'approveStatus',
-                      value as ApproveStatus | 'NONE'
-                    )
-                  }
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder='Select status' />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value='NONE'>None</SelectItem>
-                    {APPROVE_STATUS_OPTIONS.map((status) => (
-                      <SelectItem key={status} value={status}>
-                        {status}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </Field>
-              <TextField
-                form={form}
-                field='approveBy'
-                label='Approve by'
-                onFormChange={onFormChange}
-              />
+              {editingId != null ? (
+                <>
+                  <Field label='Approve status'>
+                    <Select
+                      value={form.approveStatus || 'NONE'}
+                      onValueChange={(value) =>
+                        updateSelect(
+                          'approveStatus',
+                          value as ApproveStatus | 'NONE'
+                        )
+                      }
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder='Select status' />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value='NONE'>None</SelectItem>
+                        {APPROVE_STATUS_OPTIONS.map((status) => (
+                          <SelectItem key={status} value={status}>
+                            {status}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </Field>
+                  <TextField
+                    form={form}
+                    field='approveBy'
+                    label='Approve by'
+                    onFormChange={onFormChange}
+                  />
+                </>
+              ) : null}
             </FieldGrid>
           </FormSection>
 

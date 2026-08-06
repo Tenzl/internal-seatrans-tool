@@ -58,7 +58,15 @@ function applyBookingCargoTotalsToFirstRow(
   rows: AnContainer[],
   source: BookingConfirmationPayload
 ): AnContainer[] {
-  if (rows.length === 0) {
+  let base = rows
+  if (base.length === 0) {
+    const { cargoVolumes } = normalizeBookingCargoVolumes(source)
+    base = seedAnContainersFromVolumes(cargoVolumes)
+  }
+  if (base.length === 0) {
+    if (!source.grossWeight.trim() && !source.measurement.trim()) {
+      return []
+    }
     return [
       {
         ...emptyAnContainer(),
@@ -67,7 +75,7 @@ function applyBookingCargoTotalsToFirstRow(
       },
     ]
   }
-  return rows.map((row, index) =>
+  return base.map((row, index) =>
     index === 0
       ? {
           ...row,
@@ -78,14 +86,11 @@ function applyBookingCargoTotalsToFirstRow(
   )
 }
 
-export function prefillArrivalNoticeFromBooking(
+/** Route, schedule, and refs from Booking — no container table yet. */
+export function prefillArrivalNoticeHeaderFromBooking(
   source: BookingConfirmationPayload,
   current: ArrivalNoticePayload
 ): ArrivalNoticePayload {
-  const { cargoVolumes } = normalizeBookingCargoVolumes(source)
-  const seeded = seedAnContainersFromVolumes(cargoVolumes)
-  const containers = applyBookingCargoTotalsToFirstRow(seeded, source)
-
   return {
     ...current,
     date: source.date,
@@ -99,11 +104,38 @@ export function prefillArrivalNoticeFromBooking(
     portOfDischarge: source.portOfDischarge,
     placeOfDelivery: source.placeOfDelivery,
     finalDestination: source.placeOfDelivery,
-    descriptionOfGoods: source.commodity,
-    // Volume is derived from containers (no free-text Cargo field).
-    volume: anContainersToVolumeText(containers),
-    containers,
   }
+}
+
+/**
+ * Seed AN container rows from Booking cargo volumes on first AN save.
+ * Totals (GW / measurement) stay on row 1; each row keeps its Type.
+ */
+export function mapArrivalNoticeCargoFromBooking(
+  source: BookingConfirmationPayload,
+  current: ArrivalNoticePayload
+): ArrivalNoticePayload {
+  const { cargoVolumes } = normalizeBookingCargoVolumes(source)
+  const seeded = seedAnContainersFromVolumes(cargoVolumes)
+  const containers = applyBookingCargoTotalsToFirstRow(seeded, source)
+
+  return {
+    ...current,
+    descriptionOfGoods: source.commodity,
+    volume: anContainersToVolumeText(containers),
+    containers:
+      containers.length > 0 ? containers : current.containers,
+  }
+}
+
+export function prefillArrivalNoticeFromBooking(
+  source: BookingConfirmationPayload,
+  current: ArrivalNoticePayload
+): ArrivalNoticePayload {
+  return mapArrivalNoticeCargoFromBooking(
+    source,
+    prefillArrivalNoticeHeaderFromBooking(source, current)
+  )
 }
 
 /**

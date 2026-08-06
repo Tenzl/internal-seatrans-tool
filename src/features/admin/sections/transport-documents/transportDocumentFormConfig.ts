@@ -207,10 +207,7 @@ export const TRANSPORT_DOCUMENT_FORM_SECTIONS: Record<
     },
     {
       title: 'Contact',
-      fields: [
-        { key: 'contact', label: 'Contact', kind: 'textarea' },
-        { key: 'pic', label: 'PIC', kind: 'textarea', span: 2 },
-      ],
+      fields: [{ key: 'contact', label: 'Contact', kind: 'textarea', span: 2 }],
     },
   ],
   bl: [
