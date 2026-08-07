@@ -95,7 +95,6 @@ export function buildEpdaLockSnapshotFromAdminInquiry(
             serviceTypeId: 0,
             requiredImageCount: 0,
             cargoType: cargoType as Commodity['cargoType'],
-            isActive: true,
           },
         ] satisfies Commodity[])
       : [],

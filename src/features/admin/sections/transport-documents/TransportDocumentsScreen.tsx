@@ -151,6 +151,7 @@ export function TransportDocumentsScreen({
   const [trackedRecordId, setTrackedRecordId] = useState(validRecordId)
   const [blCargoSyncKey, setBlCargoSyncKey] = useState<string | null>(null)
   const [doCargoSyncKey, setDoCargoSyncKey] = useState<string | null>(null)
+  const [bookingPicSeedApplied, setBookingPicSeedApplied] = useState(false)
   const autoPreviewDone = useRef(false)
   const autoWorkflowPrefillKey = useRef<string | null>(null)
   const isDirtyRef = useRef(false)
@@ -378,35 +379,46 @@ export function TransportDocumentsScreen({
   )
 
   // Seed default PIC from the signed-in user on new booking forms.
-  // Rebase savedSnapshot when still pristine so auto-seed alone is not dirty.
-  useEffect(() => {
-    if (documentType !== 'booking' || !currentUser) return
-    if (activeRecordId != null) return
+  // Adjust during render (not an effect) so lint stays clean and auto-seed
+  // alone does not mark the form dirty.
+  if (
+    bookingPicSeedApplied &&
+    (documentType !== 'booking' || activeRecordId != null || !currentUser)
+  ) {
+    setBookingPicSeedApplied(false)
+  }
+  if (
+    !bookingPicSeedApplied &&
+    documentType === 'booking' &&
+    currentUser &&
+    activeRecordId == null
+  ) {
     const pic = formatBookingPic(currentUser.fullName, currentUser.email)
-    if (!pic) return
+    setBookingPicSeedApplied(true)
+    if (pic) {
+      const emptyBooking = createEmptyTransportDocuments()
+        .booking as BookingConfirmationPayload
+      const emptySnapshot = payloadSnapshot(emptyBooking)
+      const seededSnapshot = payloadSnapshot({ ...emptyBooking, pic })
 
-    const emptyBooking = createEmptyTransportDocuments()
-      .booking as BookingConfirmationPayload
-    const emptySnapshot = payloadSnapshot(emptyBooking)
-    const seededSnapshot = payloadSnapshot({ ...emptyBooking, pic })
+      setForms((previous) => {
+        const booking = previous.booking as BookingConfirmationPayload
+        if (booking.pic?.trim()) return previous
+        return {
+          ...previous,
+          booking: { ...booking, pic },
+        } as TransportDocumentPayloadMap
+      })
 
-    setForms((previous) => {
-      const booking = previous.booking as BookingConfirmationPayload
-      if (booking.pic?.trim()) return previous
-      return {
-        ...previous,
-        booking: { ...booking, pic },
-      } as TransportDocumentPayloadMap
-    })
+      setSavedSnapshot((previous) => {
+        // Only treat empty → empty+default PIC as the new baseline.
+        if (previous !== emptySnapshot) return previous
+        return seededSnapshot
+      })
+    }
+  }
 
-    setSavedSnapshot((previous) => {
-      // Only treat empty → empty+default PIC as the new baseline.
-      if (previous !== emptySnapshot) return previous
-      return seededSnapshot
-    })
-  }, [activeRecordId, currentUser, documentType])
-
-    const resolvePayloadForPersist = useCallback(
+  const resolvePayloadForPersist = useCallback(
     (options?: { mapAnCargoFromBooking?: boolean }) => {
       let payload = activePayload
       if (documentType === 'bl' || documentType === 'do') {

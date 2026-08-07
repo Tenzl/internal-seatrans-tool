@@ -52,7 +52,6 @@ export function buildCargoNameOptions(
         serviceTypeId: 0,
         requiredImageCount: 0,
         cargoType,
-        isActive: true,
       },
       ...matching,
     ]

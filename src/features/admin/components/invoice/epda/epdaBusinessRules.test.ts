@@ -62,7 +62,6 @@ describe('EPDA business rules', () => {
         cargoType: 'IN_BAG_PACK',
         serviceTypeId: 1,
         requiredImageCount: 0,
-        isActive: true,
       },
     ]
 
