@@ -69,6 +69,7 @@ describe('transport document form config', () => {
       'grossWeight',
       'measurement',
       'specialRemark',
+      'pic',
       'contact',
     ])
     expect(fieldOrder('bl')).toEqual([

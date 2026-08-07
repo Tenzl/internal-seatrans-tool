@@ -11,6 +11,7 @@ import {
 } from '@/components/ui/select'
 import { Textarea } from '@/components/ui/textarea'
 import type { PartnerOption } from '../partner-management/partnerManagementService'
+import { InternalUserSearchSelect } from './InternalUserSearchSelect'
 import { PartySearchSelect } from './PartySearchSelect'
 import { formatPartyFieldValue } from './partyPickerModel'
 import {
@@ -110,6 +111,14 @@ export function TransportDocumentField({
           disabled={disabled}
           onValueChange={onChange}
           placeholder={field.placeholder ?? 'Search port name...'}
+        />
+      ) : field.kind === 'internal-user' ? (
+        <InternalUserSearchSelect
+          id={id}
+          value={value}
+          disabled={disabled}
+          onValueChange={onChange}
+          placeholder={field.placeholder ?? 'Search internal user...'}
         />
       ) : field.kind === 'date' || field.kind === 'datetime-local' ? (
         <DateTimePicker

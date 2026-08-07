@@ -19,6 +19,7 @@ export type TransportDocumentFieldKind =
   | 'textarea'
   | 'select'
   | 'port-name'
+  | 'internal-user'
   | 'party'
 
 type TransportDocumentFieldKey = Exclude<
@@ -207,7 +208,16 @@ export const TRANSPORT_DOCUMENT_FORM_SECTIONS: Record<
     },
     {
       title: 'Contact',
-      fields: [{ key: 'contact', label: 'Contact', kind: 'textarea', span: 2 }],
+      fields: [
+        {
+          key: 'pic',
+          label: 'PIC',
+          kind: 'internal-user',
+          placeholder: 'Search internal user name or email...',
+          span: 2,
+        },
+        { key: 'contact', label: 'Contact', kind: 'textarea', span: 2 },
+      ],
     },
   ],
   bl: [

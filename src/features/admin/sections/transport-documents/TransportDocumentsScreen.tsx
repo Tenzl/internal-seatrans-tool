@@ -73,7 +73,7 @@ import {
   parseTransportDocument,
 } from './transportDocumentSchemas'
 import { transportDocumentService } from './transportDocumentService'
-import { resolveBookingPic } from './bookingPic'
+import { formatBookingPic, resolveBookingPic } from './bookingPic'
 
 interface TransportDocumentsScreenProps {
   documentType: TransportDocumentType
@@ -377,7 +377,23 @@ export function TransportDocumentsScreen({
     [currentUser, documentType, recordCreator]
   )
 
-  const resolvePayloadForPersist = useCallback(
+  // Seed default PIC from the signed-in user on new booking forms.
+  useEffect(() => {
+    if (documentType !== 'booking' || !currentUser) return
+    if (activeRecordId != null) return
+    setForms((previous) => {
+      const booking = previous.booking as BookingConfirmationPayload
+      if (booking.pic?.trim()) return previous
+      const pic = formatBookingPic(currentUser.fullName, currentUser.email)
+      if (!pic) return previous
+      return {
+        ...previous,
+        booking: { ...booking, pic },
+      } as TransportDocumentPayloadMap
+    })
+  }, [activeRecordId, currentUser, documentType])
+
+    const resolvePayloadForPersist = useCallback(
     (options?: { mapAnCargoFromBooking?: boolean }) => {
       let payload = activePayload
       if (documentType === 'bl' || documentType === 'do') {
