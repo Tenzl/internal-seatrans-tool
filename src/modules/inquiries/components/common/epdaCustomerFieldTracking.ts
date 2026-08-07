@@ -40,9 +40,13 @@ export function mergeEpdaFieldClasses(
   return classes.filter(Boolean).join(' ')
 }
 
-const ACTION_LABELS: Record<InquiryFieldChangeLogEntry['action'], string> = {
+const ACTION_LABELS: Partial<
+  Record<InquiryFieldChangeLogEntry['action'], string>
+> = {
+  EPDA_CREATE: 'Create',
   EPDA_SAVE_DRAFT: 'Save draft',
   EPDA_ISSUE: 'Issue to customer',
+  EPDA_LOCK: 'Lock edit',
 }
 
 export function formatFieldChangeAction(

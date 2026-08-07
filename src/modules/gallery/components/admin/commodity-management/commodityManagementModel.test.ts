@@ -18,7 +18,6 @@ const commodity = (id: number, cargoType: string): Commodity => ({
   serviceTypeId: 1,
   requiredImageCount: 18,
   cargoType,
-  isActive: true,
 })
 
 describe('commodity management model', () => {
@@ -69,12 +68,16 @@ describe('commodity management model', () => {
     expect(sanitizeCommodities([commodity(1, 'IN_BULK'), null])).toHaveLength(1)
   })
 
-  it('explains foreign-key delete failures', () => {
+  it('surfaces API delete failures and maps raw FK errors', () => {
+    expect(
+      getCommodityDeleteError(
+        new Error('Commodity is currently in use / đang được sử dụng')
+      )
+    ).toBe('Commodity is currently in use / đang được sử dụng')
     expect(getCommodityDeleteError(new Error('foreign key constraint'))).toBe(
-      'Cannot delete this cargo type because images are using it. Remove those images first.'
+      'Commodity is currently in use / đang được sử dụng'
     )
-    expect(getCommodityDeleteError(new Error('offline'))).toBe(
-      'Failed to delete cargo type'
-    )
+    expect(getCommodityDeleteError(new Error('offline'))).toBe('offline')
+    expect(getCommodityDeleteError({})).toBe('Failed to delete commodity')
   })
 })

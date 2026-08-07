@@ -46,21 +46,39 @@ describe('EPDA quantity API contract', () => {
     expect(appliedValues.get('setCargoQty')).toBe('12500.5')
   })
 
-  it('sends canonical numeric portId with the display name', () => {
+  it('sends agencyOtherExpenses under in-lumpsum mode', () => {
     const payload = buildEpdaPatchPayload({
-      portId: 38,
-      port: 'CHAN MAY',
-      quoteForm: 'QN',
+      quoteForm: 'HCM',
+      agencyFeeMode: 'AGENCY_IN_LUMPSUM',
+      agencyLumpsumAmount: '1500',
+      agencyOtherExpenses: [
+        { id: '1', name: 'Customs overtime', amount: '120' },
+        { id: '2', name: '  ', amount: '50' },
+      ],
       boatHireQuarantineAmount: '',
     } as BuildInvoiceQuoteDataParams & {
-      portId: number
       boatHireQuarantineAmount: string
     })
 
     expect(payload).toMatchObject({
-      portId: 38,
-      portOfCall: 'CHAN MAY',
-      quoteForm: 'QN',
+      agencyFeeMode: 'LUMPSUM',
+      agencyLumpsumAmount: 1500,
+      agencyOtherExpenses: [{ name: 'Customs overtime', amount: 120 }],
     })
+  })
+
+  it('clears agencyOtherExpenses when not in lumpsum mode', () => {
+    const payload = buildEpdaPatchPayload({
+      quoteForm: 'HCM',
+      agencyFeeMode: 'TARRIF_AGENCY',
+      agencyOtherExpenses: [
+        { id: '1', name: 'Should clear', amount: '10' },
+      ],
+      boatHireQuarantineAmount: '',
+    } as BuildInvoiceQuoteDataParams & {
+      boatHireQuarantineAmount: string
+    })
+
+    expect(payload.agencyOtherExpenses).toEqual([])
   })
 })

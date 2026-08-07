@@ -30,7 +30,6 @@ import {
   type EpdaSectionId,
 } from '@/features/admin/components/invoice/epdaFormLayout.config'
 import { findFirstMissingEpdaSection } from '@/features/admin/sections/epda-editor/controller/epdaEditorRules'
-import { mergeIssuedInquiryMeta } from '@/features/admin/sections/epda-editor/controller/epdaPersistenceRules'
 import { useEpdaEditorFormModel } from '@/features/admin/sections/epda-editor/controller/useEpdaEditorFormModel'
 import { useEpdaEditorFormState } from '@/features/admin/sections/epda-editor/controller/useEpdaEditorFormState'
 import { useEpdaInquiryHydration } from '@/features/admin/sections/epda-editor/controller/useEpdaInquiryHydration'
@@ -228,24 +227,8 @@ export function EpdaEditorScreen({
   const persistence = useEpdaPersistence({
     linkedInquiryId,
     customerUserId,
-    isLocked: isEpdaLocked,
     onCreated: setCreatedInquiryId,
-    onIssued: ({ saved, lockedAt, frozenParams: snapshot }) => {
-      setEpdaLockedAt(lockedAt)
-      if (snapshot) {
-        setFrozenParams(snapshot)
-        setEffectiveParams(snapshot)
-      }
-      setViewInquiryMeta((current) => mergeIssuedInquiryMeta(current, saved))
-    },
     onHistoryChanged: () => setFieldChangeHistoryKey((key) => key + 1),
-    onIssueComplete: () => {
-      if (!isInquiryDetailFlow) return
-      const params = new URLSearchParams(searchParams.toString())
-      params.delete('mode')
-      if (!params.get('preview')) params.set('preview', '1')
-      router.replace(`${pathname}?${params.toString()}`)
-    },
   })
   const preview = useEpdaPreview({
     quoteForm,
@@ -258,7 +241,7 @@ export function EpdaEditorScreen({
     buildQuoteInput: buildQuoteParamsInput,
     onEffectiveParamsChange: setEffectiveParams,
   })
-  const { isSavingDraft, isIssuing } = persistence
+  const { isSavingDraft } = persistence
   const isLoading = preview.isLoading
 
   // Order creator panel is intentionally hidden on create/edit EPDA.
@@ -319,7 +302,6 @@ export function EpdaEditorScreen({
     isLoadingCargoCatalog ||
     isLoadingPorts ||
     isSavingDraft ||
-    isIssuing ||
     isLoadingInquiry
 
   const handleSaveDraft = async () => {
@@ -337,24 +319,6 @@ export function EpdaEditorScreen({
   // Continue the save flow after completeness is decided (complete = all required filled).
   const proceedSaveDraft = async (isComplete: boolean) => {
     await persistence.saveDraft(buildQuoteParamsInput(), isComplete)
-  }
-
-  const handleIssueToCustomer = async () => {
-    if (!linkedInquiryId) {
-      toast.error(
-        'Save a draft or link an inquiry before issuing to the customer.'
-      )
-      return
-    }
-
-    setShowValidationErrors(true)
-    if (missingRequiredFields.length > 0) {
-      focusFirstMissingSection()
-      toast.error('Complete required fields before issuing the EPDA.')
-      return
-    }
-
-    await persistence.issue(buildQuoteParamsInput())
   }
 
   const handlePreview = async () => {
@@ -457,13 +421,11 @@ export function EpdaEditorScreen({
       historyRefreshKey={fieldChangeHistoryKey}
       isBusy={isFormBusy}
       isSavingDraft={isSavingDraft}
-      isIssuing={isIssuing}
       isLoadingPreview={isLoading}
       isLocked={isEpdaLocked}
       showSaveDraft={showSaveDraftButton}
       onReset={handleReset}
       onSaveDraft={() => void handleSaveDraft()}
-      onIssue={() => void handleIssueToCustomer()}
       onPreview={() => void handlePreview()}
     />
   )
@@ -495,12 +457,9 @@ export function EpdaEditorScreen({
         historyRefreshKey={fieldChangeHistoryKey}
         isLocked={isEpdaLocked}
         isBusy={isFormBusy}
-        isIssuing={isIssuing}
         isLoadingPreview={isLoading}
         isLoadingInquiry={isLoadingInquiry}
         isLoadingCargoCatalog={isLoadingCargoCatalog}
-        inquiryStatus={viewInquiryMeta?.status}
-        onIssue={() => void handleIssueToCustomer()}
         onPreview={() => void handlePreview()}
       />
     ) : (

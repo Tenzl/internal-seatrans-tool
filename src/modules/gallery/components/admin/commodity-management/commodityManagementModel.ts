@@ -98,7 +98,24 @@ export function buildCommodityRequest({
 }
 
 export function getCommodityDeleteError(error: unknown) {
-  return error instanceof Error && /constraint|foreign key/i.test(error.message)
-    ? 'Cannot delete this cargo type because images are using it. Remove those images first.'
-    : 'Failed to delete cargo type'
+  if (!(error instanceof Error)) return 'Failed to delete commodity'
+  const message = error.message.trim()
+  if (!message || message === 'Request failed') {
+    return 'Failed to delete commodity'
+  }
+  if (/constraint|foreign key|23503/i.test(message)) {
+    return 'Commodity is currently in use / đang được sử dụng'
+  }
+  return message
+}
+
+/** Prefer the API conflict message so duplicate name clashes are clear. */
+export function getCommodityMutationError(
+  error: unknown,
+  fallback: string
+): string {
+  if (!(error instanceof Error)) return fallback
+  const message = error.message.trim()
+  if (!message || message === 'Request failed') return fallback
+  return message
 }

@@ -31,6 +31,7 @@ interface InternalUserSearchSelectProps {
   onValueChange: (value: string) => void
   placeholder?: string
   disabled?: boolean
+  className?: string
 }
 
 function userPrimaryLabel(user: AdminUserRow): string {
@@ -50,6 +51,7 @@ export function InternalUserSearchSelect({
   onValueChange,
   placeholder = 'Search internal user...',
   disabled = false,
+  className,
 }: InternalUserSearchSelectProps) {
   const [open, setOpen] = React.useState(false)
   const [search, setSearch] = React.useState('')
@@ -89,7 +91,10 @@ export function InternalUserSearchSelect({
           role='combobox'
           aria-expanded={open}
           disabled={disabled}
-          className='w-full justify-between bg-background font-normal'
+          className={cn(
+            'w-full justify-between bg-background font-normal',
+            className
+          )}
         >
           <span className={cn('truncate', !value && 'text-muted-foreground')}>
             {value || placeholder}

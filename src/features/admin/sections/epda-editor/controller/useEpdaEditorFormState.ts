@@ -57,6 +57,7 @@ export function createInitialEpdaEditorFormFields(): EpdaEditorFormFields {
     agencyFeeMode: 'TARRIF_AGENCY',
     agencyDiscountPercent: '',
     agencyLumpsumAmount: '',
+    agencyOtherExpenses: [],
   }
 }
 
@@ -154,6 +155,9 @@ export function useEpdaEditorFormState() {
         setField('agencyDiscountPercent', value),
       setAgencyLumpsumAmount: (value: string) =>
         setField('agencyLumpsumAmount', value),
+      setAgencyOtherExpenses: (
+        value: InvoiceVariantFormValues['agencyOtherExpenses']
+      ) => setField('agencyOtherExpenses', value),
     }),
     [setField]
   )

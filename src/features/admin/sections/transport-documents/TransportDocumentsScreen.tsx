@@ -378,18 +378,31 @@ export function TransportDocumentsScreen({
   )
 
   // Seed default PIC from the signed-in user on new booking forms.
+  // Rebase savedSnapshot when still pristine so auto-seed alone is not dirty.
   useEffect(() => {
     if (documentType !== 'booking' || !currentUser) return
     if (activeRecordId != null) return
+    const pic = formatBookingPic(currentUser.fullName, currentUser.email)
+    if (!pic) return
+
+    const emptyBooking = createEmptyTransportDocuments()
+      .booking as BookingConfirmationPayload
+    const emptySnapshot = payloadSnapshot(emptyBooking)
+    const seededSnapshot = payloadSnapshot({ ...emptyBooking, pic })
+
     setForms((previous) => {
       const booking = previous.booking as BookingConfirmationPayload
       if (booking.pic?.trim()) return previous
-      const pic = formatBookingPic(currentUser.fullName, currentUser.email)
-      if (!pic) return previous
       return {
         ...previous,
         booking: { ...booking, pic },
       } as TransportDocumentPayloadMap
+    })
+
+    setSavedSnapshot((previous) => {
+      // Only treat empty → empty+default PIC as the new baseline.
+      if (previous !== emptySnapshot) return previous
+      return seededSnapshot
     })
   }, [activeRecordId, currentUser, documentType])
 

@@ -45,6 +45,8 @@ export type ShippingAgencyAdminInquiry = {
   agencyFeeMode?: string | null
   agencyDiscountPercent?: string | number | null
   agencyLumpsumAmount?: string | number | null
+  /** Custom fee lines under in-lumpsum mode: `{ name, amount }[]`. */
+  agencyOtherExpenses?: Array<{ name: string; amount: number | string }> | null
   epdaSnapshot?: Record<string, unknown> | null
   /** ISO timestamp; when set, edits are locked and the quote uses snapshot params. */
   epdaLockedAt?: string | null
@@ -56,7 +58,8 @@ export type EpdaApiPayload = Record<string, unknown>
 export type InquiryFieldChangeLogEntry = {
   id: number
   inquiryId: number
-  action: 'EPDA_SAVE_DRAFT' | 'EPDA_ISSUE'
+  /** EPDA_ISSUE is historical only (issue-to-customer removed). */
+  action: 'EPDA_CREATE' | 'EPDA_SAVE_DRAFT' | 'EPDA_ISSUE' | 'EPDA_LOCK'
   fieldName: string
   previousValue: string | null
   newValue: string | null

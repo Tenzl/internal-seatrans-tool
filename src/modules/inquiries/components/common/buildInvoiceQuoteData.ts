@@ -48,6 +48,8 @@ export interface BuildInvoiceQuoteDataParams {
   agencyFeeMode: string
   agencyDiscountPercent: string
   agencyLumpsumAmount: string
+  /** Form rows for custom fees under in-lumpsum (id is UI-only). */
+  agencyOtherExpenses?: Array<{ id?: string; name: string; amount: string }>
   isTallyFeeEligible: boolean
   tallyFeeAmount: string
   /** LOA is above the highest tug band → tug charge is entered manually. */
@@ -134,6 +136,14 @@ export function buildInvoiceQuoteData(
     agency_lumpsum_amount: parseFiniteNumberOrUndefined(
       params.agencyLumpsumAmount
     ),
+    agency_other_expenses: (params.agencyOtherExpenses ?? [])
+      .map((row) => {
+        const name = row.name.trim()
+        const amount = parseFiniteNumberOrUndefined(row.amount)
+        if (!name || amount === undefined || amount < 0) return null
+        return { name, amount }
+      })
+      .filter((row): row is { name: string; amount: number } => row != null),
     tally_fee: params.isTallyFeeEligible
       ? parseFiniteNumberOrUndefined(params.tallyFeeAmount)
       : undefined,

@@ -51,6 +51,8 @@ export interface QuoteData {
   agency_fee_mode?: string
   agency_discount_percent?: string | number
   agency_lumpsum_amount?: string | number
+  /** Custom fee lines under the lumpsum row: `{ name, amount }[]`. */
+  agency_other_expenses?: Array<{ name: string; amount: number }>
   tally_fee?: string | number
   tug_assistance?: string | number
   /** 1 = single trip (in|out); 2 = in & out (×2). Default treated as 2. */

@@ -1,7 +1,7 @@
 'use client'
 
 import { useI18n } from '@/shared/i18n/I18nProvider'
-import { Eye, Loader2, Lock, Save, Send } from 'lucide-react'
+import { Eye, Loader2, Lock, Save } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { EpdaFieldChangeHistory } from './EpdaFieldChangeHistory'
 
@@ -11,13 +11,11 @@ interface EpdaEditorActionsProps {
   historyRefreshKey: number
   isBusy: boolean
   isSavingDraft: boolean
-  isIssuing: boolean
   isLoadingPreview: boolean
   isLocked: boolean
   showSaveDraft: boolean
   onReset: () => void
   onSaveDraft: () => void
-  onIssue: () => void
   onPreview: () => void
 }
 
@@ -28,13 +26,11 @@ export function EpdaEditorActions({
   historyRefreshKey,
   isBusy,
   isSavingDraft,
-  isIssuing,
   isLoadingPreview,
   isLocked,
   showSaveDraft,
   onReset,
   onSaveDraft,
-  onIssue,
   onPreview,
 }: EpdaEditorActionsProps) {
   const { t } = useI18n()
@@ -78,20 +74,6 @@ export function EpdaEditorActions({
           {t('epda.locked')}
         </span>
       ) : null}
-      <Button
-        variant='secondary'
-        onClick={onIssue}
-        disabled={isBusy || !inquiryId}
-        className='h-11 gap-2 active:scale-[0.98] sm:h-9'
-      >
-        {isIssuing ? (
-          <Loader2 className='h-4 w-4 animate-spin' />
-        ) : (
-          <Send className='h-4 w-4 shrink-0' />
-        )}
-        <span className='hidden sm:inline'>{t('epda.issue')}</span>
-        <span className='sm:hidden'>{t('epda.issueShort')}</span>
-      </Button>
       <Button
         onClick={onPreview}
         disabled={isBusy}

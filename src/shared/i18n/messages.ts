@@ -387,6 +387,13 @@ const enMessages: Record<string, string> = {
   'epda.tugTripsTwo': '2 trips (in & out)',
   'epda.feeMode': 'Fee calculation mode',
   'epda.lumpsum': 'Lumpsum amount (USD, incl. transportation)',
+  'epda.agencyOtherExpenses': 'Other expenses',
+  'epda.agencyOtherExpensesEmpty':
+    'No other expenses yet. Add a fee name and amount below the lumpsum.',
+  'epda.addAgencyOtherExpense': 'Other expense',
+  'epda.agencyOtherExpenseName': 'Fee name',
+  'epda.agencyOtherExpenseAmount': 'Amount (USD)',
+  'epda.removeAgencyOtherExpense': 'Remove other expense',
   'epda.discount': 'Discount (%)',
   'epda.boatHireAgency': 'Boat hire — agency (USD)',
   'epda.transportLs': 'Taxi / courier / communication (USD)',
@@ -406,8 +413,6 @@ const enMessages: Record<string, string> = {
     'After locking, you will no longer be able to edit this EPDA. Tariff rates will be frozen in a snapshot. This cannot be undone.',
   'epda.lockConfirmAction': 'Lock edit',
   'epda.lockConfirmCancel': 'Cancel',
-  'epda.issue': 'Issue to customer',
-  'epda.issueShort': 'Issue',
   'epda.reset': 'Reset form',
   'epda.resetShort': 'Reset',
   'epda.generating': 'Generating...',
@@ -420,12 +425,11 @@ const enMessages: Record<string, string> = {
   'epda.descInquiryShort':
     'Inquiry #{id} — review customer details and complete EPDA.',
   'epda.descInquiryLong':
-    'Shipping agency inquiry #{id} — review customer details and complete EPDA (save draft, preview, issue).',
-  'epda.descEditShort':
-    'Edit EPDA for inquiry #{id}. Save, preview, then issue.',
+    'Shipping agency inquiry #{id} — review customer details and complete EPDA (save draft, preview).',
+  'epda.descEditShort': 'Edit EPDA for inquiry #{id}. Save draft, then preview.',
   'epda.descEditLong':
-    'Edit EPDA for shipping agency inquiry #{id}. Save draft, preview, then issue to customer.',
-  'epda.descNew': 'Complete the EPDA fields, save a draft, then issue.',
+    'Edit EPDA for shipping agency inquiry #{id}. Save draft and preview.',
+  'epda.descNew': 'Complete the EPDA fields, then save a draft.',
   // placeholders
   'ph.shipowner': 'Enter shipowner or company name',
   'ph.vessel': 'Enter vessel name',
@@ -446,6 +450,7 @@ const enMessages: Record<string, string> = {
   'ph.quarantineCargo': 'Select cargo quarantine mode',
   'ph.frtType': 'Select type',
   'ph.agencyMode': 'Select agency fee mode',
+  'ph.agencyOtherExpenseName': 'e.g. Customs overtime',
   'ph.nil': 'Nil',
   'ph.plsAdvise': 'PLEASE ADVISE',
   'ph.boatHireAvail': 'Available when discharge/loading is Anchorage',

@@ -79,7 +79,7 @@ export function EditGalleryImageDialog({
         setCommodities(commoditiesResult.value)
       } else {
         setCommodities([])
-        toast.error('Failed to load cargo types', commoditiesResult.reason)
+        toast.error('Failed to load commodities', commoditiesResult.reason)
       }
     }
 
@@ -117,7 +117,7 @@ export function EditGalleryImageDialog({
       )
     } catch (error) {
       setCommodities([])
-      toast.error('Failed to load cargo types', error)
+      toast.error('Failed to load commodities', error)
     }
   }
 

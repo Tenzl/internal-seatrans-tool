@@ -29,6 +29,13 @@ export type FrtTaxTypeOption =
 export type QuarantineCargoOption = 'ONE_LEG' | 'BOTH_LEGS' | 'OTHER'
 export type AgencyFeeModeOption = 'TARRIF_AGENCY' | 'AGENCY_IN_LUMPSUM'
 
+/** Client-side row for agency in-lumpsum "other expense" lines. */
+export type AgencyOtherExpenseFormRow = {
+  id: string
+  name: string
+  amount: string
+}
+
 export interface SelectOption {
   value: string
   label: string
@@ -67,6 +74,7 @@ export interface InvoiceVariantFormValues {
   agencyFeeMode: AgencyFeeModeOption
   agencyDiscountPercent: string
   agencyLumpsumAmount: string
+  agencyOtherExpenses: AgencyOtherExpenseFormRow[]
 }
 
 export interface InvoiceVariantFormHandlers {
@@ -102,6 +110,13 @@ export interface InvoiceVariantFormHandlers {
   setAgencyFeeMode: (value: AgencyFeeModeOption) => void
   setAgencyDiscountPercent: (value: string) => void
   setAgencyLumpsumAmount: (value: string) => void
+  setAgencyOtherExpenses: (value: AgencyOtherExpenseFormRow[]) => void
+  addAgencyOtherExpense: () => void
+  updateAgencyOtherExpense: (
+    id: string,
+    patch: Partial<Pick<AgencyOtherExpenseFormRow, 'name' | 'amount'>>
+  ) => void
+  removeAgencyOtherExpense: (id: string) => void
 }
 
 export interface InvoiceVariantFormOptions {

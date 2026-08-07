@@ -1,11 +1,6 @@
-import { ManageCommodities } from '@/modules/gallery/components/admin/CommodityManagement'
-import { AdminPageShell } from '@/components/layout/admin-page-shell'
+import { redirect } from 'next/navigation'
 
-/** Data Management: cargo definitions. */
+/** Legacy route — Data Management commodities moved to /data/commodities. */
 export default function Page() {
-  return (
-    <AdminPageShell>
-      <ManageCommodities />
-    </AdminPageShell>
-  )
+  redirect('/data/commodities')
 }

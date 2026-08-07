@@ -1,5 +1,6 @@
 import { PortNameSearchSelect } from '@/modules/logistics/components/PortNameSearchSelect'
 import { DateTimePicker } from '@/shared/components/DateTimePicker'
+import { cn } from '@/lib/utils'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import {
@@ -20,6 +21,13 @@ import {
   type TransportDocumentFieldSpec,
 } from './transportDocumentFormConfig'
 
+/**
+ * Light blue ring for non-empty transport-document fields so entered values
+ * read differently from blank ones (matches sky accents elsewhere in this section).
+ */
+export const TRANSPORT_FILLED_FIELD_RING =
+  'border-sky-300 ring-[3px] ring-sky-200/70 focus-visible:border-ring focus-visible:ring-ring/50'
+
 interface TransportDocumentFieldProps {
   field: TransportDocumentFieldSpec
   value: string
@@ -38,6 +46,8 @@ export function TransportDocumentField({
   disabled = false,
 }: TransportDocumentFieldProps) {
   const id = `transport-document-${field.key}`
+  const isFilled = value.trim().length > 0
+  const filledRingClass = isFilled ? TRANSPORT_FILLED_FIELD_RING : undefined
 
   return (
     <div
@@ -62,6 +72,7 @@ export function TransportDocumentField({
           customerType={field.customerType}
           partyValueMode={field.partyValueMode ?? 'full'}
           disabled={disabled}
+          className={filledRingClass}
           onChange={(option: PartnerOption | null) => {
             onChange(
               option
@@ -82,7 +93,10 @@ export function TransportDocumentField({
           disabled={disabled}
           readOnly={disabled}
           onChange={(event) => onChange(event.target.value)}
-          className='min-h-20 resize-y bg-background disabled:cursor-not-allowed disabled:opacity-70'
+          className={cn(
+            'min-h-20 resize-y bg-background disabled:cursor-not-allowed disabled:opacity-70',
+            filledRingClass
+          )}
         />
       ) : field.kind === 'select' && field.options ? (
         <Select
@@ -90,7 +104,10 @@ export function TransportDocumentField({
           disabled={disabled}
           onValueChange={(next) => onChange(next === '__empty__' ? '' : next)}
         >
-          <SelectTrigger id={id} className='w-full bg-background'>
+          <SelectTrigger
+            id={id}
+            className={cn('w-full bg-background', filledRingClass)}
+          >
             <SelectValue placeholder={field.placeholder ?? 'Select'} />
           </SelectTrigger>
           <SelectContent>
@@ -111,6 +128,7 @@ export function TransportDocumentField({
           disabled={disabled}
           onValueChange={onChange}
           placeholder={field.placeholder ?? 'Search port name...'}
+          className={filledRingClass}
         />
       ) : field.kind === 'internal-user' ? (
         <InternalUserSearchSelect
@@ -119,6 +137,7 @@ export function TransportDocumentField({
           disabled={disabled}
           onValueChange={onChange}
           placeholder={field.placeholder ?? 'Search internal user...'}
+          className={filledRingClass}
         />
       ) : field.kind === 'date' || field.kind === 'datetime-local' ? (
         <DateTimePicker
@@ -128,6 +147,7 @@ export function TransportDocumentField({
           onValueChange={onChange}
           includeTime={field.kind === 'datetime-local'}
           placeholder={field.placeholder}
+          className={filledRingClass}
         />
       ) : (
         <Input
@@ -139,7 +159,10 @@ export function TransportDocumentField({
           disabled={disabled}
           readOnly={disabled}
           onChange={(event) => onChange(event.target.value)}
-          className='bg-background disabled:cursor-not-allowed disabled:opacity-70'
+          className={cn(
+            'bg-background disabled:cursor-not-allowed disabled:opacity-70',
+            filledRingClass
+          )}
         />
       )}
     </div>

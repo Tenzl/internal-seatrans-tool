@@ -121,8 +121,8 @@ export const DASHBOARD_CATALOG: readonly NavigationCategory[] = [
       },
       {
         key: 'data-cargo',
-        label: 'Cargo',
-        route: '/data/cargo',
+        label: 'Commodities',
+        route: '/data/commodities',
         navigationIcon: 'package',
       },
       {

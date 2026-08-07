@@ -32,7 +32,7 @@ export function CommodityDeleteDialog({
         <AlertDialogHeader>
           <AlertDialogTitle>Are you sure?</AlertDialogTitle>
           <AlertDialogDescription>
-            Are you sure you want to delete cargo type &quot;
+            Are you sure you want to delete commodity &quot;
             <strong>{commodity?.displayName}</strong>&quot;? This action cannot
             be undone.
           </AlertDialogDescription>

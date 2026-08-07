@@ -13,7 +13,6 @@ export interface Commodity {
   serviceTypeName?: string
   requiredImageCount: number
   cargoType: CargoType
-  isActive: boolean
   createdAt?: string
   updatedAt?: string
 }
@@ -62,19 +61,26 @@ function mapCommodity(raw: Record<string, unknown>): Commodity {
     serviceTypeId: raw.serviceTypeId as number,
     requiredImageCount: (raw.requiredImageCount as number) ?? 18,
     cargoType: (raw.cargoType as string) ?? 'IN_BULK',
-    isActive: raw.isActive !== false,
   }
 }
 
 export const commodityService = {
+  list: async (params?: {
+    serviceTypeId?: number
+    q?: string
+    limit?: number
+  }): Promise<Commodity[]> => {
+    const response = await apiClient.get<
+      ApiResponse<Record<string, unknown>[]>
+    >(API_CONFIG.COMMODITIES.LIST(params))
+    const rows = await unwrapList<Record<string, unknown>>(response)
+    return rows.map(mapCommodity)
+  },
+
   getCommoditiesByServiceType: async (
     serviceTypeId: number
   ): Promise<Commodity[]> => {
-    const response = await apiClient.get<
-      ApiResponse<Record<string, unknown>[]>
-    >(API_CONFIG.COMMODITIES.BY_SERVICE_TYPE(serviceTypeId))
-    const rows = await unwrapList<Record<string, unknown>>(response)
-    return rows.map(mapCommodity)
+    return commodityService.list({ serviceTypeId })
   },
 
   getImageCount: async (
@@ -84,7 +90,7 @@ export const commodityService = {
     serviceTypeId?: number
   ): Promise<CommodityImageCount> => {
     const commodities = serviceTypeId
-      ? await commodityService.getCommoditiesByServiceType(serviceTypeId)
+      ? await commodityService.list({ serviceTypeId })
       : []
     const commodity = commodities.find((c) => c.id === commodityId)
     const required = commodity?.requiredImageCount ?? 18
@@ -126,8 +132,12 @@ export const commodityService = {
     )
     if (!response.ok) {
       const result = await response.json().catch(() => ({}))
+      const body = result as {
+        message?: string
+        error?: { message?: string }
+      }
       throw new Error(
-        (result as { message?: string }).message || 'Failed to delete commodity'
+        body.error?.message || body.message || 'Failed to delete commodity'
       )
     }
   },

@@ -106,8 +106,26 @@ export const API_CONFIG = {
   },
 
   COMMODITIES: {
-    BY_SERVICE_TYPE: (serviceTypeId: number) =>
-      `/commodities/service-type/${serviceTypeId}`,
+    BASE: '/commodities',
+    /** GET /commodities?serviceTypeId=&q=&limit= */
+    LIST: (params?: {
+      serviceTypeId?: number
+      q?: string
+      limit?: number
+    }) => {
+      const search = new URLSearchParams()
+      if (params?.serviceTypeId != null) {
+        search.set('serviceTypeId', String(params.serviceTypeId))
+      }
+      if (params?.q?.trim()) {
+        search.set('q', params.q.trim())
+      }
+      if (params?.limit != null) {
+        search.set('limit', String(params.limit))
+      }
+      const qs = search.toString()
+      return qs ? `/commodities?${qs}` : '/commodities'
+    },
     ADMIN_BASE: '/admin/commodities',
     ADMIN_BY_ID: (id: number) => `/admin/commodities/${id}`,
   },
@@ -161,8 +179,6 @@ export const API_CONFIG = {
     ADMIN_SHIPPING_AGENCY_CREATE: '/admin/inquiries/shipping-agency',
     ADMIN_SHIPPING_AGENCY_EPDA: (id: number) =>
       `/admin/inquiries/shipping-agency/${id}/epda`,
-    ADMIN_SHIPPING_AGENCY_EPDA_ISSUE: (id: number) =>
-      `/admin/inquiries/shipping-agency/${id}/epda/issue`,
     ADMIN_SHIPPING_AGENCY_EPDA_LOCK: (id: number) =>
       `/admin/inquiries/shipping-agency/${id}/epda/lock`,
     ADMIN_SHIPPING_AGENCY_FIELD_CHANGES: (id: number, page = 0, size = 6) =>

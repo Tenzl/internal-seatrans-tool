@@ -54,7 +54,7 @@ export function CommodityTable({
       <div className='rounded-lg border bg-card p-12 text-center'>
         <Package className='mx-auto mb-4 h-12 w-12 text-muted-foreground' />
         <p className='text-muted-foreground'>
-          Select a service type to manage its cargo types
+          Select a service type to manage its commodities
         </p>
       </div>
     )
@@ -82,13 +82,13 @@ export function CommodityTable({
       {loading ? (
         <div className='p-12 text-center'>
           <div className='mx-auto mb-4 h-12 w-12 animate-spin rounded-full border-4 border-primary border-t-transparent' />
-          <p className='text-muted-foreground'>Loading cargo types...</p>
+          <p className='text-muted-foreground'>Loading commodities...</p>
         </div>
       ) : commodities.length === 0 ? (
         <div className='p-12 text-center'>
           <Package className='mx-auto mb-4 h-12 w-12 text-muted-foreground' />
           <p className='text-muted-foreground'>
-            No cargo types found for this cargo type.
+            No commodities found for this cargo type.
           </p>
         </div>
       ) : (
@@ -97,7 +97,7 @@ export function CommodityTable({
             <thead className='bg-muted/50'>
               <tr>
                 <th className='px-4 py-3 text-left font-medium'>Code</th>
-                <th className='px-4 py-3 text-left font-medium'>Cargo Name</th>
+                <th className='px-4 py-3 text-left font-medium'>Commodity Name</th>
                 <th className='px-4 py-3 text-left font-medium'>
                   Required Count
                 </th>
@@ -129,7 +129,7 @@ export function CommodityTable({
                           onChange={(event) =>
                             onEditNameChange(event.target.value)
                           }
-                          aria-label='Edit cargo name'
+                          aria-label='Edit commodity name'
                           className='w-full rounded border px-3 py-1 focus:ring-2 focus:ring-primary focus:outline-none'
                         />
                       ) : (

@@ -120,7 +120,7 @@ export function GalleryManageProvider({ children }: { children: ReactNode }) {
         setAvailableCommodities(data)
         setFilterCommodity(null)
       })
-      .catch((error) => toast.error('Failed to load cargo types', error))
+      .catch((error) => toast.error('Failed to load commodities', error))
   }, [filterServiceType])
 
   useEffect(() => {

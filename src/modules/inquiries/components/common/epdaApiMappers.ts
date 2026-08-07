@@ -109,6 +109,19 @@ export function buildEpdaPatchPayload(
     agencyFeeMode: mapAgencyFeeModeToApi(params.agencyFeeMode),
     agencyDiscountPercent: toNum(params.agencyDiscountPercent),
     agencyLumpsumAmount: toNum(params.agencyLumpsumAmount),
+    agencyOtherExpenses:
+      params.agencyFeeMode === 'AGENCY_IN_LUMPSUM'
+        ? (params.agencyOtherExpenses ?? [])
+            .map((row) => {
+              const name = row.name.trim()
+              const amount = toNum(row.amount)
+              if (!name || amount === undefined || amount < 0) return null
+              return { name, amount }
+            })
+            .filter(
+              (row): row is { name: string; amount: number } => row != null
+            )
+        : [],
     boatHireAmount: toNum(params.boatHireAmount),
     tallyFeeAmount: toNum(params.tallyFeeAmount),
     tugAssistanceAmount: params.isLoaOverTugMax
@@ -172,6 +185,19 @@ export function buildInternalCreatePayload(
     agencyFeeMode: mapAgencyFeeModeToApi(params.agencyFeeMode),
     agencyDiscountPercent: toNum(params.agencyDiscountPercent),
     agencyLumpsumAmount: toNum(params.agencyLumpsumAmount),
+    agencyOtherExpenses:
+      params.agencyFeeMode === 'AGENCY_IN_LUMPSUM'
+        ? (params.agencyOtherExpenses ?? [])
+            .map((row) => {
+              const name = row.name.trim()
+              const amount = toNum(row.amount)
+              if (!name || amount === undefined || amount < 0) return null
+              return { name, amount }
+            })
+            .filter(
+              (row): row is { name: string; amount: number } => row != null
+            )
+        : undefined,
     tugAssistanceAmount: params.isLoaOverTugMax
       ? toNum(params.tugAssistanceAmount)
       : undefined,
@@ -210,6 +236,9 @@ export function applyAdminInquiryToForm(
     setAgencyFeeMode: (v: string) => void
     setAgencyDiscountPercent: (v: string) => void
     setAgencyLumpsumAmount: (v: string) => void
+    setAgencyOtherExpenses: (
+      v: Array<{ id: string; name: string; amount: string }>
+    ) => void
     setBoatHireAmount: (v: string) => void
     setBoatHireQuarantineAmount: (v: string) => void
     setTallyFeeAmount: (v: string) => void
@@ -272,6 +301,25 @@ export function applyAdminInquiryToForm(
     toNumStr(inquiry.agencyDiscountPercent) ?? ''
   )
   setters.setAgencyLumpsumAmount(toNumStr(inquiry.agencyLumpsumAmount) ?? '')
+  const otherExpenses = Array.isArray(inquiry.agencyOtherExpenses)
+    ? inquiry.agencyOtherExpenses
+        .map((row, index) => {
+          const name = typeof row?.name === 'string' ? row.name.trim() : ''
+          const amount = toNumStr(row?.amount) ?? ''
+          if (!name && !amount) return null
+          return {
+            id: `agency-other-${inquiry.id ?? 'row'}-${index}`,
+            name,
+            amount,
+          }
+        })
+        .filter(
+          (
+            row
+          ): row is { id: string; name: string; amount: string } => row != null
+        )
+    : []
+  setters.setAgencyOtherExpenses(otherExpenses)
   setters.setBoatHireAmount(toNumStr(inquiry.boatHireAmount) ?? '')
   setters.setBoatHireQuarantineAmount(
     toNumStr(inquiry.transportQuarantine) ?? ''

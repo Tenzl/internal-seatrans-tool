@@ -62,7 +62,7 @@ describe('dashboard section catalog contract', () => {
         {
           "group": "Data Management",
           "key": "data-cargo",
-          "label": "Cargo",
+          "label": "Commodities",
         },
         {
           "group": "Data Management",

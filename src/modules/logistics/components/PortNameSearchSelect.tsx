@@ -32,6 +32,7 @@ interface PortNameSearchSelectProps {
   onValueChange: (value: string) => void
   placeholder?: string
   disabled?: boolean
+  className?: string
 }
 
 export function PortNameSearchSelect({
@@ -40,6 +41,7 @@ export function PortNameSearchSelect({
   onValueChange,
   placeholder = 'Search port name or code...',
   disabled = false,
+  className,
 }: PortNameSearchSelectProps) {
   const [open, setOpen] = React.useState(false)
   const [search, setSearch] = React.useState('')
@@ -91,7 +93,10 @@ export function PortNameSearchSelect({
           role='combobox'
           aria-expanded={open}
           disabled={disabled}
-          className='w-full justify-between bg-background font-normal'
+          className={cn(
+            'w-full justify-between bg-background font-normal',
+            className
+          )}
         >
           <span className={cn('truncate', !value && 'text-muted-foreground')}>
             {value || placeholder}

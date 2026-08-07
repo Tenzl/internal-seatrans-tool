@@ -36,29 +36,6 @@ export const shippingAgencyEpdaService = {
     return unwrapApiResponse<ShippingAgencyAdminInquiry>(response)
   },
 
-  async issueEpda(
-    inquiryId: number,
-    epdaSnapshot: Record<string, unknown>,
-    options?: {
-      internalNotes?: string
-      confirmedCustomerFieldChanges?: Array<{
-        field: string
-        previousValue?: string
-        newValue?: string
-      }>
-    }
-  ): Promise<ShippingAgencyAdminInquiry> {
-    const response = await apiClient.post(
-      API_CONFIG.INQUIRIES.ADMIN_SHIPPING_AGENCY_EPDA_ISSUE(inquiryId),
-      {
-        epdaSnapshot,
-        internalNotes: options?.internalNotes,
-        confirmedCustomerFieldChanges: options?.confirmedCustomerFieldChanges,
-      }
-    )
-    return unwrapApiResponse<ShippingAgencyAdminInquiry>(response)
-  },
-
   async lockEpda(
     inquiryId: number,
     epdaSnapshot: Record<string, unknown>

@@ -51,7 +51,7 @@ export function CommodityToolbar({
           <>
             <div>
               <label className='mb-2 block text-sm font-medium'>
-                Cargo Name *
+                Commodity Name *
               </label>
               <input
                 type='text'
@@ -65,7 +65,7 @@ export function CommodityToolbar({
             <div>
               <Button onClick={onAdd} className='w-full md:w-auto'>
                 <Plus className='mr-2 h-4 w-4' />
-                Add Cargo
+                Add Commodity
               </Button>
             </div>
           </>

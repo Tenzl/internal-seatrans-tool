@@ -150,6 +150,7 @@ export function useEpdaEditorFormModel({
       agencyFeeMode: fields.agencyFeeMode,
       agencyDiscountPercent: fields.agencyDiscountPercent,
       agencyLumpsumAmount: fields.agencyLumpsumAmount,
+      agencyOtherExpenses: fields.agencyOtherExpenses,
       isTallyFeeEligible: Boolean(
         fields.cargoType && isTallyFeeEligibleCargo(fields.cargoType)
       ),
@@ -217,6 +218,7 @@ export function useEpdaEditorFormModel({
       agencyFeeMode: fields.agencyFeeMode,
       agencyDiscountPercent: fields.agencyDiscountPercent,
       agencyLumpsumAmount: fields.agencyLumpsumAmount,
+      agencyOtherExpenses: fields.agencyOtherExpenses,
     }),
     [fields, quoteForm]
   )
@@ -268,10 +270,33 @@ export function useEpdaEditorFormModel({
           setters.setBoatHireAmount('')
         } else {
           setters.setAgencyLumpsumAmount('')
+          setters.setAgencyOtherExpenses([])
         }
       },
+      addAgencyOtherExpense: () => {
+        const id =
+          typeof crypto !== 'undefined' && 'randomUUID' in crypto
+            ? crypto.randomUUID()
+            : `agency-other-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`
+        setters.setAgencyOtherExpenses([
+          ...fields.agencyOtherExpenses,
+          { id, name: '', amount: '' },
+        ])
+      },
+      updateAgencyOtherExpense: (id, patch) => {
+        setters.setAgencyOtherExpenses(
+          fields.agencyOtherExpenses.map((row) =>
+            row.id === id ? { ...row, ...patch } : row
+          )
+        )
+      },
+      removeAgencyOtherExpense: (id) => {
+        setters.setAgencyOtherExpenses(
+          fields.agencyOtherExpenses.filter((row) => row.id !== id)
+        )
+      },
     }),
-    [setters, effectiveParams]
+    [setters, effectiveParams, fields.agencyOtherExpenses]
   )
 
   const formOptions = useMemo<InvoiceVariantFormOptions>(

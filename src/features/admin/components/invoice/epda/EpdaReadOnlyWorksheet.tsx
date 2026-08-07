@@ -2,7 +2,7 @@
 
 import type { ReactNode } from 'react'
 import { useI18n } from '@/shared/i18n/I18nProvider'
-import { Eye, Loader2, Lock, Send } from 'lucide-react'
+import { Eye, Loader2, Lock } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { EpdaFieldChangeHistory } from './EpdaFieldChangeHistory'
@@ -14,12 +14,9 @@ interface EpdaReadOnlyWorksheetProps {
   historyRefreshKey: number
   isLocked: boolean
   isBusy: boolean
-  isIssuing: boolean
   isLoadingPreview: boolean
   isLoadingInquiry: boolean
   isLoadingCargoCatalog: boolean
-  inquiryStatus?: string | null
-  onIssue: () => void
   onPreview: () => void
 }
 
@@ -31,12 +28,9 @@ export function EpdaReadOnlyWorksheet({
   historyRefreshKey,
   isLocked,
   isBusy,
-  isIssuing,
   isLoadingPreview,
   isLoadingInquiry,
   isLoadingCargoCatalog,
-  inquiryStatus,
-  onIssue,
   onPreview,
 }: EpdaReadOnlyWorksheetProps) {
   const { t } = useI18n()
@@ -66,26 +60,12 @@ export function EpdaReadOnlyWorksheet({
             />
           ) : null}
           <Button
-            variant='secondary'
-            onClick={onIssue}
-            disabled={isBusy || !inquiryId || inquiryStatus === 'QUOTED'}
-            className='h-11 gap-2 active:scale-[0.98] sm:h-9'
-          >
-            {isIssuing ? (
-              <Loader2 className='h-4 w-4 animate-spin' />
-            ) : (
-              <Send className='h-4 w-4 shrink-0' />
-            )}
-            <span className='hidden sm:inline'>{t('epda.issue')}</span>
-            <span className='sm:hidden'>{t('epda.issueShort')}</span>
-          </Button>
-          <Button
             onClick={onPreview}
             disabled={isBusy}
             className='h-11 gap-2 active:scale-[0.98] sm:h-9'
           >
             {isLoadingPreview ? (
-              <Loader2 className='h-4 w-4 animate-spin' />
+              <Loader2 className='h-4 w-4 animate-spin text-muted-foreground' />
             ) : (
               <Eye className='h-4 w-4' />
             )}

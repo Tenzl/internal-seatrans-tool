@@ -600,6 +600,7 @@ const buildBBRows = (
   agencyFeeMode?: string,
   agencyDiscountPercent?: string | number,
   agencyLumpsumAmount?: string | number,
+  agencyOtherExpenses?: Array<{ name?: string; amount?: string | number }>,
   params?: EpdaParameterValues
 ): { html: string; total?: string } => {
   const customRows = normalizeCustomRows(rows)
@@ -674,10 +675,23 @@ const buildBBRows = (
       })} in LUMPSUM including transportation`,
       amount: lumpsumAmount,
     }
+    const otherRows: QuoteRow[] = []
+    for (const entry of agencyOtherExpenses ?? []) {
+      const name = typeof entry?.name === 'string' ? entry.name.trim() : ''
+      const amount = toNumber(entry?.amount)
+      if (!name || amount === null || amount <= 0) continue
+      otherRows.push({ item: name, amount })
+    }
+
+    const rows = [lumpsumRow, ...otherRows]
+    const totalNumeric = rows.reduce((sum, row) => {
+      const n = toNumber(row.amount)
+      return n === null ? sum : sum + n
+    }, 0)
 
     return {
-      html: [lumpsumRow].map(renderRow).join('\n'),
-      total: formatAmount(lumpsumAmount),
+      html: rows.map(renderRow).join('\n'),
+      total: formatAmount(totalNumeric),
     }
   }
 
@@ -870,6 +884,7 @@ export const renderQuoteHtml = (template: string, data: QuoteData) => {
     normalizedData.agency_fee_mode,
     normalizedData.agency_discount_percent,
     normalizedData.agency_lumpsum_amount,
+    normalizedData.agency_other_expenses,
     params
   )
 

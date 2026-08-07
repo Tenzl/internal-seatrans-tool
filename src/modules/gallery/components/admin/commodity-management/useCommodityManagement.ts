@@ -74,7 +74,7 @@ export function useCommodityManagement() {
           )
         )
       } catch (error) {
-        toast.error('Failed to load image types', error)
+        toast.error('Failed to load commodities', error)
         return []
       }
     },
@@ -110,7 +110,7 @@ export function useCommodityManagement() {
       return
     }
     if (!newCommodityName.trim()) {
-      toast.error('Cargo Name is required')
+      toast.error('Commodity name is required')
       return
     }
     if (!isFixedCargoType(selectedCargoType)) {
@@ -125,7 +125,7 @@ export function useCommodityManagement() {
       cargoType: selectedCargoType,
     }).name
     if (commodities.some((commodity) => commodity.name === normalizedName)) {
-      toast.error(`Image type "${normalizedName}" already exists`)
+      toast.error(`Commodity "${normalizedName}" already exists`)
       return
     }
 
@@ -139,12 +139,12 @@ export function useCommodityManagement() {
           cargoType: selectedCargoType,
         })
       )
-      if (!created) throw new Error('Empty response when creating cargo name')
+      if (!created) throw new Error('Empty response when creating commodity')
       updateCommodityCache((current) => [...current, created])
       setNewCommodityName('')
-      toast.success(`Cargo "${created.displayName}" added successfully`)
+      toast.success(`Commodity "${created.displayName}" added successfully`)
     } catch {
-      toast.error('Failed to add cargo')
+      toast.error('Failed to add commodity')
     } finally {
       setMutationLoading(false)
     }
@@ -183,7 +183,7 @@ export function useCommodityManagement() {
   const saveCommodity = useCallback(
     async (typeId: number) => {
       if (!editingData.displayName.trim()) {
-        toast.error('Cargo Name is required')
+        toast.error('Commodity name is required')
         return
       }
       if (editingData.requiredImageCount < 1) {
@@ -208,16 +208,16 @@ export function useCommodityManagement() {
             cargoType,
           })
         )
-        if (!updated) throw new Error('Empty response when updating cargo type')
+        if (!updated) throw new Error('Empty response when updating commodity')
         updateCommodityCache((current) =>
           current.map((commodity) =>
             commodity.id === typeId ? updated : commodity
           )
         )
         setEditingTypeId(null)
-        toast.success('Cargo type updated successfully')
+        toast.success('Commodity updated successfully')
       } catch {
-        toast.error('Failed to update cargo type')
+        toast.error('Failed to update commodity')
       } finally {
         setMutationLoading(false)
       }
@@ -244,7 +244,7 @@ export function useCommodityManagement() {
         current.filter((item) => item.id !== commodity.id)
       )
       toast.success(
-        `Cargo type "${commodity.displayName}" deleted successfully`
+        `Commodity "${commodity.displayName}" deleted successfully`
       )
     } catch (error) {
       toast.error(getCommodityDeleteError(error))

@@ -46,6 +46,7 @@ interface PartySearchSelectProps {
   onChange: (option: PartnerOption | null) => void
   placeholder?: string
   disabled?: boolean
+  className?: string
 }
 
 export function PartySearchSelect({
@@ -58,6 +59,7 @@ export function PartySearchSelect({
   onChange,
   placeholder = 'Search Party name...',
   disabled = false,
+  className,
 }: PartySearchSelectProps) {
   const [open, setOpen] = React.useState(false)
   const [search, setSearch] = React.useState('')
@@ -150,7 +152,10 @@ export function PartySearchSelect({
             role='combobox'
             aria-expanded={open}
             disabled={disabled}
-            className='w-full justify-between bg-background font-normal'
+            className={cn(
+              'w-full justify-between bg-background font-normal',
+              className
+            )}
           >
             <span className='flex min-w-0 items-center gap-2'>
               <Search className='h-4 w-4 shrink-0 text-muted-foreground' />

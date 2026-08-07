@@ -46,7 +46,7 @@ function isLoaOverTugMax(loa: string, params: EpdaParameterValues): boolean {
 }
 
 /**
- * Build the EPDA quote snapshot used by Lock / Issue, from an admin inquiry row
+ * Build the EPDA quote snapshot used by Lock, from an admin inquiry row
  * plus live (or already-frozen) parameter values.
  */
 export function buildEpdaLockSnapshotFromAdminInquiry(
@@ -118,6 +118,13 @@ export function buildEpdaLockSnapshotFromAdminInquiry(
     agencyFeeMode: mapAgencyFeeModeFromApi(inquiry.agencyFeeMode),
     agencyDiscountPercent: toStr(inquiry.agencyDiscountPercent),
     agencyLumpsumAmount: toStr(inquiry.agencyLumpsumAmount),
+    agencyOtherExpenses: Array.isArray(inquiry.agencyOtherExpenses)
+      ? inquiry.agencyOtherExpenses.map((row, index) => ({
+          id: `lock-agency-other-${index}`,
+          name: toStr(row?.name),
+          amount: toStr(row?.amount),
+        }))
+      : [],
     isTallyFeeEligible: isTallyFeeEligibleCargoType(cargoType),
     tallyFeeAmount: toStr(inquiry.tallyFeeAmount),
     isLoaOverTugMax: overTugMax,
