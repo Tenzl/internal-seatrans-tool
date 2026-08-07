@@ -11,15 +11,15 @@ import { useCommodityManagement } from './commodity-management/useCommodityManag
 export function ManageCommodities() {
   const currentUser = useCurrentUser()
   const management = useCommodityManagement()
-  const canAddCargo = getRoleGroup(currentUser) === 'INTERNAL'
-  const canEditCargo = isAdminRole(currentUser?.role) || canAddCargo
+  const canAddCommodity = getRoleGroup(currentUser) === 'INTERNAL'
+  const canEditCommodity = isAdminRole(currentUser?.role) || canAddCommodity
 
   return (
     <div className='space-y-6'>
       <CommodityToolbar
         serviceTypes={management.serviceTypes}
         selectedServiceType={management.selectedServiceType}
-        canAddCargo={canAddCargo}
+        canAddCommodity={canAddCommodity}
         newCommodityName={management.newCommodityName}
         onServiceTypeChange={management.changeServiceType}
         onNameChange={management.setNewCommodityName}
@@ -32,7 +32,7 @@ export function ManageCommodities() {
         cargoTypeCounts={management.cargoTypeCounts}
         commodities={management.filteredCommodities}
         loading={management.loading}
-        canEditCargo={canEditCargo}
+        canEditCommodity={canEditCommodity}
         editingTypeId={management.editingTypeId}
         editingData={management.editingData}
         onCargoTypeChange={management.setSelectedCargoType}

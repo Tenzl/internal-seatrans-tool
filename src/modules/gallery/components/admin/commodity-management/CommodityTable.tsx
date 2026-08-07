@@ -20,7 +20,7 @@ interface CommodityTableProps {
   cargoTypeCounts: Record<CargoType, number>
   commodities: Commodity[]
   loading: boolean
-  canEditCargo: boolean
+  canEditCommodity: boolean
   editingTypeId: number | null
   editingData: CommodityEditData
   onCargoTypeChange: (cargoType: CargoType) => void
@@ -38,7 +38,7 @@ export function CommodityTable({
   cargoTypeCounts,
   commodities,
   loading,
-  canEditCargo,
+  canEditCommodity,
   editingTypeId,
   editingData,
   onCargoTypeChange,
@@ -102,7 +102,7 @@ export function CommodityTable({
                   Required Count
                 </th>
                 <th className='px-4 py-3 text-left font-medium'>Cargo Type</th>
-                {canEditCargo && (
+                {canEditCommodity && (
                   <th className='w-32 px-4 py-3 text-right font-medium'>
                     Actions
                   </th>
@@ -157,7 +157,7 @@ export function CommodityTable({
                         {getCargoTypeLabel(commodity.cargoType)}
                       </Badge>
                     </td>
-                    {canEditCargo && (
+                    {canEditCommodity && (
                       <td className='px-4 py-3'>
                         <div className='flex justify-end gap-2'>
                           {isEditing ? (

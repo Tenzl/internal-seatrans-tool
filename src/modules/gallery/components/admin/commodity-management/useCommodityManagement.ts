@@ -124,8 +124,17 @@ export function useCommodityManagement() {
       serviceTypeId: selectedServiceType,
       cargoType: selectedCargoType,
     }).name
-    if (commodities.some((commodity) => commodity.name === normalizedName)) {
-      toast.error(`Commodity "${normalizedName}" already exists`)
+    // Duplicate only within the same cargo type (same name OK across types).
+    if (
+      commodities.some(
+        (commodity) =>
+          commodity.cargoType === selectedCargoType &&
+          commodity.name === normalizedName
+      )
+    ) {
+      toast.error(
+        `Commodity "${normalizedName}" already exists in this cargo type`
+      )
       return
     }
 

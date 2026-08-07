@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button'
 interface CommodityToolbarProps {
   serviceTypes: ServiceType[]
   selectedServiceType: number | null
-  canAddCargo: boolean
+  canAddCommodity: boolean
   newCommodityName: string
   onServiceTypeChange: (serviceTypeId: number | null) => void
   onNameChange: (name: string) => void
@@ -15,7 +15,7 @@ interface CommodityToolbarProps {
 export function CommodityToolbar({
   serviceTypes,
   selectedServiceType,
-  canAddCargo,
+  canAddCommodity,
   newCommodityName,
   onServiceTypeChange,
   onNameChange,
@@ -47,7 +47,7 @@ export function CommodityToolbar({
           </select>
         </div>
 
-        {canAddCargo && (
+        {canAddCommodity && (
           <>
             <div>
               <label className='mb-2 block text-sm font-medium'>
