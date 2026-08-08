@@ -7,8 +7,8 @@ import {
 } from './bookingWorkflow'
 
 describe('booking workflow routing', () => {
-  it('uses Booking -> AN -> BL for exports', () => {
-    expect(getBookingWorkflowSteps('EXPORT')).toEqual(['booking', 'an', 'bl'])
+  it('uses Booking -> BL for exports', () => {
+    expect(getBookingWorkflowSteps('EXPORT')).toEqual(['booking', 'bl'])
   })
 
   it('uses Booking -> AN -> D/O for imports', () => {
@@ -23,11 +23,11 @@ describe('booking workflow routing', () => {
       '/booking/documents/booking-confirmation?flow=IMPORT'
     )
     expect(
-      buildBookingWorkflowUrl('EXPORT', 12, 'an', {
+      buildBookingWorkflowUrl('EXPORT', 12, 'bl', {
         id: 15,
       } as never)
     ).toBe(
-      '/booking/documents/arrival-notice?flow=EXPORT&bookingId=12&recordId=15'
+      '/booking/documents/bill-of-lading?flow=EXPORT&bookingId=12&recordId=15'
     )
   })
 

@@ -25,10 +25,32 @@ export type AdminUserRow = {
   createdAt: string
 }
 
+export type AdminUsersPage = {
+  content: AdminUserRow[]
+  totalElements: number
+  totalPages: number
+  size: number
+  number: number
+}
+
 export type AdminListUsersParams = {
   q?: string
   roleGroup?: RoleGroup
   roleName?: string
+  page?: number
+  limit?: number
+}
+
+/** Lean Person In Charge option — no password / unused profile fields. */
+export type PicOption = {
+  id: number
+  email: string
+  fullName: string | null
+  roleName: string | null
+}
+
+export type PicOptionsParams = {
+  q?: string
   limit?: number
 }
 
@@ -41,19 +63,52 @@ export type CreateInternalUserInput = {
 }
 
 export const adminUsersService = {
-  async listUsers(params: AdminListUsersParams = {}): Promise<AdminUserRow[]> {
+  async listUsers(
+    params: AdminListUsersParams = {},
+    signal?: AbortSignal
+  ): Promise<AdminUsersPage> {
+    const sp = new URLSearchParams()
+    if (params.q?.trim()) sp.set("q", params.q.trim())
+    if (params.roleGroup) sp.set("roleGroup", params.roleGroup)
+    if (params.roleName?.trim()) sp.set("roleName", params.roleName.trim())
+    sp.set("page", String(Math.max(0, params.page ?? 0)))
+    if (params.limit) sp.set("limit", String(params.limit))
+
+    const qs = sp.toString()
+    const path = `${API_CONFIG.USERS.ADMIN_USERS}?${qs}`
+    const response = await apiClient.get(path, { signal })
+    const data = await unwrapApiResponse<
+      AdminUsersPage | AdminUserRow[]
+    >(response)
+    if (Array.isArray(data)) {
+      return {
+        content: data,
+        totalElements: data.length,
+        totalPages: data.length === 0 ? 0 : 1,
+        size: data.length,
+        number: 0,
+      }
+    }
+    return {
+      content: Array.isArray(data.content) ? data.content : [],
+      totalElements: data.totalElements ?? data.content?.length ?? 0,
+      totalPages: data.totalPages ?? 0,
+      size: data.size ?? params.limit ?? 20,
+      number: data.number ?? (data as { page?: number }).page ?? params.page ?? 0,
+    }
+  },
+
+  async listPicOptions(params: PicOptionsParams = {}): Promise<PicOption[]> {
     const sp = new URLSearchParams()
     if (params.q?.trim()) sp.set('q', params.q.trim())
-    if (params.roleGroup) sp.set('roleGroup', params.roleGroup)
-    if (params.roleName?.trim()) sp.set('roleName', params.roleName.trim())
     if (params.limit) sp.set('limit', String(params.limit))
 
     const qs = sp.toString()
     const path = qs
-      ? `${API_CONFIG.USERS.ADMIN_USERS}?${qs}`
-      : API_CONFIG.USERS.ADMIN_USERS
+      ? `${API_CONFIG.USERS.ADMIN_USER_PIC_OPTIONS}?${qs}`
+      : API_CONFIG.USERS.ADMIN_USER_PIC_OPTIONS
     const response = await apiClient.get(path)
-    return unwrapApiResponse<AdminUserRow[]>(response)
+    return unwrapApiResponse<PicOption[]>(response)
   },
 
   async listRoles(roleGroup?: RoleGroup): Promise<AdminRoleOption[]> {

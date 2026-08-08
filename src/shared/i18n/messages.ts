@@ -331,6 +331,14 @@ const enMessages: Record<string, string> = {
     'There are still {count} required field(s) not filled in. Save anyway as a Processing draft?',
   'epda.incompleteSaveCancel': 'Keep editing',
   'epda.incompleteSaveContinue': 'Save anyway',
+  'epda.paramDiffTitle': 'Tariff parameters have changed',
+  'epda.paramDiffBody':
+    'Global EPDA parameters differ from the values this draft was saved with. Apply the latest tariffs or keep the current ones for preview and lock.',
+  'epda.paramDiffApply': 'Apply latest',
+  'epda.paramDiffSkip': 'Skip (keep current)',
+  'epda.paramDiffColParameter': 'Parameter',
+  'epda.paramDiffColCurrent': 'Current',
+  'epda.paramDiffColLatest': 'Latest',
   'epda.chooseStart': 'Choose a port to begin',
   'epda.chooseStartHint':
     'Pick the area of ports and Port of call above to reveal the EPDA input sections.',

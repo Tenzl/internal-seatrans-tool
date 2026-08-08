@@ -57,13 +57,4 @@ export const shippingAgencyEpdaService = {
     )
     return unwrapApiResponse<PageResponse<InquiryFieldChangeLogEntry>>(response)
   },
-
-  async listLatestCustomerFieldChanges(inquiryId: number) {
-    const response = await apiClient.get(
-      API_CONFIG.INQUIRIES.ADMIN_SHIPPING_AGENCY_CUSTOMER_FIELD_CHANGES(
-        inquiryId
-      )
-    )
-    return unwrapApiResponse<InquiryFieldChangeLogEntry[]>(response)
-  },
 }

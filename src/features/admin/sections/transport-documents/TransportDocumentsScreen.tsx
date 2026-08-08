@@ -6,7 +6,6 @@ import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { isAdminRole } from '@/config/section-catalog'
 import { PdfPreviewDialog } from '@/shared/components/PdfPreviewDialog'
 import { queryKeys } from '@/shared/config/react-query.config'
-import { delay, EPDA_PREVIEW_LOAD_DELAY_MS } from '@/shared/utils/epdaExport'
 import { toast } from '@/shared/utils/toast'
 import {
   FileOutput,
@@ -29,6 +28,7 @@ import {
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { subscribeToPartnerCacheResets } from '../partner-management/partnerCache'
+import { adminUsersService } from '../user-management/api/adminUsersService'
 import { BookingFlowChooser } from './BookingFlowChooser'
 import { BookingWorkflowNav } from './BookingWorkflowNav'
 import { TransportDocumentForm } from './TransportDocumentForm'
@@ -61,7 +61,6 @@ import {
   getPrefillSourceType,
   mapArrivalNoticeCargoFromBooking,
   prefillArrivalNoticeHeaderFromBooking,
-  syncBillOfLadingCargoFromArrivalNotice,
   syncDeliveryOrderCargoFromArrivalNotice,
 } from './transportDocumentPrefill'
 import {
@@ -128,6 +127,16 @@ export function TransportDocumentsScreen({
   const canEditFlow = needsFlowSelection
   const workflowFlow = selectedFlow ?? 'EXPORT'
 
+  // Prefetch Person In Charge options so empty dropdown open hits cache.
+  useEffect(() => {
+    if (documentType !== 'booking') return
+    void queryClient.prefetchQuery({
+      queryKey: queryKeys.picOptions(''),
+      queryFn: () => adminUsersService.listPicOptions({ limit: 50 }),
+      staleTime: 5 * 60 * 1000,
+    })
+  }, [documentType, queryClient])
+
   const [forms, setForms] = useState<TransportDocumentPayloadMap>(
     createEmptyTransportDocuments
   )
@@ -149,7 +158,6 @@ export function TransportDocumentsScreen({
     payloadSnapshot(createEmptyTransportDocuments()[documentType])
   )
   const [trackedRecordId, setTrackedRecordId] = useState(validRecordId)
-  const [blCargoSyncKey, setBlCargoSyncKey] = useState<string | null>(null)
   const [doCargoSyncKey, setDoCargoSyncKey] = useState<string | null>(null)
   const [bookingPicSeedApplied, setBookingPicSeedApplied] = useState(false)
   const autoPreviewDone = useRef(false)
@@ -159,7 +167,6 @@ export function TransportDocumentsScreen({
   // Adjust session state when URL recordId changes (avoid setState-in-effect).
   if (trackedRecordId !== validRecordId) {
     setTrackedRecordId(validRecordId)
-    setBlCargoSyncKey(null)
     setDoCargoSyncKey(null)
     if (validRecordId == null) {
       setActiveRecordId(null)
@@ -176,65 +183,39 @@ export function TransportDocumentsScreen({
   }
 
   /**
-   * Refresh BL/DO cargo from linked AN during render (not an effect) so load
+   * Refresh DO cargo from linked AN during render (not an effect) so load
    * alone does not mark the form dirty — existing records also patch
    * savedSnapshot cargo in the same update.
    */
   if (
-    (documentType === 'bl' || documentType === 'do') &&
+    documentType === 'do' &&
     !isHydrating &&
     !(validRecordId != null && activeRecordId == null)
   ) {
     const anSource = getWorkflowRecord(workflow, 'an')
     if (anSource) {
       const key = `${validBookingId ?? 'x'}:${activeRecordId ?? 'new'}:${anSource.id}:${anSource.updatedAt}`
-      const currentKey =
-        documentType === 'bl' ? blCargoSyncKey : doCargoSyncKey
-      if (currentKey !== key) {
-        if (documentType === 'bl') {
-          setBlCargoSyncKey(key)
-          const an = normalizeArrivalNoticePayload(anSource.payload)
-          setForms((previous) => {
-            const synced = syncBillOfLadingCargoFromArrivalNotice(
-              an,
-              previous.bl as BillOfLadingPayload
-            )
-            return { ...previous, bl: synced } as TransportDocumentPayloadMap
+      if (doCargoSyncKey !== key) {
+        setDoCargoSyncKey(key)
+        const an = normalizeArrivalNoticePayload(anSource.payload)
+        setForms((previous) => {
+          const synced = syncDeliveryOrderCargoFromArrivalNotice(
+            an,
+            previous.do as DeliveryOrderPayload
+          )
+          return { ...previous, do: synced } as TransportDocumentPayloadMap
+        })
+        if (activeRecordId != null) {
+          setSavedSnapshot((previous) => {
+            try {
+              const saved = JSON.parse(previous) as DeliveryOrderPayload
+              return payloadSnapshot(
+                syncDeliveryOrderCargoFromArrivalNotice(an, saved)
+              )
+            } catch {
+              return previous
+            }
           })
-          if (activeRecordId != null) {
-            setSavedSnapshot((previous) => {
-              try {
-                const saved = JSON.parse(previous) as BillOfLadingPayload
-                return payloadSnapshot(
-                  syncBillOfLadingCargoFromArrivalNotice(an, saved)
-                )
-              } catch {
-                return previous
-              }
-            })
-          }
-        } else {
-          setDoCargoSyncKey(key)
-          const an = normalizeArrivalNoticePayload(anSource.payload)
-          setForms((previous) => {
-            const synced = syncDeliveryOrderCargoFromArrivalNotice(
-              an,
-              previous.do as DeliveryOrderPayload
-            )
-            return { ...previous, do: synced } as TransportDocumentPayloadMap
-          })
-          if (activeRecordId != null) {
-            setSavedSnapshot((previous) => {
-              try {
-                const saved = JSON.parse(previous) as DeliveryOrderPayload
-                return payloadSnapshot(
-                  syncDeliveryOrderCargoFromArrivalNotice(an, saved)
-                )
-              } catch {
-                return previous
-              }
-            })
-          }
         }
       }
     }
@@ -333,20 +314,14 @@ export function TransportDocumentsScreen({
     return normalizeArrivalNoticePayload(source.payload)
   }, [workflow])
 
-  /** Overwrite BL / DO cargo from linked AN whenever we persist or preview. */
+  /** Overwrite DO cargo from linked AN whenever we persist or preview. */
   const withCargoFromAn = useCallback(
     (
       payload: TransportDocumentPayloadMap[typeof documentType]
     ): TransportDocumentPayloadMap[typeof documentType] => {
-      if (documentType !== 'bl' && documentType !== 'do') return payload
+      if (documentType !== 'do') return payload
       const an = getWorkflowArrivalNotice()
       if (!an) return payload
-      if (documentType === 'bl') {
-        return syncBillOfLadingCargoFromArrivalNotice(
-          an,
-          payload as BillOfLadingPayload
-        ) as TransportDocumentPayloadMap[typeof documentType]
-      }
       return syncDeliveryOrderCargoFromArrivalNotice(
         an,
         payload as DeliveryOrderPayload
@@ -421,7 +396,7 @@ export function TransportDocumentsScreen({
   const resolvePayloadForPersist = useCallback(
     (options?: { mapAnCargoFromBooking?: boolean }) => {
       let payload = activePayload
-      if (documentType === 'bl' || documentType === 'do') {
+      if (documentType === 'do') {
         payload = withCargoFromAn(payload)
       }
       if (documentType === 'booking') {
@@ -471,23 +446,6 @@ export function TransportDocumentsScreen({
       }
     },
     [documentType, resolvePayloadForPersist]
-  )
-
-  /** After AN save: patch sibling BL cargo so Download BL stays correct. */
-  const syncSiblingBlCargoFromAn = useCallback(
-    async (anPayload: ArrivalNoticePayload) => {
-      if (validBookingId == null) return
-      const blRecord = getWorkflowRecord(workflow, 'bl')
-      if (!blRecord || blRecord.lockedAt) return
-      const currentBl = normalizeBillOfLadingPayload(blRecord.payload)
-      const synced = syncBillOfLadingCargoFromArrivalNotice(anPayload, currentBl)
-      await transportDocumentService.update('bl', blRecord.id, {
-        ...synced,
-        status: blRecord.status,
-        bookingId: validBookingId,
-      })
-    },
-    [validBookingId, workflow]
   )
 
   /** After AN save: patch sibling DO cargo so Download DO stays correct. */
@@ -552,10 +510,7 @@ export function TransportDocumentsScreen({
           documentType,
           validated
         )
-        // BL is already a complete backend-rendered PDF and needs no settle delay.
-        if (documentType !== 'bl') {
-          await delay(EPDA_PREVIEW_LOAD_DELAY_MS)
-        }
+        // Backend already returns a complete PDF blob for all booking docs.
         setPreviewUrl(URL.createObjectURL(pdf))
       } catch (error) {
         setPreviewOpen(false)
@@ -594,13 +549,6 @@ export function TransportDocumentsScreen({
       isDirtyRef.current = false
       if (documentType === 'an') {
         const anPayload = normalizeArrivalNoticePayload(record.payload)
-        try {
-          await syncSiblingBlCargoFromAn(anPayload)
-        } catch {
-          toast.error(
-            'Arrival Notice saved, but Bill of Lading cargo could not be synced'
-          )
-        }
         try {
           await syncSiblingDoCargoFromAn(anPayload)
         } catch {
@@ -645,7 +593,6 @@ export function TransportDocumentsScreen({
     queryClient,
     router,
     selectedFlow,
-    syncSiblingBlCargoFromAn,
     syncSiblingDoCargoFromAn,
     validatePayload,
     validBookingId,
@@ -750,26 +697,15 @@ export function TransportDocumentsScreen({
 
   const updateFields = (patch: Record<string, unknown>) => {
     if (isLocked) return
-    // BL / DO container rows are AN-owned; strip any client edits.
+    // DO container rows are AN-owned; strip any client edits.
     const nextPatch =
-      documentType === 'bl'
+      documentType === 'do'
         ? Object.fromEntries(
             Object.entries(patch).filter(
-              ([key]) =>
-                key !== 'containers' &&
-                key !== 'descriptionOfGoods' &&
-                key !== 'numberAndKindOfPackages' &&
-                key !== 'grossWeight' &&
-                key !== 'measurement'
+              ([key]) => key !== 'containers' && key !== 'cargoRows'
             )
           )
-        : documentType === 'do'
-          ? Object.fromEntries(
-              Object.entries(patch).filter(
-                ([key]) => key !== 'containers' && key !== 'cargoRows'
-              )
-            )
-          : patch
+        : patch
     if (Object.keys(nextPatch).length === 0) return
     setForms(
       (previous) =>
@@ -791,8 +727,7 @@ export function TransportDocumentsScreen({
 
   const setContainers = (rows: AnContainer[]) => {
     if (isLocked) return
-    // BL / DO cargo is owned by Arrival Notice — never edit containers there.
-    if (documentType !== 'an') return
+    if (documentType !== 'an' && documentType !== 'bl') return
     setForms(
       (previous) =>
         ({

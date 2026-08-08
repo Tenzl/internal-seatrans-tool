@@ -30,7 +30,8 @@ export function useEpdaPersistence({
     setIsSavingDraft(true)
     try {
       const patchBody = buildEpdaPatchPayload(input)
-      // Drafts stay on live tariff parameters; snapshots are created only on lock.
+      // Soft-snapshot the params currently pinned on the form (Apply or Skip).
+      patchBody.epdaWorkingParams = input.params
       patchBody.isComplete = isComplete
 
       if (linkedInquiryId) {
@@ -53,6 +54,7 @@ export function useEpdaPersistence({
 
       const created = await shippingAgencyEpdaService.createInternalInquiry({
         ...buildInternalCreatePayload(customerUserId, input),
+        epdaWorkingParams: input.params,
         isComplete,
       })
       onCreated(created.id)

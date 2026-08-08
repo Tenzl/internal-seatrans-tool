@@ -15,6 +15,82 @@ type TypedResponse<T> = Response & {
   readonly __responseType?: T
 }
 
+export type ApiErrorOptions = {
+  status?: number
+  cause?: unknown
+  /** True when the failure is a transport/network failure (no HTTP response). */
+  isNetworkError?: boolean
+}
+
+/**
+ * Typed HTTP / transport error so React Query can decide retries from `status`.
+ * Network failures omit `status`; HTTP failures always set it.
+ */
+export class ApiError extends Error {
+  readonly status?: number
+  readonly isNetworkError: boolean
+
+  constructor(message: string, options: ApiErrorOptions = {}) {
+    super(message, options.cause !== undefined ? { cause: options.cause } : undefined)
+    this.name = 'ApiError'
+    this.status = options.status
+    this.isNetworkError = options.isNetworkError === true
+  }
+}
+
+export function isApiError(error: unknown): error is ApiError {
+  return error instanceof ApiError
+}
+
+/** Best-effort HTTP status from ApiError, Axios-like shapes, or `{ status }`. */
+export function getErrorStatus(error: unknown): number | undefined {
+  if (isApiError(error)) return error.status
+  if (
+    error &&
+    typeof error === 'object' &&
+    'response' in error &&
+    error.response &&
+    typeof error.response === 'object' &&
+    'status' in error.response &&
+    typeof (error.response as { status: unknown }).status === 'number'
+  ) {
+    return (error.response as { status: number }).status
+  }
+  if (
+    error &&
+    typeof error === 'object' &&
+    'status' in error &&
+    typeof (error as { status: unknown }).status === 'number'
+  ) {
+    return (error as { status: number }).status
+  }
+  return undefined
+}
+
+function isAbortError(error: unknown): boolean {
+  return (
+    (typeof DOMException !== 'undefined' &&
+      error instanceof DOMException &&
+      error.name === 'AbortError') ||
+    (error instanceof Error && error.name === 'AbortError')
+  )
+}
+
+/**
+ * React Query retry predicate: only network failures, 408, 429, and 5xx.
+ * Never retries 401/403/404/other 4xx, or aborts.
+ */
+export function shouldRetryApiError(error: unknown): boolean {
+  if (isAbortError(error)) return false
+  if (isApiError(error) && error.isNetworkError) return true
+
+  const status = getErrorStatus(error)
+  if (status == null) return true
+  if (status === 408 || status === 429) return true
+  if (status >= 500) return true
+  return false
+}
+
 class ApiClient {
   private static instance: ApiClient
 
@@ -110,18 +186,23 @@ class ApiClient {
       // The cookie session expired or is no longer valid.
       if (response.status === 401 && !skipAuth) {
         this.clearAuth()
-        throw new Error('Session expired. Please login again.')
+        throw new ApiError('Session expired. Please login again.', {
+          status: 401,
+        })
       }
 
       return response
     } catch (error) {
+      if (error instanceof ApiError) throw error
+
       // Network errors or other fetch errors
       if (
         error instanceof TypeError &&
         error.message.includes('Failed to fetch')
       ) {
-        throw new Error('Network error. Please check your connection.', {
+        throw new ApiError('Network error. Please check your connection.', {
           cause: error,
+          isNetworkError: true,
         })
       }
       throw error

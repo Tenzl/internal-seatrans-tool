@@ -7,6 +7,7 @@ import { shippingAgencyEpdaService } from '@/modules/inquiries/services/shipping
 import type { ShippingAgencyAdminInquiry } from '@/modules/inquiries/types/shippingAgencyEpda'
 import { buildDashboardUrl } from '@/shared/utils/dashboardNavigation'
 import { toast } from '@/shared/utils/toast'
+import { extractWorkingParams } from '@/features/admin/sections/epda-editor/controller/epdaParameterDiff'
 import { usePathname, useRouter } from 'next/navigation'
 import type { InquiryDeleteMode } from './InquiryDataTable'
 import type { InquiryHistoryRecord } from './inquiryHistory.types'
@@ -150,11 +151,16 @@ export function useInquiryHistoryActions({
       }
 
       const quoteForm = quoteFormFromStored(detail.quoteForm)
-      const params = await resolveEffectiveParams(
-        quoteForm,
-        detail.portOfCall,
-        detail.portId
-      )
+      // Lock freezes the pinned soft-snapshot when present (Skip path);
+      // otherwise resolve live tariffs (Apply / legacy drafts).
+      const working = extractWorkingParams(detail.epdaWorkingParams)
+      const params =
+        working ??
+        (await resolveEffectiveParams(
+          quoteForm,
+          detail.portOfCall,
+          detail.portId
+        ))
       const snapshot = buildEpdaLockSnapshotFromAdminInquiry(detail, params)
       await shippingAgencyEpdaService.lockEpda(lockTarget.id, snapshot)
       toast.success('EPDA locked — snapshot saved. Edit is disabled.')

@@ -16,20 +16,22 @@ import { FontProvider } from '@/context/font-provider'
 import { ThemeProvider } from '@/context/theme-provider'
 import { Toaster } from '@/components/ui/sonner'
 import { NavigationProgress } from '@/components/navigation-progress'
+import {
+  getErrorStatus,
+  shouldRetryApiError,
+} from '@/shared/utils/apiClient'
+
+const QUERY_MAX_RETRIES = 3
 
 function createQueryClient() {
   return new QueryClient({
     defaultOptions: {
       queries: {
         retry: (failureCount, error) => {
-          if (failureCount >= 0 && process.env.NODE_ENV === 'development')
-            return false
-          if (failureCount > 3 && process.env.NODE_ENV === 'production')
-            return false
-          return !(
-            error instanceof AxiosError &&
-            [401, 403].includes(error.response?.status ?? 0)
-          )
+          // Fail fast locally so broken endpoints are obvious during development.
+          if (process.env.NODE_ENV === 'development') return false
+          if (failureCount >= QUERY_MAX_RETRIES) return false
+          return shouldRetryApiError(error)
         },
         refetchOnWindowFocus: process.env.NODE_ENV === 'production',
         staleTime: 10 * 1000, // 10s
@@ -47,18 +49,17 @@ function createQueryClient() {
     },
     queryCache: new QueryCache({
       onError: (error) => {
-        if (error instanceof AxiosError) {
-          if (error.response?.status === 401) {
-            toast.error('Session expired!')
-            void authService.logout()
-            if (typeof window !== 'undefined') {
-              const redirect = window.location.href
-              window.location.href = `/sign-in?redirect=${encodeURIComponent(redirect)}`
-            }
+        const status = getErrorStatus(error)
+        if (status === 401) {
+          toast.error('Session expired!')
+          void authService.logout()
+          if (typeof window !== 'undefined') {
+            const redirect = window.location.href
+            window.location.href = `/sign-in?redirect=${encodeURIComponent(redirect)}`
           }
-          if (error.response?.status === 500) {
-            toast.error('Internal Server Error!')
-          }
+        }
+        if (status === 500) {
+          toast.error('Internal Server Error!')
         }
       },
     }),

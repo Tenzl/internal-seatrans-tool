@@ -116,7 +116,8 @@ export function BookingHistoryScreen() {
               </CardTitle>
               <CardDescription className='max-w-2xl text-sm leading-relaxed'>
                 Booking workflow records for Import and Export. Open a booking to
-                continue Arrival Notice, Bill of Lading, or Delivery Order.
+                continue Bill of Lading (Export) or Arrival Notice and Delivery
+                Order (Import).
               </CardDescription>
             </div>
             <div className='flex flex-wrap gap-2'>

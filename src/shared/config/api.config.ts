@@ -128,6 +128,28 @@ export const API_CONFIG = {
     },
     ADMIN_BASE: '/admin/commodities',
     ADMIN_BY_ID: (id: number) => `/admin/commodities/${id}`,
+    /** Freight-forwarding picker for booking / AN description of goods. */
+    ADMIN_BOOKING_OPTIONS: '/admin/commodities/booking-options',
+  },
+
+  COMMODITY_GROUPS: {
+    ADMIN_BASE: '/admin/commodity-groups',
+    ADMIN_LIST: (params?: { serviceSlug?: string; q?: string }) => {
+      const search = new URLSearchParams()
+      if (params?.serviceSlug?.trim()) {
+        search.set('serviceSlug', params.serviceSlug.trim())
+      }
+      if (params?.q?.trim()) {
+        search.set('q', params.q.trim())
+      }
+      const qs = search.toString()
+      return qs
+        ? `/admin/commodity-groups?${qs}`
+        : '/admin/commodity-groups'
+    },
+    ADMIN_BY_ID: (id: number) => `/admin/commodity-groups/${id}`,
+    ADMIN_COMMODITIES: (id: number) =>
+      `/admin/commodity-groups/${id}/commodities`,
   },
 
   GALLERY: {
@@ -135,6 +157,7 @@ export const API_CONFIG = {
     ADMIN_BASE: '/admin/gallery-images',
     ADMIN_BATCH: '/admin/gallery-images/batch',
     ADMIN_FROM_URL: '/admin/gallery-images/from-url',
+    ADMIN_COUNTS: '/admin/gallery-images/counts',
     ADMIN_BY_ID: (id: number) => `/admin/gallery-images/${id}`,
   },
 
@@ -154,8 +177,8 @@ export const API_CONFIG = {
   },
 
   USERS: {
-    ADMIN_EXTERNAL_CUSTOMERS: '/admin/users/external-customers',
     ADMIN_USERS: '/admin/users',
+    ADMIN_USER_PIC_OPTIONS: '/admin/users/pic-options',
     ADMIN_USER_ROLES: '/admin/users/roles',
     ADMIN_USER_BY_ID: (id: number) => `/admin/users/${id}`,
     ADMIN_USER_RESET_PASSWORD: (id: number) =>
@@ -165,17 +188,12 @@ export const API_CONFIG = {
   },
 
   INQUIRIES: {
-    SUBMIT: '/inquiries',
     USER_HISTORY: (userId: number) => `/inquiries/user/${userId}`,
     ADMIN_BASE: '/admin/inquiries',
     ADMIN_DETAIL: (serviceType: string, id: number) =>
       `/admin/inquiries/${encodeURIComponent(serviceType)}/${id}`,
     ADMIN_STATUS: (serviceType: string, id: number) =>
       `/admin/inquiries/${encodeURIComponent(serviceType)}/${id}/status`,
-    ADMIN_FORM: (serviceType: string, id: number) =>
-      `/admin/inquiries/${encodeURIComponent(serviceType)}/${id}/form`,
-    ADMIN_HOURS: (serviceType: string, id: number) =>
-      `/admin/inquiries/${encodeURIComponent(serviceType)}/${id}/hours`,
     ADMIN_SHIPPING_AGENCY_CREATE: '/admin/inquiries/shipping-agency',
     ADMIN_SHIPPING_AGENCY_EPDA: (id: number) =>
       `/admin/inquiries/shipping-agency/${id}/epda`,
@@ -183,9 +201,8 @@ export const API_CONFIG = {
       `/admin/inquiries/shipping-agency/${id}/epda/lock`,
     ADMIN_SHIPPING_AGENCY_FIELD_CHANGES: (id: number, page = 0, size = 6) =>
       `/admin/inquiries/shipping-agency/${id}/epda/field-changes?page=${page}&size=${size}`,
-    ADMIN_SHIPPING_AGENCY_CUSTOMER_FIELD_CHANGES: (id: number) =>
-      `/admin/inquiries/shipping-agency/${id}/epda/customer-field-changes`,
     USER_BATCH_DELETE: (serviceSlug: string) =>
+
       `/inquiries/batch?${new URLSearchParams({ serviceSlug }).toString()}`,
     ADMIN_BATCH_DELETE: (
       mode: 'soft' | 'hard' = 'soft',
@@ -228,13 +245,6 @@ export const API_CONFIG = {
       const base = `/inquiries/${serviceSlug}/${targetId}/documents/${documentId}/content`
       return disposition ? `${base}?disposition=${disposition}` : base
     },
-  },
-
-  NOTIFICATIONS: {
-    BASE: '/notifications',
-    UNREAD_COUNT: '/notifications/unread-count',
-    READ_ALL: '/notifications/read-all',
-    MARK_READ: (id: number) => `/notifications/${id}/read`,
   },
 
   EPDA_PARAMETERS: {

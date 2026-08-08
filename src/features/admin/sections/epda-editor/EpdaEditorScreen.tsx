@@ -33,9 +33,12 @@ import { findFirstMissingEpdaSection } from '@/features/admin/sections/epda-edit
 import { useEpdaEditorFormModel } from '@/features/admin/sections/epda-editor/controller/useEpdaEditorFormModel'
 import { useEpdaEditorFormState } from '@/features/admin/sections/epda-editor/controller/useEpdaEditorFormState'
 import { useEpdaInquiryHydration } from '@/features/admin/sections/epda-editor/controller/useEpdaInquiryHydration'
+import { useEpdaParameterApplySkip } from '@/features/admin/sections/epda-editor/controller/useEpdaParameterApplySkip'
 import { useEpdaPersistence } from '@/features/admin/sections/epda-editor/controller/useEpdaPersistence'
 import { useEpdaPreview } from '@/features/admin/sections/epda-editor/controller/useEpdaPreview'
 import { useEpdaReferenceData } from '@/features/admin/sections/epda-editor/controller/useEpdaReferenceData'
+import { EpdaParameterDiffDialog } from '@/features/admin/sections/epda-editor/EpdaParameterDiffDialog'
+import type { EpdaParameterValues } from '@/modules/inquiries/services/epdaParametersService'
 
 function useLatest<T>(value: T) {
   const ref = useRef(value)
@@ -99,6 +102,10 @@ export function EpdaEditorScreen({
   const [customerLabel, setCustomerLabel] = useState<string | null>(null)
   /** When set, EPDA is frozen — quote uses snapshot params and Edit is hidden. */
   const [epdaLockedAt, setEpdaLockedAt] = useState<string | null>(null)
+  const [workingParams, setWorkingParams] = useState<EpdaParameterValues | null>(
+    null
+  )
+  const [workingParamsReady, setWorkingParamsReady] = useState(false)
   const [showValidationErrors, setShowValidationErrors] = useState(false)
   const [viewInquiryMeta, setViewInquiryMeta] =
     useState<ShippingAgencyAdminInquiry | null>(null)
@@ -108,7 +115,17 @@ export function EpdaEditorScreen({
   const [fieldChangeHistoryKey, setFieldChangeHistoryKey] = useState(0)
   const formState = useEpdaEditorFormState()
   const { fields, setters: formSetters } = formState
-  const { cargoType, cargoName, port, dischargeLoadingLocation } = fields
+  const {
+    cargoType,
+    cargoName,
+    port,
+    dischargeLoadingLocation,
+    berthHours,
+    anchorageHours,
+    pilotageThirdMiles,
+    qnPilotageMiles,
+    garbageUsdRate,
+  } = fields
   const {
     setCargoName,
     setGarbageUsdRate,
@@ -224,6 +241,89 @@ export function EpdaEditorScreen({
   /** Locked EPDAs are always read-only, even if the URL has mode=edit. */
   const isFormReadOnly = readOnly || isEpdaLocked
 
+  const isLoadingInquiry = useEpdaInquiryHydration({
+    inquiryId: linkedInquiryId,
+    reloadKey: readOnly,
+    autoPreviewTriggeredRef,
+    cargoCatalogRef: cargoTypeCatalogRef,
+    pendingCargoRef: pendingInquiryCargoRef,
+    pendingPortRef: pendingPortOfCallRef,
+    bindings: {
+      setInquiry: setViewInquiryMeta,
+      setLockedAt: setEpdaLockedAt,
+      setFrozenParams,
+      setEffectiveParams,
+      setWorkingParams: (params) => {
+        setWorkingParams(params)
+        setWorkingParamsReady(true)
+      },
+      setQuoteForm: setLoadedInquiryQuoteForm,
+      setCargoType: formSetters.setCargoType,
+      setCargoName,
+      clearTallyFee: () => setTallyFeeAmount(''),
+      setPendingCargo: setPendingInquiryCargo,
+      applyPortSelection: (selection) => {
+        setSelectedPortId(selection.portId)
+        if (selection.area) {
+          setSelectedArea(selection.area)
+          setPorts(selection.ports)
+        } else {
+          setPort(selection.portOfCall)
+          pendingPortOfCallRef.current = null
+        }
+      },
+      setCustomer: (userId, label) => {
+        setCustomerUserId(userId)
+        setCustomerLabel(label)
+      },
+      formSetters,
+    },
+  })
+
+  useEffect(() => {
+    if (!linkedInquiryId) {
+      setWorkingParams(null)
+      setWorkingParamsReady(true)
+      return
+    }
+    setWorkingParamsReady(false)
+  }, [linkedInquiryId])
+
+  const {
+    paramDiffDialogOpen,
+    paramDiffRows,
+    applyLatestParams,
+    skipLatestParams,
+  } = useEpdaParameterApplySkip({
+    linkedInquiryId,
+    isLocked: isEpdaLocked,
+    isHydrating: isLoadingInquiry,
+    selectedArea,
+    selectedPortId,
+    isLoadingPorts,
+    workingParams,
+    workingParamsReady,
+    effectiveParams,
+    frozenParams,
+    hourFields: {
+      berthHours,
+      anchorageHours,
+      pilotageThirdMiles,
+      qnPilotageMiles,
+      garbageUsdRate,
+      dischargeLoadingLocation,
+    },
+    hourSetters: {
+      setBerthHours,
+      setAnchorageHours,
+      setPilotageThirdMiles,
+      setQnPilotageMiles,
+      setGarbageUsdRate,
+    },
+    setEffectiveParams,
+    setFrozenParams,
+  })
+
   const persistence = useEpdaPersistence({
     linkedInquiryId,
     customerUserId,
@@ -263,40 +363,6 @@ export function EpdaEditorScreen({
     }
   }
 
-  const isLoadingInquiry = useEpdaInquiryHydration({
-    inquiryId: linkedInquiryId,
-    reloadKey: readOnly,
-    autoPreviewTriggeredRef,
-    cargoCatalogRef: cargoTypeCatalogRef,
-    pendingCargoRef: pendingInquiryCargoRef,
-    pendingPortRef: pendingPortOfCallRef,
-    bindings: {
-      setInquiry: setViewInquiryMeta,
-      setLockedAt: setEpdaLockedAt,
-      setFrozenParams,
-      setEffectiveParams,
-      setQuoteForm: setLoadedInquiryQuoteForm,
-      setCargoType: formSetters.setCargoType,
-      setCargoName,
-      clearTallyFee: () => setTallyFeeAmount(''),
-      setPendingCargo: setPendingInquiryCargo,
-      applyPortSelection: (selection) => {
-        setSelectedPortId(selection.portId)
-        if (selection.area) {
-          setSelectedArea(selection.area)
-          setPorts(selection.ports)
-        } else {
-          setPort(selection.portOfCall)
-          pendingPortOfCallRef.current = null
-        }
-      },
-      setCustomer: (userId, label) => {
-        setCustomerUserId(userId)
-        setCustomerLabel(label)
-      },
-      formSetters,
-    },
-  })
   const isFormBusy =
     isLoading ||
     isLoadingCargoCatalog ||
@@ -380,6 +446,8 @@ export function EpdaEditorScreen({
     setCustomerLabel(null)
     setEpdaLockedAt(null)
     setFrozenParams(null)
+    setWorkingParams(null)
+    setWorkingParamsReady(true)
   }
 
   const handleFormEnterNavigation = (
@@ -539,6 +607,12 @@ export function EpdaEditorScreen({
       <>
         {epdaWorksheet}
         {pdfPreview}
+        <EpdaParameterDiffDialog
+          open={paramDiffDialogOpen}
+          rows={paramDiffRows}
+          onApply={applyLatestParams}
+          onSkip={skipLatestParams}
+        />
       </>
     )
   }
@@ -592,6 +666,12 @@ export function EpdaEditorScreen({
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+      <EpdaParameterDiffDialog
+        open={paramDiffDialogOpen}
+        rows={paramDiffRows}
+        onApply={applyLatestParams}
+        onSkip={skipLatestParams}
+      />
     </>
   )
 }

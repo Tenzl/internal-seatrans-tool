@@ -26,7 +26,12 @@ export function BookingWorkflowNav({
   const steps = getBookingWorkflowSteps(flow)
   return (
     <nav aria-label={`${flow.toLowerCase()} booking workflow`}>
-      <div className='grid grid-cols-3 overflow-hidden rounded-lg border bg-muted/30 p-1'>
+      <div
+        className={cn(
+          'grid overflow-hidden rounded-lg border bg-muted/30 p-1',
+          steps.length === 2 ? 'grid-cols-2' : 'grid-cols-3'
+        )}
+      >
         {steps.map((type, index) => {
           const record = workflow?.documents[type]
           const definition = getTransportDocumentDefinition(type)

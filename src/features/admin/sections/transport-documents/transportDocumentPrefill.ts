@@ -22,7 +22,7 @@ export const PREFILL_SOURCE_TYPE: Partial<
   Record<TransportDocumentType, TransportDocumentType>
 > = {
   an: 'booking',
-  bl: 'an',
+  bl: 'booking',
   do: 'an',
 }
 
@@ -139,62 +139,43 @@ export function prefillArrivalNoticeFromBooking(
 }
 
 /**
- * BL Cargo is owned by Arrival Notice: containers + description + derived
- * packages / GW / measurement. Shipping mark is BL-owned and is not
- * overwritten here. Call on BL open, BL save, and after AN save so the
- * sibling BL cargo never drifts.
+ * One-time BL seed from Booking on create: route, schedule, cargo containers,
+ * and derived packages / GW / measurement. Parties, FBL no., service mode,
+ * and shipping mark stay BL-owned (not copied from booking).
  */
-export function syncBillOfLadingCargoFromArrivalNotice(
-  source: ArrivalNoticePayload,
-  current: BillOfLadingPayload
-): BillOfLadingPayload {
-  const containers = normalizeAnContainers({
-    containers: source.containers,
-  }).map((row) => ({ ...row }))
-  const seeded =
-    containers.length > 0 ? containers : [{ ...emptyAnContainer() }]
-  const descriptionOfGoods = source.descriptionOfGoods.trim()
-  const cargoText = anContainersToBlCargoTextFields(seeded, descriptionOfGoods)
-  const volumeText = anContainersToVolumeText(seeded) || source.volume.trim()
-  return {
-    ...current,
-    serviceMode: source.serviceMode,
-    numberAndKindOfPackages: volumeText,
-    containers: seeded,
-    descriptionOfGoods: cargoText.descriptionOfGoods,
-    grossWeight: cargoText.grossWeight,
-    measurement: cargoText.measurement,
-  }
-}
-
-export function prefillBillOfLadingFromArrivalNotice(
-  source: ArrivalNoticePayload,
+export function prefillBillOfLadingFromBooking(
+  source: BookingConfirmationPayload,
   current: BillOfLadingPayload
 ): BillOfLadingPayload {
   const { oceanVessel, voyageNumber } = splitVesselVoyage(source.vesselVoyage)
-  const synced = syncBillOfLadingCargoFromArrivalNotice(source, current)
+  const { cargoVolumes } = normalizeBookingCargoVolumes(source)
+  const seeded = seedAnContainersFromVolumes(cargoVolumes)
+  const containers = applyBookingCargoTotalsToFirstRow(seeded, source)
+  const seededContainers =
+    containers.length > 0 ? containers : [{ ...emptyAnContainer() }]
+  const descriptionOfGoods = source.commodity.trim()
+  const cargoText = anContainersToBlCargoTextFields(
+    seededContainers,
+    descriptionOfGoods
+  )
+  const volumeText = anContainersToVolumeText(seededContainers)
+
   return {
-    ...synced,
-    fblNumber: source.hblNumber,
-    consignor: source.shipper,
-    shipperPartyId: source.shipperPartyId ?? null,
-    consignedToOrderOf: source.consignee,
-    consigneePartyId: source.consigneePartyId ?? null,
-    notifyAddress: source.notifyParty,
-    notifyPartyId: source.notifyPartyId ?? null,
+    ...current,
+    dateOfIssue: source.date,
+    oceanVessel,
+    voyageNumber,
     placeOfReceipt: source.placeOfReceipt,
     portOfLoading: source.portOfLoading,
     portOfDischarge: source.portOfDischarge,
     placeOfDelivery: source.placeOfDelivery,
-    oceanVessel,
-    voyageNumber,
-    dateOfIssue: source.date,
     placeOfIssue: source.portOfLoading,
     freightPayableAt: source.placeOfDelivery,
-    // Optional one-time seed from AN marks; never forced to "N/M".
-    shippingMark: synced.shippingMark.trim()
-      ? synced.shippingMark
-      : source.marks,
+    numberAndKindOfPackages: volumeText,
+    containers: seededContainers,
+    descriptionOfGoods: cargoText.descriptionOfGoods,
+    grossWeight: cargoText.grossWeight,
+    measurement: cargoText.measurement,
   }
 }
 
@@ -269,9 +250,9 @@ export function applyPrefillFromPrevious<T extends TransportDocumentType>(
       currentPayload as ArrivalNoticePayload
     ) as TransportDocumentPayloadMap[T]
   }
-  if (targetType === 'bl' && sourceType === 'an') {
-    return prefillBillOfLadingFromArrivalNotice(
-      sourcePayload as ArrivalNoticePayload,
+  if (targetType === 'bl' && sourceType === 'booking') {
+    return prefillBillOfLadingFromBooking(
+      sourcePayload as BookingConfirmationPayload,
       currentPayload as BillOfLadingPayload
     ) as TransportDocumentPayloadMap[T]
   }

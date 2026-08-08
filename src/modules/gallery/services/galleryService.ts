@@ -44,6 +44,11 @@ export interface UpdateImageRequest {
   commodityId?: number
 }
 
+export interface GalleryCommodityCount {
+  commodityId: number
+  count: number
+}
+
 const toGalleryImage = (raw: GalleryImageApiDto): GalleryImage => ({
   id: raw.id,
   fileName: raw.imageUrl.split('/').pop() || '',
@@ -123,6 +128,33 @@ export const galleryService = {
       ...result.data,
       content: result.data.content.map(toGalleryImage),
     }
+  },
+
+  getCommodityCounts: async (
+    params: {
+      provinceId?: number
+      portId?: number
+      serviceTypeId?: number
+    },
+    signal?: AbortSignal
+  ): Promise<GalleryCommodityCount[]> => {
+    const search = new URLSearchParams()
+    if (params.provinceId)
+      search.append('provinceId', params.provinceId.toString())
+    if (params.portId) search.append('portId', params.portId.toString())
+    if (params.serviceTypeId)
+      search.append('serviceTypeId', params.serviceTypeId.toString())
+
+    const response = await apiClient.get<
+      ApiResponse<GalleryCommodityCount[]>
+    >(`${API_CONFIG.GALLERY.ADMIN_COUNTS}?${search.toString()}`, { signal })
+
+    const result = await response.json()
+    if (!response.ok || result.success === false) {
+      throw new Error(result.message || 'Failed to load image counts')
+    }
+
+    return Array.isArray(result.data) ? result.data : []
   },
 
   uploadImage: async (

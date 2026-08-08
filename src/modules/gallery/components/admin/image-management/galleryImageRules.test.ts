@@ -24,12 +24,34 @@ const image: GalleryImage = {
 }
 
 describe('gallery image rules', () => {
-  it('normalizes relative asset paths but preserves remote URLs', () => {
+  it('normalizes relative asset paths but preserves non-Cloudinary remote URLs', () => {
     expect(getGalleryImageUrl('gallery\\photo.jpg')).toBe(
       `${API_CONFIG.ASSET_BASE_URL}/gallery/photo.jpg`
     )
     expect(getGalleryImageUrl('https://cdn.example/photo.jpg')).toBe(
       'https://cdn.example/photo.jpg'
+    )
+  })
+
+  it('applies Cloudinary delivery transforms by variant', () => {
+    const original =
+      'https://res.cloudinary.com/demo/image/upload/v123/gallery/bulk.jpg'
+    expect(getGalleryImageUrl(original, 'thumb')).toBe(
+      'https://res.cloudinary.com/demo/image/upload/f_auto,q_auto,w_96,c_limit/v123/gallery/bulk.jpg'
+    )
+    expect(getGalleryImageUrl(original, 'card')).toBe(
+      'https://res.cloudinary.com/demo/image/upload/f_auto,q_auto,w_800,c_limit/v123/gallery/bulk.jpg'
+    )
+    expect(getGalleryImageUrl(original, 'full')).toBe(
+      'https://res.cloudinary.com/demo/image/upload/f_auto,q_auto,c_limit/v123/gallery/bulk.jpg'
+    )
+  })
+
+  it('replaces an existing Cloudinary transform segment', () => {
+    const alreadyTransformed =
+      'https://res.cloudinary.com/demo/image/upload/w_2000/v123/gallery/bulk.jpg'
+    expect(getGalleryImageUrl(alreadyTransformed, 'thumb')).toBe(
+      'https://res.cloudinary.com/demo/image/upload/f_auto,q_auto,w_96,c_limit/v123/gallery/bulk.jpg'
     )
   })
 

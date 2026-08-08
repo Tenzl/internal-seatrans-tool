@@ -4,8 +4,9 @@ import * as React from 'react'
 import { useQuery } from '@tanstack/react-query'
 import {
   adminUsersService,
-  type AdminUserRow,
+  type PicOption,
 } from '@/features/admin/sections/user-management/api/adminUsersService'
+import { queryKeys } from '@/shared/config/react-query.config'
 import { useDebouncedValue } from '@/shared/hooks/useDebouncedValue'
 import { Check, ChevronsUpDown, Loader2 } from 'lucide-react'
 import { cn } from '@/lib/utils'
@@ -34,11 +35,11 @@ interface InternalUserSearchSelectProps {
   className?: string
 }
 
-function userPrimaryLabel(user: AdminUserRow): string {
+function userPrimaryLabel(user: PicOption): string {
   return formatBookingPic(user.fullName, user.email) || user.email
 }
 
-function userSecondaryLabel(user: AdminUserRow): string | null {
+function userSecondaryLabel(user: PicOption): string | null {
   const role = user.roleName?.trim()
   if (role) return role
   if (user.fullName?.trim() && user.email?.trim()) return user.email.trim()
@@ -56,13 +57,15 @@ export function InternalUserSearchSelect({
   const [open, setOpen] = React.useState(false)
   const [search, setSearch] = React.useState('')
   const debouncedSearch = useDebouncedValue(search, 250).trim()
+  // Empty open uses prefetch cache; search only when q.length >= 2 (party picker).
+  const effectiveSearch =
+    debouncedSearch.length >= 2 ? debouncedSearch : ''
 
   const usersQuery = useQuery({
-    queryKey: ['users', 'internal-pic-picker', debouncedSearch.toLowerCase()],
+    queryKey: queryKeys.picOptions(effectiveSearch.toLowerCase()),
     queryFn: () =>
-      adminUsersService.listUsers({
-        q: debouncedSearch || undefined,
-        roleGroup: 'INTERNAL',
+      adminUsersService.listPicOptions({
+        q: effectiveSearch || undefined,
         limit: 50,
       }),
     enabled: open,
@@ -70,10 +73,7 @@ export function InternalUserSearchSelect({
     gcTime: 30 * 60 * 1000,
   })
 
-  const users = React.useMemo(() => {
-    const rows = usersQuery.data ?? []
-    return rows.filter((user) => user.isActive)
-  }, [usersQuery.data])
+  const users = usersQuery.data ?? []
 
   return (
     <Popover

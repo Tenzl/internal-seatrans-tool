@@ -93,8 +93,11 @@ function buildPortsListUrl(params: ListPortsParams = {}): string {
   return `${API_CONFIG.PORTS.BASE}?${search.toString()}`
 }
 
-async function fetchPortsPage(endpoint: string): Promise<PageResponse<Port>> {
-  const response = await apiClient.get(endpoint)
+async function fetchPortsPage(
+  endpoint: string,
+  signal?: AbortSignal
+): Promise<PageResponse<Port>> {
+  const response = await apiClient.get(endpoint, { signal })
   const data = await unwrapApiResponse<PageResponse<Port>>(response)
   if (!data || !Array.isArray(data.content)) {
     return {
@@ -115,16 +118,23 @@ export const portService = {
   },
 
   async listPortsPaginated(
-    params: ListPortsParams = {}
+    params: ListPortsParams = {},
+    signal?: AbortSignal
   ): Promise<PageResponse<Port>> {
-    return fetchPortsPage(buildPortsListUrl(params))
+    return fetchPortsPage(buildPortsListUrl(params), signal)
   },
 
-  async listPorts(params: ListPortsParams = {}): Promise<Port[]> {
-    const page = await this.listPortsPaginated({
-      ...params,
-      page: params.page ?? 0,
-    })
+  async listPorts(
+    params: ListPortsParams = {},
+    signal?: AbortSignal
+  ): Promise<Port[]> {
+    const page = await this.listPortsPaginated(
+      {
+        ...params,
+        page: params.page ?? 0,
+      },
+      signal
+    )
     return page.content
   },
 
@@ -157,13 +167,20 @@ export const portService = {
     return unwrapApiResponse<PortOption[]>(response)
   },
 
-  async getPortsByArea(area: PortArea, q?: string): Promise<Port[]> {
-    const page = await this.listPortsPaginated({
-      area,
-      q,
-      page: 0,
-      size: PORTS_PAGE_SIZE,
-    })
+  async getPortsByArea(
+    area: PortArea,
+    q?: string,
+    signal?: AbortSignal
+  ): Promise<Port[]> {
+    const page = await this.listPortsPaginated(
+      {
+        area,
+        q,
+        page: 0,
+        size: PORTS_PAGE_SIZE,
+      },
+      signal
+    )
     return page.content
   },
 

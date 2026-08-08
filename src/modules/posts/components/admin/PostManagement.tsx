@@ -1,25 +1,31 @@
 'use client'
 
-import { useState, useEffect, useMemo } from 'react'
+import { useMemo, useState } from 'react'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
 import {
   type ColumnDef,
-  type ColumnFiltersState,
   type SortingState,
   type VisibilityState,
   flexRender,
+  functionalUpdate,
   getCoreRowModel,
-  getFilteredRowModel,
-  getPaginationRowModel,
   getSortedRowModel,
   useReactTable,
 } from '@tanstack/react-table'
-import { postService, type Post } from '@/modules/posts/services/postService'
+import {
+  ADMIN_POSTS_PAGE_SIZE,
+  ADMIN_POSTS_QUERY_ROOT,
+  postService,
+  type PostListItem,
+} from '@/modules/posts/services/postService'
+import { queryKeys } from '@/shared/config/react-query.config'
 import {
   AdminDataPanel,
   AdminSection,
   AdminToolbar,
   AdminToolbarGroup,
 } from '@/shared/components/layout/dashboard/admin'
+import { useDebouncedValue } from '@/shared/hooks/useDebouncedValue'
 import { useTableSortHeader } from '@/shared/hooks/useTableSortHeader'
 import { toast } from '@/shared/utils/toast'
 import {
@@ -62,57 +68,61 @@ import {
   TableRow,
 } from '@/components/ui/table'
 
-const POSTS_PAGE_SIZE = 10
-
 export function ManagePosts() {
   const router = useRouter()
-  const [posts, setPosts] = useState<Post[]>([])
-  const [loading, setLoading] = useState(true)
+  const queryClient = useQueryClient()
+  const [search, setSearch] = useState('')
+  const [pageIndex, setPageIndex] = useState(0)
+  const debouncedSearch = useDebouncedValue(search, 250)
+
   const [deleteDialog, setDeleteDialog] = useState<{
     isOpen: boolean
-    post: Post | null
+    post: PostListItem | null
   }>({
     isOpen: false,
     post: null,
   })
 
   const [sorting, setSorting] = useState<SortingState>([])
-  const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([])
   const [columnVisibility, setColumnVisibility] = useState<VisibilityState>({})
 
-  useEffect(() => {
-    loadPosts()
+  const postsQuery = useQuery({
+    queryKey: queryKeys.adminPosts({
+      page: pageIndex,
+      size: ADMIN_POSTS_PAGE_SIZE,
+      q: debouncedSearch,
+    }),
+    queryFn: ({ signal }) =>
+      postService.getAdminPostsPage(
+        {
+          page: pageIndex,
+          size: ADMIN_POSTS_PAGE_SIZE,
+          q: debouncedSearch,
+        },
+        signal
+      ),
+  })
 
-    const handleFocus = () => {
-      loadPosts()
-    }
-
-    window.addEventListener('focus', handleFocus)
-    return () => window.removeEventListener('focus', handleFocus)
-  }, [])
-
-  const loadPosts = async () => {
-    try {
-      setLoading(true)
-      const data = await postService.getAllPosts()
-      const sortedByIdAsc = [...data].sort((a, b) => a.id - b.id)
-      setPosts(sortedByIdAsc)
-    } catch (error) {
-      const errorMessage =
-        error instanceof Error ? error.message : 'Failed to load posts'
-      toast.error(errorMessage)
-    } finally {
-      setLoading(false)
-    }
+  const posts = postsQuery.data?.content ?? []
+  const totalElements = postsQuery.data?.totalElements ?? 0
+  const pageCount = Math.max(
+    1,
+    Number(postsQuery.data?.totalPages) ||
+      Math.ceil(totalElements / ADMIN_POSTS_PAGE_SIZE) ||
+      1
+  )
+  const safePage = Math.min(pageIndex, pageCount - 1)
+  const loading = postsQuery.isLoading || postsQuery.isFetching
+  const invalidatePosts = async () => {
+    await queryClient.invalidateQueries({ queryKey: ADMIN_POSTS_QUERY_ROOT })
   }
 
-  const handleOpenEditor = (post?: Post) => {
-    // Navigate in same tab
+  const handleOpenEditor = (post?: PostListItem) => {
     const url = post ? `/content/posts/${post.id}/edit` : '/content/posts/new'
     router.push(url)
   }
 
-  const handleTogglePublish = async (post: Post) => {
+  const handleTogglePublish = async (post: PostListItem) => {
     try {
       if (post.isPublished) {
         await postService.unpublishPost(post.id)
@@ -121,14 +131,13 @@ export function ManagePosts() {
         await postService.publishPost(post.id)
         toast.success('Post published successfully')
       }
-
-      loadPosts()
+      await invalidatePosts()
     } catch {
       toast.error('Failed to update publish status')
     }
   }
 
-  const handleDelete = async (post: Post) => {
+  const handleDelete = async (post: PostListItem) => {
     setDeleteDialog({ isOpen: true, post })
   }
 
@@ -138,7 +147,7 @@ export function ManagePosts() {
     try {
       await postService.deletePost(deleteDialog.post.id)
       toast.success('Post deleted successfully')
-      loadPosts()
+      await invalidatePosts()
     } catch {
       toast.error('Failed to delete post')
     } finally {
@@ -146,7 +155,7 @@ export function ManagePosts() {
     }
   }
 
-  const handlePreview = (post: Post) => {
+  const handlePreview = (post: PostListItem) => {
     const url = `/insights/${post.id}`
     router.push(url)
   }
@@ -161,9 +170,9 @@ export function ManagePosts() {
     })
   }
 
-  const renderSortableHeader = useTableSortHeader<Post>()
+  const renderSortableHeader = useTableSortHeader<PostListItem>()
 
-  const columns = useMemo<ColumnDef<Post>[]>(
+  const columns = useMemo<ColumnDef<PostListItem>[]>(
     () => [
       {
         accessorKey: 'id',
@@ -284,22 +293,31 @@ export function ManagePosts() {
   const table = useReactTable({
     data: posts,
     columns,
-    state: { sorting, columnFilters, columnVisibility },
-    initialState: { pagination: { pageIndex: 0, pageSize: POSTS_PAGE_SIZE } },
+    manualPagination: true,
+    pageCount,
+    rowCount: totalElements,
+    state: {
+      sorting,
+      columnVisibility,
+      pagination: { pageIndex: safePage, pageSize: ADMIN_POSTS_PAGE_SIZE },
+    },
     onSortingChange: setSorting,
-    onColumnFiltersChange: setColumnFilters,
     onColumnVisibilityChange: setColumnVisibility,
+    onPaginationChange: (updater) => {
+      const next = functionalUpdate(updater, {
+        pageIndex: safePage,
+        pageSize: ADMIN_POSTS_PAGE_SIZE,
+      })
+      setPageIndex(next.pageIndex)
+    },
     getCoreRowModel: getCoreRowModel(),
     getSortedRowModel: getSortedRowModel(),
-    getFilteredRowModel: getFilteredRowModel(),
-    getPaginationRowModel: getPaginationRowModel(),
+    autoResetPageIndex: false,
   })
 
-  const search = (table.getColumn('title')?.getFilterValue() as string) ?? ''
-  const total = posts.length
-  const tableTitle = search.trim()
-    ? `${table.getFilteredRowModel().rows.length} result${table.getFilteredRowModel().rows.length === 1 ? '' : 's'}`
-    : `All Posts (${total})`
+  const tableTitle = debouncedSearch.trim()
+    ? `${totalElements} result${totalElements === 1 ? '' : 's'}`
+    : `All Posts (${totalElements})`
 
   return (
     <>
@@ -320,16 +338,20 @@ export function ManagePosts() {
               <Input
                 placeholder='Search posts by title'
                 value={search}
-                onChange={(e) =>
-                  table.getColumn('title')?.setFilterValue(e.target.value)
-                }
+                onChange={(e) => {
+                  setSearch(e.target.value)
+                  setPageIndex(0)
+                }}
                 className='h-9 w-full md:w-[300px]'
               />
               {search.trim() ? (
                 <Button
                   variant='ghost'
                   size='sm'
-                  onClick={() => table.getColumn('title')?.setFilterValue('')}
+                  onClick={() => {
+                    setSearch('')
+                    setPageIndex(0)
+                  }}
                 >
                   Clear
                 </Button>
@@ -366,7 +388,7 @@ export function ManagePosts() {
         <AdminDataPanel
           meta={tableTitle}
           loading={loading && posts.length === 0}
-          empty={!loading && posts.length === 0}
+          empty={!loading && totalElements === 0}
           emptyMessage='No posts found. Create your first post!'
         >
           <div className='overflow-x-auto rounded-md border'>
@@ -434,7 +456,11 @@ export function ManagePosts() {
               </TableBody>
             </Table>
           </div>
-          <DataTablePagination table={table} persistKey='posts-page' />
+          <DataTablePagination
+            table={table}
+            totalRowCount={totalElements}
+            isFetching={postsQuery.isFetching}
+          />
         </AdminDataPanel>
       </AdminSection>
 

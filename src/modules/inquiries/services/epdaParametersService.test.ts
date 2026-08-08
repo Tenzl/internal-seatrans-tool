@@ -7,13 +7,17 @@ import {
   type EpdaParameterSet,
 } from './epdaParametersService'
 
-vi.mock('@/shared/utils/apiClient', () => ({
-  apiClient: {
-    get: vi.fn(),
-    put: vi.fn(),
-    delete: vi.fn(),
-  },
-}))
+vi.mock('@/shared/utils/apiClient', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/shared/utils/apiClient')>()
+  return {
+    ...actual,
+    apiClient: {
+      get: vi.fn(),
+      put: vi.fn(),
+      delete: vi.fn(),
+    },
+  }
+})
 
 describe('epdaParametersService.getEffective', () => {
   beforeEach(() => {

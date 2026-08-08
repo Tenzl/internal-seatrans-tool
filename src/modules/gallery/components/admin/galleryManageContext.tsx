@@ -89,38 +89,45 @@ export function GalleryManageProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     if (!filterArea) return
 
-    let cancelled = false
+    const controller = new AbortController()
     void portService
-      .getPortsByArea(filterArea)
+      .getPortsByArea(filterArea, undefined, controller.signal)
       .then((ports) => {
-        if (!cancelled) {
-          setAvailablePorts(ports)
-          setFilterPort(null)
-        }
+        if (controller.signal.aborted) return
+        setAvailablePorts(ports)
+        setFilterPort(null)
       })
       .catch((error) => {
+        if (controller.signal.aborted) return
         toast.error('Failed to load ports for area', error)
-        if (!cancelled) {
-          setAvailablePorts([])
-          setFilterPort(null)
-        }
+        setAvailablePorts([])
+        setFilterPort(null)
       })
 
     return () => {
-      cancelled = true
+      controller.abort()
     }
   }, [filterArea])
 
   useEffect(() => {
     if (!filterServiceType) return
 
+    const controller = new AbortController()
     void commodityService
-      .getCommoditiesByServiceType(filterServiceType)
+      .getCommoditiesByServiceType(filterServiceType, controller.signal)
       .then((data) => {
+        if (controller.signal.aborted) return
         setAvailableCommodities(data)
         setFilterCommodity(null)
       })
-      .catch((error) => toast.error('Failed to load commodities', error))
+      .catch((error) => {
+        if (controller.signal.aborted) return
+        toast.error('Failed to load commodities', error)
+      })
+
+    return () => {
+      controller.abort()
+    }
   }, [filterServiceType])
 
   useEffect(() => {
@@ -128,25 +135,33 @@ export function GalleryManageProvider({ children }: { children: ReactNode }) {
     const provinceId = filterPort
       ? availablePorts.find((port) => port.id === filterPort)?.provinceId
       : undefined
+    // When the scoped multi-count effect can run, skip this single lookup.
+    if (filterServiceType && filterPort && provinceId) return
+
+    const controller = new AbortController()
     void commodityService
       .getImageCount(
         filterCommodity,
         provinceId ?? undefined,
         filterPort ?? undefined,
-        filterServiceType ?? undefined
+        filterServiceType ?? undefined,
+        controller.signal
       )
       .then((countData) => {
-        const scopedKey =
-          provinceId && filterPort && filterServiceType
-            ? `${provinceId}_${filterPort}_${filterServiceType}_${filterCommodity}`
-            : String(filterCommodity)
+        if (controller.signal.aborted) return
         setCommodityCounts((prev) => ({
           ...prev,
-          [scopedKey]: countData.current,
           [filterCommodity]: countData.current,
         }))
       })
-      .catch((error) => toast.error('Failed to load image count', error))
+      .catch((error) => {
+        if (controller.signal.aborted) return
+        toast.error('Failed to load image count', error)
+      })
+
+    return () => {
+      controller.abort()
+    }
   }, [filterCommodity, filterPort, filterServiceType, availablePorts])
 
   useEffect(() => {
@@ -162,29 +177,37 @@ export function GalleryManageProvider({ children }: { children: ReactNode }) {
       return
     }
 
-    void Promise.all(
-      availableCommodities.map(async (type) => {
-        const countData = await commodityService.getImageCount(
-          type.id,
+    const controller = new AbortController()
+    void commodityService
+      .getImageCounts(
+        {
           provinceId,
-          filterPort,
-          filterServiceType
-        )
-        const scopedKey = `${provinceId}_${filterPort}_${filterServiceType}_${type.id}`
-        return { scopedKey, id: type.id, current: countData.current }
-      })
-    )
-      .then((results) => {
+          portId: filterPort,
+          serviceTypeId: filterServiceType,
+        },
+        controller.signal
+      )
+      .then((countsById) => {
+        if (controller.signal.aborted) return
         setCommodityCounts((prev) => {
           const next = { ...prev }
-          results.forEach((row) => {
-            next[row.scopedKey] = row.current
-            next[row.id] = row.current
-          })
+          for (const type of availableCommodities) {
+            const current = countsById[type.id] ?? 0
+            const scopedKey = `${provinceId}_${filterPort}_${filterServiceType}_${type.id}`
+            next[scopedKey] = current
+            next[type.id] = current
+          }
           return next
         })
       })
-      .catch((error) => toast.error('Failed to load image counts', error))
+      .catch((error) => {
+        if (controller.signal.aborted) return
+        toast.error('Failed to load image counts', error)
+      })
+
+    return () => {
+      controller.abort()
+    }
   }, [availableCommodities, filterPort, filterServiceType, availablePorts])
 
   const selectedFilterPort = filterPort
@@ -445,4 +468,6 @@ export function GalleryImageFilters({
       </div>
     </div>
   )
+}
+
 }

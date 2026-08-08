@@ -10,6 +10,13 @@ const isProd = process.env.NODE_ENV === 'production'
 // NEXT_PUBLIC_API_BASE_URL remains a compatibility fallback for older deploys.
 const explicitProxyTarget =
   process.env.API_PROXY_TARGET || process.env.NEXT_PUBLIC_API_BASE_URL || ''
+
+if (isProd && !explicitProxyTarget.trim()) {
+  throw new Error(
+    'API_PROXY_TARGET (or NEXT_PUBLIC_API_BASE_URL) is required in production so /api/* can proxy to the Nest backend. Refusing to start with a silent empty rewrite list.',
+  )
+}
+
 const API_PROXY_TARGET = (explicitProxyTarget || 'http://localhost:8080')
   .replace(/\/+$/, '')
   .replace(/\/api(?:\/v\d+)?$/, '')
@@ -48,10 +55,6 @@ const nextConfig = {
     minimumCacheTTL: 2592000,
     remotePatterns: [
       {
-        protocol: 'https',
-        hostname: 'images.unsplash.com',
-      },
-      {
         protocol: 'http',
         hostname: 'localhost',
         port: '8080',
@@ -59,14 +62,6 @@ const nextConfig = {
       {
         protocol: 'https',
         hostname: 'res.cloudinary.com',
-      },
-      {
-        protocol: 'https',
-        hostname: 'picsum.photos',
-      },
-      {
-        protocol: 'https',
-        hostname: 'fastly.picsum.photos',
       },
     ],
   },
@@ -76,10 +71,7 @@ const nextConfig = {
   async rewrites() {
     // Proxy /api/* to the backend so the session cookie stays same-origin
     // (first-party) — this is what makes login work on mobile, where cross-site
-    // cookies are blocked. Enabled in prod too (BFF pattern), but only when a
-    // backend target is explicitly configured; otherwise the client is expected
-    // to call an absolute NEXT_PUBLIC_API_BASE_URL directly.
-    if (isProd && !explicitProxyTarget) return []
+    // cookies are blocked. Enabled in prod too (BFF pattern).
     return [
       {
         source: '/api/:path*',

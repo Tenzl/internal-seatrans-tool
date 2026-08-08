@@ -3,14 +3,11 @@
 import * as React from 'react'
 import {
   type ColumnDef,
-  type ColumnFiltersState,
   type SortingState,
   type VisibilityState,
   flexRender,
+  functionalUpdate,
   getCoreRowModel,
-  getFilteredRowModel,
-  getPaginationRowModel,
-  getSortedRowModel,
   useReactTable,
 } from '@tanstack/react-table'
 import { DateTimePicker } from '@/shared/components/DateTimePicker'
@@ -43,6 +40,7 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table'
+import { INQUIRY_PAGE_SIZE } from './useInquiryData'
 
 export type InquiryDeleteMode = 'soft' | 'hard'
 
@@ -51,6 +49,18 @@ export interface InquiryDataTableProps<TData extends { id: number }> {
   data: TData[]
   searchKey?: string
   searchPlaceholder?: string
+  search: string
+  onSearchChange: (value: string) => void
+  dateFrom: string
+  dateTo: string
+  onDateFromChange: (value: string) => void
+  onDateToChange: (value: string) => void
+  sorting: SortingState
+  onSortingChange: (sorting: SortingState) => void
+  pageIndex: number
+  pageCount: number
+  totalElements: number
+  onPageChange: (page: number) => void
   onDelete?: (ids: number[], mode: InquiryDeleteMode) => Promise<void>
   canHardDelete?: boolean
   /** Initial column visibility (e.g. hide port/date on small screens). */
@@ -62,26 +72,31 @@ export function InquiryDataTable<TData extends { id: number }>({
   data,
   searchKey,
   searchPlaceholder = 'Search...',
+  search,
+  onSearchChange,
+  dateFrom,
+  dateTo,
+  onDateFromChange,
+  onDateToChange,
+  sorting,
+  onSortingChange,
+  pageIndex,
+  pageCount,
+  totalElements,
+  onPageChange,
   onDelete,
   canHardDelete = false,
   initialColumnVisibility,
 }: InquiryDataTableProps<TData>) {
-  const [sorting, setSorting] = React.useState<SortingState>([])
-  const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>(
-    []
-  )
   const [columnVisibility, setColumnVisibility] =
     React.useState<VisibilityState>(() => initialColumnVisibility ?? {})
   const [rowSelection, setRowSelection] = React.useState({})
 
-  const [dateFrom, setDateFrom] = React.useState('')
-  const [dateTo, setDateTo] = React.useState('')
   const [showDeleteDialog, setShowDeleteDialog] = React.useState(false)
   const [pendingDeleteMode, setPendingDeleteMode] =
     React.useState<InquiryDeleteMode>('soft')
   const [isDeleting, setIsDeleting] = React.useState(false)
 
-  // Define select column (from table-09 pattern)
   const selectColumn = React.useMemo<ColumnDef<TData>>(
     () => ({
       id: 'select',
@@ -113,54 +128,39 @@ export function InquiryDataTable<TData extends { id: number }>({
     [columns, onDelete, selectColumn]
   )
 
-  // Filter data by date range
-  const filteredData = React.useMemo(() => {
-    if (!dateFrom && !dateTo) return data
-
-    return data.filter((row) => {
-      const rawSubmittedAt = 'submittedAt' in row ? row.submittedAt : null
-      const submittedAt =
-        typeof rawSubmittedAt === 'string' ||
-        typeof rawSubmittedAt === 'number' ||
-        rawSubmittedAt instanceof Date
-          ? new Date(rawSubmittedAt)
-          : null
-      if (!submittedAt) return true
-
-      const parsedFrom = parseLocalDateTime(dateFrom)
-      const parsedTo = parseLocalDateTime(dateTo)
-      const from = parsedFrom ? new Date(parsedFrom) : null
-      const to = parsedTo ? new Date(parsedTo) : null
-      from?.setHours(0, 0, 0, 0)
-      to?.setHours(23, 59, 59, 999)
-
-      if (from && submittedAt < from) return false
-      if (to && submittedAt > to) return false
-
-      return true
-    })
-  }, [data, dateFrom, dateTo])
-
   const table = useReactTable({
-    data: filteredData,
+    data,
     columns: columnsWithSelect,
-    onSortingChange: setSorting,
-    onColumnFiltersChange: setColumnFilters,
-    getCoreRowModel: getCoreRowModel(),
-    getPaginationRowModel: getPaginationRowModel(),
-    getSortedRowModel: getSortedRowModel(),
-    getFilteredRowModel: getFilteredRowModel(),
+    manualPagination: true,
+    manualSorting: true,
+    manualFiltering: true,
+    pageCount: Math.max(pageCount, 1),
+    rowCount: totalElements,
+    onSortingChange: (updater) => {
+      const next = functionalUpdate(updater, sorting)
+      onSortingChange(next)
+      onPageChange(0)
+    },
     onColumnVisibilityChange: setColumnVisibility,
     onRowSelectionChange: setRowSelection,
+    onPaginationChange: (updater) => {
+      const next = functionalUpdate(updater, {
+        pageIndex,
+        pageSize: INQUIRY_PAGE_SIZE,
+      })
+      onPageChange(next.pageIndex)
+    },
+    getCoreRowModel: getCoreRowModel(),
+    autoResetPageIndex: false,
     state: {
       sorting,
-      columnFilters,
       columnVisibility,
       rowSelection,
+      pagination: { pageIndex, pageSize: INQUIRY_PAGE_SIZE },
     },
   })
 
-  const selectedRows = table.getFilteredSelectedRowModel().rows
+  const selectedRows = table.getSelectedRowModel().rows
   const selectedCount = selectedRows.length
 
   const handleDelete = async (mode: InquiryDeleteMode) => {
@@ -187,34 +187,28 @@ export function InquiryDataTable<TData extends { id: number }>({
   return (
     <>
       <div className='w-full'>
-        {/* Toolbar — stacks on mobile; filters grouped to avoid horizontal overflow */}
         <div className='flex flex-col gap-3 py-4 sm:flex-row sm:flex-wrap sm:items-center'>
           <div className='flex w-full min-w-0 flex-col gap-2 sm:flex-1 sm:flex-row sm:flex-wrap sm:items-center'>
             {searchKey && (
               <Input
                 placeholder={searchPlaceholder}
-                value={
-                  (table.getColumn(searchKey)?.getFilterValue() as string) ?? ''
-                }
-                onChange={(event) =>
-                  table.getColumn(searchKey)?.setFilterValue(event.target.value)
-                }
+                value={search}
+                onChange={(event) => onSearchChange(event.target.value)}
                 className='w-full sm:max-w-sm'
               />
             )}
 
             <div className='flex flex-wrap items-center gap-2'>
-              {/* Date filters */}
               <DateTimePicker
                 value={dateFrom}
-                onValueChange={setDateFrom}
+                onValueChange={onDateFromChange}
                 placeholder='From date'
                 className='h-10 w-[160px] active:scale-[0.98] sm:h-9'
               />
 
               <DateTimePicker
                 value={dateTo}
-                onValueChange={setDateTo}
+                onValueChange={onDateToChange}
                 placeholder='To date'
                 minDate={parseLocalDateTime(dateFrom)}
                 className='h-10 w-[160px] active:scale-[0.98] sm:h-9'
@@ -224,8 +218,8 @@ export function InquiryDataTable<TData extends { id: number }>({
                 <Button
                   variant='ghost'
                   onClick={() => {
-                    setDateFrom('')
-                    setDateTo('')
+                    onDateFromChange('')
+                    onDateToChange('')
                   }}
                   className='h-10 px-2 active:scale-[0.98] sm:h-8'
                 >
@@ -236,7 +230,6 @@ export function InquiryDataTable<TData extends { id: number }>({
           </div>
 
           <div className='flex flex-wrap items-center gap-2 sm:ml-auto'>
-            {/* Delete / archive button */}
             {onDelete && selectedCount > 0 && (
               <>
                 {!canHardDelete && (
@@ -264,7 +257,6 @@ export function InquiryDataTable<TData extends { id: number }>({
               </>
             )}
 
-            {/* Column visibility toggle */}
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button
@@ -297,7 +289,6 @@ export function InquiryDataTable<TData extends { id: number }>({
           </div>
         </div>
 
-        {/* Table - following table-09 pattern */}
         <div className='overflow-x-auto rounded-md border'>
           <Table>
             <TableHeader className='sticky top-0 z-20 bg-background'>
@@ -349,11 +340,10 @@ export function InquiryDataTable<TData extends { id: number }>({
           </Table>
         </div>
 
-        {/* Pagination */}
         <div className='flex flex-col gap-3 py-4 sm:flex-row sm:items-center sm:justify-end'>
           <div className='text-sm text-muted-foreground sm:flex-1'>
-            {selectedCount} of {table.getFilteredRowModel().rows.length} row(s)
-            selected.
+            {selectedCount} of {data.length} row(s) selected on this page
+            {totalElements > 0 ? ` · ${totalElements} total` : ''}.
           </div>
           <div className='flex gap-2'>
             <Button
@@ -378,7 +368,6 @@ export function InquiryDataTable<TData extends { id: number }>({
         </div>
       </div>
 
-      {/* Delete confirmation dialog */}
       <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
         <AlertDialogContent>
           <AlertDialogHeader>

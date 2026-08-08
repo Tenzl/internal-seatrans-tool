@@ -45,6 +45,14 @@ const user = {
   role: 'ROLE_ADMIN',
 } as User
 
+const cachedProfile = {
+  id: 42,
+  email: 'admin@seatrans.test',
+  username: null,
+  fullName: null,
+  role: 'ROLE_ADMIN',
+}
+
 function jsonResponse<T>(
   data: T,
   options: { ok?: boolean; message?: string } = {}
@@ -87,7 +95,7 @@ describe('authService browser session', () => {
     const result = await authService.login('admin', 'password', true)
 
     expect(result.data?.user).toEqual(user)
-    expect(localStorage.getItem('auth_user')).toBe(JSON.stringify(user))
+    expect(localStorage.getItem('auth_user')).toBe(JSON.stringify(cachedProfile))
     expect(sessionStorage.getItem('auth_user')).toBeNull()
     expect(apiClient.post).toHaveBeenCalledWith(
       API_CONFIG.AUTH.LOGIN,
@@ -102,7 +110,9 @@ describe('authService browser session', () => {
 
     await authService.login('admin', 'password', false)
 
-    expect(sessionStorage.getItem('auth_user')).toBe(JSON.stringify(user))
+    expect(sessionStorage.getItem('auth_user')).toBe(
+      JSON.stringify(cachedProfile)
+    )
     expect(localStorage.getItem('auth_user')).toBeNull()
   })
 
@@ -140,7 +150,9 @@ describe('authService browser session', () => {
 
     await authService.getCurrentUser()
 
-    expect(sessionStorage.getItem('auth_user')).toBe(JSON.stringify(user))
+    expect(sessionStorage.getItem('auth_user')).toBe(
+      JSON.stringify(cachedProfile)
+    )
     expect(localStorage.getItem('auth_user')).toBeNull()
   })
 
@@ -150,7 +162,25 @@ describe('authService browser session', () => {
 
     await authService.getCurrentUser()
 
-    expect(localStorage.getItem('auth_user')).toBe(JSON.stringify(user))
+    expect(localStorage.getItem('auth_user')).toBe(JSON.stringify(cachedProfile))
     expect(sessionStorage.getItem('auth_user')).toBeNull()
+  })
+
+  it('does not persist section grants in browser storage', async () => {
+    const withSections = {
+      ...user,
+      sections: ['epda-inquiry', 'content-posts'],
+    } as User
+    vi.mocked(apiClient.get).mockResolvedValue(
+      jsonResponse(withSections) as never
+    )
+
+    const result = await authService.getCurrentUser()
+
+    expect(result.data?.sections).toEqual(['epda-inquiry', 'content-posts'])
+    expect(sessionStorage.getItem('auth_user')).toBe(
+      JSON.stringify(cachedProfile)
+    )
+    expect(sessionStorage.getItem('auth_user')).not.toContain('sections')
   })
 })

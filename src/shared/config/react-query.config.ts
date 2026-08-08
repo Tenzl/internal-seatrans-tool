@@ -6,7 +6,32 @@ const STATIC_LIST_KEYS = {
 } as const
 
 export const queryKeys = {
-  inquiries: (type: string = 'all') => ['inquiries', type] as const,
+  inquiries: (params?: {
+    type?: string
+    page?: number
+    size?: number
+    search?: string
+    dateFrom?: string
+    dateTo?: string
+    sort?: string
+    archived?: string
+  }) =>
+    params
+      ? ([
+          'inquiries',
+          params.type ?? 'all',
+          params.page ?? 0,
+          params.size ?? 20,
+          params.search ?? '',
+          params.dateFrom ?? '',
+          params.dateTo ?? '',
+          params.sort ?? '',
+          params.archived ?? '',
+        ] as const)
+      : (['inquiries'] as const),
+  adminPosts: (params: { page: number; size: number; q?: string }) =>
+    ['adminPosts', params.page, params.size, params.q ?? ''] as const,
+  adminPostsRoot: () => ['adminPosts'] as const,
   services: () => ['services'] as const,
   ports: () => STATIC_LIST_KEYS.ports,
   portsList: (q: string, searchIn: string) =>
@@ -58,13 +83,23 @@ export const queryKeys = {
     [...queryKeys.ports(), 'options', 'search', q] as const,
   portOptionsByIds: (idsKey: string) =>
     [...queryKeys.ports(), 'options', 'ids', idsKey] as const,
-  adminUsers: (params: { roleGroup: string; q?: string; roleName?: string }) =>
+  adminUsers: (params: {
+    roleGroup: string
+    q?: string
+    roleName?: string
+    page?: number
+    limit?: number
+  }) =>
     [
       'adminUsers',
       params.roleGroup,
       params.q ?? '',
       params.roleName ?? '',
+      params.page ?? 0,
+      params.limit ?? 20,
     ] as const,
+  /** Booking Person In Charge picker (empty q = prefetch / open cache). */
+  picOptions: (q = '') => ['users', 'internal-pic-picker', q] as const,
   adminUserRoles: (roleGroup: string) => ['adminUserRoles', roleGroup] as const,
   storageList: (prefix: string) => ['storage', 'list', prefix] as const,
   storageListPrefix: () => ['storage', 'list'] as const,

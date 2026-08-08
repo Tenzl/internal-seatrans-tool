@@ -1,6 +1,5 @@
 'use client'
 
-import { useEffect } from 'react'
 import { isAdminRole } from '@/config/section-catalog'
 import { useCurrentUser } from '@/hooks/use-current-user'
 import { useIsMobile } from '@/hooks/use-mobile'
@@ -35,6 +34,18 @@ export function BaseInquiryHistoryLayout({
     restoreInquiries,
     archivedFilter,
     setArchivedFilter,
+    page,
+    setPage,
+    totalPages,
+    totalElements,
+    search,
+    setSearch,
+    dateFrom,
+    setDateFrom,
+    dateTo,
+    setDateTo,
+    sorting,
+    setSorting,
   } = useInquiryData({ serviceType, isAdmin })
   const currentUser = useCurrentUser()
   const isMobile = useIsMobile()
@@ -53,10 +64,6 @@ export function BaseInquiryHistoryLayout({
     deleteInquiries,
     restoreInquiries,
   })
-
-  useEffect(() => {
-    void fetchInquiries()
-  }, [fetchInquiries])
 
   const columns = buildInquiryHistoryColumns({
     isShippingAgencyHistory,
@@ -98,6 +105,18 @@ export function BaseInquiryHistoryLayout({
             ? 'Search by vessel name...'
             : 'Search by name...'
         }
+        search={search}
+        onSearchChange={setSearch}
+        dateFrom={dateFrom}
+        dateTo={dateTo}
+        onDateFromChange={setDateFrom}
+        onDateToChange={setDateTo}
+        sorting={sorting}
+        onSortingChange={setSorting}
+        pageIndex={page}
+        pageCount={totalPages}
+        totalElements={totalElements}
+        onPageChange={setPage}
         initialColumnVisibility={
           isMobile ? { portOfCall: false, submittedAt: false } : undefined
         }

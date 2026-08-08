@@ -26,6 +26,23 @@ const LEGACY_TEMPLATE_COOKIE = 'thisisjustarandomstring'
 
 const canUseStorage = (): boolean => typeof window !== 'undefined'
 
+/** Display-only profile fields — never persist section/role grants. */
+type CachedAuthProfile = Pick<
+  User,
+  'id' | 'email' | 'username' | 'fullName' | 'role' | 'roleGroup'
+>
+
+function toCachedProfile(user: User): CachedAuthProfile {
+  return {
+    id: user.id,
+    email: user.email,
+    username: user.username ?? null,
+    fullName: user.fullName ?? null,
+    role: user.role,
+    roleGroup: user.roleGroup,
+  }
+}
+
 function clearBrowserSession(): void {
   if (!canUseStorage()) return
   localStorage.removeItem(USER_KEY)
@@ -43,7 +60,7 @@ function persistAuthUser(user: User, remember: boolean): void {
   localStorage.removeItem(USER_KEY)
   sessionStorage.removeItem(USER_KEY)
   const storage = remember ? localStorage : sessionStorage
-  storage.setItem(USER_KEY, JSON.stringify(user))
+  storage.setItem(USER_KEY, JSON.stringify(toCachedProfile(user)))
 }
 
 function readAuthUser(): User | null {
@@ -51,7 +68,10 @@ function readAuthUser(): User | null {
   const raw = sessionStorage.getItem(USER_KEY) || localStorage.getItem(USER_KEY)
   if (!raw) return null
   try {
-    return JSON.parse(raw) as User
+    const parsed = JSON.parse(raw) as User
+    // Drop any legacy stored grants; server /auth/me remains source of truth.
+    const { sections: _sections, ...minimal } = parsed
+    return minimal as User
   } catch {
     clearBrowserSession()
     return null
@@ -88,7 +108,7 @@ export const authService = {
         }
       }
 
-      // The JWT stays in the backend HttpOnly cookie; only profile data is cached.
+      // The JWT stays in the backend HttpOnly cookie; only a minimal profile is cached.
       persistAuthUser(result.data.user, remember)
       return result
     } catch (error) {
@@ -133,6 +153,7 @@ export const authService = {
         }
       }
 
+      // React Query holds the full server payload (incl. sections); storage stays minimal.
       refreshStoredUser(result.data)
       return result
     } catch (error) {

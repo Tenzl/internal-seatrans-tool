@@ -56,10 +56,11 @@ export function useGalleryImageColumns(
               <DialogTrigger asChild>
                 <div className='inline-block cursor-pointer transition-opacity hover:opacity-80'>
                   <ImageWithFallback
-                    src={getGalleryImageUrl(image.url)}
+                    src={getGalleryImageUrl(image.url, 'thumb')}
                     alt={image.fileName}
                     width={48}
                     height={48}
+                    sizes='48px'
                     className='h-12 w-12 rounded object-cover'
                   />
                 </div>
@@ -70,10 +71,11 @@ export function useGalleryImageColumns(
                   {image.portName} - {image.provinceName}
                 </DialogDescription>
                 <ImageWithFallback
-                  src={getGalleryImageUrl(image.url)}
+                  src={getGalleryImageUrl(image.url, 'full')}
                   alt={image.fileName}
                   width={1200}
                   height={800}
+                  sizes='(max-width: 896px) 100vw, 896px'
                   className='h-auto max-h-[80vh] w-full rounded-lg object-contain'
                 />
                 <div className='mt-4 space-y-2'>

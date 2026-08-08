@@ -15,6 +15,7 @@ import {
   isTallyFeeEligibleCargo,
   resolveInquiryCargo,
 } from '@/features/admin/components/invoice/epda/epdaBusinessRules'
+import { extractWorkingParams } from './epdaParameterDiff'
 import type { EpdaQuoteForm } from './epdaPreviewRules'
 
 type InquiryFormSetters = Parameters<typeof applyAdminInquiryToForm>[1]
@@ -27,6 +28,7 @@ export type EpdaInquiryHydrationBindings = {
   setLockedAt: (lockedAt: string | null) => void
   setFrozenParams: (params: EpdaParameterValues | null) => void
   setEffectiveParams: (params: EpdaParameterValues) => void
+  setWorkingParams: (params: EpdaParameterValues | null) => void
   setQuoteForm: (quoteForm: EpdaQuoteForm) => void
   setCargoType: (cargoType: string) => void
   setCargoName: (cargoName: string) => void
@@ -81,8 +83,10 @@ export function useEpdaInquiryHydration({
         const current = bindingsRef.current
         current.setInquiry(inquiry)
 
-        // Locked records use their frozen tariff snapshot; drafts stay on live tariffs.
+        // Locked records use their frozen tariff snapshot.
+        // Unlocked drafts expose soft-snapshotted working params for Apply/Skip.
         const snapshot = extractParamsSnapshot(inquiry.epdaSnapshot)
+        const working = extractWorkingParams(inquiry.epdaWorkingParams)
         const lockedAt = inquiry.epdaLockedAt
           ? String(inquiry.epdaLockedAt)
           : null
@@ -90,9 +94,12 @@ export function useEpdaInquiryHydration({
         if (lockedAt && snapshot) {
           current.setFrozenParams(snapshot)
           current.setEffectiveParams(snapshot)
+          current.setWorkingParams(null)
         } else {
           current.setFrozenParams(null)
-          if (snapshot) current.setEffectiveParams(snapshot)
+          current.setWorkingParams(working)
+          if (working) current.setEffectiveParams(working)
+          else if (snapshot) current.setEffectiveParams(snapshot)
         }
         current.setQuoteForm(quoteFormFromStored(inquiry.quoteForm))
 
@@ -113,6 +120,7 @@ export function useEpdaInquiryHydration({
           current.setCustomer(inquiry.userId, buildCustomerLabel(inquiry))
         }
       } catch {
+        bindingsRef.current.setWorkingParams(null)
         toast.error('Could not load inquiry EPDA data')
       } finally {
         if (!cancelled) setIsLoading(false)

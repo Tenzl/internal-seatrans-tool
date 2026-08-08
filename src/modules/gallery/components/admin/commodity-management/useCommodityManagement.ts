@@ -1,169 +1,210 @@
-import { useCallback, useMemo, useState } from 'react'
+import { useCallback, useState } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import {
   commodityService,
-  type CargoType,
   type Commodity,
+  type CommodityAdminServiceSlug,
+  type CommodityGroup,
 } from '@/modules/gallery/services/commodityService'
-import { serviceTypeService } from '@/modules/service-types/services/serviceTypeService'
 import { toast } from '@/shared/utils/toast'
 import {
-  buildCommodityRequest,
-  countCommoditiesByCargoType,
-  DEFAULT_CARGO_TYPE,
+  buildGroupedCommodityInput,
   DEFAULT_REQUIRED_IMAGE_COUNT,
+  DEFAULT_SERVICE_SLUG,
   EMPTY_COMMODITY_EDIT,
-  filterCommoditiesByCargoType,
   getCommodityDeleteError,
-  isFixedCargoType,
+  getGroupDeleteError,
+  getMutationError,
+  inferCargoTypeFromGroupName,
   parseRequiredImageCount,
-  sanitizeCommodities,
+  sanitizeGroups,
+  validateAddCommoditiesForm,
+  validateCreateGroupForm,
   type CommodityEditData,
 } from './commodityManagementModel'
 
-const SERVICE_TYPES_QUERY_KEY = ['admin', 'service-types'] as const
-const EMPTY_COMMODITIES: Commodity[] = []
-const commodityQueryKey = (serviceTypeId: number | null) =>
-  ['admin', 'commodities', serviceTypeId] as const
+const EMPTY_GROUPS: CommodityGroup[] = []
+const groupsQueryKey = (serviceSlug: CommodityAdminServiceSlug) =>
+  ['admin', 'commodity-groups', serviceSlug] as const
 
-interface DeleteDialogState {
+interface DeleteCommodityDialogState {
   isOpen: boolean
   commodity: Commodity | null
 }
 
-const CLOSED_DELETE_DIALOG: DeleteDialogState = {
+interface DeleteGroupDialogState {
+  isOpen: boolean
+  group: CommodityGroup | null
+}
+
+const CLOSED_DELETE_COMMODITY: DeleteCommodityDialogState = {
   isOpen: false,
   commodity: null,
 }
 
+const CLOSED_DELETE_GROUP: DeleteGroupDialogState = {
+  isOpen: false,
+  group: null,
+}
+
+function resolveSelectedGroupId(
+  groups: CommodityGroup[],
+  preferredId: number | null
+): number | null {
+  if (groups.length === 0) return null
+  if (preferredId != null && groups.some((group) => group.id === preferredId)) {
+    return preferredId
+  }
+  return groups[0]?.id ?? null
+}
+
 export function useCommodityManagement() {
   const queryClient = useQueryClient()
-  const [selectedServiceType, setSelectedServiceType] = useState<number | null>(
-    null
-  )
-  const [selectedCargoType, setSelectedCargoType] =
-    useState<CargoType>(DEFAULT_CARGO_TYPE)
-  const [newCommodityName, setNewCommodityName] = useState('')
+  const [serviceSlug, setServiceSlug] =
+    useState<CommodityAdminServiceSlug>(DEFAULT_SERVICE_SLUG)
+  const [preferredGroupId, setPreferredGroupId] = useState<number | null>(null)
+  const [createGroupOpen, setCreateGroupOpen] = useState(false)
+  const [addCommoditiesOpen, setAddCommoditiesOpen] = useState(false)
+  const [addTargetGroupId, setAddTargetGroupId] = useState<number | null>(null)
   const [editingTypeId, setEditingTypeId] = useState<number | null>(null)
   const [editingData, setEditingData] =
     useState<CommodityEditData>(EMPTY_COMMODITY_EDIT)
-  const [deleteDialog, setDeleteDialog] =
-    useState<DeleteDialogState>(CLOSED_DELETE_DIALOG)
+  const [deleteCommodityDialog, setDeleteCommodityDialog] =
+    useState<DeleteCommodityDialogState>(CLOSED_DELETE_COMMODITY)
+  const [deleteGroupDialog, setDeleteGroupDialog] =
+    useState<DeleteGroupDialogState>(CLOSED_DELETE_GROUP)
   const [mutationLoading, setMutationLoading] = useState(false)
 
-  const serviceTypesQuery = useQuery({
-    queryKey: SERVICE_TYPES_QUERY_KEY,
+  const groupsQuery = useQuery({
+    queryKey: groupsQueryKey(serviceSlug),
     queryFn: async () => {
       try {
-        return await serviceTypeService.getAllServiceTypes()
-      } catch (error) {
-        toast.error('Failed to load service types', error)
-        return []
-      }
-    },
-  })
-  const commoditiesQuery = useQuery({
-    queryKey: commodityQueryKey(selectedServiceType),
-    enabled: selectedServiceType !== null,
-    queryFn: async () => {
-      if (!selectedServiceType) return []
-      try {
-        return sanitizeCommodities(
-          await commodityService.getCommoditiesByServiceType(
-            selectedServiceType
-          )
+        return sanitizeGroups(
+          await commodityService.listGroups({ serviceSlug })
         )
       } catch (error) {
-        toast.error('Failed to load commodities', error)
+        toast.error(
+          getMutationError(error, 'Failed to load commodity groups'),
+          error
+        )
         return []
       }
     },
   })
-  const commodities = commoditiesQuery.data ?? EMPTY_COMMODITIES
-  const filteredCommodities = useMemo(
-    () => filterCommoditiesByCargoType(commodities, selectedCargoType),
-    [commodities, selectedCargoType]
-  )
-  const cargoTypeCounts = useMemo(
-    () => countCommoditiesByCargoType(commodities),
-    [commodities]
-  )
+  const groups = groupsQuery.data ?? EMPTY_GROUPS
+  const selectedGroupId = resolveSelectedGroupId(groups, preferredGroupId)
 
-  const updateCommodityCache = useCallback(
-    (update: (current: Commodity[]) => Commodity[]) => {
-      queryClient.setQueryData<Commodity[]>(
-        commodityQueryKey(selectedServiceType),
-        (current = []) => sanitizeCommodities(update(current))
-      )
-    },
-    [queryClient, selectedServiceType]
-  )
+  const refreshGroups = useCallback(async () => {
+    await queryClient.invalidateQueries({
+      queryKey: groupsQueryKey(serviceSlug),
+    })
+  }, [queryClient, serviceSlug])
 
-  const changeServiceType = useCallback((serviceTypeId: number | null) => {
-    setSelectedServiceType(serviceTypeId)
-    setSelectedCargoType(DEFAULT_CARGO_TYPE)
+  const changeServiceSlug = useCallback((next: CommodityAdminServiceSlug) => {
+    setServiceSlug(next)
+    setPreferredGroupId(null)
+    setEditingTypeId(null)
+    setEditingData(EMPTY_COMMODITY_EDIT)
+    setAddTargetGroupId(null)
   }, [])
 
-  const addCommodity = useCallback(async () => {
-    if (!selectedServiceType) {
-      toast.error('Please select a service type first')
-      return
-    }
-    if (!newCommodityName.trim()) {
-      toast.error('Commodity name is required')
-      return
-    }
-    if (!isFixedCargoType(selectedCargoType)) {
-      toast.error('Please select a cargo type first')
-      return
-    }
+  const selectGroup = useCallback((groupId: number) => {
+    setPreferredGroupId(groupId)
+    setEditingTypeId(null)
+    setEditingData(EMPTY_COMMODITY_EDIT)
+  }, [])
 
-    const normalizedName = buildCommodityRequest({
-      displayName: newCommodityName,
-      requiredImageCount: DEFAULT_REQUIRED_IMAGE_COUNT,
-      serviceTypeId: selectedServiceType,
-      cargoType: selectedCargoType,
-    }).name
-    // Duplicate only within the same cargo type (same name OK across types).
-    if (
-      commodities.some(
-        (commodity) =>
-          commodity.cargoType === selectedCargoType &&
-          commodity.name === normalizedName
-      )
-    ) {
-      toast.error(
-        `Commodity "${normalizedName}" already exists in this cargo type`
-      )
-      return
-    }
+  const openCreateGroup = useCallback(() => setCreateGroupOpen(true), [])
+  const closeCreateGroup = useCallback(() => setCreateGroupOpen(false), [])
 
-    try {
-      setMutationLoading(true)
-      const created = await commodityService.createCommodity(
-        buildCommodityRequest({
-          displayName: newCommodityName,
-          requiredImageCount: DEFAULT_REQUIRED_IMAGE_COUNT,
-          serviceTypeId: selectedServiceType,
-          cargoType: selectedCargoType,
+  const openAddCommodities = useCallback((groupId?: number) => {
+    setAddTargetGroupId(groupId ?? null)
+    setAddCommoditiesOpen(true)
+  }, [])
+  const closeAddCommodities = useCallback(() => {
+    setAddCommoditiesOpen(false)
+    setAddTargetGroupId(null)
+  }, [])
+
+  const createGroup = useCallback(
+    async (input: { groupName: string; commodityNames: string[] }) => {
+      const validationError = validateCreateGroupForm(input)
+      if (validationError) {
+        toast.error(validationError)
+        return false
+      }
+
+      const cargoType = inferCargoTypeFromGroupName(input.groupName)
+      const commodities = input.commodityNames
+        .map((name) => name.trim())
+        .filter(Boolean)
+        .map((displayName) =>
+          buildGroupedCommodityInput(displayName, { cargoType })
+        )
+
+      try {
+        setMutationLoading(true)
+        const created = await commodityService.createGroup({
+          serviceSlug,
+          name: input.groupName.trim(),
+          commodities,
         })
-      )
-      if (!created) throw new Error('Empty response when creating commodity')
-      updateCommodityCache((current) => [...current, created])
-      setNewCommodityName('')
-      toast.success(`Commodity "${created.displayName}" added successfully`)
-    } catch {
-      toast.error('Failed to add commodity')
-    } finally {
-      setMutationLoading(false)
-    }
-  }, [
-    commodities,
-    newCommodityName,
-    selectedCargoType,
-    selectedServiceType,
-    updateCommodityCache,
-  ])
+        setPreferredGroupId(created.id)
+        await refreshGroups()
+        toast.success(`Group "${input.groupName.trim()}" created`)
+        closeCreateGroup()
+        return true
+      } catch (error) {
+        toast.error(getMutationError(error, 'Failed to create group'), error)
+        return false
+      } finally {
+        setMutationLoading(false)
+      }
+    },
+    [closeCreateGroup, refreshGroups, serviceSlug]
+  )
+
+  const addCommodities = useCallback(
+    async (input: { groupId: number; commodityNames: string[] }) => {
+      const validationError = validateAddCommoditiesForm(input.commodityNames)
+      if (validationError) {
+        toast.error(validationError)
+        return false
+      }
+      const group = groups.find((item) => item.id === input.groupId)
+      if (!group) {
+        toast.error('Select a group first')
+        return false
+      }
+
+      const cargoType = inferCargoTypeFromGroupName(group.name)
+      const names = input.commodityNames.map((name) => name.trim()).filter(Boolean)
+
+      try {
+        setMutationLoading(true)
+        for (const displayName of names) {
+          await commodityService.addCommodityToGroup(
+            input.groupId,
+            buildGroupedCommodityInput(displayName, { cargoType })
+          )
+        }
+        await refreshGroups()
+        toast.success(
+          names.length === 1
+            ? `Commodity "${names[0]}" added`
+            : `${names.length} commodities added`
+        )
+        closeAddCommodities()
+        return true
+      } catch (error) {
+        toast.error(getMutationError(error, 'Failed to add commodities'), error)
+        return false
+      } finally {
+        setMutationLoading(false)
+      }
+    },
+    [closeAddCommodities, groups, refreshGroups]
+  )
 
   const startEditing = useCallback((commodity: Commodity) => {
     setEditingTypeId(commodity.id)
@@ -190,7 +231,7 @@ export function useCommodityManagement() {
   }, [])
 
   const saveCommodity = useCallback(
-    async (typeId: number) => {
+    async (commodityId: number) => {
       if (!editingData.displayName.trim()) {
         toast.error('Commodity name is required')
         return
@@ -199,93 +240,150 @@ export function useCommodityManagement() {
         toast.error('Required count must be at least 1')
         return
       }
-      if (!selectedServiceType) {
-        toast.error('Service type not selected')
+
+      const existing = groups
+        .flatMap((group) => group.commodities)
+        .find((commodity) => commodity.id === commodityId)
+      if (!existing) {
+        toast.error('Commodity not found')
         return
       }
 
-      const cargoType =
-        commodities.find((commodity) => commodity.id === typeId)?.cargoType ??
-        DEFAULT_CARGO_TYPE
       try {
         setMutationLoading(true)
-        const updated = await commodityService.updateCommodity(
-          typeId,
-          buildCommodityRequest({
-            ...editingData,
-            serviceTypeId: selectedServiceType,
-            cargoType,
-          })
-        )
-        if (!updated) throw new Error('Empty response when updating commodity')
-        updateCommodityCache((current) =>
-          current.map((commodity) =>
-            commodity.id === typeId ? updated : commodity
-          )
-        )
+        await commodityService.updateCommodity(commodityId, {
+          name: editingData.displayName.trim().replace(/\s+/g, '_').toUpperCase(),
+          displayName: editingData.displayName.trim(),
+          requiredImageCount:
+            editingData.requiredImageCount || DEFAULT_REQUIRED_IMAGE_COUNT,
+          serviceTypeId: existing.serviceTypeId,
+          cargoType: existing.cargoType || 'IN_BULK',
+        })
+        await refreshGroups()
         setEditingTypeId(null)
-        toast.success('Commodity updated successfully')
-      } catch {
-        toast.error('Failed to update commodity')
+        toast.success('Commodity updated')
+      } catch (error) {
+        toast.error(getMutationError(error, 'Failed to update commodity'), error)
       } finally {
         setMutationLoading(false)
       }
     },
-    [commodities, editingData, selectedServiceType, updateCommodityCache]
+    [editingData, groups, refreshGroups]
   )
 
-  const requestDelete = useCallback((commodity: Commodity) => {
-    setDeleteDialog({ isOpen: true, commodity })
+  const requestDeleteCommodity = useCallback((commodity: Commodity) => {
+    setDeleteCommodityDialog({ isOpen: true, commodity })
   }, [])
 
-  const closeDeleteDialog = useCallback(() => {
-    setDeleteDialog(CLOSED_DELETE_DIALOG)
+  const closeDeleteCommodityDialog = useCallback(() => {
+    setDeleteCommodityDialog(CLOSED_DELETE_COMMODITY)
   }, [])
 
-  const confirmDelete = useCallback(async () => {
-    const commodity = deleteDialog.commodity
+  const confirmDeleteCommodity = useCallback(async () => {
+    const commodity = deleteCommodityDialog.commodity
     if (!commodity) return
 
     try {
       setMutationLoading(true)
       await commodityService.deleteCommodity(commodity.id)
-      updateCommodityCache((current) =>
-        current.filter((item) => item.id !== commodity.id)
-      )
-      toast.success(
-        `Commodity "${commodity.displayName}" deleted successfully`
-      )
+      await refreshGroups()
+      toast.success(`Commodity "${commodity.displayName}" deleted`)
+      closeDeleteCommodityDialog()
     } catch (error) {
-      toast.error(getCommodityDeleteError(error))
+      // Keep dialog open on 409/in-use so the failure is obvious.
+      toast.error(getCommodityDeleteError(error), error)
     } finally {
       setMutationLoading(false)
-      closeDeleteDialog()
     }
-  }, [closeDeleteDialog, deleteDialog.commodity, updateCommodityCache])
+  }, [
+    closeDeleteCommodityDialog,
+    deleteCommodityDialog.commodity,
+    refreshGroups,
+  ])
+
+  const requestDeleteGroup = useCallback((group: CommodityGroup) => {
+    setDeleteGroupDialog({ isOpen: true, group })
+  }, [])
+
+  const closeDeleteGroupDialog = useCallback(() => {
+    setDeleteGroupDialog(CLOSED_DELETE_GROUP)
+  }, [])
+
+  const confirmDeleteGroup = useCallback(async () => {
+    const group = deleteGroupDialog.group
+    if (!group) return
+
+    try {
+      setMutationLoading(true)
+      await commodityService.deleteGroup(group.id)
+      await refreshGroups()
+      toast.success(`Group "${group.name}" deleted`)
+      closeDeleteGroupDialog()
+    } catch (error) {
+      toast.error(getGroupDeleteError(error), error)
+    } finally {
+      setMutationLoading(false)
+    }
+  }, [closeDeleteGroupDialog, deleteGroupDialog.group, refreshGroups])
+
+  const renameGroup = useCallback(
+    async (groupId: number, name: string) => {
+      const trimmed = name.trim()
+      if (!trimmed) {
+        toast.error('Group name is required')
+        return false
+      }
+
+      try {
+        setMutationLoading(true)
+        const updated = await commodityService.updateGroup(groupId, {
+          name: trimmed,
+        })
+        setPreferredGroupId(updated.id)
+        await refreshGroups()
+        toast.success(`Group renamed to "${updated.name}"`)
+        return true
+      } catch (error) {
+        toast.error(getMutationError(error, 'Failed to rename group'), error)
+        return false
+      } finally {
+        setMutationLoading(false)
+      }
+    },
+    [refreshGroups]
+  )
 
   return {
-    serviceTypes: serviceTypesQuery.data ?? [],
-    selectedServiceType,
-    selectedCargoType,
-    commodities,
-    filteredCommodities,
-    cargoTypeCounts,
-    loading: commoditiesQuery.isFetching || mutationLoading,
-    newCommodityName,
+    serviceSlug,
+    groups,
+    selectedGroupId,
+    loading: groupsQuery.isFetching || mutationLoading,
+    createGroupOpen,
+    addCommoditiesOpen,
+    addTargetGroupId,
     editingTypeId,
     editingData,
-    deleteDialog,
-    changeServiceType,
-    setSelectedCargoType,
-    setNewCommodityName,
-    addCommodity,
+    deleteCommodityDialog,
+    deleteGroupDialog,
+    changeServiceSlug,
+    selectGroup,
+    openCreateGroup,
+    closeCreateGroup,
+    createGroup,
+    openAddCommodities,
+    closeAddCommodities,
+    addCommodities,
     startEditing,
     cancelEditing,
     updateEditingName,
     updateEditingRequiredCount,
     saveCommodity,
-    requestDelete,
-    closeDeleteDialog,
-    confirmDelete,
+    requestDeleteCommodity,
+    closeDeleteCommodityDialog,
+    confirmDeleteCommodity,
+    requestDeleteGroup,
+    closeDeleteGroupDialog,
+    confirmDeleteGroup,
+    renameGroup,
   }
 }

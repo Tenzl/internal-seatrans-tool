@@ -289,8 +289,8 @@ describe('transport document schemas', () => {
       packageType: 'PKGS',
     })
     expect(normalized.descriptionOfGoods).toBe("20'DC\nSTONE")
-    expect(normalized.grossWeight).toBe('100\n200')
-    expect(normalized.measurement).toBe('2\n4')
+    expect(normalized.grossWeight).toBe('100\n200 KGS')
+    expect(normalized.measurement).toBe('2\n4 CBM')
   })
 
   it('migrates legacy BL marksAndNumbers into shippingMark', () => {
@@ -367,8 +367,8 @@ describe('transport document schemas', () => {
         containerSealNumber: 'CONT / SEAL',
         quantity: '10',
         descriptionOfGoods: '',
-        grossWeight: '100',
-        measurement: '2',
+        grossWeight: '100 KGS',
+        measurement: '2 CBM',
       },
     ])
   })

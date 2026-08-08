@@ -62,6 +62,8 @@ export interface TransportDocumentFieldSpec {
    * read-only outside AN (e.g. Service Mode / Description of goods on BL/DO).
    */
   syncedFromAn?: boolean
+  /** Insert N empty grid cells after this field (layout spacer). */
+  emptyAfter?: 1 | 2
 }
 
 export interface TransportDocumentFieldSection {
@@ -194,15 +196,20 @@ export const TRANSPORT_DOCUMENT_FORM_SECTIONS: Record<
     },
     {
       title: 'Cargo',
+      // Rendered by TransportDocumentForm.renderBookingCargo (2x2 grid).
       fields: [
-        { key: 'commodity', label: 'Commodity', kind: 'textarea', span: 2 },
+        {
+          key: 'commodity',
+          label: 'Commodity',
+          kind: 'select',
+          placeholder: 'Select freight-forwarding commodity',
+        },
         { key: 'grossWeight', label: 'Gross weight (KGS)' },
         { key: 'measurement', label: 'Measurement (CBM)' },
         {
           key: 'specialRemark',
           label: 'Special remark',
           kind: 'textarea',
-          span: 2,
         },
       ],
     },
@@ -293,28 +300,23 @@ export const TRANSPORT_DOCUMENT_FORM_SECTIONS: Record<
     {
       title: 'Cargo',
       description:
-        'Service mode and description of goods are synced from Arrival Notice. Shipping mark is edited here for the BL PDF.',
+        'Cargo is seeded once from Booking on create; edit containers and description here for the BL PDF.',
       fields: [
         {
           key: 'serviceMode',
           label: 'Service mode',
           kind: 'select',
           options: SERVICE_MODE_OPTIONS,
-          syncedFromAn: true,
         },
         {
           key: 'shippingMark',
           label: 'Shipping mark',
-          kind: 'textarea',
-          span: 2,
           placeholder: 'e.g. N/M or marks as shown on cargo',
         },
         {
           key: 'descriptionOfGoods',
           label: 'Description of goods',
           kind: 'textarea',
-          span: 3,
-          syncedFromAn: true,
         },
       ],
     },
@@ -326,6 +328,17 @@ export const TRANSPORT_DOCUMENT_FORM_SECTIONS: Record<
         { key: 'freightAmount', label: 'Freight amount' },
         { key: 'freightPayableAt', label: 'Freight payable at' },
         {
+          key: 'cargoInsurance',
+          label: 'Cargo insurance',
+          kind: 'select',
+          emptyAfter: 1,
+          options: [
+            { value: '', label: 'Unchecked' },
+            { value: 'not_covered', label: 'Not covered' },
+            { value: 'covered', label: 'Covered (attached policy)' },
+          ],
+        },
+        {
           key: 'declarationOfInterest',
           label: 'Declaration of interest (Clause 6.2)',
           kind: 'textarea',
@@ -334,16 +347,6 @@ export const TRANSPORT_DOCUMENT_FORM_SECTIONS: Record<
           key: 'declaredValue',
           label: 'Declared value (Clauses 7 & 8)',
           kind: 'textarea',
-        },
-        {
-          key: 'cargoInsurance',
-          label: 'Cargo insurance',
-          kind: 'select',
-          options: [
-            { value: '', label: 'Unchecked' },
-            { value: 'not_covered', label: 'Not covered' },
-            { value: 'covered', label: 'Covered (attached policy)' },
-          ],
         },
       ],
     },

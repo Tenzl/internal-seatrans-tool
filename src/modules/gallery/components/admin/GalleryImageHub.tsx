@@ -1,16 +1,37 @@
 'use client'
 
 import { memo, useCallback } from 'react'
+import dynamic from 'next/dynamic'
 import { AnimatePresence, motion } from 'framer-motion'
 import { Layers, Upload } from 'lucide-react'
 import { usePathname, useRouter, useSearchParams } from 'next/navigation'
 import { cn } from '@/lib/utils'
-import { ManageImagesTab } from './ImageManagement'
-import { AddImageTab } from './ImageUpload'
 import {
   GalleryImageFilters,
   GalleryManageProvider,
 } from './galleryManageContext'
+
+const AddImageTab = dynamic(
+  () => import('./ImageUpload').then((mod) => mod.AddImageTab),
+  {
+    ssr: false,
+    loading: () => (
+      <div className='py-10 text-sm text-muted-foreground'>Loading upload…</div>
+    ),
+  }
+)
+
+const ManageImagesTab = dynamic(
+  () => import('./ImageManagement').then((mod) => mod.ManageImagesTab),
+  {
+    ssr: false,
+    loading: () => (
+      <div className='py-10 text-sm text-muted-foreground'>
+        Loading library…
+      </div>
+    ),
+  }
+)
 
 export type GalleryImageTab = 'add' | 'manage'
 

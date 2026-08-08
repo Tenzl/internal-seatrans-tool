@@ -120,8 +120,8 @@ describe('anContainerModel', () => {
         containerSealNumber: 'SITU2608023 / SITR892061',
         quantity: '21 CRATE(S)',
         descriptionOfGoods: "20'DC\nTare: 2200\nSTONE\nMethod: SM1",
-        grossWeight: '21000',
-        measurement: '7.86',
+        grossWeight: '21000 KGS',
+        measurement: '7.86 CBM',
       },
     ])
   })
@@ -248,8 +248,8 @@ describe('anContainerModel', () => {
       )
     ).toEqual({
       descriptionOfGoods: 'STONE',
-      grossWeight: '100\n200',
-      measurement: '2\n4',
+      grossWeight: '100 KGS\n200 KGS',
+      measurement: '2 CBM\n4 CBM',
       volumeStc: '1x20DC 1x40HC CONTAINER(S) S.T.C',
     })
   })

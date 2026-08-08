@@ -16,7 +16,7 @@ export const BOOKING_WORKFLOW_STEPS: Record<
   BookingFlow,
   readonly TransportDocumentType[]
 > = {
-  EXPORT: ['booking', 'an', 'bl'],
+  EXPORT: ['booking', 'bl'],
   IMPORT: ['booking', 'an', 'do'],
 }
 

@@ -1,4 +1,4 @@
-import type { ColumnDef, VisibilityState } from '@tanstack/react-table'
+import type { ColumnDef, SortingState, VisibilityState } from '@tanstack/react-table'
 import { AlertCircle, Loader2, RefreshCw } from 'lucide-react'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
@@ -32,6 +32,18 @@ type InquiryHistoryCardProps = {
   archivedFilter: AdminArchivedFilter
   searchKey?: string
   searchPlaceholder: string
+  search: string
+  onSearchChange: (value: string) => void
+  dateFrom: string
+  dateTo: string
+  onDateFromChange: (value: string) => void
+  onDateToChange: (value: string) => void
+  sorting: SortingState
+  onSortingChange: (sorting: SortingState) => void
+  pageIndex: number
+  pageCount: number
+  totalElements: number
+  onPageChange: (page: number) => void
   initialColumnVisibility?: VisibilityState
   onArchivedFilterChange: (filter: AdminArchivedFilter) => void
   onReload: () => void
@@ -50,6 +62,18 @@ export function InquiryHistoryCard({
   archivedFilter,
   searchKey,
   searchPlaceholder,
+  search,
+  onSearchChange,
+  dateFrom,
+  dateTo,
+  onDateFromChange,
+  onDateToChange,
+  sorting,
+  onSortingChange,
+  pageIndex,
+  pageCount,
+  totalElements,
+  onPageChange,
   initialColumnVisibility,
   onArchivedFilterChange,
   onReload,
@@ -105,7 +129,7 @@ export function InquiryHistoryCard({
         </div>
       </CardHeader>
       <CardContent>
-        {isLoading ? (
+        {isLoading && rows.length === 0 ? (
           <div className='flex items-center justify-center py-8'>
             <Loader2 className='h-6 w-6 animate-spin' />
           </div>
@@ -114,16 +138,24 @@ export function InquiryHistoryCard({
             <AlertCircle className='h-4 w-4' />
             <AlertDescription>{error}</AlertDescription>
           </Alert>
-        ) : rows.length === 0 ? (
-          <div className='py-8 text-center text-muted-foreground'>
-            No inquiries yet.
-          </div>
         ) : (
           <InquiryDataTable
             columns={columns}
             data={rows}
             searchKey={searchKey}
             searchPlaceholder={searchPlaceholder}
+            search={search}
+            onSearchChange={onSearchChange}
+            dateFrom={dateFrom}
+            dateTo={dateTo}
+            onDateFromChange={onDateFromChange}
+            onDateToChange={onDateToChange}
+            sorting={sorting}
+            onSortingChange={onSortingChange}
+            pageIndex={pageIndex}
+            pageCount={pageCount}
+            totalElements={totalElements}
+            onPageChange={onPageChange}
             onDelete={canDelete ? onDelete : undefined}
             canHardDelete={canHardDelete}
             initialColumnVisibility={initialColumnVisibility}

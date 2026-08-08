@@ -3,9 +3,13 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { emptyArrivalNotice } from '@/features/admin/sections/transport-documents/transportDocumentSchemas'
 import { transportDocumentService } from './transportDocumentService'
 
-vi.mock('@/shared/utils/apiClient', () => ({
-  apiClient: { get: vi.fn(), post: vi.fn(), put: vi.fn(), delete: vi.fn() },
-}))
+vi.mock('@/shared/utils/apiClient', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/shared/utils/apiClient')>()
+  return {
+    ...actual,
+    apiClient: { get: vi.fn(), post: vi.fn(), put: vi.fn(), delete: vi.fn() },
+  }
+})
 
 describe('transportDocumentService', () => {
   beforeEach(() => {

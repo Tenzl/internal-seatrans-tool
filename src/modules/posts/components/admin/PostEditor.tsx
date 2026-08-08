@@ -87,7 +87,7 @@ export function PostEditorPage({ postId }: PostEditorPageProps) {
           if (cancelled) return
           setFormData({
             title: post.title,
-            content: post.content,
+            content: post.content ?? '',
             categoryIds: post.categories?.map((category) => category.id) || [],
             thumbnailUrl: post.thumbnailUrl || '',
             thumbnailPublicId: post.thumbnailPublicId || '',

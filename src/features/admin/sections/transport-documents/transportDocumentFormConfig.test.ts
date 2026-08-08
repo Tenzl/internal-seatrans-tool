@@ -93,9 +93,9 @@ describe('transport document form config', () => {
       'cleanOnBoard',
       'freightAmount',
       'freightPayableAt',
+      'cargoInsurance',
       'declarationOfInterest',
       'declaredValue',
-      'cargoInsurance',
       'deliveryApplyTo',
     ])
     expect(fieldOrder('an')).toEqual([
@@ -202,7 +202,7 @@ describe('transport document form config', () => {
       'descriptionOfGoods',
     ])
     expect(fieldSpec('bl', 'shippingMark')?.label).toBe('Shipping mark')
-    expect(fieldSpec('bl', 'shippingMark')?.kind).toBe('textarea')
+    expect(fieldSpec('bl', 'shippingMark')?.kind).toBeUndefined()
     expect(fieldSpec('bl', 'shippingMark')?.syncedFromAn).toBeUndefined()
   })
 
@@ -319,7 +319,7 @@ describe('transport document form config', () => {
       partyIdKey: 'agentPartyId',
       customerType: 'AGENT',
     })
-    expect(fieldSpec('an', 'agent').partyValueMode).toBeUndefined()
+    expect(fieldSpec('an', 'agent')?.partyValueMode).toBeUndefined()
     expect(fieldSpec('an', 'shipper')).toMatchObject({
       kind: 'party',
       partyIdKey: 'shipperPartyId',
@@ -378,7 +378,7 @@ describe('transport document form config', () => {
     ).toBe('Delivery-Order.pdf')
   })
 
-  it('renders Service Mode as a select with the six canonical options on AN, DO, and read-only on BL', () => {
+  it('renders Service Mode as a select with the six canonical options on AN, DO, and BL', () => {
     expect(fieldSpec('an', 'serviceMode')).toMatchObject({
       kind: 'select',
       options: SERVICE_MODE_OPTIONS,
@@ -401,13 +401,13 @@ describe('transport document form config', () => {
     ])
   })
 
-  it('marks Service Mode and Description of goods read-only (synced from AN) on BL and DO only', () => {
+  it('marks Service Mode and Description of goods read-only (synced from AN) on DO only', () => {
     expect(fieldSpec('an', 'serviceMode')?.syncedFromAn).toBeUndefined()
     expect(fieldSpec('do', 'serviceMode')?.syncedFromAn).toBe(true)
-    expect(fieldSpec('bl', 'serviceMode')?.syncedFromAn).toBe(true)
+    expect(fieldSpec('bl', 'serviceMode')?.syncedFromAn).toBeUndefined()
     expect(fieldSpec('an', 'descriptionOfGoods')?.syncedFromAn).toBeUndefined()
     expect(fieldSpec('do', 'descriptionOfGoods')?.syncedFromAn).toBe(true)
-    expect(fieldSpec('bl', 'descriptionOfGoods')?.syncedFromAn).toBe(true)
+    expect(fieldSpec('bl', 'descriptionOfGoods')?.syncedFromAn).toBeUndefined()
   })
 
   it('exposes containers for AN, BL and DO; legacy cargo rows are unused', () => {

@@ -27,12 +27,21 @@ export function UserManagementScreen() {
     null
   )
 
-  const { roles, users, isLoadingRoles, isLoadingUsers } =
-    useUserManagementData({
-      scope,
-      search,
-      roleFilter,
-    })
+  const {
+    roles,
+    users,
+    totalElements,
+    pageIndex,
+    setPageIndex,
+    pageSize,
+    pageCount,
+    isLoadingRoles,
+    isLoadingUsers,
+  } = useUserManagementData({
+    scope,
+    search,
+    roleFilter,
+  })
 
   const rowActions = useMemo<UserRowActions>(
     () => ({
@@ -52,15 +61,30 @@ export function UserManagementScreen() {
         roleFilter={roleFilter}
         roles={roles}
         isLoadingRoles={isLoadingRoles}
-        onScopeChange={setScope}
-        onSearchChange={setSearch}
-        onRoleFilterChange={setRoleFilter}
+        onScopeChange={(next) => {
+          setScope(next)
+          setRoleFilter(ALL_ROLES_FILTER)
+          setPageIndex(0)
+        }}
+        onSearchChange={(value) => {
+          setSearch(value)
+          setPageIndex(0)
+        }}
+        onRoleFilterChange={(value) => {
+          setRoleFilter(value)
+          setPageIndex(0)
+        }}
         onCreate={() => setCreateOpen(true)}
       />
 
       <UsersTable
         users={users}
         isLoading={isLoadingUsers}
+        totalElements={totalElements}
+        pageIndex={pageIndex}
+        pageCount={pageCount}
+        pageSize={pageSize}
+        onPageChange={setPageIndex}
         actions={rowActions}
       />
 

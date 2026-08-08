@@ -10,6 +10,7 @@ import {
 import { extractParamsSnapshot } from '@/modules/inquiries/components/common/quoteParameters'
 import { renderQuoteHtmlForVariant } from '@/modules/inquiries/components/common/quoteVariantRenderer'
 import { resolveEffectiveParams } from '@/modules/inquiries/services/resolveEffectiveParams'
+import { extractWorkingParams } from '@/features/admin/sections/epda-editor/controller/epdaParameterDiff'
 import {
   formatCargoDescription,
   formatCheckMark,
@@ -23,6 +24,7 @@ interface InvoicePreviewInquiry extends Record<string, unknown> {
   details?: string | null
   quoteForm?: string | null
   epdaSnapshot?: Record<string, unknown> | null
+  epdaWorkingParams?: Record<string, unknown> | null
   submittedAt?: string | null
   toName?: string | null
   fullName?: string | null
@@ -220,6 +222,7 @@ export function useInvoicePreview() {
         )
         const params =
           extractParamsSnapshot(inquiry.epdaSnapshot) ??
+          extractWorkingParams(inquiry.epdaWorkingParams) ??
           (await resolveEffectiveParams(
             quoteForm,
             inquiry.portOfCall ||

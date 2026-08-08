@@ -22,13 +22,13 @@ describe('API response unwrapping', () => {
     ).resolves.toEqual({ id: 7 })
   })
 
-  it('preserves backend error status and message', async () => {
+  it('preserves backend error status and message as ApiError', async () => {
     await expect(
       unwrapApiResponse(
         response({ success: false, message: 'Stale version' }, { status: 409 })
       )
     ).rejects.toMatchObject({
-      name: 'ApiResponseError',
+      name: 'ApiError',
       message: 'Stale version',
       status: 409,
     })
@@ -38,8 +38,19 @@ describe('API response unwrapping', () => {
     await expect(
       unwrapApiResponse(response('<html>Proxy error</html>', { status: 502 }))
     ).rejects.toMatchObject({
-      name: 'ApiResponseError',
+      name: 'ApiError',
       status: 502,
+    })
+  })
+
+  it('throws ApiError with 404 so query retry will not retry', async () => {
+    await expect(
+      unwrapApiResponse(
+        response({ success: false, message: 'Missing' }, { status: 404 })
+      )
+    ).rejects.toMatchObject({
+      name: 'ApiError',
+      status: 404,
     })
   })
 

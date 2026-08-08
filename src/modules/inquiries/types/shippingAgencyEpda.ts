@@ -48,6 +48,11 @@ export type ShippingAgencyAdminInquiry = {
   /** Custom fee lines under in-lumpsum mode: `{ name, amount }[]`. */
   agencyOtherExpenses?: Array<{ name: string; amount: number | string }> | null
   epdaSnapshot?: Record<string, unknown> | null
+  /**
+   * Soft-snapshot of tariff params for unlocked drafts (Apply/Skip baseline).
+   * Shape matches EpdaParameterValues JSON.
+   */
+  epdaWorkingParams?: Record<string, unknown> | null
   /** ISO timestamp; when set, edits are locked and the quote uses snapshot params. */
   epdaLockedAt?: string | null
   customerSubmittedSnapshot?: Record<string, string> | null

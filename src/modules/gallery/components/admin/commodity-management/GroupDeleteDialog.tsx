@@ -1,4 +1,4 @@
-import type { Commodity } from '@/modules/gallery/services/commodityService'
+import type { CommodityGroup } from '@/modules/gallery/services/commodityService'
 import {
   AlertDialog,
   AlertDialogAction,
@@ -10,19 +10,19 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog'
 
-interface CommodityDeleteDialogProps {
+interface GroupDeleteDialogProps {
   open: boolean
-  commodity: Commodity | null
+  group: CommodityGroup | null
   onClose: () => void
   onConfirm: () => void
 }
 
-export function CommodityDeleteDialog({
+export function GroupDeleteDialog({
   open,
-  commodity,
+  group,
   onClose,
   onConfirm,
-}: CommodityDeleteDialogProps) {
+}: GroupDeleteDialogProps) {
   return (
     <AlertDialog
       open={open}
@@ -30,12 +30,11 @@ export function CommodityDeleteDialog({
     >
       <AlertDialogContent>
         <AlertDialogHeader>
-          <AlertDialogTitle>Delete commodity?</AlertDialogTitle>
+          <AlertDialogTitle>Delete group?</AlertDialogTitle>
           <AlertDialogDescription>
-            Delete commodity &quot;
-            <strong>{commodity?.displayName}</strong>&quot;? This cannot be
-            undone. If it is in use (gallery, inquiry, or booking documents),
-            the API will reject the delete with a clear error.
+            Delete group &quot;<strong>{group?.name}</strong>&quot; and all of
+            its commodities? This cannot be undone. If any commodity is in use,
+            the API will reject the delete.
           </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>
@@ -44,7 +43,7 @@ export function CommodityDeleteDialog({
             onClick={onConfirm}
             className='bg-destructive hover:bg-destructive/90'
           >
-            Delete
+            Delete group
           </AlertDialogAction>
         </AlertDialogFooter>
       </AlertDialogContent>

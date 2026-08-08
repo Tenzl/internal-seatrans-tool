@@ -5,9 +5,8 @@ import {
   mapArrivalNoticeCargoFromBooking,
   prefillArrivalNoticeFromBooking,
   prefillArrivalNoticeHeaderFromBooking,
-  prefillBillOfLadingFromArrivalNotice,
+  prefillBillOfLadingFromBooking,
   prefillDeliveryOrderFromAn,
-  syncBillOfLadingCargoFromArrivalNotice,
   syncDeliveryOrderCargoFromArrivalNotice,
 } from './transportDocumentPrefill'
 import {
@@ -23,7 +22,7 @@ describe('transportDocumentPrefill', () => {
   it('resolves previous types for both booking workflow branches', () => {
     expect(getPrefillSourceType('booking')).toBeNull()
     expect(getPrefillSourceType('an')).toBe('booking')
-    expect(getPrefillSourceType('bl')).toBe('an')
+    expect(getPrefillSourceType('bl')).toBe('booking')
     expect(getPrefillSourceType('do')).toBe('an')
   })
 
@@ -37,7 +36,7 @@ describe('transportDocumentPrefill', () => {
     booking.vesselVoyage = 'YOUCAN / 001E'
     booking.grossWeight = '24000'
     booking.measurement = '20'
-    booking.commodity = 'STONE'
+    booking.commodity = 'Rice IN Foodstuffs'
     booking.date = '2026-08-05'
     booking.etd = '2026-08-06'
     booking.eta = '2026-08-12'
@@ -69,7 +68,7 @@ describe('transportDocumentPrefill', () => {
     booking.vesselVoyage = 'YOUCAN / 001E'
     booking.grossWeight = '24000'
     booking.measurement = '20'
-    booking.commodity = 'STONE'
+    booking.commodity = 'Rice IN Foodstuffs'
     booking.date = '2026-08-05'
     booking.etd = '2026-08-06'
     booking.eta = '2026-08-12'
@@ -91,7 +90,7 @@ describe('transportDocumentPrefill', () => {
     expect(next.containers[0]?.grossWeight).toBe('24000')
     expect(next.containers[0]?.measurement).toBe('20')
     expect(next.containers[0]?.note).toBe('')
-    expect(next.descriptionOfGoods).toBe('STONE')
+    expect(next.descriptionOfGoods).toBe('Rice IN Foodstuffs')
     expect(next.containers[1]?.grossWeight).toBe('')
     expect(next.containers[1]?.measurement).toBe('')
     expect(next.containers[1]?.note).toBe('')
@@ -102,13 +101,13 @@ describe('transportDocumentPrefill', () => {
     booking.bookingNumber = 'BK-101'
     booking.cargoVolumes = { "20'DC": 1 }
     booking.grossWeight = '1000'
-    booking.commodity = 'STONE'
+    booking.commodity = 'Rice IN Foodstuffs'
 
     const next = prefillArrivalNoticeFromBooking(booking, emptyArrivalNotice())
     expect(next.shipmentNumber).toBe('BK-101')
     expect(next.containers).toHaveLength(1)
     expect(next.containers[0]?.type).toBe("20'DC")
-    expect(next.descriptionOfGoods).toBe('STONE')
+    expect(next.descriptionOfGoods).toBe('Rice IN Foodstuffs')
   })
 
   it('seeds 3 typed rows from 20\'DC: 3 with GW/measurement on first row only', () => {
@@ -171,121 +170,44 @@ describe('transportDocumentPrefill', () => {
     expect(next.descriptionOfGoods).toBe('GENERAL')
   })
 
-  it('maps shared AN parties, route and copies containers onto BL', () => {
-    const an = emptyArrivalNotice()
-    an.hblNumber = 'ST2607036'
-    an.shipper = 'SHIPPER CO'
-    an.shipperPartyId = 10
-    an.notifyParty = 'NOTIFY CO'
-    an.notifyPartyId = 12
-    an.consignee = 'CONSIGNEE CO'
-    an.consigneePartyId = 11
-    an.vesselVoyage = 'SITC / 2615N'
-    an.marks = 'N/M'
-    an.serviceMode = 'FCL/FCL - CY/CY'
-    an.volume = '10 PKGS'
-    an.descriptionOfGoods = 'STONE AND PARTS'
-    an.containers = [
-      {
-        type: "20'DC",
-        containerNo: 'CONT1',
-        sealNo: 'SEAL1',
-        noOfPkgs: '10',
-        packageType: 'PKGS',
-        grossWeight: '100',
-        measurement: '2',
-        tare: '',
-        note: 'row note ignored',
-        method: '',
-      },
-      {
-        type: "40'HC",
-        containerNo: 'CONT2',
-        sealNo: '',
-        noOfPkgs: '5',
-        packageType: '',
-        grossWeight: '200',
-        measurement: '4',
-        tare: '',
-        note: '',
-        method: '',
-      },
-    ]
+  it('seeds BL route, schedule, and cargo from Booking without parties', () => {
+    const booking = emptyBookingConfirmation()
+    booking.date = '2026-08-05'
+    booking.placeOfReceipt = 'QUI NHON'
+    booking.portOfLoading = 'DA NANG'
+    booking.portOfDischarge = 'KOBE'
+    booking.placeOfDelivery = 'KOBE'
+    booking.vesselVoyage = 'YOUCAN / 001E'
+    booking.grossWeight = '24000'
+    booking.measurement = '20'
+    booking.commodity = 'Rice IN Foodstuffs'
+    booking.cargoVolumes = { "20'DC": 2 }
+    booking.volume = "2 x 20'DC"
 
-    const next = prefillBillOfLadingFromArrivalNotice(an, emptyBillOfLading())
-    expect(next.fblNumber).toBe('ST2607036')
-    expect(next.consignor).toBe('SHIPPER CO')
-    expect(next.consignedToOrderOf).toBe('CONSIGNEE CO')
-    expect(next.notifyAddress).toBe('NOTIFY CO')
-    expect(next.shipperPartyId).toBe(10)
-    expect(next.consigneePartyId).toBe(11)
-    expect(next.notifyPartyId).toBe(12)
-    expect(next.oceanVessel).toBe('SITC')
-    expect(next.voyageNumber).toBe('2615N')
-    expect(next.shippingMark).toBe('N/M')
-    expect(next.serviceMode).toBe('FCL/FCL - CY/CY')
-    expect(next.numberAndKindOfPackages).toBe("1 x 20'DC\n1 x 40'HC")
-    expect(next.containers).toEqual(an.containers)
-    expect(next.containers).not.toBe(an.containers)
-    expect(next.descriptionOfGoods).toBe('STONE AND PARTS')
-    expect(next.grossWeight).toBe('100\n200')
-    expect(next.measurement).toBe('2\n4')
-  })
-
-  it('syncs only BL cargo fields from AN without touching parties/route', () => {
-    const an = emptyArrivalNotice()
-    an.marks = 'NEW MARKS'
-    an.serviceMode = 'CY/CY'
-    an.descriptionOfGoods = 'UPDATED STONE'
-    an.volume = 'legacy volume ignored when typed'
-    an.containers = [
-      {
-        type: "20'DC",
-        containerNo: 'C1',
-        sealNo: 'S1',
-        noOfPkgs: '3',
-        packageType: 'PKGS',
-        grossWeight: '500',
-        measurement: '8',
-        tare: '',
-        note: '',
-        method: '',
-      },
-    ]
-
-    const bl = emptyBillOfLading()
-    bl.consignor = 'KEEP CONSIGNOR'
-    bl.oceanVessel = 'KEEP VESSEL'
-    bl.freightTerms = 'FREIGHT PREPAID'
-    bl.shippingMark = 'OLD'
-    bl.descriptionOfGoods = 'OLD DESC'
-    bl.containers = [
-      {
-        type: "40'HC",
-        containerNo: 'OLD',
-        sealNo: '',
-        noOfPkgs: '1',
-        packageType: '',
-        grossWeight: '1',
-        measurement: '1',
-        tare: '',
-        note: '',
-        method: '',
-      },
-    ]
-
-    const next = syncBillOfLadingCargoFromArrivalNotice(an, bl)
-    expect(next.consignor).toBe('KEEP CONSIGNOR')
-    expect(next.oceanVessel).toBe('KEEP VESSEL')
-    expect(next.freightTerms).toBe('FREIGHT PREPAID')
-    expect(next.shippingMark).toBe('OLD')
-    expect(next.serviceMode).toBe('CY/CY')
-    expect(next.descriptionOfGoods).toBe('UPDATED STONE')
-    expect(next.numberAndKindOfPackages).toBe("1 x 20'DC")
-    expect(next.containers).toEqual(an.containers)
-    expect(next.containers).not.toBe(an.containers)
-    expect(next.grossWeight).toBe('500')
-    expect(next.measurement).toBe('8')
+    const next = prefillBillOfLadingFromBooking(booking, emptyBillOfLading())
+    expect(next.dateOfIssue).toBe('2026-08-05')
+    expect(next.placeOfReceipt).toBe('QUI NHON')
+    expect(next.portOfLoading).toBe('DA NANG')
+    expect(next.portOfDischarge).toBe('KOBE')
+    expect(next.placeOfDelivery).toBe('KOBE')
+    expect(next.placeOfIssue).toBe('DA NANG')
+    expect(next.freightPayableAt).toBe('KOBE')
+    expect(next.oceanVessel).toBe('YOUCAN')
+    expect(next.voyageNumber).toBe('001E')
+    expect(next.fblNumber).toBe('')
+    expect(next.consignor).toBe('')
+    expect(next.serviceMode).toBe('')
+    expect(next.shippingMark).toBe('')
+    expect(next.numberAndKindOfPackages).toBe("2 x 20'DC")
+    expect(next.containers).toHaveLength(2)
+    expect(next.containers.map((row) => row.type)).toEqual(["20'DC", "20'DC"])
+    expect(next.containers[0]?.containerNo).toBe('')
+    expect(next.containers[0]?.sealNo).toBe('')
+    expect(next.containers[0]?.grossWeight).toBe('24000')
+    expect(next.containers[0]?.measurement).toBe('20')
+    expect(next.descriptionOfGoods).toBe('Rice IN Foodstuffs')
+    expect(next.grossWeight).toBe('24000 KGS')
+    expect(next.measurement).toBe('20 CBM')
   })
 
   it('maps AN containers onto DO cargo rows without sharing arrays', () => {
@@ -330,8 +252,8 @@ describe('transportDocumentPrefill', () => {
         containerSealNumber: 'CONT1 / SEAL1',
         quantity: '1',
         descriptionOfGoods: "20'DC\nSTONE",
-        grossWeight: '100',
-        measurement: '2',
+        grossWeight: '100 KGS',
+        measurement: '2 CBM',
       },
     ])
     expect(next.volume).toBe("1 x 20'DC")
@@ -391,8 +313,8 @@ describe('transportDocumentPrefill', () => {
         containerSealNumber: 'C1 / S1',
         quantity: '3 PKGS',
         descriptionOfGoods: "20'DC\nUPDATED STONE",
-        grossWeight: '500',
-        measurement: '8',
+        grossWeight: '500 KGS',
+        measurement: '8 CBM',
       },
     ])
   })
@@ -407,6 +329,15 @@ describe('transportDocumentPrefill', () => {
       emptyArrivalNotice()
     )
     expect(an.portOfLoading).toBe('DAD')
+
+    booking.commodity = 'STONE'
+    const bl = applyPrefillFromPrevious(
+      'bl',
+      'booking',
+      booking,
+      emptyBillOfLading()
+    )
+    expect(bl.descriptionOfGoods).toBe('STONE')
   })
 })
 

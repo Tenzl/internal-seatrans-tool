@@ -9,10 +9,10 @@ export interface CategoryResponse {
   createdAt?: string
 }
 
-export interface Post {
+export interface PostListItem {
   id: number
   title: string
-  content: string
+  content?: string
   summary?: string
   authorId: number
   authorName: string
@@ -38,14 +38,27 @@ export interface PostRequest {
   isPublished?: boolean
 }
 
-type PostApiDto = Post & { authorFullName?: string }
+export interface PostsPage {
+  content: PostListItem[]
+  totalElements: number
+  totalPages: number
+  size: number
+  number: number
+}
 
-const mapPost = (raw: PostApiDto): Post => {
+type PostApiDto = PostListItem & { authorFullName?: string }
+
+const mapPost = (raw: PostApiDto): PostListItem => {
   const words =
-    typeof raw?.content === 'string' ? raw.content.split(/\s+/).length : 0
-  const readingTime = raw?.readingTime ?? Math.max(1, Math.round(words / 200))
+    typeof raw?.content === 'string' && raw.content.length > 0
+      ? raw.content.split(/\s+/).length
+      : 0
+  const readingTime =
+    raw?.readingTime ?? (words > 0 ? Math.max(1, Math.round(words / 200)) : 1)
   return {
     ...raw,
+    // List projection omits HTML body; keep empty string so callers never parse full content.
+    content: typeof raw?.content === 'string' ? raw.content : '',
     categories: Array.isArray(raw?.categories) ? raw.categories : [],
     tags: Array.isArray(raw?.tags) ? raw.tags : [],
     summary: raw?.summary ?? '',
@@ -71,26 +84,75 @@ async function requestRecordPostView(id: number): Promise<number> {
   return result.data?.viewCount ?? 0
 }
 
+export const ADMIN_POSTS_PAGE_SIZE = 10
+export const ADMIN_POSTS_QUERY_ROOT = ['adminPosts'] as const
+
 export const postService = {
-  // Admin endpoints
-  getAllPosts: async (): Promise<Post[]> => {
-    const response = await apiClient.get<ApiResponse<Post[]>>(
-      `${API_CONFIG.POSTS.ADMIN_BASE}?limit=100`
+  // Admin endpoints — list projection (no full HTML content from backend).
+  /** @deprecated Prefer getAdminPostsPage (server page/size/q). */
+  getAllPosts: async (signal?: AbortSignal): Promise<PostListItem[]> => {
+    const page = await postService.getAdminPostsPage(
+      { page: 0, size: 100 },
+      signal
     )
-    const result = await response.json()
-    return Array.isArray(result.data) ? result.data.map(mapPost) : []
+    return page.content
   },
 
-  getPostById: async (id: number): Promise<Post> => {
-    const response = await apiClient.get<ApiResponse<Post>>(
+  /**
+   * Server-paginated admin list (page/size/q). List projection omits HTML body.
+   */
+  getAdminPostsPage: async (
+    params: { page: number; size: number; q?: string },
+    signal?: AbortSignal
+  ): Promise<PostsPage> => {
+    const sp = new URLSearchParams()
+    sp.set("page", String(Math.max(0, params.page)))
+    sp.set("size", String(Math.max(1, params.size)))
+    if (params.q?.trim()) sp.set("q", params.q.trim())
+
+    const response = await apiClient.get<
+      ApiResponse<PostsPage & { page?: number }>
+    >(`${API_CONFIG.POSTS.ADMIN_BASE}?${sp.toString()}`, { signal })
+    if (!response.ok) {
+      throw new Error('Failed to fetch posts')
+    }
+    const result: ApiResponse<PostsPage & { page?: number }> =
+      await response.json()
+    const data = result.data
+    if (!data || !Array.isArray(data.content)) {
+      return {
+        content: [],
+        totalElements: 0,
+        totalPages: 0,
+        size: params.size,
+        number: params.page,
+      }
+    }
+    return {
+      content: data.content.map((row) => mapPost(row as PostApiDto)),
+      totalElements: data.totalElements ?? data.content.length,
+      totalPages:
+        data.totalPages ??
+        (data.content.length === 0
+          ? 0
+          : Math.ceil(
+              (data.totalElements ?? data.content.length) / params.size
+            )),
+      size: data.size ?? params.size,
+      number: data.number ?? data.page ?? params.page,
+    }
+  },
+
+  getPostById: async (id: number): Promise<PostListItem> => {
+    const response = await apiClient.get<ApiResponse<PostApiDto>>(
       API_CONFIG.POSTS.ADMIN_BY_ID(id)
     )
     const result = await response.json()
     return mapPost(result.data)
   },
 
-  createPost: async (postData: PostRequest): Promise<Post> => {
-    const response = await apiClient.post<ApiResponse<Post>>(
+  createPost: async (postData: PostRequest): Promise<PostListItem> => {
+    const response = await apiClient.post<ApiResponse<PostApiDto>>(
       API_CONFIG.POSTS.ADMIN_BASE,
       postData
     )
@@ -100,12 +162,15 @@ export const postService = {
       throw new Error(error.message || 'Failed to create post')
     }
 
-    const result: ApiResponse<Post> = await response.json()
+    const result: ApiResponse<PostApiDto> = await response.json()
     return mapPost(result.data)
   },
 
-  updatePost: async (id: number, postData: PostRequest): Promise<Post> => {
-    const response = await apiClient.put<ApiResponse<Post>>(
+  updatePost: async (
+    id: number,
+    postData: PostRequest
+  ): Promise<PostListItem> => {
+    const response = await apiClient.put<ApiResponse<PostApiDto>>(
       API_CONFIG.POSTS.ADMIN_BY_ID(id),
       postData
     )
@@ -115,7 +180,7 @@ export const postService = {
       throw new Error(error.message || 'Failed to update post')
     }
 
-    const result: ApiResponse<Post> = await response.json()
+    const result: ApiResponse<PostApiDto> = await response.json()
     return mapPost(result.data)
   },
 
@@ -127,11 +192,11 @@ export const postService = {
     }
   },
 
-  publishPost: async (id: number): Promise<Post> => {
+  publishPost: async (id: number): Promise<PostListItem> => {
     const existing = await postService.getPostById(id)
     return postService.updatePost(id, {
       title: existing.title,
-      content: existing.content,
+      content: existing.content ?? '',
       categoryIds: existing.categories.map((c) => c.id),
       thumbnailUrl: existing.thumbnailUrl,
       thumbnailPublicId: existing.thumbnailPublicId,
@@ -139,11 +204,11 @@ export const postService = {
     })
   },
 
-  unpublishPost: async (id: number): Promise<Post> => {
+  unpublishPost: async (id: number): Promise<PostListItem> => {
     const existing = await postService.getPostById(id)
     return postService.updatePost(id, {
       title: existing.title,
-      content: existing.content,
+      content: existing.content ?? '',
       categoryIds: existing.categories.map((c) => c.id),
       thumbnailUrl: existing.thumbnailUrl,
       thumbnailPublicId: existing.thumbnailPublicId,
@@ -153,8 +218,9 @@ export const postService = {
 
   getPublishedPosts: async (
     category?: string,
-    search?: string
-  ): Promise<Post[]> => {
+    search?: string,
+    signal?: AbortSignal
+  ): Promise<PostListItem[]> => {
     const params = new URLSearchParams()
     params.set('page', '0')
     params.set('size', '100')
@@ -163,8 +229,8 @@ export const postService = {
 
     const url = `${API_CONFIG.POSTS.PUBLIC_BASE}?${params.toString()}`
     const response = await apiClient.get<
-      ApiResponse<{ content?: Post[]; items?: Post[] }>
-    >(url, { skipAuth: true })
+      ApiResponse<{ content?: PostApiDto[]; items?: PostApiDto[] }>
+    >(url, { skipAuth: true, signal })
 
     if (!response.ok) {
       throw new Error(
@@ -182,8 +248,8 @@ export const postService = {
     return Array.isArray(rows) ? rows.map(mapPost) : []
   },
 
-  getPublicPostById: async (id: number): Promise<Post> => {
-    const response = await apiClient.get<ApiResponse<Post>>(
+  getPublicPostById: async (id: number): Promise<PostListItem> => {
+    const response = await apiClient.get<ApiResponse<PostApiDto>>(
       API_CONFIG.POSTS.PUBLIC_BY_ID(id),
       { skipAuth: true }
     )
@@ -192,7 +258,7 @@ export const postService = {
       throw new Error('Failed to fetch post')
     }
 
-    const result: ApiResponse<Post> = await response.json()
+    const result: ApiResponse<PostApiDto> = await response.json()
     return mapPost(result.data)
   },
 
@@ -211,12 +277,12 @@ export const postService = {
   },
 
   // alias for clarity with ArticleDetailPage
-  getById: async (id: number): Promise<Post> => {
+  getById: async (id: number): Promise<PostListItem> => {
     return postService.getPublicPostById(id)
   },
 
-  getLatestPosts: async (limit: number = 5): Promise<Post[]> => {
-    const response = await apiClient.get<ApiResponse<Post[]>>(
+  getLatestPosts: async (limit: number = 5): Promise<PostListItem[]> => {
+    const response = await apiClient.get<ApiResponse<PostApiDto[]>>(
       `${API_CONFIG.POSTS.LATEST}?limit=${limit}`,
       { skipAuth: true }
     )
@@ -225,7 +291,7 @@ export const postService = {
       throw new Error('Failed to fetch latest posts')
     }
 
-    const result: ApiResponse<Post[]> = await response.json()
+    const result: ApiResponse<PostApiDto[]> = await response.json()
     return Array.isArray(result.data) ? result.data.map(mapPost) : []
   },
 

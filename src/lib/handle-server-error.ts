@@ -1,5 +1,6 @@
 import { AxiosError } from 'axios'
 import { toast } from 'sonner'
+import { ApiError } from '@/shared/utils/apiClient'
 
 export function handleServerError(error: unknown) {
   if (process.env.NODE_ENV === 'development') {
@@ -16,6 +17,10 @@ export function handleServerError(error: unknown) {
     Number(error.status) === 204
   ) {
     errMsg = 'No content.'
+  }
+
+  if (error instanceof ApiError && error.message) {
+    errMsg = error.message
   }
 
   if (error instanceof AxiosError) {

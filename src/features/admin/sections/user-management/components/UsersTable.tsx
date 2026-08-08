@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react'
 import {
   type ColumnDef,
   type SortingState,
+  functionalUpdate,
   getCoreRowModel,
   getSortedRowModel,
   useReactTable,
@@ -17,7 +18,10 @@ import {
 } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
-import { DataTableContent } from '@/components/ui/data-table'
+import {
+  DataTableContent,
+  DataTablePagination,
+} from '@/components/ui/data-table'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -30,10 +34,24 @@ import type { UserRowActions } from '../model/userManagement.types'
 type UsersTableProps = {
   users: AdminUserRow[]
   isLoading: boolean
+  totalElements: number
+  pageIndex: number
+  pageCount: number
+  pageSize: number
+  onPageChange: (page: number) => void
   actions: UserRowActions
 }
 
-export function UsersTable({ users, isLoading, actions }: UsersTableProps) {
+export function UsersTable({
+  users,
+  isLoading,
+  totalElements,
+  pageIndex,
+  pageCount,
+  pageSize,
+  onPageChange,
+  actions,
+}: UsersTableProps) {
   const [sorting, setSorting] = useState<SortingState>([
     { id: 'createdAt', desc: true },
   ])
@@ -43,7 +61,7 @@ export function UsersTable({ users, isLoading, actions }: UsersTableProps) {
       {
         id: 'no',
         header: 'No.',
-        cell: (context) => context.row.index + 1,
+        cell: (context) => pageIndex * pageSize + context.row.index + 1,
         enableSorting: false,
         meta: { className: 'w-16' },
       },
@@ -99,7 +117,7 @@ export function UsersTable({ users, isLoading, actions }: UsersTableProps) {
         ),
       },
     ],
-    [actions]
+    [actions, pageIndex, pageSize]
   )
 
   // TanStack Table exposes mutable helpers that React Compiler intentionally skips.
@@ -107,10 +125,21 @@ export function UsersTable({ users, isLoading, actions }: UsersTableProps) {
   const table = useReactTable({
     data: users,
     columns,
-    state: { sorting },
+    manualPagination: true,
+    pageCount,
+    rowCount: totalElements,
+    state: {
+      sorting,
+      pagination: { pageIndex, pageSize },
+    },
     onSortingChange: setSorting,
+    onPaginationChange: (updater) => {
+      const next = functionalUpdate(updater, { pageIndex, pageSize })
+      onPageChange(next.pageIndex)
+    },
     getCoreRowModel: getCoreRowModel(),
     getSortedRowModel: getSortedRowModel(),
+    autoResetPageIndex: false,
   })
 
   return (
@@ -121,7 +150,14 @@ export function UsersTable({ users, isLoading, actions }: UsersTableProps) {
           Loading users…
         </div>
       ) : (
-        <DataTableContent table={table} columnCount={columns.length} />
+        <>
+          <DataTableContent table={table} columnCount={columns.length} />
+          <DataTablePagination
+            table={table}
+            totalRowCount={totalElements}
+            isFetching={isLoading}
+          />
+        </>
       )}
     </AdminDataPanel>
   )

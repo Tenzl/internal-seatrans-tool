@@ -141,7 +141,11 @@ export function useEpdaReferenceData({
   }, [])
 
   useEffect(() => {
-    if (frozenParams || !selectedArea || isLoadingPorts) return
+    // Locked / Skip-pinned drafts stay on frozen params.
+    // Linked unlocked drafts: live fetch is owned by Apply/Skip compare — do not
+    // silently overwrite effectiveParams here.
+    if (frozenParams || !selectedArea || isLoadingPorts || linkedInquiryId)
+      return
 
     const portId = resolveSelectedPortId({
       selectedPortId,
@@ -154,9 +158,7 @@ export function useEpdaReferenceData({
       .then((params) => {
         if (cancelled) return
         setEffectiveParams(params)
-        if (!linkedInquiryId) {
-          bindingsRef.current.applyNewParameterDefaults(params)
-        }
+        bindingsRef.current.applyNewParameterDefaults(params)
       })
       .catch((error) => {
         if (cancelled) return

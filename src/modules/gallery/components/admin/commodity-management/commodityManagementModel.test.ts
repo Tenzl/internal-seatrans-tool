@@ -1,83 +1,109 @@
 import type { Commodity } from '@/modules/gallery/services/commodityService'
 import { describe, expect, it } from 'vitest'
 import {
-  buildCommodityRequest,
-  countCommoditiesByCargoType,
+  buildGroupedCommodityInput,
+  COMMODITY_SERVICE_TABS,
+  commodityDisplayLabel,
   deriveCommodityName,
-  filterCommoditiesByCargoType,
-  FIXED_CARGO_TYPE_OPTIONS,
   getCommodityDeleteError,
+  getGroupDeleteError,
+  inferCargoTypeFromGroupName,
   parseRequiredImageCount,
-  sanitizeCommodities,
+  sanitizeGroups,
+  validateAddCommoditiesForm,
+  validateCreateGroupForm,
 } from './commodityManagementModel'
+import { ApiError } from '@/shared/utils/apiClient'
 
-const commodity = (id: number, cargoType: string): Commodity => ({
+const commodity = (id: number, overrides?: Partial<Commodity>): Commodity => ({
   id,
   name: `CARGO_${id}`,
   displayName: `Cargo ${id}`,
   serviceTypeId: 1,
   requiredImageCount: 18,
-  cargoType,
+  cargoType: 'IN_BULK',
+  groupId: 1,
+  groupName: 'Foodstuffs',
+  ...overrides,
 })
 
 describe('commodity management model', () => {
-  it('exposes exactly the three shipping-agency cargo types', () => {
-    expect(FIXED_CARGO_TYPE_OPTIONS.map((option) => option.value)).toEqual([
-      'IN_BAG_PACK',
-      'IN_EQUIPMENT',
-      'IN_BULK',
+  it('exposes only Shipping Agency and Freight Forwarding tabs', () => {
+    expect(COMMODITY_SERVICE_TABS.map((tab) => tab.slug)).toEqual([
+      'shipping-agency',
+      'freight-forwarding',
     ])
   })
 
-  it('keeps legacy junk outside fixed tabs and counts', () => {
-    const rows = [
-      commodity(1, 'IN_BULK'),
-      commodity(2, 'IN_BULK'),
-      commodity(3, 'BREAK_BULK'),
-    ]
-
-    expect(filterCommoditiesByCargoType(rows, 'IN_BULK')).toHaveLength(2)
-    expect(countCommoditiesByCargoType(rows)).toMatchObject({
-      IN_BAG_PACK: 0,
-      IN_EQUIPMENT: 0,
-      IN_BULK: 2,
-    })
+  it('requires at least one commodity when creating a group', () => {
+    expect(
+      validateCreateGroupForm({ groupName: 'Foodstuffs', commodityNames: [] })
+    ).toMatch(/at least one commodity/i)
+    expect(
+      validateCreateGroupForm({
+        groupName: 'Foodstuffs',
+        commodityNames: ['', '  '],
+      })
+    ).toMatch(/at least one commodity/i)
+    expect(
+      validateCreateGroupForm({
+        groupName: 'Foodstuffs',
+        commodityNames: ['Rice'],
+      })
+    ).toBeNull()
   })
 
-  it('normalizes the stored code while preserving the trimmed display name', () => {
-    expect(deriveCommodityName('  Wood   Chips ')).toBe('WOOD_CHIPS')
+  it('formats booking / AN display as commodity IN group', () => {
+    expect(commodityDisplayLabel(commodity(1, { displayName: 'Rice' }))).toBe(
+      'Rice IN Foodstuffs'
+    )
     expect(
-      buildCommodityRequest({
-        displayName: '  Wood   Chips ',
-        requiredImageCount: 12,
-        serviceTypeId: 7,
-        cargoType: 'IN_BULK',
-      })
-    ).toEqual({
+      commodityDisplayLabel(
+        commodity(2, {
+          displayName: 'Rice',
+          displayLabel: 'Rice IN Foodstuffs',
+        })
+      )
+    ).toBe('Rice IN Foodstuffs')
+  })
+
+  it('infers shipping-agency cargo types from backfilled group names', () => {
+    expect(inferCargoTypeFromGroupName('IN BULK')).toBe('IN_BULK')
+    expect(inferCargoTypeFromGroupName('IN BAG PACK')).toBe('IN_BAG_PACK')
+    expect(inferCargoTypeFromGroupName('Foodstuffs')).toBe('IN_BULK')
+  })
+
+  it('builds grouped commodity create payloads', () => {
+    expect(deriveCommodityName('  Wood   Chips ')).toBe('WOOD_CHIPS')
+    expect(buildGroupedCommodityInput('  Wood   Chips ', { cargoType: 'IN_BULK' })).toEqual({
       name: 'WOOD_CHIPS',
       displayName: 'Wood   Chips',
-      requiredImageCount: 12,
-      serviceTypeId: 7,
+      requiredImageCount: 18,
       cargoType: 'IN_BULK',
     })
-  })
-
-  it('preserves the form fallback for an empty required-count input', () => {
     expect(parseRequiredImageCount('')).toBe(18)
-    expect(parseRequiredImageCount('5')).toBe(5)
-    expect(sanitizeCommodities([commodity(1, 'IN_BULK'), null])).toHaveLength(1)
+    expect(sanitizeGroups([null, { id: 1, serviceTypeId: 1, serviceSlug: 'shipping-agency', name: 'Bulk', commodities: [] }])).toHaveLength(1)
   })
 
-  it('surfaces API delete failures and maps raw FK errors', () => {
+  it('rejects empty add-commodities forms', () => {
+    expect(validateAddCommoditiesForm(['', ' '])).toMatch(/at least one/i)
+    expect(validateAddCommoditiesForm(['Rice', 'Beans'])).toBeNull()
+  })
+
+  it('surfaces API delete failures and maps 409 / FK errors', () => {
     expect(
       getCommodityDeleteError(
-        new Error('Commodity is currently in use / đang được sử dụng')
+        new ApiError('Commodity is currently in use / đang được sử dụng', {
+          status: 409,
+        })
       )
     ).toBe('Commodity is currently in use / đang được sử dụng')
     expect(getCommodityDeleteError(new Error('foreign key constraint'))).toBe(
       'Commodity is currently in use / đang được sử dụng'
     )
-    expect(getCommodityDeleteError(new Error('offline'))).toBe('offline')
+    expect(getGroupDeleteError(new ApiError('group busy', { status: 409 }))).toBe(
+      'group busy'
+    )
     expect(getCommodityDeleteError({})).toBe('Failed to delete commodity')
   })
 })

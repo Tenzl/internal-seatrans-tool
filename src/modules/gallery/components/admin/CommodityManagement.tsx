@@ -3,9 +3,12 @@
 import { isAdminRole } from '@/config/section-catalog'
 import { getRoleGroup } from '@/shared/utils/auth'
 import { useCurrentUser } from '@/hooks/use-current-user'
+import { AddCommoditiesDialog } from './commodity-management/AddCommoditiesDialog'
 import { CommodityDeleteDialog } from './commodity-management/CommodityDeleteDialog'
-import { CommodityTable } from './commodity-management/CommodityTable'
+import { CommodityGroupsPanel } from './commodity-management/CommodityGroupsPanel'
 import { CommodityToolbar } from './commodity-management/CommodityToolbar'
+import { CreateGroupDialog } from './commodity-management/CreateGroupDialog'
+import { GroupDeleteDialog } from './commodity-management/GroupDeleteDialog'
 import { useCommodityManagement } from './commodity-management/useCommodityManagement'
 
 export function ManageCommodities() {
@@ -15,40 +18,68 @@ export function ManageCommodities() {
   const canEditCommodity = isAdminRole(currentUser?.role) || canAddCommodity
 
   return (
-    <div className='space-y-6'>
+    <div className='space-y-5'>
       <CommodityToolbar
-        serviceTypes={management.serviceTypes}
-        selectedServiceType={management.selectedServiceType}
-        canAddCommodity={canAddCommodity}
-        newCommodityName={management.newCommodityName}
-        onServiceTypeChange={management.changeServiceType}
-        onNameChange={management.setNewCommodityName}
-        onAdd={() => void management.addCommodity()}
+        serviceSlug={management.serviceSlug}
+        groupCount={management.groups.length}
+        onServiceSlugChange={management.changeServiceSlug}
       />
 
-      <CommodityTable
-        selectedServiceType={management.selectedServiceType}
-        selectedCargoType={management.selectedCargoType}
-        cargoTypeCounts={management.cargoTypeCounts}
-        commodities={management.filteredCommodities}
+      <CommodityGroupsPanel
+        groups={management.groups}
+        selectedGroupId={management.selectedGroupId}
         loading={management.loading}
         canEditCommodity={canEditCommodity}
         editingTypeId={management.editingTypeId}
         editingData={management.editingData}
-        onCargoTypeChange={management.setSelectedCargoType}
+        onSelectGroup={management.selectGroup}
         onStartEdit={management.startEditing}
         onEditNameChange={management.updateEditingName}
         onEditRequiredCountChange={management.updateEditingRequiredCount}
         onSave={(commodityId) => void management.saveCommodity(commodityId)}
         onCancelEdit={management.cancelEditing}
-        onDelete={management.requestDelete}
+        onDeleteCommodity={management.requestDeleteCommodity}
+        onDeleteGroup={management.requestDeleteGroup}
+        onRenameGroup={management.renameGroup}
+        onAddToGroup={(groupId) => management.openAddCommodities(groupId)}
+        onCreateGroup={
+          canAddCommodity ? management.openCreateGroup : undefined
+        }
+      />
+
+      <CreateGroupDialog
+        open={management.createGroupOpen}
+        loading={management.loading}
+        onClose={management.closeCreateGroup}
+        onSubmit={management.createGroup}
+      />
+
+      <AddCommoditiesDialog
+        key={
+          management.addCommoditiesOpen
+            ? `add-${management.addTargetGroupId ?? 'pick'}`
+            : 'add-closed'
+        }
+        open={management.addCommoditiesOpen}
+        loading={management.loading}
+        groups={management.groups}
+        initialGroupId={management.addTargetGroupId}
+        onClose={management.closeAddCommodities}
+        onSubmit={management.addCommodities}
       />
 
       <CommodityDeleteDialog
-        open={management.deleteDialog.isOpen}
-        commodity={management.deleteDialog.commodity}
-        onClose={management.closeDeleteDialog}
-        onConfirm={() => void management.confirmDelete()}
+        open={management.deleteCommodityDialog.isOpen}
+        commodity={management.deleteCommodityDialog.commodity}
+        onClose={management.closeDeleteCommodityDialog}
+        onConfirm={() => void management.confirmDeleteCommodity()}
+      />
+
+      <GroupDeleteDialog
+        open={management.deleteGroupDialog.isOpen}
+        group={management.deleteGroupDialog.group}
+        onClose={management.closeDeleteGroupDialog}
+        onConfirm={() => void management.confirmDeleteGroup()}
       />
     </div>
   )

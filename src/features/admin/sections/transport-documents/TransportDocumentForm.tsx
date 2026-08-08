@@ -1,3 +1,4 @@
+import { Fragment } from 'react'
 import { FileOutput, Loader2, RotateCcw, Save } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
@@ -10,6 +11,7 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { AnContainersEditor } from './AnContainersEditor'
+import { BookingCommoditySelect } from './BookingCommoditySelect'
 import { CargoRowsEditor } from './CargoRowsEditor'
 import { CargoVolumeEditor } from './CargoVolumeEditor'
 import {
@@ -216,9 +218,13 @@ export function TransportDocumentForm({
     )
   }
 
+  /**
+   * Booking cargo fields grid:
+   *   [ Commodity select ][ Gross weight ]
+   *   [ Measurement      ][ Special remark ]
+   */
   const renderBookingCargo = (fields: TransportDocumentFieldSpec[]) => {
     const byKey = Object.fromEntries(fields.map((field) => [field.key, field]))
-    const commodity = byKey.commodity
     const grossWeight = byKey.grossWeight
     const measurement = byKey.measurement
     const specialRemark = byKey.specialRemark
@@ -234,7 +240,10 @@ export function TransportDocumentForm({
           }}
         />
         <div className='grid gap-x-4 gap-y-3 md:grid-cols-2'>
-          {commodity ? renderField(commodity) : null}
+          <BookingCommoditySelect
+            value={String(values.commodity ?? '')}
+            onChange={(next) => updateField('commodity', next)}
+          />
           {grossWeight ? renderField(grossWeight) : null}
           {measurement ? renderField(measurement) : null}
           {specialRemark ? renderField(specialRemark) : null}
@@ -286,24 +295,20 @@ export function TransportDocumentForm({
     </div>
   )
 
-  /**
-   * BL cargo: containers + AN-synced fields stay read-only (`syncedFromAn`).
-   * Shipping mark is BL-owned and editable here.
-   */
+  /** BL cargo: containers and description are editable; seeded once from Booking. */
   const renderBlCargo = (fields: TransportDocumentFieldSpec[]) => (
     <div className='space-y-4'>
       <p className='text-sm text-muted-foreground'>
-        Containers and description are mapped from Arrival Notice. Shipping mark
-        is edited on this form.
+        Containers and description are seeded from Booking on create. Edit them
+        here for the BL PDF.
       </p>
       {containers ? (
         <AnContainersEditor
           rows={containers}
           onChange={onContainersChange}
-          readOnly
         />
       ) : null}
-      <div className='grid gap-x-4 gap-y-3 md:grid-cols-2 xl:grid-cols-3'>
+      <div className='grid gap-x-4 gap-y-3 md:grid-cols-3'>
         {fields.map((field) => renderField(field))}
       </div>
     </div>
@@ -368,7 +373,20 @@ export function TransportDocumentForm({
             renderBookingCargo(section.fields)
           ) : (
             <div className='grid gap-x-4 gap-y-3 md:grid-cols-2 xl:grid-cols-3'>
-              {section.fields.map((field) => renderField(field))}
+              {section.fields.map((field) => (
+                <Fragment key={field.key}>
+                  {renderField(field)}
+                  {field.emptyAfter
+                    ? Array.from({ length: field.emptyAfter }, (_, index) => (
+                        <div
+                          key={`${field.key}-empty-${index}`}
+                          aria-hidden
+                          className='hidden xl:block'
+                        />
+                      ))
+                    : null}
+                </Fragment>
+              ))}
             </div>
           )}
         </section>
