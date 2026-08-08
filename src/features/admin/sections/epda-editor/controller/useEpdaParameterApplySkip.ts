@@ -28,6 +28,8 @@ type HourFieldSetters = {
   setGarbageUsdRate: (value: string) => void
 }
 
+type ParamDecision = 'idle' | 'pending' | 'applied' | 'skipped'
+
 type UseEpdaParameterApplySkipOptions = {
   linkedInquiryId: number | null | undefined
   isLocked: boolean
@@ -75,18 +77,15 @@ export function useEpdaParameterApplySkip({
   const [dialogOpen, setDialogOpen] = useState(false)
   const [compareToken, setCompareToken] = useState(0)
   /** Mirrors decisionRef so callers can gate Save / Preview / auto-PDF. */
-  const [paramDecision, setParamDecision] = useState<
-    'idle' | 'pending' | 'applied' | 'skipped'
-  >('idle')
+  const [paramDecision, setParamDecision] = useState<ParamDecision>('idle')
   const decisionRef = useRef<'pending' | 'applied' | 'skipped' | null>(null)
   const baselineRef = useRef<EpdaParameterValues | null>(null)
   const latestRef = useRef<EpdaParameterValues | null>(null)
   const hourFieldsRef = useRef(hourFields)
   const hourSettersRef = useRef(hourSetters)
+  const effectiveParamsRef = useRef(effectiveParams)
 
-  const setDecision = (
-    value: 'pending' | 'applied' | 'skipped' | null
-  ) => {
+  const setDecision = (value: 'pending' | 'applied' | 'skipped' | null) => {
     decisionRef.current = value
     setParamDecision(value ?? 'idle')
   }
@@ -99,18 +98,29 @@ export function useEpdaParameterApplySkip({
     hourSettersRef.current = hourSetters
   }, [hourSetters])
 
-  // Reset when switching inquiry / lock state.
   useEffect(() => {
-    setDecision(null)
+    effectiveParamsRef.current = effectiveParams
+  }, [effectiveParams])
+
+  // Reset when switching inquiry / lock state.
+  // Defer React setState so we do not trip react-hooks/set-state-in-effect.
+  useEffect(() => {
+    decisionRef.current = null
     baselineRef.current = null
     latestRef.current = null
+    let cancelled = false
     queueMicrotask(() => {
+      if (cancelled) return
+      setParamDecision('idle')
       setDialogOpen(false)
       setDiffRows([])
       if (linkedInquiryId && !isLocked) {
         setCompareToken((token) => token + 1)
       }
     })
+    return () => {
+      cancelled = true
+    }
   }, [linkedInquiryId, isLocked])
 
   // Re-compare when port/area changes on an unlocked linked draft.
@@ -124,20 +134,20 @@ export function useEpdaParameterApplySkip({
     if (prevPortAreaKeyRef.current === portAreaKey) return
     prevPortAreaKeyRef.current = portAreaKey
     // Current form params become the "Current" column for the new port's latest.
-    baselineRef.current = effectiveParams
-    setDecision('pending')
+    baselineRef.current = effectiveParamsRef.current
+    decisionRef.current = 'pending'
+    let cancelled = false
     queueMicrotask(() => {
+      if (cancelled) return
+      setParamDecision('pending')
       setFrozenParams(null)
       setDialogOpen(false)
       setCompareToken((token) => token + 1)
     })
-  }, [
-    portAreaKey,
-    linkedInquiryId,
-    isLocked,
-    effectiveParams,
-    setFrozenParams,
-  ])
+    return () => {
+      cancelled = true
+    }
+  }, [portAreaKey, linkedInquiryId, isLocked, setFrozenParams])
 
   useEffect(() => {
     if (!linkedInquiryId || isLocked || isHydrating) return
@@ -237,7 +247,7 @@ export function useEpdaParameterApplySkip({
     setDialogOpen(false)
     setDiffRows([])
 
-    const hourFields = baseline
+    const nextHourFields = baseline
       ? selectivelyApplyHourDefaults(
           hourFieldsRef.current,
           baseline,
@@ -246,7 +256,7 @@ export function useEpdaParameterApplySkip({
         )
       : hourFieldsRef.current
 
-    return { params: latest, hourFields }
+    return { params: latest, hourFields: nextHourFields }
   }
 
   const skipLatest = () => {
