@@ -47,10 +47,6 @@ export interface EpdaParameterValues {
   hours: {
     berthHours: number
     anchorageHours: number
-    /** HCM pilotage 3rd-leg miles. */
-    pilotageThirdMiles: number
-    /** QN pilotage miles. */
-    qnPilotageMiles: number
   }
   garbage: {
     /** USD every 2 days when vessel is at berth. */
@@ -130,12 +126,10 @@ const AGENCY_FEE_TIERS: GrtTier[] = [
 
 function hcmDefaults(): EpdaParameterValues {
   return {
-    // pilotageThirdMiles here = default buoy position (total miles); leg 3 = position − (leg1+leg2).
+    // berth/anchorage hours seed the Create/Edit EPDA form; PS→port miles do not.
     hours: {
       berthHours: 96,
       anchorageHours: 24,
-      pilotageThirdMiles: 47,
-      qnPilotageMiles: 5,
     },
     garbage: { atBerthUsd: 54, atBuoyUsd: 54 },
     quarantine: {
@@ -245,12 +239,7 @@ const RATIO_PARAMETER_KEYS = new Set([
 ])
 
 const SCALAR_PARAMETER_KEYS = {
-  hours: [
-    'berthHours',
-    'anchorageHours',
-    'pilotageThirdMiles',
-    'qnPilotageMiles',
-  ],
+  hours: ['berthHours', 'anchorageHours'],
   garbage: ['atBerthUsd', 'atBuoyUsd'],
   quarantine: [
     'shipUnitLowGrt',
@@ -492,15 +481,22 @@ export function normalizeParameterValues(
   values: EpdaParameterValues
 ): EpdaParameterValues {
   const safe = values ?? defaultParameterValues('HCM')
+  const defaults = defaultParameterValues('HCM')
+  const rawHours = (safe.hours ?? defaults.hours) as Partial<
+    EpdaParameterValues['hours']
+  > &
+    Record<string, unknown>
   return {
-    hours: coerceScalars(safe.hours ?? defaultParameterValues('HCM').hours),
-    garbage: coerceScalars(
-      safe.garbage ?? defaultParameterValues('HCM').garbage
-    ),
-    quarantine: coerceScalars(
-      safe.quarantine ?? defaultParameterValues('HCM').quarantine
-    ),
-    coeff: coerceScalars(safe.coeff ?? defaultParameterValues('HCM').coeff),
+    hours: coerceScalars({
+      berthHours:
+        parseFiniteNumber(rawHours.berthHours) ?? defaults.hours.berthHours,
+      anchorageHours:
+        parseFiniteNumber(rawHours.anchorageHours) ??
+        defaults.hours.anchorageHours,
+    }),
+    garbage: coerceScalars(safe.garbage ?? defaults.garbage),
+    quarantine: coerceScalars(safe.quarantine ?? defaults.quarantine),
+    coeff: coerceScalars(safe.coeff ?? defaults.coeff),
     agencyFeeTiers: (safe.agencyFeeTiers ?? []).map(coerceGrtTier),
     moorUnmoorBerthTiers: withAutoGrtTierLabels(
       safe.moorUnmoorBerthTiers ?? []

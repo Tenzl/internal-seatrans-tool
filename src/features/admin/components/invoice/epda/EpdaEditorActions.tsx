@@ -1,7 +1,7 @@
 'use client'
 
 import { useI18n } from '@/shared/i18n/I18nProvider'
-import { Eye, Loader2, Lock, Save } from 'lucide-react'
+import { Loader2, Lock, Printer, Save } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { EpdaFieldChangeHistory } from './EpdaFieldChangeHistory'
 
@@ -52,9 +52,27 @@ export function EpdaEditorActions({
         <span className='hidden sm:inline'>{t('epda.reset')}</span>
         <span className='sm:hidden'>{t('epda.resetShort')}</span>
       </Button>
+      <Button
+        variant='outline'
+        onClick={onPreview}
+        disabled={isBusy}
+        className='col-span-2 h-11 gap-2 border-transparent bg-emerald-600 text-white shadow-xs hover:bg-emerald-700 hover:text-white focus-visible:ring-emerald-600/30 active:scale-[0.98] md:col-span-1 md:h-9 dark:bg-emerald-500 dark:hover:bg-emerald-400'
+      >
+        {isLoadingPreview ? (
+          <>
+            <Loader2 className='h-4 w-4 animate-spin' />
+            <span className='hidden sm:inline'>{t('epda.generating')}</span>
+            <span className='sm:hidden'>{t('epda.loading')}</span>
+          </>
+        ) : (
+          <>
+            <Printer className='h-4 w-4' />
+            {t('epda.preview')}
+          </>
+        )}
+      </Button>
       {showSaveDraft ? (
         <Button
-          variant='outline'
           onClick={onSaveDraft}
           disabled={isBusy}
           className='h-11 gap-2 active:scale-[0.98] sm:h-9'
@@ -74,24 +92,6 @@ export function EpdaEditorActions({
           {t('epda.locked')}
         </span>
       ) : null}
-      <Button
-        onClick={onPreview}
-        disabled={isBusy}
-        className='col-span-2 h-11 gap-2 active:scale-[0.98] md:col-span-1 md:h-9'
-      >
-        {isLoadingPreview ? (
-          <>
-            <Loader2 className='h-4 w-4 animate-spin' />
-            <span className='hidden sm:inline'>{t('epda.generating')}</span>
-            <span className='sm:hidden'>{t('epda.loading')}</span>
-          </>
-        ) : (
-          <>
-            <Eye className='h-4 w-4' />
-            {t('epda.preview')}
-          </>
-        )}
-      </Button>
     </div>
   )
 }

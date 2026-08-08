@@ -144,8 +144,6 @@ export function EpdaEditorScreen({
     setPort,
     setBerthHours,
     setAnchorageHours,
-    setPilotageThirdMiles,
-    setQnPilotageMiles,
     setTallyFeeAmount,
   } = formSetters
   const [activeSection, setActiveSection] =
@@ -165,6 +163,8 @@ export function EpdaEditorScreen({
       clearTallyFee: () => setTallyFeeAmount(''),
       setPort,
       applyNewParameterDefaults: (params) => {
+        // QN never stays on Anchorage (see setDischargeLoadingLocation), so buoy
+        // garbage only applies for HCM-layout worksheets.
         const garbageRate =
           dischargeLoadingLocation === 'Anchorage'
             ? params.garbage.atBuoyUsd
@@ -172,8 +172,7 @@ export function EpdaEditorScreen({
         setGarbageUsdRate(String(garbageRate))
         setBerthHours(String(params.hours.berthHours))
         setAnchorageHours(String(params.hours.anchorageHours))
-        setPilotageThirdMiles(String(params.hours.pilotageThirdMiles))
-        setQnPilotageMiles(String(params.hours.qnPilotageMiles))
+        // PS→port miles stay on the EPDA form — not seeded from Parameters.
       },
     },
   })
@@ -295,6 +294,7 @@ export function EpdaEditorScreen({
   const {
     paramDiffDialogOpen,
     paramDiffRows,
+    isParamDecisionPending,
     applyLatestParams,
     skipLatestParams,
   } = useEpdaParameterApplySkip({
@@ -319,12 +319,11 @@ export function EpdaEditorScreen({
     hourSetters: {
       setBerthHours,
       setAnchorageHours,
-      setPilotageThirdMiles,
-      setQnPilotageMiles,
       setGarbageUsdRate,
     },
     setEffectiveParams,
     setFrozenParams,
+    setWorkingParams,
   })
 
   const persistence = useEpdaPersistence({
@@ -374,6 +373,12 @@ export function EpdaEditorScreen({
     isLoadingInquiry
 
   const handleSaveDraft = async () => {
+    if (isParamDecisionPending) {
+      toast.error(
+        'Choose Apply latest or Skip on the tariff changes before saving.'
+      )
+      return
+    }
     setShowValidationErrors(true)
     const isComplete = missingRequiredFields.length === 0
     if (!isComplete) {
@@ -390,7 +395,43 @@ export function EpdaEditorScreen({
     await persistence.saveDraft(buildQuoteParamsInput(), isComplete)
   }
 
+  const handleApplyLatestAndSave = async () => {
+    const applied = applyLatestParams()
+    if (!applied) return
+
+    // Prevent the preview=1 auto-open effect from generating a second PDF.
+    autoPreviewTriggeredRef.current = true
+
+    const base = buildQuoteParamsInput()
+    const { hourFields, params } = applied
+    const quoteInput = {
+      ...base,
+      params,
+      berthHours: hourFields.berthHours,
+      anchorageHours: hourFields.anchorageHours,
+      pilotageThirdMiles: hourFields.pilotageThirdMiles,
+      qnPilotageMiles: hourFields.qnPilotageMiles,
+      garbageUsdRate: hourFields.garbageUsdRate || base.garbageUsdRate,
+      buoyDueHours:
+        base.buoyDueHours !== '' ? hourFields.berthHours : base.buoyDueHours,
+    }
+
+    await persistence.saveDraft(quoteInput, missingRequiredFields.length === 0, {
+      successMessage: 'Latest tariffs applied and saved.',
+    })
+    // Apply to PDF only after the user chose Latest (and save succeeded).
+    if (missingRequiredFields.length === 0) {
+      await preview.generate(params)
+    }
+  }
+
   const handlePreview = async () => {
+    if (isParamDecisionPending) {
+      toast.error(
+        'Choose Apply latest or Skip on the tariff changes before previewing.'
+      )
+      return
+    }
     setShowValidationErrors(true)
     if (missingRequiredFields.length > 0) {
       focusFirstMissingSection()
@@ -417,6 +458,8 @@ export function EpdaEditorScreen({
       !linkedInquiryId
     )
       return
+    // Wait for Apply/Skip when tariffs changed — do not open PDF with stale/latest silently.
+    if (isParamDecisionPending || paramDiffDialogOpen) return
     // Don't burn the trigger before the form is fully populated — cargo type/name
     // resolve a tick after loading flags clear, so wait until nothing is missing.
     if (missingRequiredFields.length > 0) return
@@ -434,6 +477,8 @@ export function EpdaEditorScreen({
     pendingInquiryCargo,
     linkedInquiryId,
     missingRequiredFields.length,
+    isParamDecisionPending,
+    paramDiffDialogOpen,
     handlePreviewRef,
   ])
 
@@ -552,6 +597,10 @@ export function EpdaEditorScreen({
           setPort('')
           setPortPickerCollapsed(false)
           referenceData.selectArea(value)
+          // Area 2 (QN) has no buoy/anchorage — keep discharge at berth.
+          if (value === '2') {
+            formHandlers.setDischargeLoadingLocation('Berth')
+          }
         }}
         onPortChange={(value, portId) => {
           setPort(value)
@@ -613,7 +662,7 @@ export function EpdaEditorScreen({
         <EpdaParameterDiffDialog
           open={paramDiffDialogOpen}
           rows={paramDiffRows}
-          onApply={applyLatestParams}
+          onApply={() => void handleApplyLatestAndSave()}
           onSkip={skipLatestParams}
         />
       </>
@@ -672,7 +721,7 @@ export function EpdaEditorScreen({
       <EpdaParameterDiffDialog
         open={paramDiffDialogOpen}
         rows={paramDiffRows}
-        onApply={applyLatestParams}
+        onApply={() => void handleApplyLatestAndSave()}
         onSkip={skipLatestParams}
       />
     </>

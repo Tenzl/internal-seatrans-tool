@@ -63,6 +63,11 @@ export const APPROVE_STATUS_OPTIONS: ApproveStatus[] = [
 export const formatAdditionTypeLabel = (type: PartnerAdditionType): string =>
   type === 'OTHER_VENDORS' ? 'OTHER VENDOR' : type.replace(/_/g, ' ')
 
+export const formatCustomerStatusLabel = (status: CustomerStatus): string =>
+  status === 'WINCLIENT' ? 'WIN CLIENT' : status
+
+export const formatCustomerTypeLabel = (type: CustomerType): string => type
+
 export const createEmptyPartnerContact = (): PartnerContact => ({
   person: '',
   firstName: '',

@@ -2,7 +2,7 @@
 
 import type { ReactNode } from 'react'
 import { useI18n } from '@/shared/i18n/I18nProvider'
-import { Eye, Loader2, Lock } from 'lucide-react'
+import { Loader2, Lock, Printer } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { EpdaFieldChangeHistory } from './EpdaFieldChangeHistory'
@@ -62,12 +62,13 @@ export function EpdaReadOnlyWorksheet({
           <Button
             onClick={onPreview}
             disabled={isBusy}
-            className='h-11 gap-2 active:scale-[0.98] sm:h-9'
+            variant='outline'
+            className='h-11 gap-2 border-transparent bg-emerald-600 text-white shadow-xs hover:bg-emerald-700 hover:text-white focus-visible:ring-emerald-600/30 active:scale-[0.98] sm:h-9 dark:bg-emerald-500 dark:hover:bg-emerald-400'
           >
             {isLoadingPreview ? (
               <Loader2 className='h-4 w-4 animate-spin text-muted-foreground' />
             ) : (
-              <Eye className='h-4 w-4' />
+              <Printer className='h-4 w-4' />
             )}
             {t('epda.preview')}
           </Button>
@@ -81,7 +82,7 @@ export function EpdaReadOnlyWorksheet({
         <p className='text-sm text-muted-foreground'>
           {isLocked
             ? 'EPDA is locked — tariff snapshot is frozen. Edit is disabled.'
-            : 'View-only EPDA. Open preview, or use Edit when unlocked.'}
+            : 'View-only EPDA. Use Print, or Edit when unlocked.'}
         </p>
       )}
     </div>

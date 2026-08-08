@@ -159,9 +159,7 @@ const buildAARows = (
     const leg2Width = P.coeff.pilotageLeg2Miles
     const buoyPositionNumeric = toNumber(options?.pilotageThirdMiles)
     const buoyPosition =
-      buoyPositionNumeric === null
-        ? P.hours.pilotageThirdMiles
-        : buoyPositionNumeric
+      buoyPositionNumeric === null ? 47 : buoyPositionNumeric
     const pilotageFirstMiles = buoyPosition > 0 ? leg1Width : 0
     const pilotageSecondMiles = buoyPosition > leg1Width ? leg2Width : 0
     const pilotageThirdMiles = Math.max(buoyPosition - leg1Width - leg2Width, 0)

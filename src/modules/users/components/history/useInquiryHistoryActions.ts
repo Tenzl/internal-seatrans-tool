@@ -112,6 +112,11 @@ export function useInquiryHistoryActions({
     try {
       await deleteInquiries([deleteTarget.id], deleteMode)
       setDeleteTarget(null)
+      toast.success(
+        deleteMode === 'hard'
+          ? 'Inquiry permanently deleted.'
+          : 'Inquiry archived.'
+      )
     } catch (error) {
       toast.error('Failed to delete inquiry', error)
     } finally {

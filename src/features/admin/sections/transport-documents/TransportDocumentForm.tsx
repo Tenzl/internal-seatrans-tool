@@ -1,5 +1,5 @@
 import { Fragment } from 'react'
-import { FileOutput, Loader2, RotateCcw, Save } from 'lucide-react'
+import { Loader2, Printer, RotateCcw, Save } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Label } from '@/components/ui/label'
@@ -446,13 +446,14 @@ export function TransportDocumentForm({
             variant='outline'
             disabled={isGenerating}
             onClick={onDownload}
+            className='border-transparent bg-emerald-600 text-white shadow-xs hover:bg-emerald-700 hover:text-white focus-visible:ring-emerald-600/30 dark:bg-emerald-500 dark:hover:bg-emerald-400'
           >
             {isDownloading ? (
               <Loader2 className='mr-1.5 h-4 w-4 animate-spin' />
             ) : (
-              <FileOutput className='mr-1.5 h-4 w-4' />
+              <Printer className='mr-1.5 h-4 w-4' />
             )}
-            Download
+            Print
           </Button>
           <Button
             type='submit'

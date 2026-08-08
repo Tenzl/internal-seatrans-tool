@@ -60,13 +60,13 @@ export function EpdaParameterDiffDialog({
             <TableBody>
               {rows.map((row) => (
                 <TableRow key={row.path}>
-                  <TableCell className='align-top font-mono text-xs'>
-                    {row.path}
+                  <TableCell className='align-top text-xs font-medium'>
+                    {row.label}
                   </TableCell>
-                  <TableCell className='align-top whitespace-pre-wrap break-all text-xs'>
+                  <TableCell className='align-top whitespace-pre-wrap break-all text-xs tabular-nums'>
                     {row.current}
                   </TableCell>
-                  <TableCell className='align-top whitespace-pre-wrap break-all text-xs'>
+                  <TableCell className='align-top whitespace-pre-wrap break-all text-xs tabular-nums'>
                     {row.latest}
                   </TableCell>
                 </TableRow>

@@ -279,10 +279,9 @@ export function ValuesEditor({
             )}
           </div>
           <PilotageCalculator
-            key={`${variant}:${values.hours.qnPilotageMiles}:${values.hours.pilotageThirdMiles}`}
+            key={variant}
             variant={variant}
             coeff={values.coeff}
-            hours={values.hours}
           />
         </div>
       ),
@@ -362,11 +361,13 @@ export function ValuesEditor({
                 onChange={(n) => setCoeff('buoyDuePerGrtHour', n)}
               />
             )}
-            <NumberField
-              label={t('f.anchorageDue')}
-              value={values.coeff.anchoragePerGrtHour}
-              onChange={(n) => setCoeff('anchoragePerGrtHour', n)}
-            />
+            {isHcmWorksheet(variant) && (
+              <NumberField
+                label={t('f.anchorageDue')}
+                value={values.coeff.anchoragePerGrtHour}
+                onChange={(n) => setCoeff('anchoragePerGrtHour', n)}
+              />
+            )}
           </div>
           {/* GRT + (berth / anchorage) hours → live results */}
           <BerthDuesCalculator variant={variant} coeff={values.coeff} />

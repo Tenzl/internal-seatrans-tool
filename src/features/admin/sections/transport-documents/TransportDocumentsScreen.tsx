@@ -929,8 +929,8 @@ export function TransportDocumentsScreen({
           </div>
           <p className='max-w-2xl text-sm leading-relaxed text-muted-foreground text-pretty'>
             {needsFlowSelection
-              ? 'Select Import or Export, then complete the booking confirmation. Download opens the PDF without saving; Create Booking stores a completed record.'
-              : `${document.description}. Download opens the PDF without saving. Save stores a Completed record.`}
+              ? 'Select Import or Export, then complete the booking confirmation. Print opens the PDF without saving; Create Booking stores a completed record.'
+              : `${document.description}. Print opens the PDF without saving. Save stores a Completed record.`}
           </p>
         </div>
         {formReady && isLocked ? (

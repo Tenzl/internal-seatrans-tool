@@ -1,6 +1,7 @@
 import { useCallback, useMemo, useReducer } from 'react'
 import type { CargoType } from '@/modules/gallery/services/commodityService'
 import { getDefaultGarbageUsdRate } from '@/modules/inquiries/components/common/garbageFeeDefaults'
+import { getEpdaVariantConfig } from '@/modules/inquiries/components/common/quoteForm'
 import type { InvoiceVariantFormValues } from '@/features/admin/components/invoice/CreateInvoiceVariantForm'
 import {
   DEFAULT_ANCHORAGE_HOURS,
@@ -64,13 +65,14 @@ export function createInitialEpdaEditorFormFields(): EpdaEditorFormFields {
 export function createResetEpdaEditorFormFields(
   quoteForm: EpdaQuoteForm
 ): EpdaEditorFormFields {
+  const miles = String(getEpdaVariantConfig(quoteForm).defaultPilotageMiles)
   return {
     ...createInitialEpdaEditorFormFields(),
     garbageUsdRate: getDefaultGarbageUsdRate(quoteForm),
     berthHours: '96',
     anchorageHours: '24',
-    pilotageThirdMiles: '47',
-    qnPilotageMiles: '5',
+    pilotageThirdMiles: miles,
+    qnPilotageMiles: miles,
   }
 }
 

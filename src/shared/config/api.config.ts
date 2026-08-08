@@ -217,6 +217,9 @@ export const API_CONFIG = {
       const suffix = qs.toString()
       return `${path}${suffix ? `?${suffix}` : ''}`
     },
+    /** Prefer this for hard delete — id is in the path (no DELETE body). */
+    ADMIN_HARD_DELETE: (serviceSlug: string, id: number) =>
+      `/admin/inquiries/${encodeURIComponent(serviceSlug)}/${id}/permanent`,
     ADMIN_BATCH_RESTORE: (serviceSlug?: string) => {
       const qs = new URLSearchParams()
       if (serviceSlug?.trim()) qs.set('serviceSlug', serviceSlug.trim())

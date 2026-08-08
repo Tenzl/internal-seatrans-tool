@@ -64,10 +64,10 @@ export function InquiryInvoicePreviewDialog({
               <Button
                 variant='outline'
                 onClick={() => void printInvoiceHtml(html)}
-                className='h-11 gap-2 active:scale-[0.98] sm:h-10'
+                className='h-11 gap-2 border-transparent bg-emerald-600 text-white shadow-xs hover:bg-emerald-700 hover:text-white focus-visible:ring-emerald-600/30 active:scale-[0.98] sm:h-10 dark:bg-emerald-500 dark:hover:bg-emerald-400'
               >
                 <FileText className='h-4 w-4' />
-                Save PDF
+                Print
               </Button>
               <Button
                 variant='secondary'

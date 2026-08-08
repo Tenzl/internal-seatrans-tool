@@ -4,6 +4,7 @@ import {
   resolveGarbageUsdRate,
 } from '@/modules/inquiries/components/common/garbageFeeDefaults'
 import {
+  isHcmWorksheet,
   quoteFormFromStored,
   usesQnPilotage,
 } from '@/modules/inquiries/components/common/quoteForm'
@@ -266,8 +267,10 @@ export function applyAdminInquiryToForm(
   setters.setCargoQty(toNumStr(inquiry.cargoQuantity) ?? '')
   setters.setFrtTaxType(toStr(inquiry.frtTaxType) ?? '')
   setters.setPort(toStr(inquiry.portOfCall) ?? '')
+  const discharge = toStr(inquiry.dischargeLoadingLocation) ?? ''
+  // Area 2 (QN) has berth only — drop legacy Anchorage values on hydrate.
   setters.setDischargeLoadingLocation(
-    toStr(inquiry.dischargeLoadingLocation) ?? ''
+    !isHcmWorksheet(form) && discharge === 'Anchorage' ? 'Berth' : discharge
   )
   setters.setPurposeOfCalling(toStr(inquiry.purposeOfCalling) ?? '')
   setters.setBerthHours(toNumStr(inquiry.berthHours) ?? '96')

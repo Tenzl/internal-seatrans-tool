@@ -13,14 +13,15 @@ export function buildEpdaExportFileName({
   return `EPDA_${quoteForm}_${date.toISOString().slice(0, 10)}.html`
 }
 
-export function shouldRefreshPreviewParameters({
-  isLocked,
-  hasFrozenParams,
-  hasSelectedArea,
-}: {
+/**
+ * Preview must not silently pull live tariffs into the PDF.
+ * Linked drafts go through the Apply/Skip diff table first; create/edit uses the
+ * form's current `effectiveParams` (already loaded for the selected port/area).
+ */
+export function shouldRefreshPreviewParameters(_input: {
   isLocked: boolean
   hasFrozenParams: boolean
   hasSelectedArea: boolean
 }) {
-  return !isLocked && !hasFrozenParams && hasSelectedArea
+  return false
 }

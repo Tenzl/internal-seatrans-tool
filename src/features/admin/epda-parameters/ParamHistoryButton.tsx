@@ -22,6 +22,7 @@ import {
   getAreaShortLabel,
   type AreaOption,
 } from '@/features/admin/components/invoice/epdaFormParameters'
+import { createEpdaParameterLabelFns } from '@/features/admin/epda-parameters/epdaParameterLabels'
 
 const getAreaLabel = (area: AreaOption) => getAreaShortLabel(area)
 
@@ -37,73 +38,14 @@ export function ParamHistoryButton({ area }: { area: AreaOption }) {
 
   if (!canViewHistory || !logs || logs.length === 0) return null
 
-  const sectionLabel = (k: string): string =>
-    ({
-      hours: t('sec.hours.title'),
-      garbage: t('sec.garbage.title'),
-      quarantine: t('sec.quarantine.title'),
-      coeff: t('sec.coeff.title'),
-      agencyFeeTiers: t('sec.agency.title'),
-      moorUnmoorBerthTiers: `${t('sec.moor.title')} (${t('tbl.atBerth')})`,
-      moorUnmoorBuoyTiers: `${t('sec.moor.title')} (${t('tbl.atBuoy')})`,
-      tugTiers: t('sec.tug.title'),
-      cargoAgencyRates: t('f.cargoAgency'),
-    })[k] ?? k
-
-  // Friendly label for a single scalar field inside a nested group.
-  const fieldLabel = (grp: string, key: string): string => {
-    const map: Record<string, string> = {
-      'hours.berthHours': t('f.berthHours'),
-      'hours.anchorageHours': t('f.anchorageHours'),
-      'hours.pilotageThirdMiles': t('f.pilotage3rdMiles'),
-      'hours.qnPilotageMiles': t('f.pilotageMiles'),
-      'garbage.atBerthUsd': t('f.garbageBerth'),
-      'garbage.atBuoyUsd': t('f.garbageBuoy'),
-      'quarantine.shipUnitLowGrt': t('q.shipSmall'),
-      'quarantine.shipUnitHighGrt': t('q.shipLarge'),
-      'quarantine.shipThresholdGrt': t('q.threshold'),
-      'quarantine.cargoPerTrip': t('q.cargoPerTrip'),
-      'coeff.tonnagePerGrt': t('f.tonnagePerGrt'),
-      'coeff.navigationPerGrt': t('f.navigationPerGrt'),
-      'coeff.tankerFactor': t('f.tankerFactor'),
-      'coeff.bulkFactor': t('f.bulkFactor'),
-      'coeff.berthDuePerGrtHour': t('f.berthDue'),
-      'coeff.buoyDuePerGrtHour': t('f.buoyDue'),
-      'coeff.anchoragePerGrtHour': t('f.anchorageDue'),
-      'coeff.clearanceFee': t('f.clearance'),
-      'coeff.oceanFrtDefaultRate': t('f.oceanFrtRate'),
-      'coeff.oceanFrtTaxRate': t('f.oceanFrtTax'),
-      'coeff.pilotageLeg1Rate': t('f.pilotageLeg1Rate'),
-      'coeff.pilotageLeg1Miles': t('f.pilotageLeg1Miles'),
-      'coeff.pilotageLeg2Rate': t('f.pilotageLeg2Rate'),
-      'coeff.pilotageLeg2Miles': t('f.pilotageLeg2Miles'),
-      'coeff.pilotageLeg3Rate': t('f.pilotageLeg3Rate'),
-      'coeff.pilotageSingleRate': t('f.pilotageSingleRate'),
-      'coeff.pilotageMinAmount': t('f.pilotageMin'),
-      'coeff.cargoAgencyBagRate': t('f.cargoBag'),
-      'coeff.cargoAgencyEquipRate': t('f.cargoEquip'),
-      'coeff.cargoAgencyBulkRate': t('f.cargoBulk'),
-    }
-    return map[`${grp}.${key}`] ?? `${sectionLabel(grp)} · ${key}`
-  }
+  const { sectionLabel, fieldLabel, rowFieldLabel } =
+    createEpdaParameterLabelFns(t)
 
   const fmtVal = (v: unknown): string => {
     if (v === undefined || v === null) return '—'
     if (typeof v === 'number')
       return v.toLocaleString('en-US', { maximumFractionDigits: 4 })
     return String(v)
-  }
-
-  const rowFieldLabel = (group: string, key: string): string => {
-    const map: Record<string, string> = {
-      maxGrt: t('tbl.maxGrt'),
-      minLoa: t('tbl.minLoa'),
-      amount: t('tbl.amount'),
-      label: t('tbl.label'),
-      code: t('cargoRate.colType'),
-      rate: t('cargoRate.colRate'),
-    }
-    return map[key] ?? `${sectionLabel(group)} · ${key}`
   }
 
   const fmtArrayRow = (row: unknown): string => {

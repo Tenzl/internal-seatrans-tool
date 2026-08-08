@@ -107,18 +107,6 @@ const buildAARows = (
       berthHoursValue > 0 ? Math.ceil(berthHoursValue / 24).toFixed(1) : '0.0'
     const berthRemark = `abt. ${berthDays} days`
 
-    const anchorageHoursNumeric = toNumber(options?.anchorageHours)
-    const anchorageHoursValue =
-      anchorageHoursNumeric === null ? 24 : anchorageHoursNumeric
-    const anchorageHoursText = `${anchorageHoursValue} hrs`
-    const anchorageDays =
-      anchorageHoursValue > 0
-        ? Math.ceil(anchorageHoursValue / 24).toFixed(1)
-        : '0.0'
-    const anchorageRemark = anchorageHoursValue
-      ? `abt. ${anchorageDays} days`
-      : ''
-
     const shipRateFactor = isTankerShip(options?.shipType)
       ? P.coeff.tankerFactor
       : (P.coeff.bulkFactor ?? 1)
@@ -196,18 +184,6 @@ const buildAARows = (
       berthDueValue,
       `${P.coeff.berthDuePerGrtHour}*${grtDisplay}*${berthHoursValue}`
     )
-
-    const anchorageFeesValue =
-      grtNumeric === null
-        ? null
-        : P.coeff.anchoragePerGrtHour *
-          anchorageHoursValue *
-          grtNumeric *
-          shipRateFactor
-    const anchorageFees =
-      anchorageFeesValue === null
-        ? `${P.coeff.anchoragePerGrtHour}*${grtDisplay}*${anchorageHoursValue}`
-        : formatAmount(anchorageFeesValue)
 
     const shipQuarantineTrips = getShipQuarantineTrips(
       options?.purposeOfCalling
@@ -329,13 +305,6 @@ const buildAARows = (
         add: berthHoursText,
         remark: joinFeeRemarks(tankerRemark || berthRemark, vatRemark),
         amount: berthDue,
-      },
-      {
-        item: 'Anchorage fees if any',
-        details: 'USD 0.0005 / GRT / hour x',
-        add: anchorageHoursText,
-        remark: tankerRemark || anchorageRemark,
-        amount: anchorageFees,
       },
       { item: 'Quarantine fee', details: '', amount: quarantineFee },
     ]

@@ -6,7 +6,7 @@ import {
   type PartialEpdaParameterValues,
 } from '@/modules/inquiries/components/common/quoteParameters'
 import { API_CONFIG } from '@/shared/config/api.config'
-import { apiClient } from '@/shared/utils/apiClient'
+import { ApiError, apiClient } from '@/shared/utils/apiClient'
 import {
   unwrapApiResponse,
   unwrapNullableApiResponse,
@@ -73,6 +73,31 @@ function assertNoVersionConflict(response: Response): void {
   }
 }
 
+async function throwIfNotOk(
+  response: Response,
+  fallback: string
+): Promise<void> {
+  if (response.ok) return
+  assertNoVersionConflict(response)
+  const payload = (await response
+    .clone()
+    .json()
+    .catch(() => null)) as {
+    message?: string
+    error?: { message?: string; details?: Array<{ message?: string }> }
+  } | null
+  const detail = payload?.error?.details
+    ?.map((entry) => entry.message)
+    .filter((message): message is string => Boolean(message))
+    .join('; ')
+  const message =
+    detail ||
+    payload?.error?.message ||
+    payload?.message ||
+    `${fallback} (${response.status})`
+  throw new ApiError(message, { status: response.status })
+}
+
 function prepareValuesForWrite(
   values: PartialEpdaParameterValues
 ): PartialEpdaParameterValues {
@@ -96,13 +121,14 @@ export function planPortOverrideWrite(
 ): PortOverrideWritePlan {
   if (Object.keys(values).length === 0) {
     return existing
-      ? { action: 'delete', expectedVersion: existing.version }
+      ? { action: 'delete', expectedVersion: Number(existing.version) }
       : { action: 'none' }
   }
   return {
     action: 'upsert',
     values,
-    expectedVersion: existing?.version ?? null,
+    expectedVersion:
+      existing?.version == null ? null : Number(existing.version),
   }
 }
 
@@ -144,7 +170,7 @@ export const epdaParametersService = {
       values: sanitizedValues,
       expectedVersion,
     })
-    assertNoVersionConflict(res)
+    await throwIfNotOk(res, 'Failed to save area parameters')
     return unwrapApiResponse<EpdaParameterSet>(res)
   },
 
@@ -159,32 +185,18 @@ export const epdaParametersService = {
     expectedVersion: number | null
   ): Promise<EpdaParameterSet> {
     const sanitizedValues = prepareValuesForWrite(values)
-    /* eslint-disable no-console -- local EPDA payload diagnostics */
-    if (process.env.NODE_ENV === 'development') {
-      console.groupCollapsed(`[EPDA] PUT PORT override #${portId}`)
-      console.log('raw diff', values)
-      console.log('sanitized payload values', sanitizedValues)
-      console.log('request body', {
-        values: sanitizedValues,
-        expectedVersion,
-      })
-      console.groupEnd()
-    }
-    /* eslint-enable no-console */
     const res = await apiClient.put(API_CONFIG.EPDA_PARAMETERS.PORT(portId), {
       values: sanitizedValues,
       expectedVersion,
     })
-    /* eslint-disable no-console -- local EPDA response diagnostics */
     if (process.env.NODE_ENV === 'development' && !res.ok) {
-      console.error(`[EPDA] PUT PORT override #${portId} rejected`, {
-        status: res.status,
-        statusText: res.statusText,
-        responseBody: await res.clone().text(),
-      })
+      const responseBody = await res.clone().text()
+      // eslint-disable-next-line no-console -- local EPDA response diagnostics
+      console.error(
+        `[EPDA] PUT PORT override #${portId} rejected status=${res.status} body=${responseBody}`
+      )
     }
-    /* eslint-enable no-console */
-    assertNoVersionConflict(res)
+    await throwIfNotOk(res, 'Failed to save port override')
     return unwrapApiResponse<EpdaParameterSet>(res)
   },
 
@@ -195,8 +207,8 @@ export const epdaParametersService = {
         expectedVersion
       )
     )
-    assertNoVersionConflict(res)
-    if (!res.ok && res.status !== 204) {
+    await throwIfNotOk(res, 'Failed to remove port override')
+    if (res.status !== 204 && res.status !== 200) {
       throw new Error('Failed to remove port override')
     }
   },

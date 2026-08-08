@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import {
+  getEpdaVariantConfig,
   isHcmWorksheet,
   usesQnPilotage,
 } from '@/modules/inquiries/components/common/quoteForm'
@@ -12,7 +13,6 @@ import type {
 import type { EpdaParameterValues } from '@/modules/inquiries/services/epdaParametersService'
 import { NumberInput } from '@/shared/components/NumberInput'
 import { useI18n } from '@/shared/i18n/I18nProvider'
-import { formatNumberInputValue } from '@/shared/utils/numberInput'
 import { parseFiniteNumber } from '@/shared/utils/parseNumber'
 import { Label } from '@/components/ui/label'
 import {
@@ -183,38 +183,27 @@ export function TonnageDuesCalculator({
 }
 
 /**
- * Live pilotage calculator. Staff type a GRT (+ miles / buoy position) and the detail
- * lines recompute from the rates above. Mirrors the quote formula per variant:
- *   QN:  max(singleRate × GRT × 2 × miles, minAmount)   (miles only counts when > 1)
- *   HCM: leg1 + leg2 + leg3, each = legRate × GRT × 2 × legMiles, where leg miles are
- *        derived from the buoy position (leg1/leg2 are flat bands, leg3 is the remainder)
+ * Live pilotage calculator. Staff type a GRT and the detail lines recompute from
+ * the rates above. PS→port miles are edited on Create/Edit EPDA only — the
+ * scratchpad uses each variant's default miles for the demo.
  */
 export function PilotageCalculator({
   variant,
   coeff,
-  hours,
 }: {
   variant: QuoteVariant
   coeff: EpdaParameterValues['coeff']
-  hours: EpdaParameterValues['hours']
 }) {
   const { t } = useI18n()
-  const defaultMiles = usesQnPilotage(variant)
-    ? hours.qnPilotageMiles
-    : hours.pilotageThirdMiles
+  const miles = getEpdaVariantConfig(variant).defaultPilotageMiles
   const [grtText, setGrtText] = useState('')
-  const [milesText, setMilesText] = useState(() =>
-    formatNumberInputValue(defaultMiles)
-  )
   const grt = parseFiniteNumber(grtText) ?? 0
-  const miles = parseFiniteNumber(milesText) ?? 0
 
   return (
     <div className='space-y-4 rounded-lg border bg-muted/20 p-4'>
       <h4 className='text-base font-semibold'>{t('pilotageCalc.title')}</h4>
 
-      {/* GRT + miles / position inputs */}
-      <div className='grid gap-4 sm:max-w-md sm:grid-cols-2'>
+      <div className='grid gap-4 sm:max-w-md sm:grid-cols-1'>
         <div className='grid gap-2'>
           <Label className='text-sm font-medium text-muted-foreground'>
             {t('tonnageCalc.grtLabel')}
@@ -223,19 +212,6 @@ export function PilotageCalculator({
             placeholder='0'
             value={grtText}
             onValueChange={(_value, canonical) => setGrtText(canonical)}
-            className='h-11 text-base tabular-nums'
-          />
-        </div>
-        <div className='grid gap-2'>
-          <Label className='text-sm font-medium text-muted-foreground'>
-            {usesQnPilotage(variant)
-              ? t('pilotageCalc.milesLabel')
-              : t('pilotageCalc.positionLabel')}
-          </Label>
-          <NumberInput
-            placeholder='0'
-            value={milesText}
-            onValueChange={(_value, canonical) => setMilesText(canonical)}
             className='h-11 text-base tabular-nums'
           />
         </div>
@@ -437,14 +413,17 @@ export function BerthDuesCalculator({
       <h4 className='text-base font-semibold'>{t('berthDuesCalc.title')}</h4>
 
       {/* Inputs (hours) */}
-      <div className='grid gap-3 sm:max-w-2xl sm:grid-cols-3'>
+      <div
+        className={`grid gap-3 sm:max-w-2xl ${isHcmWorksheet(variant) ? 'sm:grid-cols-3' : 'sm:grid-cols-2'}`}
+      >
         {inputField(t('tonnageCalc.grtLabel'), grtText, setGrtText)}
         {inputField(t('f.berthHours'), berthHoursText, setBerthHoursText)}
-        {inputField(
-          t('f.anchorageHours'),
-          anchorageHoursText,
-          setAnchorageHoursText
-        )}
+        {isHcmWorksheet(variant) &&
+          inputField(
+            t('f.anchorageHours'),
+            anchorageHoursText,
+            setAnchorageHoursText
+          )}
       </div>
 
       {/* Detail below — recomputes live from the inputs */}
@@ -475,16 +454,18 @@ export function BerthDuesCalculator({
               test={boldNumbers(`= USD ${fmtNum(buoy)}`)}
             />
           )}
-          <ScanRow
-            label={boldNumbers(
-              t('berthDuesCalc.anchorageLine', {
-                rate: coeff.anchoragePerGrtHour,
-                hours: fmtNum(anchorageHours),
-                grt: fmtNum(grt),
-              })
-            )}
-            test={boldNumbers(`= USD ${fmtNum(anchorage)}`)}
-          />
+          {isHcmWorksheet(variant) && (
+            <ScanRow
+              label={boldNumbers(
+                t('berthDuesCalc.anchorageLine', {
+                  rate: coeff.anchoragePerGrtHour,
+                  hours: fmtNum(anchorageHours),
+                  grt: fmtNum(grt),
+                })
+              )}
+              test={boldNumbers(`= USD ${fmtNum(anchorage)}`)}
+            />
+          )}
         </div>
       </div>
     </div>

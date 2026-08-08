@@ -6,7 +6,7 @@ import {
   printPreviewIframe,
 } from '@/shared/utils/epdaExport'
 import { toast } from '@/shared/utils/toast'
-import { Download, Loader2, Pencil, Printer, X } from 'lucide-react'
+import { Loader2, Pencil, Printer, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import {
   Dialog,
@@ -98,7 +98,7 @@ export function PdfPreviewDialog({
             <DialogTitle className='truncate'>{fileName}</DialogTitle>
             <DialogDescription className='text-xs text-muted-foreground'>
               {isDownloadMode
-                ? 'Download will save the generated PDF to your device.'
+                ? 'Print will save the generated PDF to your device.'
                 : 'Print will open the browser Save as PDF dialog.'}
             </DialogDescription>
           </div>
@@ -119,16 +119,14 @@ export function PdfPreviewDialog({
                 size='sm'
                 onClick={handlePrintPdf}
                 disabled={(isDownloadMode ? !previewUrl : !html) || isExporting}
-                className='gap-2'
+                className='gap-2 border-transparent bg-emerald-600 text-white shadow-xs hover:bg-emerald-700 hover:text-white focus-visible:ring-emerald-600/30 dark:bg-emerald-500 dark:hover:bg-emerald-400'
               >
                 {isExporting ? (
                   <Loader2 className='h-4 w-4 animate-spin' />
-                ) : isDownloadMode ? (
-                  <Download className='h-4 w-4' />
                 ) : (
                   <Printer className='h-4 w-4' />
                 )}
-                {isDownloadMode ? 'Download PDF' : 'Print / Save PDF'}
+                Print
               </Button>
             ) : null}
             <DialogClose asChild>

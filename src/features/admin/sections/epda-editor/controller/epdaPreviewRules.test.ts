@@ -24,14 +24,14 @@ describe('epdaPreviewRules', () => {
     ).toBe('EPDA_HCM_2026-07-30.html')
   })
 
-  it('refreshes live parameters only for an unlocked, unsnapshotted selected area', () => {
+  it('never silently refreshes live parameters for preview (Apply/Skip owns linked drafts)', () => {
     expect(
       shouldRefreshPreviewParameters({
         isLocked: false,
         hasFrozenParams: false,
         hasSelectedArea: true,
       })
-    ).toBe(true)
+    ).toBe(false)
 
     expect(
       shouldRefreshPreviewParameters({

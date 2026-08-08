@@ -21,6 +21,16 @@ import type {
 } from './transportDocument.types'
 import { getTransportDocumentRowCapabilities } from './transportDocumentHistoryRules'
 
+/** Semantic action tints — muted character, distinct hue roles (info / warning / archive). */
+const ACTION_VIEW_CLASS =
+  'border-sky-500/40 bg-sky-500/10 text-sky-800 hover:bg-sky-500/15 hover:text-sky-900 dark:border-sky-400/35 dark:bg-sky-400/10 dark:text-sky-200 dark:hover:bg-sky-400/15 dark:hover:text-sky-100'
+const ACTION_LOCK_CLASS =
+  'border-amber-500/45 bg-amber-500/10 text-amber-900 hover:bg-amber-500/15 hover:text-amber-950 dark:border-amber-400/40 dark:bg-amber-400/10 dark:text-amber-200 dark:hover:bg-amber-400/15 dark:hover:text-amber-100'
+const ACTION_ARCHIVE_CLASS =
+  'border-rose-500/40 bg-rose-500/10 text-rose-800 hover:bg-rose-500/15 hover:text-rose-900 dark:border-rose-400/35 dark:bg-rose-400/10 dark:text-rose-200 dark:hover:bg-rose-400/15 dark:hover:text-rose-100'
+const ACTION_UNLOCK_CLASS =
+  'border-emerald-500/40 bg-emerald-500/10 text-emerald-800 hover:bg-emerald-500/15 hover:text-emerald-900 dark:border-emerald-400/35 dark:bg-emerald-400/10 dark:text-emerald-200 dark:hover:bg-emerald-400/15 dark:hover:text-emerald-100'
+
 interface TransportDocumentHistoryActionsProps {
   record: TransportDocumentRecord
   permissions: TransportDocumentActionPermissions
@@ -71,7 +81,7 @@ function DesktopRowActions({
         variant='outline'
         size='sm'
         onClick={() => onViewDetails(record)}
-        className='gap-2'
+        className={`gap-2 ${ACTION_VIEW_CLASS}`}
       >
         <Eye className='h-4 w-4' />
         View
@@ -82,7 +92,7 @@ function DesktopRowActions({
           variant='outline'
           size='sm'
           onClick={() => onLock(record)}
-          className='gap-2'
+          className={`gap-2 ${ACTION_LOCK_CLASS}`}
         >
           <Lock className='h-4 w-4' />
           Lock edit
@@ -94,7 +104,7 @@ function DesktopRowActions({
           variant='outline'
           size='sm'
           onClick={() => onUnlock(record)}
-          className='gap-2'
+          className={`gap-2 ${ACTION_UNLOCK_CLASS}`}
         >
           <Unlock className='h-4 w-4' />
           Unlock edit
@@ -115,7 +125,7 @@ function DesktopRowActions({
           variant='outline'
           size='sm'
           onClick={() => onDelete(record, 'soft')}
-          className='gap-2'
+          className={`gap-2 ${ACTION_ARCHIVE_CLASS}`}
         >
           <Archive className='h-4 w-4' />
           Archive
@@ -159,18 +169,27 @@ function MobileRowActions({
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align='end' className='w-48'>
-        <DropdownMenuItem onClick={() => onViewDetails(record)}>
+        <DropdownMenuItem
+          onClick={() => onViewDetails(record)}
+          className='text-sky-800 focus:bg-sky-500/10 focus:text-sky-900 dark:text-sky-200'
+        >
           <Eye className='mr-2 h-4 w-4' />
           View
         </DropdownMenuItem>
         {capabilities.canLock && (
-          <DropdownMenuItem onClick={() => onLock(record)}>
+          <DropdownMenuItem
+            onClick={() => onLock(record)}
+            className='text-amber-900 focus:bg-amber-500/10 focus:text-amber-950 dark:text-amber-200'
+          >
             <Lock className='mr-2 h-4 w-4' />
             Lock edit
           </DropdownMenuItem>
         )}
         {capabilities.canUnlock && (
-          <DropdownMenuItem onClick={() => onUnlock(record)}>
+          <DropdownMenuItem
+            onClick={() => onUnlock(record)}
+            className='text-emerald-800 focus:bg-emerald-500/10 focus:text-emerald-900 dark:text-emerald-200'
+          >
             <Unlock className='mr-2 h-4 w-4' />
             Unlock edit
           </DropdownMenuItem>
@@ -182,7 +201,10 @@ function MobileRowActions({
           </DropdownMenuItem>
         )}
         {capabilities.canArchive && (
-          <DropdownMenuItem onClick={() => onDelete(record, 'soft')}>
+          <DropdownMenuItem
+            onClick={() => onDelete(record, 'soft')}
+            className='text-rose-800 focus:bg-rose-500/10 focus:text-rose-900 dark:text-rose-200'
+          >
             <Archive className='mr-2 h-4 w-4' />
             Archive
           </DropdownMenuItem>

@@ -325,7 +325,7 @@ const enMessages: Record<string, string> = {
   'epda.documentDate': 'Document date',
   'epda.selectDate': 'Select date',
   'epda.template2': 'EPDA template',
-  'epda.preview': 'Preview EPDA',
+  'epda.preview': 'Print',
   'epda.incompleteSaveTitle': 'Some required fields are empty',
   'epda.incompleteSaveBody':
     'There are still {count} required field(s) not filled in. Save anyway as a Processing draft?',
@@ -333,7 +333,7 @@ const enMessages: Record<string, string> = {
   'epda.incompleteSaveContinue': 'Save anyway',
   'epda.paramDiffTitle': 'Tariff parameters have changed',
   'epda.paramDiffBody':
-    'Global EPDA parameters differ from the values this draft was saved with. Apply the latest tariffs or keep the current ones for preview and lock.',
+    'Review the table below. Choose Apply latest to save these tariffs and use them on the PDF, or Skip to keep the current values.',
   'epda.paramDiffApply': 'Apply latest',
   'epda.paramDiffSkip': 'Skip (keep current)',
   'epda.paramDiffColParameter': 'Parameter',
@@ -411,7 +411,7 @@ const enMessages: Record<string, string> = {
   'epda.pageSubtitle':
     'Build an estimated port disbursement: pick the port, fill the sections, preview, then save.',
   // create epda — buttons & misc
-  'epda.saveDraft': 'Save draft',
+  'epda.saveDraft': 'Save',
   'epda.saveShort': 'Save',
   'epda.lock': 'Lock edit',
   'epda.lockShort': 'Lock',
@@ -433,11 +433,11 @@ const enMessages: Record<string, string> = {
   'epda.descInquiryShort':
     'Inquiry #{id} — review customer details and complete EPDA.',
   'epda.descInquiryLong':
-    'Shipping agency inquiry #{id} — review customer details and complete EPDA (save draft, preview).',
-  'epda.descEditShort': 'Edit EPDA for inquiry #{id}. Save draft, then preview.',
+    'Shipping agency inquiry #{id} — review customer details and complete EPDA (save, print).',
+  'epda.descEditShort': 'Edit EPDA for inquiry #{id}. Save, then print.',
   'epda.descEditLong':
-    'Edit EPDA for shipping agency inquiry #{id}. Save draft and preview.',
-  'epda.descNew': 'Complete the EPDA fields, then save a draft.',
+    'Edit EPDA for shipping agency inquiry #{id}. Save and print.',
+  'epda.descNew': 'Complete the EPDA fields, then save.',
   // placeholders
   'ph.shipowner': 'Enter shipowner or company name',
   'ph.vessel': 'Enter vessel name',

@@ -3,6 +3,7 @@
 import { isAdminRole } from '@/config/section-catalog'
 import { useCurrentUser } from '@/hooks/use-current-user'
 import { useIsMobile } from '@/hooks/use-mobile'
+import { toast } from '@/shared/utils/toast'
 import type { InquiryDeleteMode } from './InquiryDataTable'
 import { InquiryDetailOverlay } from './InquiryDetailOverlay'
 import { InquiryHistoryCard } from './InquiryHistoryCard'
@@ -83,6 +84,16 @@ export function BaseInquiryHistoryLayout({
 
   const handleBulkDelete = async (ids: number[], mode: InquiryDeleteMode) => {
     await deleteInquiries(ids, mode)
+    const count = ids.length
+    toast.success(
+      mode === 'hard'
+        ? count === 1
+          ? 'Inquiry permanently deleted.'
+          : `${count} inquiries permanently deleted.`
+        : count === 1
+          ? 'Inquiry archived.'
+          : `${count} inquiries archived.`
+    )
   }
 
   return (

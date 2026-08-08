@@ -1,5 +1,6 @@
 import type { CargoType } from '@/modules/gallery/services/commodityService'
 import { mergeEpdaFieldClasses } from '@/modules/inquiries/components/common/epdaCustomerFieldTracking'
+import { isHcmWorksheet } from '@/modules/inquiries/components/common/quoteForm'
 import { DateTimePicker } from '@/shared/components/DateTimePicker'
 import { NumberInput } from '@/shared/components/NumberInput'
 import { useI18n } from '@/shared/i18n/I18nProvider'
@@ -262,7 +263,9 @@ export function GeneralInvoiceSection({
             </SelectTrigger>
             <SelectContent>
               <SelectItem value='Berth'>{t('epda.berth')}</SelectItem>
-              <SelectItem value='Anchorage'>{t('epda.anchorage')}</SelectItem>
+              {isHcmWorksheet(variant) && (
+                <SelectItem value='Anchorage'>{t('epda.anchorage')}</SelectItem>
+              )}
             </SelectContent>
           </Select>
         </div>

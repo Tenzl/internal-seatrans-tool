@@ -86,7 +86,8 @@ export function PortOverridesCard({
   const overrideByPort = useMemo(() => {
     const m = new Map<number, EpdaParameterSet>()
     overrides.forEach((o) => {
-      if (o.portId != null) m.set(o.portId, o)
+      const portId = Number(o.portId)
+      if (Number.isInteger(portId) && portId > 0) m.set(portId, o)
     })
     return m
   }, [overrides])
@@ -94,38 +95,36 @@ export function PortOverridesCard({
   // A port's effective baseline = area set overlaid with its group's override (if any).
   // The port override stores only the diff from THIS baseline (matching port > group > area).
   const baselineForPort = (portId: number): EpdaParameterValues => {
-    const group = groups.find((g) => (g.memberPortIds ?? []).includes(portId))
+    const id = Number(portId)
+    const group = groups.find((g) =>
+      (g.memberPortIds ?? []).some((memberId) => Number(memberId) === id)
+    )
     return mergeParameterValues(areaValues, group?.values)
   }
 
   // Show the same label Create EPDA uses (portOfCall), falling back to name.
   const portName = (id: number) => {
-    const p = ports?.find((x) => x.id === id)
-    return p?.portOfCall?.trim() || p?.name || `Port #${id}`
+    const portId = Number(id)
+    const p = ports?.find((x) => Number(x.id) === portId)
+    return p?.portOfCall?.trim() || p?.name || `Port #${portId}`
   }
 
   const beginEdit = (portId: number) => {
-    const ov = overrideByPort.get(portId)
-    setDraft(mergeParameterValues(baselineForPort(portId), ov?.values))
-    setEditingPortId(portId)
+    const id = Number(portId)
+    const ov = overrideByPort.get(id)
+    setDraft(mergeParameterValues(baselineForPort(id), ov?.values))
+    setEditingPortId(id)
   }
 
   const save = useMutation({
     mutationFn: async () => {
-      const portId = editingPortId!
+      const portId = Number(editingPortId)
+      if (!Number.isInteger(portId) || portId <= 0) {
+        throw new Error('Select a port before saving')
+      }
       const existing = overrideByPort.get(portId)
       const baseline = baselineForPort(portId)
       const values = diffParameterValues(baseline, draft)
-      /* eslint-disable no-console -- local EPDA payload diagnostics */
-      if (process.env.NODE_ENV === 'development') {
-        console.groupCollapsed(`[EPDA] Save PORT override #${portId}`)
-        console.log('baseline', baseline)
-        console.log('draft shown by form', draft)
-        console.log('existing override', existing?.values ?? null)
-        console.log('diff before sanitize', values)
-        console.groupEnd()
-      }
-      /* eslint-enable no-console */
       const plan = planPortOverrideWrite(values, existing)
       if (plan.action === 'none') {
         return 'unchanged' as const
@@ -159,9 +158,10 @@ export function PortOverridesCard({
 
   const remove = useMutation({
     mutationFn: (portId: number) => {
-      const existing = overrideByPort.get(portId)
+      const id = Number(portId)
+      const existing = overrideByPort.get(id)
       if (!existing) return Promise.resolve()
-      return epdaParametersService.deletePort(portId, existing.version)
+      return epdaParametersService.deletePort(id, Number(existing.version))
     },
     onSuccess: () => {
       toast.success('Removed port-specific dues (port now inherits area)')
@@ -213,7 +213,8 @@ export function PortOverridesCard({
         ) : (
           <ul className='grid gap-3'>
             {overrides.map((o) => {
-              const isActive = editingPortId === o.portId
+              const portId = Number(o.portId)
+              const isActive = editingPortId === portId
               return (
                 <li
                   key={o.id}
@@ -226,7 +227,7 @@ export function PortOverridesCard({
                   <div className='flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between'>
                     <div className='min-w-0 space-y-2'>
                       <span className='block truncate text-base font-semibold'>
-                        {portName(o.portId!)}
+                        {portName(portId)}
                       </span>
                       <OverriddenBadges
                         labels={getOverrideSectionLabels(t, o.values)}
@@ -236,7 +237,7 @@ export function PortOverridesCard({
                       <Button
                         variant='outline'
                         size='sm'
-                        onClick={() => beginEdit(o.portId!)}
+                        onClick={() => beginEdit(portId)}
                       >
                         {t('common.edit')}
                       </Button>
@@ -244,7 +245,7 @@ export function PortOverridesCard({
                         variant='ghost'
                         size='icon'
                         aria-label={t('param.resetToArea')}
-                        onClick={() => remove.mutate(o.portId!)}
+                        onClick={() => remove.mutate(portId)}
                       >
                         <Trash2 className='h-4 w-4 text-destructive' />
                       </Button>

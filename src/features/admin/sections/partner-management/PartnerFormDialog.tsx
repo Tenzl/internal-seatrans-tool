@@ -1,6 +1,7 @@
 import type { Dispatch, ReactNode, SetStateAction } from 'react'
 import { DateTimePicker } from '@/shared/components/DateTimePicker'
 import { NumberInput } from '@/shared/components/NumberInput'
+import { cn } from '@/lib/utils'
 import { Plus, Trash2, Lock } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
@@ -28,6 +29,8 @@ import {
   CUSTOMER_STATUS_OPTIONS,
   CUSTOMER_TYPE_OPTIONS,
   formatAdditionTypeLabel,
+  formatCustomerStatusLabel,
+  formatCustomerTypeLabel,
   PARTNER_ADDITION_TYPE_OPTIONS,
   type PartnerFormState,
 } from './partnerFormModel'
@@ -119,11 +122,55 @@ function Field({
     <div
       className={`space-y-1.5 ${wide ? 'sm:col-span-2 lg:col-span-3 xl:col-span-4' : ''}`}
     >
-      <Label className='text-xs font-medium text-muted-foreground'>
+      <Label className='text-xs font-medium tracking-wide text-muted-foreground'>
         {label}
       </Label>
       {children}
     </div>
+  )
+}
+
+function OptionCheckRow({
+  label,
+  children,
+}: {
+  label: string
+  children: ReactNode
+}) {
+  return (
+    <div className='space-y-2'>
+      <Label className='text-xs font-medium tracking-wide text-muted-foreground'>
+        {label}
+      </Label>
+      <div className='flex flex-wrap gap-2'>{children}</div>
+    </div>
+  )
+}
+
+function OptionCheck({
+  checked,
+  label,
+  onCheckedChange,
+}: {
+  checked: boolean
+  label: string
+  onCheckedChange: (checked: boolean) => void
+}) {
+  return (
+    <label
+      className={cn(
+        'inline-flex cursor-pointer items-center gap-2 rounded-md border px-2.5 py-1.5 text-sm transition-colors duration-200',
+        checked
+          ? 'border-primary/35 bg-primary/8 text-foreground'
+          : 'border-border/70 bg-background/70 text-foreground hover:bg-muted/50'
+      )}
+    >
+      <Checkbox
+        checked={checked}
+        onCheckedChange={(state) => onCheckedChange(state === true)}
+      />
+      <span className='leading-none'>{label}</span>
+    </label>
   )
 }
 
@@ -199,13 +246,24 @@ export function PartnerFormDialog({
   onSave,
   onLock,
 }: PartnerFormDialogProps) {
-  const updateSelect = (
-    field: 'customerStatus' | 'customerType' | 'approveStatus',
-    value: string
-  ) => {
+  const updateApproveStatus = (value: string) => {
     onFormChange((current) => ({
       ...current,
-      [field]: value === 'NONE' ? '' : value,
+      approveStatus: value === 'NONE' ? '' : (value as ApproveStatus),
+    }))
+  }
+
+  const setCustomerStatus = (status: CustomerStatus, checked: boolean) => {
+    onFormChange((current) => ({
+      ...current,
+      customerStatus: checked ? status : '',
+    }))
+  }
+
+  const setCustomerType = (type: CustomerType, checked: boolean) => {
+    onFormChange((current) => ({
+      ...current,
+      customerType: checked ? type : '',
     }))
   }
 
@@ -265,7 +323,9 @@ export function PartnerFormDialog({
           <DialogDescription>
             {isLocked
               ? 'This partner is locked. Edits are disabled and unlock is not supported.'
-              : 'Leave Customer ID blank to auto-generate; it cannot be changed after creation.'}
+              : editingId
+                ? 'Customer ID is fixed after creation.'
+                : 'Customer ID is assigned automatically when you save.'}
           </DialogDescription>
         </DialogHeader>
 
@@ -276,7 +336,7 @@ export function PartnerFormDialog({
           <FormSection
             step={1}
             title='Identity'
-            description='Name and what roles this partner plays.'
+            description='Partner display name used across booking documents.'
           >
             <FieldGrid>
               <TextField
@@ -285,34 +345,13 @@ export function PartnerFormDialog({
                 label='Name *'
                 onFormChange={onFormChange}
               />
-              <TextField
-                form={form}
-                field='customerId'
-                label='Customer ID'
-                disabled={editingId != null}
-                placeholder={
-                  editingId != null ? undefined : 'Auto-generated if blank'
-                }
-                onFormChange={onFormChange}
-              />
-              <Field label='Additional types' wide>
-                <div className='flex flex-wrap gap-x-4 gap-y-2'>
-                  {PARTNER_ADDITION_TYPE_OPTIONS.map((type) => (
-                    <label
-                      key={type}
-                      className='inline-flex items-center gap-2 text-sm'
-                    >
-                      <Checkbox
-                        checked={form.additionTypes.includes(type)}
-                        onCheckedChange={(state) =>
-                          toggleAdditionType(type, state === true)
-                        }
-                      />
-                      {formatAdditionTypeLabel(type)}
-                    </label>
-                  ))}
-                </div>
-              </Field>
+              {editingId != null && form.customerId ? (
+                <Field label='Customer ID'>
+                  <p className='flex h-9 items-center rounded-md border border-dashed bg-muted/40 px-3 font-mono text-sm tabular-nums tracking-tight text-muted-foreground'>
+                    {form.customerId}
+                  </p>
+                </Field>
+              ) : null}
             </FieldGrid>
           </FormSection>
 
@@ -323,62 +362,54 @@ export function PartnerFormDialog({
                 ? 'Classification & approval'
                 : 'Classification'
             }
+            description='Pick status, type, and the roles this partner can fill.'
           >
-            <FieldGrid>
-              <Field label='Customer status'>
-                <Select
-                  value={form.customerStatus || 'NONE'}
-                  onValueChange={(value) =>
-                    updateSelect(
-                      'customerStatus',
-                      value as CustomerStatus | 'NONE'
-                    )
-                  }
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder='Select status' />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value='NONE'>None</SelectItem>
-                    {CUSTOMER_STATUS_OPTIONS.map((status) => (
-                      <SelectItem key={status} value={status}>
-                        {status}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </Field>
-              <Field label='Customer type'>
-                <Select
-                  value={form.customerType || 'NONE'}
-                  onValueChange={(value) =>
-                    updateSelect('customerType', value as CustomerType | 'NONE')
-                  }
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder='Select type' />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value='NONE'>None</SelectItem>
-                    {CUSTOMER_TYPE_OPTIONS.map((type) => (
-                      <SelectItem key={type} value={type}>
-                        {type}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </Field>
+            <div className='space-y-4'>
+              <OptionCheckRow label='Customer status'>
+                {CUSTOMER_STATUS_OPTIONS.map((status) => (
+                  <OptionCheck
+                    key={status}
+                    checked={form.customerStatus === status}
+                    label={formatCustomerStatusLabel(status)}
+                    onCheckedChange={(checked) =>
+                      setCustomerStatus(status, checked)
+                    }
+                  />
+                ))}
+              </OptionCheckRow>
+
+              <OptionCheckRow label='Customer type'>
+                {CUSTOMER_TYPE_OPTIONS.map((type) => (
+                  <OptionCheck
+                    key={type}
+                    checked={form.customerType === type}
+                    label={formatCustomerTypeLabel(type)}
+                    onCheckedChange={(checked) =>
+                      setCustomerType(type, checked)
+                    }
+                  />
+                ))}
+              </OptionCheckRow>
+
+              <OptionCheckRow label='Additional types'>
+                {PARTNER_ADDITION_TYPE_OPTIONS.map((type) => (
+                  <OptionCheck
+                    key={type}
+                    checked={form.additionTypes.includes(type)}
+                    label={formatAdditionTypeLabel(type)}
+                    onCheckedChange={(checked) =>
+                      toggleAdditionType(type, checked)
+                    }
+                  />
+                ))}
+              </OptionCheckRow>
+
               {editingId != null ? (
-                <>
+                <FieldGrid>
                   <Field label='Approve status'>
                     <Select
                       value={form.approveStatus || 'NONE'}
-                      onValueChange={(value) =>
-                        updateSelect(
-                          'approveStatus',
-                          value as ApproveStatus | 'NONE'
-                        )
-                      }
+                      onValueChange={updateApproveStatus}
                     >
                       <SelectTrigger>
                         <SelectValue placeholder='Select status' />
@@ -399,9 +430,9 @@ export function PartnerFormDialog({
                     label='Approve by'
                     onFormChange={onFormChange}
                   />
-                </>
+                </FieldGrid>
               ) : null}
-            </FieldGrid>
+            </div>
           </FormSection>
 
           <FormSection

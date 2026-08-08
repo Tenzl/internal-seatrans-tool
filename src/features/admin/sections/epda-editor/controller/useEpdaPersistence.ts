@@ -25,7 +25,8 @@ export function useEpdaPersistence({
 
   const saveDraft = async (
     input: EpdaPersistenceInput,
-    isComplete: boolean
+    isComplete: boolean,
+    options?: { successMessage?: string }
   ) => {
     setIsSavingDraft(true)
     try {
@@ -37,9 +38,10 @@ export function useEpdaPersistence({
       if (linkedInquiryId) {
         await shippingAgencyEpdaService.updateEpda(linkedInquiryId, patchBody)
         toast.success(
-          isComplete
-            ? 'EPDA draft saved (Completed)'
-            : 'EPDA draft saved (Processing)'
+          options?.successMessage ??
+            (isComplete
+              ? 'EPDA draft saved (Completed)'
+              : 'EPDA draft saved (Processing)')
         )
         onHistoryChanged()
         return
@@ -58,7 +60,10 @@ export function useEpdaPersistence({
         isComplete,
       })
       onCreated(created.id)
-      toast.success(`Inquiry #${created.id} created with EPDA draft`)
+      toast.success(
+        options?.successMessage ??
+          `Inquiry #${created.id} created with EPDA draft`
+      )
     } catch (error) {
       toast.error(
         error instanceof Error ? error.message : 'Failed to save EPDA draft'

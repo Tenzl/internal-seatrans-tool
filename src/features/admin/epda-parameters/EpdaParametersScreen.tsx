@@ -255,7 +255,7 @@ export function EpdaParametersScreen() {
                 variant={variant}
                 areaValues={areaValues}
                 overrides={(sets ?? []).filter(
-                  (s) => s.scope === 'PORT' && s.area === area
+                  (s) => s.scope === 'PORT' && String(s.area ?? '') === area
                 )}
                 groups={[]}
               />

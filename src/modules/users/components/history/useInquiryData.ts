@@ -335,21 +335,51 @@ export function useInquiryData(options: UseInquiryDataOptions = {}) {
       if (!serviceSlug) {
         throw new Error('A supported service is required to delete inquiries')
       }
-      const endpoint = adminApi
-        ? API_CONFIG.INQUIRIES.ADMIN_BATCH_DELETE(mode, serviceSlug)
-        : API_CONFIG.INQUIRIES.USER_BATCH_DELETE(serviceSlug)
 
-      const response = await apiClient.delete(endpoint, {
-        body: JSON.stringify({ ids }),
-      })
+      // Bigint ids often arrive as strings from JSON — normalize before the API.
+      const normalizedIds = [
+        ...new Set(
+          ids
+            .map((id) => Number(id))
+            .filter((id) => Number.isInteger(id) && id > 0)
+        ),
+      ]
+      if (!normalizedIds.length) {
+        throw new Error('No valid inquiry ids to delete')
+      }
 
-      if (!response.ok) {
+      const readDeleteError = async (response: Response) => {
         const body = (await response
           .json()
           .catch(() => null)) as ApiErrorBody | null
-        throw new Error(
+        return (
           body?.error?.message || body?.message || 'Failed to delete inquiries'
         )
+      }
+
+      // Hard delete: use per-id path (no DELETE body). Batch DELETE+body is easy
+      // to break through proxies and returns a generic 404 when ids miss.
+      if (adminApi && mode === 'hard') {
+        for (const id of normalizedIds) {
+          const response = await apiClient.delete(
+            API_CONFIG.INQUIRIES.ADMIN_HARD_DELETE(serviceSlug, id)
+          )
+          if (!response.ok) {
+            throw new Error(await readDeleteError(response))
+          }
+        }
+      } else {
+        const endpoint = adminApi
+          ? API_CONFIG.INQUIRIES.ADMIN_BATCH_DELETE(mode, serviceSlug)
+          : API_CONFIG.INQUIRIES.USER_BATCH_DELETE(serviceSlug)
+
+        const response = await apiClient.delete(endpoint, {
+          body: JSON.stringify({ ids: normalizedIds }),
+        })
+
+        if (!response.ok) {
+          throw new Error(await readDeleteError(response))
+        }
       }
 
       await invalidateInquiries()

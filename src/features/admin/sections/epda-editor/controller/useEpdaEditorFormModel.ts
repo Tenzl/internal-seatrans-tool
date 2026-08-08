@@ -227,13 +227,16 @@ export function useEpdaEditorFormModel({
     () => ({
       ...setters,
       setDischargeLoadingLocation: (value) => {
-        setters.setDischargeLoadingLocation(value)
+        // Area 2 (QN) has berth only — no buoy / anchorage discharge location.
+        const nextLocation =
+          !isHcmWorksheet(quoteForm) && value === 'Anchorage' ? 'Berth' : value
+        setters.setDischargeLoadingLocation(nextLocation)
         const garbageRate =
-          value === 'Anchorage'
+          isHcmWorksheet(quoteForm) && nextLocation === 'Anchorage'
             ? effectiveParams.garbage.atBuoyUsd
             : effectiveParams.garbage.atBerthUsd
         setters.setGarbageUsdRate(String(garbageRate))
-        if (value !== 'Anchorage') setters.setBoatHireAmount('')
+        if (nextLocation !== 'Anchorage') setters.setBoatHireAmount('')
       },
       setLoa: (value) => {
         setters.setLoa(value)
@@ -296,7 +299,7 @@ export function useEpdaEditorFormModel({
         )
       },
     }),
-    [setters, effectiveParams, fields.agencyOtherExpenses]
+    [setters, effectiveParams, fields.agencyOtherExpenses, quoteForm]
   )
 
   const formOptions = useMemo<InvoiceVariantFormOptions>(

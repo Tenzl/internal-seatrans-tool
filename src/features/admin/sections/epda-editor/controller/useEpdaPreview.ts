@@ -4,16 +4,12 @@ import {
   type BuildInvoiceQuoteDataParams,
 } from '@/modules/inquiries/components/common/buildInvoiceQuoteData'
 import { renderQuoteHtmlForVariant } from '@/modules/inquiries/components/common/quoteVariantRenderer'
-import {
-  epdaParametersService,
-  type EpdaParameterValues,
-} from '@/modules/inquiries/services/epdaParametersService'
+import type { EpdaParameterValues } from '@/modules/inquiries/services/epdaParametersService'
 import { delay, EPDA_PREVIEW_LOAD_DELAY_MS } from '@/shared/utils/epdaExport'
 import { toast } from '@/shared/utils/toast'
 import type { EpdaArea } from '@/features/admin/components/invoice/epda/EpdaPortSelector'
 import {
   buildEpdaExportFileName,
-  shouldRefreshPreviewParameters,
   type EpdaQuoteForm,
 } from './epdaPreviewRules'
 
@@ -32,13 +28,8 @@ type UseEpdaPreviewOptions = {
 export function useEpdaPreview({
   quoteForm,
   linkedInquiryId,
-  selectedArea,
-  selectedPortId,
-  isLocked,
-  frozenParams,
   effectiveParams,
   buildQuoteInput,
-  onEffectiveParamsChange,
 }: UseEpdaPreviewOptions) {
   const [isLoading, setIsLoading] = useState(false)
   const [html, setHtml] = useState<string | null>(null)
@@ -46,7 +37,8 @@ export function useEpdaPreview({
   const [isOpen, setIsOpen] = useState(false)
   const [isPdfGenerating, setIsPdfGenerating] = useState(false)
 
-  const generate = async () => {
+  /** Optional override — used right after Apply latest before React state flushes. */
+  const generate = async (paramsOverride?: EpdaParameterValues) => {
     setIsLoading(true)
     setIsPdfGenerating(true)
     setHtml(null)
@@ -57,26 +49,7 @@ export function useEpdaPreview({
       if (!response.ok) throw new Error('Template not found')
       const template = await response.text()
 
-      let paramsForQuote = effectiveParams
-      if (
-        shouldRefreshPreviewParameters({
-          isLocked,
-          hasFrozenParams: Boolean(frozenParams),
-          hasSelectedArea: Boolean(selectedArea),
-        })
-      ) {
-        try {
-          paramsForQuote = await epdaParametersService.getEffective(
-            selectedPortId ? undefined : selectedArea || undefined,
-            selectedPortId ?? undefined
-          )
-          onEffectiveParamsChange(paramsForQuote)
-        } catch (error) {
-          const detail =
-            error instanceof Error ? error.message : 'Request failed'
-          toast.error(`Could not refresh port tariff parameters (${detail}).`)
-        }
-      }
+      const paramsForQuote = paramsOverride ?? effectiveParams
 
       const quoteData = buildInvoiceQuoteData({
         ...buildQuoteInput(),
