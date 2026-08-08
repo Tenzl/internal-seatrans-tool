@@ -608,6 +608,18 @@ export function extractParamsSnapshot(
   return normalizeParameterValues(p as EpdaParameterValues)
 }
 
+/** Pull soft-snapshot working params from an admin inquiry field. */
+export function extractWorkingParams(
+  value: unknown
+): EpdaParameterValues | null {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return null
+  const v = value as Partial<EpdaParameterValues>
+  if (!Array.isArray(v.agencyFeeTiers) || !v.coeff || !v.hours || !v.quarantine) {
+    return null
+  }
+  return normalizeParameterValues(value as EpdaParameterValues)
+}
+
 /** Deep-merge a base set with a partial override (scalars override; arrays replace). */
 export function mergeParameterValues(
   base: EpdaParameterValues,

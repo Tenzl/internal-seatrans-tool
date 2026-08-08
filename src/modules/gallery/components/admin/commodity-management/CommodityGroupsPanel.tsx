@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import type {
   Commodity,
   CommodityGroup,
@@ -63,14 +63,16 @@ export function CommodityGroupsPanel({
   const [renaming, setRenaming] = useState(false)
   const [renameValue, setRenameValue] = useState('')
   const [renameSaving, setRenameSaving] = useState(false)
+  const [renameSyncKey, setRenameSyncKey] = useState('')
 
   const selectedGroup =
     groups.find((group) => group.id === selectedGroupId) ?? groups[0] ?? null
-
-  useEffect(() => {
+  const nextRenameSyncKey = `${selectedGroup?.id ?? ''}:${selectedGroup?.name ?? ''}`
+  if (renameSyncKey !== nextRenameSyncKey) {
+    setRenameSyncKey(nextRenameSyncKey)
     setRenaming(false)
     setRenameValue(selectedGroup?.name ?? '')
-  }, [selectedGroup?.id, selectedGroup?.name])
+  }
 
   if (loading && groups.length === 0) {
     return (

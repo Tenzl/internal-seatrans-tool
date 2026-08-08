@@ -7,7 +7,7 @@ import { shippingAgencyEpdaService } from '@/modules/inquiries/services/shipping
 import type { ShippingAgencyAdminInquiry } from '@/modules/inquiries/types/shippingAgencyEpda'
 import { buildDashboardUrl } from '@/shared/utils/dashboardNavigation'
 import { toast } from '@/shared/utils/toast'
-import { extractWorkingParams } from '@/features/admin/sections/epda-editor/controller/epdaParameterDiff'
+import { extractWorkingParams } from '@/modules/inquiries/components/common/quoteParameters'
 import { usePathname, useRouter } from 'next/navigation'
 import type { InquiryDeleteMode } from './InquiryDataTable'
 import type { InquiryHistoryRecord } from './inquiryHistory.types'

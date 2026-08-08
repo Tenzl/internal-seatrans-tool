@@ -246,8 +246,8 @@ export function useInquiryData(options: UseInquiryDataOptions = {}) {
       ...INQUIRIES_QUERY_ROOT,
       {
         serviceType: serviceType ?? '',
-        isAdmin: useAdminApi,
-        userId: currentUser?.id ?? null,
+        isAdmin,
+        currentUser,
         page,
         size: INQUIRY_PAGE_SIZE,
         // Only API-backed filters belong in the key (FE-03).
@@ -273,12 +273,11 @@ export function useInquiryData(options: UseInquiryDataOptions = {}) {
     enabled: useAdminApi || Boolean(currentUser?.id),
   })
 
-  const pageRows = listQuery.data?.content ?? []
   // Page-local sort only — not part of the query key / server contract.
-  const inquiries = useMemo(
-    () => sortRows(pageRows, sorting),
-    [pageRows, sorting]
-  )
+  const inquiries = useMemo(() => {
+    const pageRows = listQuery.data?.content ?? []
+    return sortRows(pageRows, sorting)
+  }, [listQuery.data?.content, sorting])
 
   const totalElements = listQuery.data?.totalElements ?? 0
   const totalPages = listQuery.data?.totalPages ?? 0

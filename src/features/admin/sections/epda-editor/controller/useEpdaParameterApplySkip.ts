@@ -1,6 +1,8 @@
 import { useEffect, useRef, useState } from 'react'
-import type { EpdaParameterValues } from '@/modules/inquiries/services/epdaParametersService'
-import { epdaParametersService } from '@/modules/inquiries/services/epdaParametersService'
+import {
+  epdaParametersService,
+  type EpdaParameterValues,
+} from '@/modules/inquiries/services/epdaParametersService'
 import type { EpdaArea } from '@/features/admin/components/invoice/epda/EpdaPortSelector'
 import {
   diffEpdaParameterValues,
@@ -86,11 +88,13 @@ export function useEpdaParameterApplySkip({
     decisionRef.current = null
     baselineRef.current = null
     latestRef.current = null
-    setDialogOpen(false)
-    setDiffRows([])
-    if (linkedInquiryId && !isLocked) {
-      setCompareToken((token) => token + 1)
-    }
+    queueMicrotask(() => {
+      setDialogOpen(false)
+      setDiffRows([])
+      if (linkedInquiryId && !isLocked) {
+        setCompareToken((token) => token + 1)
+      }
+    })
   }, [linkedInquiryId, isLocked])
 
   // Re-compare when port/area changes on an unlocked linked draft.
@@ -106,9 +110,11 @@ export function useEpdaParameterApplySkip({
     // Current form params become the "Current" column for the new port's latest.
     baselineRef.current = effectiveParams
     decisionRef.current = 'pending'
-    setFrozenParams(null)
-    setDialogOpen(false)
-    setCompareToken((token) => token + 1)
+    queueMicrotask(() => {
+      setFrozenParams(null)
+      setDialogOpen(false)
+      setCompareToken((token) => token + 1)
+    })
   }, [
     portAreaKey,
     linkedInquiryId,

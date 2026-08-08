@@ -40,7 +40,6 @@ import {
 import type {
   AnContainer,
   ArrivalNoticePayload,
-  BillOfLadingPayload,
   BookingConfirmationPayload,
   CargoRow,
   DeliveryOrderPayload,

@@ -7,10 +7,12 @@ import {
   quoteFormFromStored,
   usesQnPilotage,
 } from '@/modules/inquiries/components/common/quoteForm'
-import { extractParamsSnapshot } from '@/modules/inquiries/components/common/quoteParameters'
+import {
+  extractParamsSnapshot,
+  extractWorkingParams,
+} from '@/modules/inquiries/components/common/quoteParameters'
 import { renderQuoteHtmlForVariant } from '@/modules/inquiries/components/common/quoteVariantRenderer'
 import { resolveEffectiveParams } from '@/modules/inquiries/services/resolveEffectiveParams'
-import { extractWorkingParams } from '@/features/admin/sections/epda-editor/controller/epdaParameterDiff'
 import {
   formatCargoDescription,
   formatCheckMark,

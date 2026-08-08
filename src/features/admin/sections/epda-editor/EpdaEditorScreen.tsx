@@ -106,6 +106,18 @@ export function EpdaEditorScreen({
     null
   )
   const [workingParamsReady, setWorkingParamsReady] = useState(false)
+  const [workingParamsInquiryId, setWorkingParamsInquiryId] = useState(
+    linkedInquiryId
+  )
+  if (workingParamsInquiryId !== linkedInquiryId) {
+    setWorkingParamsInquiryId(linkedInquiryId)
+    if (!linkedInquiryId) {
+      setWorkingParams(null)
+      setWorkingParamsReady(true)
+    } else {
+      setWorkingParamsReady(false)
+    }
+  }
   const [showValidationErrors, setShowValidationErrors] = useState(false)
   const [viewInquiryMeta, setViewInquiryMeta] =
     useState<ShippingAgencyAdminInquiry | null>(null)
@@ -279,15 +291,6 @@ export function EpdaEditorScreen({
       formSetters,
     },
   })
-
-  useEffect(() => {
-    if (!linkedInquiryId) {
-      setWorkingParams(null)
-      setWorkingParamsReady(true)
-      return
-    }
-    setWorkingParamsReady(false)
-  }, [linkedInquiryId])
 
   const {
     paramDiffDialogOpen,

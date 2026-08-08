@@ -469,5 +469,3 @@ export function GalleryImageFilters({
     </div>
   )
 }
-
-}
