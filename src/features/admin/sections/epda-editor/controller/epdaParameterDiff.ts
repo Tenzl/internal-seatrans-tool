@@ -205,7 +205,6 @@ function cargoIdentity(row: CargoAgencyRate): string {
 function diffCargoAgencyRates(
   current: CargoAgencyRate[],
   latest: CargoAgencyRate[],
-  labels: EpdaParameterLabelFns,
   rows: EpdaParameterDiffRow[]
 ) {
   const group = 'cargoAgencyRates'
@@ -266,12 +265,7 @@ export function diffEpdaParameterValues(
     diffGrtTierAmounts(group, left[group], right[group], labels, rows)
   }
   diffLoaTierAmounts(left.tugTiers, right.tugTiers, labels, rows)
-  diffCargoAgencyRates(
-    left.cargoAgencyRates,
-    right.cargoAgencyRates,
-    labels,
-    rows
-  )
+  diffCargoAgencyRates(left.cargoAgencyRates, right.cargoAgencyRates, rows)
 
   return rows
 }
