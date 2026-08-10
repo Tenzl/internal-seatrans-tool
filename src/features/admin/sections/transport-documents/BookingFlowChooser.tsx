@@ -21,7 +21,7 @@ const FLOW_OPTIONS: readonly {
   {
     value: 'EXPORT',
     title: 'Export',
-    description: 'Outbound shipment — Booking → Arrival Notice → Bill of Lading',
+    description: 'Outbound shipment — Booking → Bill of Lading',
     icon: ArrowUpFromLine,
   },
 ]

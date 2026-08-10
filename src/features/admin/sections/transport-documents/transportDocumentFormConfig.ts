@@ -79,7 +79,7 @@ export interface TransportDocumentDefinition {
   description: string
 }
 
-/** Workflow order branches after Arrival Notice: Export -> Bill of Lading, Import -> Delivery Order. */
+/** Document catalog. Workflow order: Export Booking→BL; Import Booking→AN→DO. */
 export const TRANSPORT_DOCUMENTS: TransportDocumentDefinition[] = [
   {
     type: 'booking',
