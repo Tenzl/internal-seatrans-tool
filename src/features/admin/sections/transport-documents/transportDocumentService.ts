@@ -107,6 +107,18 @@ export const transportDocumentService = {
     if (!response.ok) throw new Error(await readError(response))
   },
 
+  async restore(
+    type: TransportDocumentType,
+    id: number,
+    expectedVersion: number
+  ): Promise<void> {
+    const response = await apiClient.post(
+      API_CONFIG.BOOKING_DOCUMENTS.ADMIN_RESTORE(type, id),
+      { expectedVersion }
+    )
+    if (!response.ok) throw new Error(await readError(response))
+  },
+
   async permanentDelete(
     type: TransportDocumentType,
     id: number
@@ -121,10 +133,12 @@ export const transportDocumentService = {
     type: TransportDocumentType
     page?: number
     size?: number
+    archived?: 'active' | 'archived' | 'all'
   }): Promise<PageResponse<TransportDocumentRecord>> {
     const params = new URLSearchParams()
     params.set('page', String(options.page ?? 0))
     params.set('size', String(options.size ?? 10))
+    params.set('archived', options.archived ?? 'active')
     const response = await apiClient.get(
       `${API_CONFIG.BOOKING_DOCUMENTS.ADMIN_HISTORY(options.type)}?${params.toString()}`
     )

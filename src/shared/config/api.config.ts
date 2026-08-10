@@ -95,6 +95,8 @@ export const API_CONFIG = {
       `/admin/booking-documents/${type}/records/${id}/unlock`,
     ADMIN_ARCHIVE: (type: 'an' | 'booking' | 'do' | 'bl', id: number) =>
       `/admin/booking-documents/${type}/records/${id}`,
+    ADMIN_RESTORE: (type: 'an' | 'booking' | 'do' | 'bl', id: number) =>
+      `/admin/booking-documents/${type}/records/${id}/restore`,
     ADMIN_PERMANENT_DELETE: (
       type: 'an' | 'booking' | 'do' | 'bl',
       id: number
@@ -187,6 +189,7 @@ export const API_CONFIG = {
       `/admin/users/${id}/reset-password`,
     ADMIN_USER_REACTIVATE: (id: number) => `/admin/users/${id}/reactivate`,
     ADMIN_USER_ROLE: (id: number) => `/admin/users/${id}/role`,
+    ADMIN_USER_PROFILE: (id: number) => `/admin/users/${id}/profile`,
   },
 
   INQUIRIES: {

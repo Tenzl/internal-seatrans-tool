@@ -31,4 +31,17 @@ describe('bookingPic', () => {
     expect(resolveBookingPic(null, 'Legacy PIC')).toBe('Legacy PIC')
     expect(resolveBookingPic(null, '')).toBe('')
   })
+
+  it('prefers company email over login email for creator fallback', () => {
+    expect(
+      resolveBookingPic(
+        {
+          fullName: 'Nhung Nguyen',
+          email: 'login@seatrans.com.vn',
+          companyEmail: 'total.logistics@seatrans.com.vn',
+        },
+        ''
+      )
+    ).toBe('Nhung Nguyen, Email: total.logistics@seatrans.com.vn')
+  })
 })

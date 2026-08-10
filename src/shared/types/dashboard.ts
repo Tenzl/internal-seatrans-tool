@@ -29,6 +29,8 @@ export interface User {
   nation?: string
   phone?: string | null
   company?: string | null
+  /** Shared workplace inbox — may duplicate; not used for login. */
+  companyEmail?: string | null
   role?: string
   roleId?: number
   roleGroup?: RoleGroup

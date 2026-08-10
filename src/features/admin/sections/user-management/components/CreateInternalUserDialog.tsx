@@ -33,6 +33,7 @@ const EMPTY_FORM: CreateUserFormValues = {
   email: '',
   username: '',
   fullName: '',
+  companyEmail: '',
   password: '',
   roleId: '',
 }
@@ -113,6 +114,17 @@ export function CreateInternalUserDialog({
             placeholder='name@company.com'
             name='email'
           />
+          <FormInput
+            label='Company email (optional)'
+            value={form.companyEmail}
+            onChange={(value) => updateField('companyEmail', value)}
+            placeholder='ops@company.com'
+            name='companyEmail'
+          />
+          <p className='-mt-2 text-xs text-muted-foreground'>
+            Shared inbox for bookings. May match other users. Not used for
+            login.
+          </p>
           <FormInput
             label='Username (optional)'
             value={form.username}

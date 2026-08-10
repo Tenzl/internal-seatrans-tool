@@ -156,12 +156,13 @@ describe('transport document history actions', () => {
     ).toBe('/booking/documents/arrival-notice?recordId=12&preview=1')
   })
 
-  it('exposes lock / unlock / archive / delete capabilities by role', () => {
+  it('exposes lock / unlock / archive / restore / delete capabilities by role', () => {
     expect(
       getTransportDocumentRowCapabilities(record, {
         canLock: true,
         canUnlock: false,
         canArchive: true,
+        canRestore: true,
         canHardDelete: false,
       })
     ).toMatchObject({
@@ -169,6 +170,7 @@ describe('transport document history actions', () => {
       canUnlock: false,
       showLocked: false,
       canArchive: true,
+      canRestore: false,
       canDelete: false,
     })
 
@@ -179,6 +181,7 @@ describe('transport document history actions', () => {
           canLock: true,
           canUnlock: false,
           canArchive: false,
+          canRestore: true,
           canHardDelete: true,
         }
       )
@@ -187,6 +190,7 @@ describe('transport document history actions', () => {
       canUnlock: false,
       showLocked: true,
       canArchive: false,
+      canRestore: false,
       canDelete: true,
     })
 
@@ -197,6 +201,7 @@ describe('transport document history actions', () => {
           canLock: true,
           canUnlock: true,
           canArchive: false,
+          canRestore: true,
           canHardDelete: true,
         }
       )
@@ -205,7 +210,27 @@ describe('transport document history actions', () => {
       canUnlock: true,
       showLocked: false,
       canArchive: false,
+      canRestore: false,
       canDelete: true,
+    })
+
+    expect(
+      getTransportDocumentRowCapabilities(
+        { ...record, deletedAt: '2026-08-01T00:00:00.000Z' },
+        {
+          canLock: true,
+          canUnlock: true,
+          canArchive: true,
+          canRestore: true,
+          canHardDelete: true,
+        }
+      )
+    ).toMatchObject({
+      canArchive: false,
+      canRestore: true,
+      canDelete: true,
+      canLock: false,
+      canUnlock: false,
     })
   })
 })

@@ -18,6 +18,13 @@ import {
   CardHeader,
   CardTitle,
 } from '@/components/ui/card'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
 import { TransportDocumentHistoryActions } from './TransportDocumentHistoryActions'
 import { TransportDocumentHistoryDataTable } from './TransportDocumentHistoryDataTable'
 import { TransportDocumentMutationDialogs } from './TransportDocumentMutationDialogs'
@@ -29,9 +36,13 @@ import type {
 import { transportDocumentService } from './transportDocumentService'
 import { useTransportDocumentHistoryActions } from './useTransportDocumentHistoryActions'
 
+type BookingArchivedFilter = 'active' | 'archived' | 'all'
+
 /** Booking-root list; child documents are managed inside the workflow view. */
 export function BookingHistoryScreen() {
   const [page, setPage] = useState(0)
+  const [archivedFilter, setArchivedFilter] =
+    useState<BookingArchivedFilter>('all')
   const pageSize = 10
   const currentUser = useCurrentUser()
   const isMobile = useIsMobile()
@@ -40,19 +51,26 @@ export function BookingHistoryScreen() {
     () => ({
       canLock: true,
       canUnlock: isAdmin,
-      canArchive: !isAdmin,
+      // Staff and admins can archive; only ROLE_ADMIN restores / hard-deletes.
+      canArchive: true,
+      canRestore: isAdmin,
       canHardDelete: isAdmin,
     }),
     [isAdmin]
   )
 
   const bookingQuery = useQuery({
-    queryKey: queryKeys.bookingHistoryList(page, pageSize),
+    queryKey: [
+      ...queryKeys.bookingHistoryList(page, pageSize),
+      archivedFilter,
+      isAdmin,
+    ],
     queryFn: () =>
       transportDocumentService.history({
         type: 'booking',
         page,
         size: pageSize,
+        archived: isAdmin ? archivedFilter : 'active',
       }),
     placeholderData: keepPreviousData,
   })
@@ -83,6 +101,7 @@ export function BookingHistoryScreen() {
             onViewDetails={actions.openDetail}
             onLock={actions.openLock}
             onUnlock={actions.openUnlock}
+            onRestore={actions.openRestore}
             onDelete={actions.openDelete}
           />
         ),
@@ -91,6 +110,7 @@ export function BookingHistoryScreen() {
       actions.openDelete,
       actions.openDetail,
       actions.openLock,
+      actions.openRestore,
       actions.openUnlock,
       permissions,
     ]
@@ -121,6 +141,24 @@ export function BookingHistoryScreen() {
               </CardDescription>
             </div>
             <div className='flex flex-wrap gap-2'>
+              {isAdmin ? (
+                <Select
+                  value={archivedFilter}
+                  onValueChange={(value) => {
+                    setArchivedFilter(value as BookingArchivedFilter)
+                    setPage(0)
+                  }}
+                >
+                  <SelectTrigger className='h-10 w-full sm:h-9 sm:w-[140px]'>
+                    <SelectValue placeholder='Filter' />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value='active'>Active</SelectItem>
+                    <SelectItem value='archived'>Archived</SelectItem>
+                    <SelectItem value='all'>All</SelectItem>
+                  </SelectContent>
+                </Select>
+              ) : null}
               <Button
                 type='button'
                 variant='outline'
@@ -152,13 +190,17 @@ export function BookingHistoryScreen() {
           ) : records.length === 0 ? (
             <div className='space-y-3 py-8 text-center'>
               <p className='text-muted-foreground'>
-                No bookings yet. Create a booking to begin.
+                {archivedFilter === 'archived'
+                  ? 'No archived bookings.'
+                  : 'No bookings yet. Create a booking to begin.'}
               </p>
-              <Button asChild variant='outline' size='sm'>
-                <Link href='/booking/documents/booking-confirmation'>
-                  Create Booking
-                </Link>
-              </Button>
+              {archivedFilter !== 'archived' ? (
+                <Button asChild variant='outline' size='sm'>
+                  <Link href='/booking/documents/booking-confirmation'>
+                    Create Booking
+                  </Link>
+                </Button>
+              ) : null}
             </div>
           ) : (
             <TransportDocumentHistoryDataTable

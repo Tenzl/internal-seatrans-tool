@@ -149,7 +149,7 @@ describe('transportDocumentService', () => {
     expect(result).toMatchObject({ id: 12, flow: 'EXPORT' })
   })
 
-  it('updates, locks, unlocks, archives, and permanently deletes records', async () => {
+  it('updates, locks, unlocks, archives, restores, and permanently deletes records', async () => {
     vi.mocked(apiClient.get).mockResolvedValue(
       new Response(JSON.stringify({ data: { id: 5, status: 'PROCESSING' } }), {
         status: 200,
@@ -172,6 +172,11 @@ describe('transportDocumentService', () => {
           status: 200,
         })
       )
+      .mockResolvedValueOnce(
+        new Response(JSON.stringify({ data: { id: 5, deletedAt: null } }), {
+          status: 200,
+        })
+      )
     vi.mocked(apiClient.delete).mockResolvedValue(
       new Response(null, { status: 204 })
     )
@@ -188,6 +193,7 @@ describe('transportDocumentService', () => {
     await transportDocumentService.lock('an', 5, 4)
     await transportDocumentService.unlock('an', 5, 5)
     await transportDocumentService.archive('an', 5, 6)
+    await transportDocumentService.restore('an', 5, 7)
     await transportDocumentService.permanentDelete('an', 5)
 
     expect(apiClient.get).toHaveBeenCalledWith(
@@ -206,6 +212,11 @@ describe('transportDocumentService', () => {
       2,
       '/admin/booking-documents/an/records/5/unlock',
       { expectedVersion: 5 }
+    )
+    expect(apiClient.post).toHaveBeenNthCalledWith(
+      3,
+      '/admin/booking-documents/an/records/5/restore',
+      { expectedVersion: 7 }
     )
     expect(apiClient.delete).toHaveBeenNthCalledWith(
       1,
@@ -240,7 +251,7 @@ describe('transportDocumentService', () => {
     })
 
     expect(apiClient.get).toHaveBeenCalledWith(
-      '/admin/booking-documents/do/records?page=2&size=10'
+      '/admin/booking-documents/do/records?page=2&size=10&archived=active'
     )
   })
 })

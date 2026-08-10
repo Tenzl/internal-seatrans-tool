@@ -24,7 +24,7 @@ import {
   adminUsersService,
   type PicOption,
 } from '@/features/admin/sections/user-management/api/adminUsersService'
-import { formatBookingPic } from './bookingPic'
+import { formatBookingPic, resolveUserPicEmail } from './bookingPic'
 
 interface InternalUserSearchSelectProps {
   id?: string
@@ -37,13 +37,18 @@ interface InternalUserSearchSelectProps {
 }
 
 function userPrimaryLabel(user: PicOption): string {
-  return formatBookingPic(user.fullName, user.email) || user.email
+  return (
+    formatBookingPic(user.fullName, resolveUserPicEmail(user)) ||
+    resolveUserPicEmail(user) ||
+    user.email
+  )
 }
 
 function userSecondaryLabel(user: PicOption): string | null {
   const role = user.roleName?.trim()
   if (role) return role
-  if (user.fullName?.trim() && user.email?.trim()) return user.email.trim()
+  const picEmail = resolveUserPicEmail(user)
+  if (user.fullName?.trim() && picEmail) return picEmail
   return null
 }
 

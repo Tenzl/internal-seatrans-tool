@@ -267,5 +267,6 @@ export type TransportDocumentActionPermissions = {
   canLock: boolean
   canUnlock: boolean
   canArchive: boolean
+  canRestore: boolean
   canHardDelete: boolean
 }

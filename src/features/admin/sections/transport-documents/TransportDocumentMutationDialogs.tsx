@@ -1,6 +1,6 @@
 'use client'
 
-import { Archive, Loader2, Lock, Trash2, Unlock } from 'lucide-react'
+import { Archive, Loader2, Lock, RotateCcw, Trash2, Unlock } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import {
   Dialog,
@@ -23,6 +23,7 @@ export function TransportDocumentMutationDialogs({
   return (
     <>
       <DeleteDialog actions={actions} />
+      <RestoreDialog actions={actions} />
       <LockDialog actions={actions} />
       <UnlockDialog actions={actions} />
     </>
@@ -59,7 +60,8 @@ function DeleteDialog({ actions }: { actions: HistoryActions }) {
                 Record #
                 {actions.deleteTarget?.referenceNumber ||
                   actions.deleteTarget?.id}{' '}
-                will be archived and hidden from the history list.
+                will be archived. Admins can restore it from the archived
+                filter.
               </>
             )}
           </DialogDescription>
@@ -86,6 +88,50 @@ function DeleteDialog({ actions }: { actions: HistoryActions }) {
               <Archive className='h-4 w-4' />
             )}
             {isHardDelete ? 'Delete permanently' : 'Archive'}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  )
+}
+
+function RestoreDialog({ actions }: { actions: HistoryActions }) {
+  return (
+    <Dialog
+      open={Boolean(actions.restoreTarget)}
+      onOpenChange={(open) => {
+        if (!open && !actions.isRestoring) actions.closeRestore()
+      }}
+    >
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Restore document record?</DialogTitle>
+          <DialogDescription>
+            Record #
+            {actions.restoreTarget?.referenceNumber ||
+              actions.restoreTarget?.id}{' '}
+            will return to the active history list.
+          </DialogDescription>
+        </DialogHeader>
+        <DialogFooter className='gap-2 sm:gap-2'>
+          <Button
+            variant='outline'
+            onClick={actions.closeRestore}
+            disabled={actions.isRestoring}
+          >
+            Cancel
+          </Button>
+          <Button
+            onClick={() => void actions.confirmRestore()}
+            disabled={actions.isRestoring}
+            className='gap-2'
+          >
+            {actions.isRestoring ? (
+              <Loader2 className='h-4 w-4 animate-spin' />
+            ) : (
+              <RotateCcw className='h-4 w-4' />
+            )}
+            Restore
           </Button>
         </DialogFooter>
       </DialogContent>

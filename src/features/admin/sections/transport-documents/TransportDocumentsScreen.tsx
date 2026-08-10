@@ -27,7 +27,7 @@ import { adminUsersService } from '../user-management/api/adminUsersService'
 import { BookingFlowChooser } from './BookingFlowChooser'
 import { BookingWorkflowNav } from './BookingWorkflowNav'
 import { TransportDocumentForm } from './TransportDocumentForm'
-import { formatBookingPic, resolveBookingPic } from './bookingPic'
+import { formatBookingPic, resolveBookingPic, resolveUserPicEmail } from './bookingPic'
 import {
   buildBookingWorkflowUrl,
   getWorkflowRecord,
@@ -365,7 +365,10 @@ export function TransportDocumentsScreen({
     currentUser &&
     activeRecordId == null
   ) {
-    const pic = formatBookingPic(currentUser.fullName, currentUser.email)
+    const pic = formatBookingPic(
+      currentUser.fullName,
+      resolveUserPicEmail(currentUser)
+    )
     setBookingPicSeedApplied(true)
     if (pic) {
       const emptyBooking = createEmptyTransportDocuments()

@@ -52,7 +52,9 @@ export function BaseInquiryHistoryLayout({
   const isMobile = useIsMobile()
   const permissions: InquiryActionPermissions = {
     isAdmin,
-    canSoftDelete: isAdmin && !isAdminRole(currentUser?.role),
+    // Staff and ROLE_ADMIN can archive on the admin history screen.
+    canSoftDelete: isAdmin,
+    // Only ROLE_ADMIN can restore / permanently delete (matches BE).
     canHardDelete: isAdmin && isAdminRole(currentUser?.role),
   }
   const rows = inquiries as InquiryHistoryRecord[]

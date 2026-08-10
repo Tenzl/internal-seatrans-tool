@@ -112,12 +112,14 @@ export function getTransportDocumentRowCapabilities(
   permissions: TransportDocumentActionPermissions
 ) {
   const isLocked = Boolean(record.lockedAt)
+  const isArchived = Boolean(record.deletedAt)
   return {
     canViewDetails: true,
-    canLock: permissions.canLock && !isLocked,
-    canUnlock: permissions.canUnlock && isLocked,
-    showLocked: isLocked && !permissions.canUnlock,
-    canArchive: permissions.canArchive && !record.deletedAt,
+    canLock: permissions.canLock && !isLocked && !isArchived,
+    canUnlock: permissions.canUnlock && isLocked && !isArchived,
+    showLocked: isLocked && !permissions.canUnlock && !isArchived,
+    canArchive: permissions.canArchive && !isArchived,
+    canRestore: permissions.canRestore && isArchived,
     canDelete: permissions.canHardDelete,
   }
 }

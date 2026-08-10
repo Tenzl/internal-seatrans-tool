@@ -97,9 +97,12 @@ export function getInquiryRowCapabilities({
     isShippingAgency,
     canLock: canLockInquiryEpda(inquiry, isAdmin, fallbackServiceType),
     showLocked: isAdmin && isShippingAgency && Boolean(inquiry.epdaLockedAt),
-    canArchive: isAdmin && canSoftDelete && !inquiry.isArchived,
+    canArchive: isAdmin && canSoftDelete && !inquiry.isArchived && !inquiry.deletedAt,
     canDelete: isAdmin && canHardDelete,
-    canRestore: isAdmin && canHardDelete && Boolean(inquiry.isArchived),
+    canRestore:
+      isAdmin &&
+      canHardDelete &&
+      Boolean(inquiry.isArchived || inquiry.deletedAt),
     canViewInvoice:
       !isAdmin && isShippingAgency && inquiry.status === STATUS_QUOTED,
   }

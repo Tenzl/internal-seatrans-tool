@@ -5,6 +5,7 @@ import { AdminSection } from '@/shared/components/layout/dashboard/admin'
 import type { AdminUserRow } from './api/adminUsersService'
 import { ChangeRoleDialog } from './components/ChangeRoleDialog'
 import { CreateInternalUserDialog } from './components/CreateInternalUserDialog'
+import { EditUserDialog } from './components/EditUserDialog'
 import { ResetPasswordDialog } from './components/ResetPasswordDialog'
 import { UserManagementToolbar } from './components/UserManagementToolbar'
 import { UserStatusDialog } from './components/UserStatusDialog'
@@ -20,6 +21,7 @@ export function UserManagementScreen() {
   const [createOpen, setCreateOpen] = useState(false)
   const [resetTarget, setResetTarget] = useState<AdminUserRow | null>(null)
   const [roleTarget, setRoleTarget] = useState<AdminUserRow | null>(null)
+  const [editTarget, setEditTarget] = useState<AdminUserRow | null>(null)
   const [deactivateTarget, setDeactivateTarget] = useState<AdminUserRow | null>(
     null
   )
@@ -46,6 +48,7 @@ export function UserManagementScreen() {
   const rowActions = useMemo<UserRowActions>(
     () => ({
       onChangeRole: setRoleTarget,
+      onEdit: setEditTarget,
       onResetPassword: setResetTarget,
       onDeactivate: setDeactivateTarget,
       onReactivate: setReactivateTarget,
@@ -104,6 +107,10 @@ export function UserManagementScreen() {
         isLoadingRoles={isLoadingRoles}
         fallbackRoleGroup={scope}
         onClose={() => setRoleTarget(null)}
+      />
+      <EditUserDialog
+        user={editTarget}
+        onClose={() => setEditTarget(null)}
       />
       <UserStatusDialog
         action='deactivate'

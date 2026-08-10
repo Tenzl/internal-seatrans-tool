@@ -3,6 +3,7 @@ import {
   Eye,
   Lock,
   MoreHorizontal,
+  RotateCcw,
   Trash2,
   Unlock,
 } from 'lucide-react'
@@ -12,6 +13,7 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 import type {
@@ -28,6 +30,8 @@ const ACTION_LOCK_CLASS =
   'border-amber-500/45 bg-amber-500/10 text-amber-900 hover:bg-amber-500/15 hover:text-amber-950 dark:border-amber-400/40 dark:bg-amber-400/10 dark:text-amber-200 dark:hover:bg-amber-400/15 dark:hover:text-amber-100'
 const ACTION_ARCHIVE_CLASS =
   'border-rose-500/40 bg-rose-500/10 text-rose-800 hover:bg-rose-500/15 hover:text-rose-900 dark:border-rose-400/35 dark:bg-rose-400/10 dark:text-rose-200 dark:hover:bg-rose-400/15 dark:hover:text-rose-100'
+const ACTION_RESTORE_CLASS =
+  'border-emerald-500/40 bg-emerald-500/10 text-emerald-800 hover:bg-emerald-500/15 hover:text-emerald-900 dark:border-emerald-400/35 dark:bg-emerald-400/10 dark:text-emerald-200 dark:hover:bg-emerald-400/15 dark:hover:text-emerald-100'
 const ACTION_UNLOCK_CLASS =
   'border-emerald-500/40 bg-emerald-500/10 text-emerald-800 hover:bg-emerald-500/15 hover:text-emerald-900 dark:border-emerald-400/35 dark:bg-emerald-400/10 dark:text-emerald-200 dark:hover:bg-emerald-400/15 dark:hover:text-emerald-100'
 
@@ -37,6 +41,7 @@ interface TransportDocumentHistoryActionsProps {
   onViewDetails: (record: TransportDocumentRecord) => void
   onLock: (record: TransportDocumentRecord) => void
   onUnlock: (record: TransportDocumentRecord) => void
+  onRestore: (record: TransportDocumentRecord) => void
   onDelete: (
     record: TransportDocumentRecord,
     mode: TransportDocumentDeleteMode
@@ -72,6 +77,7 @@ function DesktopRowActions({
   onViewDetails,
   onLock,
   onUnlock,
+  onRestore,
   onDelete,
 }: TransportDocumentHistoryActionsProps & { capabilities: RowCapabilities }) {
   return (
@@ -131,6 +137,18 @@ function DesktopRowActions({
           Archive
         </Button>
       )}
+      {capabilities.canRestore && (
+        <Button
+          type='button'
+          variant='outline'
+          size='sm'
+          onClick={() => onRestore(record)}
+          className={`gap-2 ${ACTION_RESTORE_CLASS}`}
+        >
+          <RotateCcw className='h-4 w-4' />
+          Restore
+        </Button>
+      )}
       {capabilities.canDelete && (
         <Button
           type='button'
@@ -153,6 +171,7 @@ function MobileRowActions({
   onViewDetails,
   onLock,
   onUnlock,
+  onRestore,
   onDelete,
 }: TransportDocumentHistoryActionsProps & { capabilities: RowCapabilities }) {
   return (
@@ -209,14 +228,26 @@ function MobileRowActions({
             Archive
           </DropdownMenuItem>
         )}
-        {capabilities.canDelete && (
+        {capabilities.canRestore && (
           <DropdownMenuItem
-            className='text-destructive focus:text-destructive'
-            onClick={() => onDelete(record, 'hard')}
+            onClick={() => onRestore(record)}
+            className='text-emerald-800 focus:bg-emerald-500/10 focus:text-emerald-900 dark:text-emerald-200'
           >
-            <Trash2 className='mr-2 h-4 w-4' />
-            Delete
+            <RotateCcw className='mr-2 h-4 w-4' />
+            Restore
           </DropdownMenuItem>
+        )}
+        {capabilities.canDelete && (
+          <>
+            {capabilities.canRestore ? <DropdownMenuSeparator /> : null}
+            <DropdownMenuItem
+              className='text-destructive focus:text-destructive'
+              onClick={() => onDelete(record, 'hard')}
+            >
+              <Trash2 className='mr-2 h-4 w-4' />
+              Delete
+            </DropdownMenuItem>
+          </>
         )}
       </DropdownMenuContent>
     </DropdownMenu>

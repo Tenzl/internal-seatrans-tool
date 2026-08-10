@@ -13,6 +13,7 @@ import {
   KeyRound,
   Loader2,
   MoreHorizontal,
+  Pencil,
   UserCheck,
   UserCog,
 } from 'lucide-react'
@@ -90,7 +91,13 @@ export function UsersTable({
         accessorKey: 'email',
         header: 'Email',
         cell: (context) => context.getValue<string>() || '—',
-        meta: { className: 'min-w-[260px]' },
+        meta: { className: 'min-w-[220px]' },
+      },
+      {
+        accessorKey: 'companyEmail',
+        header: 'Company email',
+        cell: (context) => context.getValue<string | null>() ?? '—',
+        meta: { className: 'min-w-[220px]' },
       },
       {
         accessorKey: 'roleName',
@@ -179,6 +186,10 @@ function UserActionsMenu({
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align='end'>
+        <DropdownMenuItem onSelect={() => actions.onEdit(user)}>
+          <Pencil className='mr-2 h-4 w-4' />
+          Edit
+        </DropdownMenuItem>
         <DropdownMenuItem onSelect={() => actions.onChangeRole(user)}>
           <UserCog className='mr-2 h-4 w-4' />
           Change role

@@ -18,6 +18,7 @@ export type AdminUserRow = {
   fullName: string | null
   phone: string | null
   company: string | null
+  companyEmail: string | null
   isActive: boolean
   roleId: number | null
   roleName: string | null
@@ -45,6 +46,7 @@ export type AdminListUsersParams = {
 export type PicOption = {
   id: number
   email: string
+  companyEmail: string | null
   fullName: string | null
   roleName: string | null
 }
@@ -58,6 +60,7 @@ export type CreateInternalUserInput = {
   email: string
   username?: string
   fullName?: string
+  companyEmail?: string
   password: string
   roleId: number
 }
@@ -132,6 +135,22 @@ export const adminUsersService = {
       {
         roleId,
       }
+    )
+    return unwrapApiResponse<AdminUserRow>(response)
+  },
+
+  async updateUserProfile(
+    userId: number,
+    input: {
+      email: string
+      username?: string | null
+      fullName?: string | null
+      companyEmail?: string | null
+    }
+  ): Promise<AdminUserRow> {
+    const response = await apiClient.patch(
+      API_CONFIG.USERS.ADMIN_USER_PROFILE(userId),
+      input
     )
     return unwrapApiResponse<AdminUserRow>(response)
   },
