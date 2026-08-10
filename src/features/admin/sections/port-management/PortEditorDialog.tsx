@@ -84,25 +84,16 @@ export function PortEditorDialog({
 }: PortEditorDialogProps) {
   const debouncedName = useDebouncedValue(form.name, 300)
   const [nameMatches, setNameMatches] = useState<Port[]>([])
-  const [nameSearchLoading, setNameSearchLoading] = useState(false)
+  const [matchesForQuery, setMatchesForQuery] = useState('')
+  const searchEnabled = open && !editing
+  const searchQuery = debouncedName.trim()
   const requireLocation = form.inCharge
 
   useEffect(() => {
-    if (!open || editing) {
-      setNameMatches([])
-      setNameSearchLoading(false)
-      return
-    }
-
-    const q = debouncedName.trim()
-    if (!q) {
-      setNameMatches([])
-      setNameSearchLoading(false)
-      return
-    }
+    if (!searchEnabled || !searchQuery) return
 
     const controller = new AbortController()
-    setNameSearchLoading(true)
+    const q = searchQuery
 
     void portService
       .listPortsPaginated(
@@ -112,24 +103,26 @@ export function PortEditorDialog({
       .then((page) => {
         if (controller.signal.aborted) return
         setNameMatches(page.content)
+        setMatchesForQuery(q)
       })
       .catch(() => {
         if (controller.signal.aborted) return
         setNameMatches([])
-      })
-      .finally(() => {
-        if (!controller.signal.aborted) setNameSearchLoading(false)
+        setMatchesForQuery(q)
       })
 
     return () => controller.abort()
-  }, [debouncedName, editing, open])
+  }, [searchEnabled, searchQuery])
 
   const handleSubmit = (event: FormEvent) => {
     event.preventDefault()
     void onSave()
   }
 
-  const showNameSearch = !editing && debouncedName.trim().length > 0
+  const showNameSearch = searchEnabled && searchQuery.length > 0
+  const nameSearchLoading = showNameSearch && matchesForQuery !== searchQuery
+  const visibleNameMatches =
+    matchesForQuery === searchQuery ? nameMatches : []
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -164,13 +157,13 @@ export function PortEditorDialog({
                       <Loader2 className='h-3.5 w-3.5 animate-spin' />
                       Searching…
                     </div>
-                  ) : nameMatches.length === 0 ? (
+                  ) : visibleNameMatches.length === 0 ? (
                     <p className='px-3 py-2.5 text-sm text-muted-foreground'>
                       No matches. Continue to create a new one.
                     </p>
                   ) : (
                     <ul className='max-h-40 divide-y divide-border/70 overflow-y-auto'>
-                      {nameMatches.map((port) => (
+                      {visibleNameMatches.map((port) => (
                         <li
                           key={port.id}
                           className='flex items-center gap-2 px-3 py-2'
