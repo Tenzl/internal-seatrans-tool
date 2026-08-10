@@ -164,7 +164,9 @@ export function PortOverridesCard({
       return epdaParametersService.deletePort(id, Number(existing.version))
     },
     onSuccess: () => {
-      toast.success('Removed port-specific dues (port now inherits area)')
+      toast.success(
+        'Removed port-specific dues (port now inherits area/group parameters)'
+      )
       qc.invalidateQueries({ queryKey: ['epda-parameters'] })
       qc.invalidateQueries({ queryKey: ['epda-param-logs'] })
       setEditingPortId(null)

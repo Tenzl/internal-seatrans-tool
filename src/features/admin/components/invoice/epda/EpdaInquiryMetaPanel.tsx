@@ -26,6 +26,12 @@ function MetaField({ label, value }: { label: string; value: string }) {
   )
 }
 
+function partyLabel(
+  party: ShippingAgencyAdminInquiry['employeeInCharge']
+): string {
+  return party?.fullName?.trim() || party?.email?.trim() || '—'
+}
+
 export function EpdaInquiryMetaPanel({
   inquiry,
   showCustomerAccount = true,
@@ -62,6 +68,22 @@ export function EpdaInquiryMetaPanel({
         >
           {statusConfig.label}
         </Badge>
+      </div>
+
+      <div>
+        <p className='mb-2 text-xs font-semibold tracking-wide text-muted-foreground uppercase'>
+          Ownership
+        </p>
+        <div className='grid gap-2 sm:grid-cols-2'>
+          <MetaField
+            label='Employee in charge'
+            value={partyLabel(inquiry.employeeInCharge)}
+          />
+          <MetaField
+            label='Client submitted by'
+            value={partyLabel(inquiry.clientSubmittedBy)}
+          />
+        </div>
       </div>
 
       {showCustomerAccount ? (

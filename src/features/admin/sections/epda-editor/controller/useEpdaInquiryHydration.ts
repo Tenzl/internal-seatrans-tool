@@ -35,7 +35,6 @@ export type EpdaInquiryHydrationBindings = {
   clearTallyFee: () => void
   setPendingCargo: (cargo: InquiryCargoFields | null) => void
   applyPortSelection: (selection: ShippingAgencyPortSelection) => void
-  setCustomer: (userId: number, label: string | null) => void
   formSetters: InquiryFormSetters
 }
 
@@ -116,9 +115,6 @@ export function useEpdaInquiryHydration({
         }
 
         applyAdminInquiryToForm(inquiry, current.formSetters)
-        if (inquiry.userId) {
-          current.setCustomer(inquiry.userId, buildCustomerLabel(inquiry))
-        }
       } catch {
         bindingsRef.current.setWorkingParams(null)
         toast.error('Could not load inquiry EPDA data')
@@ -170,14 +166,4 @@ function hydrateCargo(
 
   pendingCargoRef.current = inquiryCargo
   bindings.setPendingCargo(inquiryCargo)
-}
-
-function buildCustomerLabel(inquiry: ShippingAgencyAdminInquiry) {
-  return (
-    inquiry.fullName?.trim() ||
-    inquiry.toName?.trim() ||
-    (inquiry.company
-      ? `${inquiry.toName ?? inquiry.fullName ?? 'Customer'} — ${inquiry.company}`
-      : null)
-  )
 }

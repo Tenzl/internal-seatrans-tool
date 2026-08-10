@@ -21,13 +21,7 @@ export const shippingAgencyEpdaService = {
 
   async updateEpda(
     inquiryId: number,
-    body: EpdaApiPayload & {
-      confirmedCustomerFieldChanges?: Array<{
-        field: string
-        previousValue?: string
-        newValue?: string
-      }>
-    }
+    body: EpdaApiPayload
   ): Promise<ShippingAgencyAdminInquiry> {
     const response = await apiClient.patch(
       API_CONFIG.INQUIRIES.ADMIN_SHIPPING_AGENCY_EPDA(inquiryId),

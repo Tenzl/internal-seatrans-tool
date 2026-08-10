@@ -1,4 +1,5 @@
 import type { InquiryRecord } from './useInquiryData'
+import type { InquiryParty } from '@/modules/inquiries/types/shippingAgencyEpda'
 
 export interface BaseInquiryHistoryLayoutProps {
   serviceType?: string
@@ -23,6 +24,8 @@ export type InquiryHistoryRecord = InquiryRecord & {
   dischargingPort?: string
   portOfCall?: string
   epdaLockedAt?: string | null
+  employeeInCharge?: InquiryParty | null
+  clientSubmittedBy?: InquiryParty | null
 }
 
 export type InquiryActionPermissions = {

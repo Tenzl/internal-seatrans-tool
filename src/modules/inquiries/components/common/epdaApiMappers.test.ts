@@ -8,7 +8,7 @@ import {
 
 describe('EPDA quantity API contract', () => {
   it('sends quantityTons when creating a new internal EPDA', () => {
-    const payload = buildInternalCreatePayload(7, {
+    const payload = buildInternalCreatePayload({
       quoteForm: 'HCM',
       cargoQty: '12,500',
       boatHireQuarantineAmount: '',
@@ -16,7 +16,8 @@ describe('EPDA quantity API contract', () => {
       boatHireQuarantineAmount: string
     })
 
-    expect(payload).toMatchObject({ customerUserId: 7, quantityTons: 12500 })
+    expect(payload).toMatchObject({ quantityTons: 12500 })
+    expect(payload).not.toHaveProperty('customerUserId')
   })
 
   it('sends quantityTons when editing an existing EPDA', () => {

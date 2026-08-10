@@ -65,7 +65,6 @@ exports[`EPDA quote variant golden output > QN preserves formula totals and row 
     "Tug assistance charge",
     "Moor / Unmooring",
     "Berth due",
-    "Anchorage fees if any",
     "Quarantine fee",
     "Ocean Frt Tax",
     "Clearance fees",
@@ -75,11 +74,11 @@ exports[`EPDA quote variant golden output > QN preserves formula totals and row 
     "Taxi/Courrier/Communication for agency service",
     "Boat-hire for agency service",
   ],
-  "sha256": "bc390edc4ed12466eaddc4d3da059e1387a0f57d90eb06384e22a2048a2908ed",
+  "sha256": "f9a4ff3215a7fbfe17aa0ef78e2354355d9c664cb6e6313a357c82cb17ff25ce",
   "totals": {
-    "A": "14,714.80",
+    "A": "14,618.80",
     "B": "980.00",
-    "G": "15,694.80",
+    "G": "15,598.80",
   },
 }
 `;

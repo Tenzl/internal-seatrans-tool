@@ -68,6 +68,7 @@ export function BaseInquiryHistoryLayout({
 
   const columns = buildInquiryHistoryColumns({
     isShippingAgencyHistory,
+    showShippingParties: isAdmin && isShippingAgencyHistory,
     renderActions: (inquiry) => (
       <InquiryHistoryRowActions
         inquiry={inquiry}
@@ -129,7 +130,14 @@ export function BaseInquiryHistoryLayout({
         totalElements={totalElements}
         onPageChange={setPage}
         initialColumnVisibility={
-          isMobile ? { portOfCall: false, submittedAt: false } : undefined
+          isMobile
+            ? {
+                portOfCall: false,
+                submittedAt: false,
+                employeeInCharge: false,
+                clientSubmittedBy: false,
+              }
+            : undefined
         }
         onArchivedFilterChange={setArchivedFilter}
         onReload={() => void fetchInquiries()}

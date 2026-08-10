@@ -55,6 +55,7 @@ export function canLockInquiryEpda(
     isAdmin &&
     resolveInquiryServiceSlug(inquiry, fallbackServiceType) ===
       'shipping-agency' &&
+    inquiry.status === STATUS_COMPLETED &&
     !inquiry.isArchived &&
     !inquiry.epdaLockedAt
   )

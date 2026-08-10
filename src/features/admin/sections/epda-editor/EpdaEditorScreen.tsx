@@ -98,8 +98,10 @@ export function EpdaEditorScreen({
   const autoPreviewTriggeredRef = useRef(false)
   const [createdInquiryId, setCreatedInquiryId] = useState<number | null>(null)
   const linkedInquiryId = resolvedInquiryId ?? createdInquiryId
-  const [customerUserId, setCustomerUserId] = useState<number | null>(null)
-  const [customerLabel, setCustomerLabel] = useState<string | null>(null)
+  const creatorLabel =
+    currentUser?.fullName ||
+    currentUser?.email ||
+    (currentUser?.id ? `User #${currentUser.id}` : null)
   /** When set, EPDA is frozen — quote uses snapshot params and Edit is hidden. */
   const [epdaLockedAt, setEpdaLockedAt] = useState<string | null>(null)
   const [workingParams, setWorkingParams] = useState<EpdaParameterValues | null>(
@@ -201,26 +203,6 @@ export function EpdaEditorScreen({
     cargoNameOptions: filteredCargoNames,
   } = referenceData
 
-  // A brand-new EPDA (not opened from a customer inquiry) belongs to the signed-in
-  // creator. There is no separate customer picker; the owner is the person creating it.
-  const isNewEpdaFlow = !readOnly && !isInquiryDetailFlow && !linkedInquiryId
-
-  useEffect(() => {
-    if (!isNewEpdaFlow || customerUserId != null) return
-    let cancelled = false
-    const apply = (
-      user: { id?: number; fullName?: string | null; email?: string } | null
-    ) => {
-      if (cancelled || !user?.id) return
-      setCustomerUserId(user.id)
-      setCustomerLabel(user.fullName || user.email || `User #${user.id}`)
-    }
-    apply(currentUser)
-    return () => {
-      cancelled = true
-    }
-  }, [isNewEpdaFlow, customerUserId, currentUser])
-
   const {
     buildQuoteInput: buildQuoteParamsInput,
     missingRequiredFields,
@@ -283,10 +265,6 @@ export function EpdaEditorScreen({
           pendingPortOfCallRef.current = null
         }
       },
-      setCustomer: (userId, label) => {
-        setCustomerUserId(userId)
-        setCustomerLabel(label)
-      },
       formSetters,
     },
   })
@@ -328,7 +306,6 @@ export function EpdaEditorScreen({
 
   const persistence = useEpdaPersistence({
     linkedInquiryId,
-    customerUserId,
     onCreated: setCreatedInquiryId,
     onHistoryChanged: () => setFieldChangeHistoryKey((key) => key + 1),
   })
@@ -490,8 +467,6 @@ export function EpdaEditorScreen({
     formState.reset(quoteForm)
     preview.reset()
     setCreatedInquiryId(null)
-    setCustomerUserId(null)
-    setCustomerLabel(null)
     setEpdaLockedAt(null)
     setFrozenParams(null)
     setWorkingParams(null)
@@ -585,7 +560,7 @@ export function EpdaEditorScreen({
         isInquiryDetailFlow={isInquiryDetailFlow}
         isLoadingInquiry={isLoadingInquiry}
         linkedInquiryId={linkedInquiryId}
-        creatorLabel={customerLabel}
+        creatorLabel={creatorLabel}
         actions={editorActions}
         backNavigation={backToInquiries}
         area={selectedArea}

@@ -12,11 +12,13 @@ import { getInquiryDisplayName, getInquiryPort } from './inquiryHistoryRules'
 
 type BuildInquiryHistoryColumnsOptions = {
   isShippingAgencyHistory: boolean
+  showShippingParties: boolean
   renderActions: (inquiry: InquiryHistoryRecord) => ReactNode
 }
 
 export function buildInquiryHistoryColumns({
   isShippingAgencyHistory,
+  showShippingParties,
   renderActions,
 }: BuildInquiryHistoryColumnsOptions): ColumnDef<InquiryHistoryRecord>[] {
   const columns: ColumnDef<InquiryHistoryRecord>[] = [
@@ -54,6 +56,33 @@ export function buildInquiryHistoryColumns({
     },
   ]
 
+  if (showShippingParties) {
+    columns.splice(
+      2,
+      0,
+      {
+        id: 'employeeInCharge',
+        header: 'Employee in charge',
+        cell: ({ row }) => (
+          <span className='text-sm'>
+            {partyLabel(row.original.employeeInCharge)}
+          </span>
+        ),
+        enableSorting: false,
+      },
+      {
+        id: 'clientSubmittedBy',
+        header: 'Client submitted by',
+        cell: ({ row }) => (
+          <span className='text-sm'>
+            {partyLabel(row.original.clientSubmittedBy)}
+          </span>
+        ),
+        enableSorting: false,
+      }
+    )
+  }
+
   if (isShippingAgencyHistory) {
     columns.push({
       accessorKey: 'portOfCall',
@@ -88,6 +117,12 @@ export function buildInquiryHistoryColumns({
   )
 
   return columns
+}
+
+function partyLabel(
+  party: InquiryHistoryRecord['employeeInCharge']
+): string {
+  return party?.fullName?.trim() || party?.email?.trim() || '—'
 }
 
 function renderSortableHeader(label: string, onSort: () => void) {

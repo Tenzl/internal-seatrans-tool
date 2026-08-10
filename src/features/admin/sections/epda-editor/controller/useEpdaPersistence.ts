@@ -10,14 +10,12 @@ export type EpdaPersistenceInput = Parameters<typeof buildEpdaPatchPayload>[0]
 
 type UseEpdaPersistenceOptions = {
   linkedInquiryId: number | null | undefined
-  customerUserId: number | null
   onCreated: (inquiryId: number) => void
   onHistoryChanged: () => void
 }
 
 export function useEpdaPersistence({
   linkedInquiryId,
-  customerUserId,
   onCreated,
   onHistoryChanged,
 }: UseEpdaPersistenceOptions) {
@@ -33,7 +31,6 @@ export function useEpdaPersistence({
       const patchBody = buildEpdaPatchPayload(input)
       // Soft-snapshot the params currently pinned on the form (Apply or Skip).
       patchBody.epdaWorkingParams = input.params
-      patchBody.isComplete = isComplete
 
       if (linkedInquiryId) {
         await shippingAgencyEpdaService.updateEpda(linkedInquiryId, patchBody)
@@ -47,17 +44,8 @@ export function useEpdaPersistence({
         return
       }
 
-      if (!customerUserId || customerUserId < 1) {
-        toast.error(
-          'Could not determine the EPDA creator. Please sign in again.'
-        )
-        return
-      }
-
       const created = await shippingAgencyEpdaService.createInternalInquiry({
-        ...buildInternalCreatePayload(customerUserId, input),
-        epdaWorkingParams: input.params,
-        isComplete,
+        ...buildInternalCreatePayload(input),
       })
       onCreated(created.id)
       toast.success(

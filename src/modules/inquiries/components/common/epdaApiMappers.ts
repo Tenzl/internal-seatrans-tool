@@ -146,14 +146,12 @@ export function buildEpdaPatchPayload(
 }
 
 export function buildInternalCreatePayload(
-  customerUserId: number,
   params: BuildInvoiceQuoteDataParams & {
     boatHireQuarantineAmount: string
   },
   notes?: string
 ): EpdaApiPayload {
   return {
-    customerUserId,
     notes,
     shipownerTo: params.toShipowner,
     vesselName: params.mv,

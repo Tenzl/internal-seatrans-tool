@@ -44,13 +44,23 @@ describe('inquiryHistoryRules', () => {
   })
 
   it('only allows locking an active, unlocked shipping-agency EPDA for admins', () => {
-    expect(canLockInquiryEpda(inquiry(), true, 'shipping-agency')).toBe(true)
+    expect(canLockInquiryEpda(inquiry(), true, 'shipping-agency')).toBe(false)
+    expect(
+      canLockInquiryEpda(
+        inquiry({ status: 'COMPLETED' }),
+        true,
+        'shipping-agency'
+      )
+    ).toBe(true)
     expect(
       canLockInquiryEpda(inquiry({ isArchived: true }), true, 'shipping-agency')
     ).toBe(false)
     expect(
       canLockInquiryEpda(
-        inquiry({ epdaLockedAt: '2026-07-30T00:00:00Z' }),
+        inquiry({
+          status: 'COMPLETED',
+          epdaLockedAt: '2026-07-30T00:00:00Z',
+        }),
         true,
         'shipping-agency'
       )

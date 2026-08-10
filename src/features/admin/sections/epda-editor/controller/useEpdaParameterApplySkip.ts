@@ -3,10 +3,10 @@ import {
   epdaParametersService,
   type EpdaParameterValues,
 } from '@/modules/inquiries/services/epdaParametersService'
-import type { EpdaArea } from '@/features/admin/components/invoice/epda/EpdaPortSelector'
-import { createEpdaParameterLabelFns } from '@/features/admin/epda-parameters/epdaParameterLabels'
 import { useI18n } from '@/shared/i18n/I18nProvider'
 import { toast } from '@/shared/utils/toast'
+import type { EpdaArea } from '@/features/admin/components/invoice/epda/EpdaPortSelector'
+import { createEpdaParameterLabelFns } from '@/features/admin/epda-parameters/epdaParameterLabels'
 import {
   diffEpdaParameterValues,
   epdaParameterValuesEqual,
@@ -81,6 +81,7 @@ export function useEpdaParameterApplySkip({
   const decisionRef = useRef<'pending' | 'applied' | 'skipped' | null>(null)
   const baselineRef = useRef<EpdaParameterValues | null>(null)
   const latestRef = useRef<EpdaParameterValues | null>(null)
+  const forceLatestRef = useRef(false)
   const hourFieldsRef = useRef(hourFields)
   const hourSettersRef = useRef(hourSetters)
   const effectiveParamsRef = useRef(effectiveParams)
@@ -108,6 +109,7 @@ export function useEpdaParameterApplySkip({
     decisionRef.current = null
     baselineRef.current = null
     latestRef.current = null
+    forceLatestRef.current = false
     let cancelled = false
     queueMicrotask(() => {
       if (cancelled) return
@@ -133,13 +135,16 @@ export function useEpdaParameterApplySkip({
     }
     if (prevPortAreaKeyRef.current === portAreaKey) return
     prevPortAreaKeyRef.current = portAreaKey
-    // Current form params become the "Current" column for the new port's latest.
+    // A different port/area cannot inherit or lock the previous port's tariffs.
     baselineRef.current = effectiveParamsRef.current
+    latestRef.current = null
+    forceLatestRef.current = true
     decisionRef.current = 'pending'
     let cancelled = false
     queueMicrotask(() => {
       if (cancelled) return
       setParamDecision('pending')
+      setWorkingParams(null)
       setFrozenParams(null)
       setDialogOpen(false)
       setCompareToken((token) => token + 1)
@@ -147,7 +152,13 @@ export function useEpdaParameterApplySkip({
     return () => {
       cancelled = true
     }
-  }, [portAreaKey, linkedInquiryId, isLocked, setFrozenParams])
+  }, [
+    portAreaKey,
+    linkedInquiryId,
+    isLocked,
+    setFrozenParams,
+    setWorkingParams,
+  ])
 
   useEffect(() => {
     if (!linkedInquiryId || isLocked || isHydrating) return
@@ -164,6 +175,27 @@ export function useEpdaParameterApplySkip({
         )
         if (cancelled) return
         latestRef.current = latest
+
+        if (forceLatestRef.current) {
+          const previous = baselineRef.current
+          forceLatestRef.current = false
+          setDecision('applied')
+          baselineRef.current = latest
+          setEffectiveParams(latest)
+          setWorkingParams(latest)
+          setFrozenParams(null)
+          setDialogOpen(false)
+          setDiffRows([])
+          if (previous) {
+            selectivelyApplyHourDefaults(
+              hourFieldsRef.current,
+              previous,
+              latest,
+              hourSettersRef.current
+            )
+          }
+          return
+        }
 
         const baseline =
           baselineRef.current ??
@@ -206,6 +238,14 @@ export function useEpdaParameterApplySkip({
         setDialogOpen(true)
       } catch {
         if (cancelled) return
+        if (forceLatestRef.current) {
+          setDecision('pending')
+          setDialogOpen(false)
+          toast.error(
+            'Could not load tariffs for the selected port. Reload before saving.'
+          )
+          return
+        }
         // On fetch failure keep whatever is on the form; no blocking dialog.
         setDecision('applied')
         setDialogOpen(false)
@@ -229,6 +269,7 @@ export function useEpdaParameterApplySkip({
     compareToken,
     setEffectiveParams,
     setFrozenParams,
+    setWorkingParams,
     t,
   ])
 
@@ -260,6 +301,10 @@ export function useEpdaParameterApplySkip({
   }
 
   const skipLatest = () => {
+    if (forceLatestRef.current) {
+      toast.error('The selected port must use its latest tariffs.')
+      return
+    }
     const baseline = baselineRef.current
     if (!baseline) {
       toast.error('Current tariffs are not ready. Try again.')

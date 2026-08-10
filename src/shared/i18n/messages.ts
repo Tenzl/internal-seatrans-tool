@@ -429,6 +429,7 @@ const enMessages: Record<string, string> = {
   'epda.historyBtn': 'View edit history',
   'epda.historyTitle': 'EPDA edit history',
   'epda.historyLoading': 'Loading history…',
+  'epda.loadMore': 'Load more',
   'epda.before': 'Before',
   'epda.descInquiryShort':
     'Inquiry #{id} — review customer details and complete EPDA.',

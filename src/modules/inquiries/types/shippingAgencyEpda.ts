@@ -1,4 +1,10 @@
 /** Admin inquiry row returned by the shipping-agency EPDA endpoints. */
+export type InquiryParty = {
+  id: number
+  fullName: string | null
+  email: string | null
+}
+
 export type ShippingAgencyAdminInquiry = {
   id: number
   userId?: number
@@ -10,6 +16,8 @@ export type ShippingAgencyAdminInquiry = {
   status?: string
   submittedAt?: string
   createdSource?: string | null
+  employeeInCharge?: InquiryParty | null
+  clientSubmittedBy?: InquiryParty | null
   toName?: string | null
   mv?: string | null
   eta?: string | null
