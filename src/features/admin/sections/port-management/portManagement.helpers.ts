@@ -57,6 +57,8 @@ export function editPortForm(port: Port, provinces: Province[]): PortFormState {
           ? String(province.area)
           : NO_SELECTION,
     provinceId: port.provinceId ?? null,
+    type: port.type ?? 'PORT',
+    inCharge: port.inCharge ?? false,
   }
 }
 
@@ -83,9 +85,20 @@ export function buildSavePortPayload(
     throw new Error('Port name cannot be empty')
   }
 
+  if (form.inCharge) {
+    if (!isPortAreaCode(form.area)) {
+      throw new Error('Area is required when In charge is checked')
+    }
+    if (form.provinceId == null) {
+      throw new Error('Province is required when In charge is checked')
+    }
+  }
+
   const payload: SavePortPayload = {
     name,
     provinceId: form.provinceId ?? null,
+    type: form.type,
+    inCharge: form.inCharge,
   }
 
   const portOfCall = form.portOfCall.trim()
@@ -159,7 +172,7 @@ export function buildPortTableTitle({
   shownCount: number
   totalCount: number
 }): string {
-  const totalLabel = `${totalCount} port${totalCount === 1 ? '' : 's'}`
+  const totalLabel = `${totalCount} entr${totalCount === 1 ? 'y' : 'ies'}`
   const hasHiddenResults = totalCount > shownCount
 
   if (search.trim()) {
@@ -170,6 +183,6 @@ export function buildPortTableTitle({
   }
 
   return hasHiddenResults
-    ? `${totalLabel} — search to find a port (showing ${shownCount})`
+    ? `${totalLabel} — search to find one (showing ${shownCount})`
     : totalLabel
 }

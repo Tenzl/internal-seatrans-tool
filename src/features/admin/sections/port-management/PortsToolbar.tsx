@@ -29,7 +29,6 @@ interface PortsToolbarProps {
   search: string
   searchField: PortSearchFieldId
   searchFieldLabel: string
-  canAddPort: boolean
   onSearchChange: (search: string) => void
   onSearchFieldChange: (field: PortSearchFieldId) => void
   onClear: () => void
@@ -41,7 +40,6 @@ export function PortsToolbar({
   search,
   searchField,
   searchFieldLabel,
-  canAddPort,
   onSearchChange,
   onSearchFieldChange,
   onClear,
@@ -110,15 +108,9 @@ export function PortsToolbar({
           size='sm'
           onClick={onAdd}
           className='gap-2 transition-transform active:scale-[0.98]'
-          disabled={!canAddPort}
-          title={
-            canAddPort
-              ? undefined
-              : 'Search for a port first — Add port is available when no matches are found'
-          }
         >
           <Plus className='h-4 w-4' />
-          Add port
+          Add new
         </Button>
       </AdminToolbarGroup>
     </AdminToolbar>

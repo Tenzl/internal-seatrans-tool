@@ -32,22 +32,6 @@ export function getPrefillSourceType(
   return PREFILL_SOURCE_TYPE[target] ?? null
 }
 
-function splitVesselVoyage(vesselVoyage: string): {
-  oceanVessel: string
-  voyageNumber: string
-} {
-  const trimmed = vesselVoyage.trim()
-  if (!trimmed) return { oceanVessel: '', voyageNumber: '' }
-  const parts = trimmed.split(/[\\/]/).map((part) => part.trim())
-  if (parts.length >= 2) {
-    return {
-      oceanVessel: parts[0] ?? '',
-      voyageNumber: parts.slice(1).join('/'),
-    }
-  }
-  return { oceanVessel: trimmed, voyageNumber: '' }
-}
-
 /**
  * Booking cargo totals are shipment-level (one GW KGS + one CBM), not per
  * container. Put them on the first AN row only — do not invent equal splits.
@@ -157,7 +141,6 @@ export function prefillBillOfLadingFromBooking(
   source: BookingConfirmationPayload,
   current: BillOfLadingPayload
 ): BillOfLadingPayload {
-  const { oceanVessel, voyageNumber } = splitVesselVoyage(source.vesselVoyage)
   const { cargoVolumes } = normalizeBookingCargoVolumes(source)
   const seeded = seedAnContainersFromVolumes(cargoVolumes)
   const containers = applyBookingCargoTotalsToFirstRow(seeded, source)
@@ -172,9 +155,10 @@ export function prefillBillOfLadingFromBooking(
 
   return {
     ...current,
-    dateOfIssue: source.date,
-    oceanVessel,
-    voyageNumber,
+    dateOfIssue: source.etd,
+    cleanOnBoardDate: source.etd,
+    // Full vessel/voyage string — BL PDF uses one combined oceanVessel cell.
+    oceanVessel: source.vesselVoyage.trim(),
     placeOfReceipt: source.placeOfReceipt,
     portOfLoading: source.portOfLoading,
     portOfDischarge: source.portOfDischarge,

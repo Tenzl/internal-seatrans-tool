@@ -84,7 +84,6 @@ describe('transport document form config', () => {
       'portOfDischarge',
       'placeOfDelivery',
       'oceanVessel',
-      'voyageNumber',
       'serviceMode',
       'shippingMark',
       'descriptionOfGoods',

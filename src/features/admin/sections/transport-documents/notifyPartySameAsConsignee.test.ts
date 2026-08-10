@@ -1,10 +1,13 @@
 import { describe, expect, it } from 'vitest'
 import {
   applyNotifySameAsConsignee,
+  applyNotifySameAsConsigned,
   asPartyId,
   canEnableNotifySameAsConsignee,
+  canEnableNotifySameAsConsigned,
   deriveNotifySameAsConsignee,
   syncNotifyFromConsigneeEdit,
+  syncNotifyFromConsignedEdit,
 } from './notifyPartySameAsConsignee'
 
 describe('notifyPartySameAsConsignee', () => {
@@ -109,5 +112,44 @@ describe('notifyPartySameAsConsignee', () => {
     expect(asPartyId(-1)).toBeNull()
     expect(asPartyId(3.5)).toBeNull()
     expect(asPartyId(3)).toBe(3)
+  })
+})
+
+describe('notify same as consigned (BL)', () => {
+  it('enables when Consigned to order of has text or partner id', () => {
+    expect(canEnableNotifySameAsConsigned({})).toBe(false)
+    expect(
+      canEnableNotifySameAsConsigned({ consignedToOrderOf: 'ORDER OF ACME' })
+    ).toBe(true)
+    expect(canEnableNotifySameAsConsigned({ consigneePartyId: 7 })).toBe(true)
+  })
+
+  it('copies consigned address into notify address when checked', () => {
+    expect(
+      applyNotifySameAsConsigned(
+        {
+          consignedToOrderOf: 'ORDER OF ACME\n1 Road',
+          consigneePartyId: 7,
+        },
+        true
+      )
+    ).toEqual({
+      notifyPartySameAsConsignee: true,
+      notifyAddress: 'ORDER OF ACME\n1 Road',
+      notifyPartyId: 7,
+    })
+  })
+
+  it('mirrors consigned edits onto notify while flagged', () => {
+    expect(syncNotifyFromConsignedEdit('consignedToOrderOf', 'NEW')).toEqual({
+      notifyAddress: 'NEW',
+    })
+    expect(syncNotifyFromConsignedEdit('consigneePartyId', 9)).toEqual({
+      notifyPartyId: 9,
+    })
+    expect(syncNotifyFromConsignedEdit('consigneePartyId', null)).toEqual({
+      notifyPartyId: null,
+      notifyPartySameAsConsignee: false,
+    })
   })
 })

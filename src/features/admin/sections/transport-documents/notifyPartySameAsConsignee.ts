@@ -100,3 +100,84 @@ export function deriveNotifySameAsConsignee(values: {
     consigneeText === notifyText
   )
 }
+
+/**
+ * BL: "Same as Consignee" copies Consigned to order of → Notify address
+ * (label stays "Same as Consignee"; source field is consignedToOrderOf).
+ */
+export function canEnableNotifySameAsConsigned(values: {
+  consignedToOrderOf?: unknown
+  consigneePartyId?: unknown
+}): boolean {
+  return (
+    asPartyId(values.consigneePartyId) != null ||
+    asPartyText(values.consignedToOrderOf).trim().length > 0
+  )
+}
+
+export function applyNotifySameAsConsigned(
+  values: {
+    consignedToOrderOf?: unknown
+    consigneePartyId?: unknown
+  },
+  checked: boolean
+): {
+  notifyPartySameAsConsignee: boolean
+  notifyAddress?: string
+  notifyPartyId?: number | null
+} {
+  if (!checked) {
+    return { notifyPartySameAsConsignee: false }
+  }
+
+  return {
+    notifyPartySameAsConsignee: true,
+    notifyAddress: asPartyText(values.consignedToOrderOf),
+    notifyPartyId: asPartyId(values.consigneePartyId),
+  }
+}
+
+export function syncNotifyFromConsignedEdit(
+  key: string,
+  value: unknown
+): Record<string, unknown> | null {
+  if (key === 'consignedToOrderOf') {
+    return { notifyAddress: asPartyText(value) }
+  }
+  if (key === 'consigneePartyId') {
+    const nextId = asPartyId(value)
+    if (nextId == null) {
+      return {
+        notifyPartyId: null,
+        notifyPartySameAsConsignee: false,
+      }
+    }
+    return { notifyPartyId: nextId }
+  }
+  return null
+}
+
+export function deriveNotifySameAsConsigned(values: {
+  notifyPartySameAsConsignee?: unknown
+  consignedToOrderOf?: unknown
+  consigneePartyId?: unknown
+  notifyAddress?: unknown
+  notifyPartyId?: unknown
+}): boolean {
+  if (values.notifyPartySameAsConsignee === true) return true
+  if (values.notifyPartySameAsConsignee === false) return false
+
+  const consignedId = asPartyId(values.consigneePartyId)
+  const notifyId = asPartyId(values.notifyPartyId)
+  if (consignedId != null && notifyId != null && consignedId === notifyId) {
+    return true
+  }
+
+  const consignedText = asPartyText(values.consignedToOrderOf).trim()
+  const notifyText = asPartyText(values.notifyAddress).trim()
+  return (
+    consignedText.length > 0 &&
+    notifyText.length > 0 &&
+    consignedText === notifyText
+  )
+}

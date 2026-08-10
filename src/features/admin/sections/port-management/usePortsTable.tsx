@@ -19,6 +19,12 @@ import { Pencil, Trash2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import type { PortTableRow } from './portManagement.types'
 
+/** Fields another agent lands on Port; optional until types catch up. */
+type PortRowDisplay = PortTableRow & {
+  type?: string | null
+  inCharge?: boolean | null
+}
+
 const INITIAL_COLUMN_VISIBILITY: VisibilityState = {
   portOfCall: false,
   zoneCode: false,
@@ -85,10 +91,26 @@ export function usePortsTable({
       },
       {
         accessorKey: 'name',
-        header: renderSortableHeader('Port Name'),
+        header: renderSortableHeader('Name'),
         cell: ({ row }) => (
           <span className='font-medium'>{row.original.name}</span>
         ),
+      },
+      {
+        id: 'type',
+        accessorFn: (row) => (row as PortRowDisplay).type ?? '',
+        header: renderSortableHeader('Type'),
+        cell: ({ row }) => {
+          const type = (row.original as PortRowDisplay).type?.trim()
+          return type || '-'
+        },
+      },
+      {
+        id: 'inCharge',
+        accessorFn: (row) => Boolean((row as PortRowDisplay).inCharge),
+        header: renderSortableHeader('In charge'),
+        cell: ({ row }) =>
+          (row.original as PortRowDisplay).inCharge ? 'Yes' : 'No',
       },
       {
         accessorKey: 'portOfCall',

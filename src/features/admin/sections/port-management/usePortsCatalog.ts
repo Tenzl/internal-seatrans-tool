@@ -67,7 +67,7 @@ export function usePortsCatalog() {
   )
   const searchFieldLabel =
     PORT_SEARCH_FIELDS.find((field) => field.id === searchField)?.label ??
-    'Port Name'
+    'Name'
   const hasActiveSearch = debouncedSearch.trim().length > 0
 
   const setSearch = useCallback((nextSearch: string) => {
@@ -93,8 +93,6 @@ export function usePortsCatalog() {
   }, [queryClient])
 
   return {
-    canAddPort:
-      hasActiveSearch && !isLoading && !isFetching && totalElements === 0,
     clearFilters,
     createName: searchField === 'name' ? debouncedSearch : '',
     hasActiveSearch,

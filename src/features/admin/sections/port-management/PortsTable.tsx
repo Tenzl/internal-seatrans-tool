@@ -16,6 +16,8 @@ const COLUMN_CLASS_NAMES: Record<string, string> = {
   area: 'w-[14%]',
   provinceName: 'w-[22%]',
   name: 'w-[28%]',
+  type: 'w-[12%]',
+  inCharge: 'w-[10%]',
   portOfCall: 'w-[18%]',
   code: 'w-[12%]',
   zoneCode: 'w-[12%]',

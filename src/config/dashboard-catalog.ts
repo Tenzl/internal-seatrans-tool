@@ -115,7 +115,7 @@ export const DASHBOARD_CATALOG: readonly NavigationCategory[] = [
       },
       {
         key: 'data-ports',
-        label: 'Ports',
+        label: 'Ports & Deports',
         route: '/data/ports',
         navigationIcon: 'anchor',
       },

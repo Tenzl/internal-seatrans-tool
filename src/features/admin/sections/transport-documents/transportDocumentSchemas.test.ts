@@ -326,6 +326,30 @@ describe('transport document schemas', () => {
     expect(normalized.shippingMark).toBe('')
   })
 
+  it('folds legacy voyageNumber into oceanVessel and removes voyageNumber', () => {
+    const normalized = normalizeBillOfLadingPayload({
+      fblNumber: 'BL-1',
+      oceanVessel: 'YOUCAN',
+      voyageNumber: '001E',
+    })
+    expect(normalized.oceanVessel).toBe('YOUCAN / 001E')
+    expect(
+      Object.prototype.hasOwnProperty.call(normalized, 'voyageNumber')
+    ).toBe(false)
+  })
+
+  it('keeps combined oceanVessel without duplicating voyageNumber', () => {
+    const normalized = normalizeBillOfLadingPayload({
+      fblNumber: 'BL-1',
+      oceanVessel: 'YOUCAN / 001E',
+      voyageNumber: '001E',
+    })
+    expect(normalized.oceanVessel).toBe('YOUCAN / 001E')
+    expect(
+      Object.prototype.hasOwnProperty.call(normalized, 'voyageNumber')
+    ).toBe(false)
+  })
+
   it('rejects more than 20 DO container rows before the preview request', () => {
     const payload = emptyDeliveryOrder()
     payload.containers = Array.from({ length: 21 }, () => ({
@@ -512,6 +536,7 @@ describe('transport document schemas', () => {
         'measurement',
         'notifyAddress',
         'notifyPartyId',
+        'notifyPartySameAsConsignee',
         'numberAndKindOfPackages',
         'numberOfOriginals',
         'oceanVessel',
@@ -522,7 +547,6 @@ describe('transport document schemas', () => {
         'portOfLoading',
         'serviceMode',
         'shipperPartyId',
-        'voyageNumber',
       ].sort()
     )
   })

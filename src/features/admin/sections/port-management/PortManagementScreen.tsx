@@ -47,7 +47,6 @@ export function PortManagementScreen() {
             search={catalog.search}
             searchField={catalog.searchField}
             searchFieldLabel={catalog.searchFieldLabel}
-            canAddPort={catalog.canAddPort}
             onSearchChange={catalog.setSearch}
             onSearchFieldChange={catalog.setSearchField}
             onClear={catalog.clearFilters}
@@ -61,8 +60,8 @@ export function PortManagementScreen() {
           empty={!busy && catalog.rows.length === 0}
           emptyMessage={
             catalog.hasActiveSearch
-              ? 'No ports match your search. You can add a new port using the button above.'
-              : 'Search for a port by name, area, province, or other fields.'
+              ? 'No matches for your search. You can add a new entry using the button above.'
+              : 'Search by name, area, province, or other fields.'
           }
         >
           <PortsTable
@@ -82,6 +81,7 @@ export function PortManagementScreen() {
         onOpenChange={editor.setOpen}
         onChange={editor.updateForm}
         onAreaChange={editor.selectArea}
+        onEditExisting={editor.startEdit}
         onSave={editor.save}
       />
     </>

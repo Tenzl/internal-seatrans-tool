@@ -175,9 +175,11 @@ export interface BillOfLadingPayload {
   consigneePartyId?: number | null
   notifyAddress: string
   notifyPartyId?: number | null
+  /** Same as Consignee — copies Consigned to order of into Notify address. */
+  notifyPartySameAsConsignee?: boolean
   placeOfReceipt: string
+  /** Vessel + voyage in one field (e.g. `SITC MINHE / 2615N`). */
   oceanVessel: string
-  voyageNumber: string
   portOfLoading: string
   portOfDischarge: string
   placeOfDelivery: string

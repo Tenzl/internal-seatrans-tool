@@ -22,9 +22,12 @@ import {
 } from './cargoVolumeModel'
 import {
   applyNotifySameAsConsignee,
+  applyNotifySameAsConsigned,
   asPartyId,
   canEnableNotifySameAsConsignee,
+  canEnableNotifySameAsConsigned,
   syncNotifyFromConsigneeEdit,
+  syncNotifyFromConsignedEdit,
 } from './notifyPartySameAsConsignee'
 import type {
   AnContainer,
@@ -73,7 +76,8 @@ export function TransportDocumentForm({
   submitDisabled = false,
 }: TransportDocumentFormProps) {
   const notifySameAsConsignee =
-    documentType === 'an' && values.notifyPartySameAsConsignee === true
+    (documentType === 'an' || documentType === 'bl') &&
+    values.notifyPartySameAsConsignee === true
   const blFormVariant =
     typeof values.blFormVariant === 'string' && values.blFormVariant
       ? values.blFormVariant
@@ -108,10 +112,21 @@ export function TransportDocumentForm({
         return
       }
     }
+    if (documentType === 'bl' && notifySameAsConsignee) {
+      const mirrored = syncNotifyFromConsignedEdit(key, value)
+      if (mirrored) {
+        patchFields({ [key]: value, ...mirrored })
+        return
+      }
+    }
     onFieldChange(key, value)
   }
 
   const updateNotifySameAsConsignee = (checked: boolean) => {
+    if (documentType === 'bl') {
+      patchFields(applyNotifySameAsConsigned(values, checked))
+      return
+    }
     patchFields(applyNotifySameAsConsignee(values, checked))
   }
 
@@ -134,6 +149,9 @@ export function TransportDocumentForm({
         field.syncedFromAn === true ||
         (documentType === 'an' &&
           field.key === 'notifyParty' &&
+          notifySameAsConsignee) ||
+        (documentType === 'bl' &&
+          field.key === 'notifyAddress' &&
           notifySameAsConsignee)
       }
       onChange={(value) => updateField(field.key, value)}
@@ -151,7 +169,10 @@ export function TransportDocumentForm({
   )
 
   const notifySameDisabled =
-    !notifySameAsConsignee && !canEnableNotifySameAsConsignee(values)
+    !notifySameAsConsignee &&
+    !(documentType === 'bl'
+      ? canEnableNotifySameAsConsigned(values)
+      : canEnableNotifySameAsConsignee(values))
 
   const renderNotifySameAsConsignee = () => (
     <div className='flex items-center justify-end gap-2'>
@@ -214,6 +235,7 @@ export function TransportDocumentForm({
         </div>
         <div className='space-y-6'>
           {notifyAddress ? renderField(notifyAddress) : null}
+          {renderNotifySameAsConsignee()}
         </div>
       </div>
     )
@@ -390,15 +412,18 @@ export function TransportDocumentForm({
         </section>
       ))}
 
-      <div
-        className={
-          documentType === 'bl'
-            ? 'sticky bottom-0 z-20 flex flex-wrap items-center justify-between gap-3 border-t border-border bg-background py-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]'
-            : 'sticky bottom-0 z-20 flex flex-wrap items-center justify-end gap-2 border-t border-border bg-background py-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]'
-        }
-      >
+      <div className='sticky bottom-0 z-20 flex flex-wrap items-center justify-end gap-2 border-t border-border bg-background py-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]'>
+        <Button
+          type='button'
+          variant='outline'
+          disabled={isGenerating}
+          onClick={onReset}
+        >
+          <RotateCcw className='mr-1.5 h-4 w-4' />
+          {resetLabel ?? 'Reset'}
+        </Button>
         {documentType === 'bl' ? (
-          <div className='flex min-w-0 flex-1 flex-wrap items-center gap-2 rounded-md border border-border bg-muted/40 px-3 py-2 sm:max-w-md sm:flex-initial'>
+          <div className='flex min-w-0 items-center gap-2 rounded-md border border-border bg-muted/40 px-3 py-1.5'>
             <Label
               htmlFor='transport-document-bl-form-variant'
               className='shrink-0 text-sm font-medium text-muted-foreground'
@@ -411,7 +436,7 @@ export function TransportDocumentForm({
             >
               <SelectTrigger
                 id='transport-document-bl-form-variant'
-                className='h-9 w-full min-w-[10.5rem] flex-1 bg-background sm:w-[14rem] sm:flex-initial'
+                className='h-9 w-[14rem] min-w-[10.5rem] bg-background'
               >
                 <SelectValue placeholder='Select form' />
               </SelectTrigger>
@@ -425,43 +450,32 @@ export function TransportDocumentForm({
             </Select>
           </div>
         ) : null}
-        <div className='ml-auto flex flex-wrap items-center justify-end gap-2 sm:ml-0'>
-          <Button
-            type='button'
-            variant='outline'
-            disabled={isGenerating}
-            onClick={onReset}
-          >
-            <RotateCcw className='mr-1.5 h-4 w-4' />
-            {resetLabel ?? 'Reset'}
-          </Button>
-          <Button
-            type='button'
-            variant='outline'
-            disabled={isGenerating}
-            onClick={onDownload}
-            className='border-transparent bg-emerald-600 text-white shadow-xs hover:bg-emerald-700 hover:text-white focus-visible:ring-emerald-600/30 dark:bg-emerald-500 dark:hover:bg-emerald-400'
-          >
-            {isDownloading ? (
-              <Loader2 className='mr-1.5 h-4 w-4 animate-spin' />
-            ) : (
-              <Printer className='mr-1.5 h-4 w-4' />
-            )}
-            Print
-          </Button>
-          <Button
-            type='submit'
-            disabled={isGenerating || submitDisabled}
-            className='shrink-0'
-          >
-            {isSaving ? (
-              <Loader2 className='mr-1.5 h-4 w-4 animate-spin' />
-            ) : (
-              <Save className='mr-1.5 h-4 w-4' />
-            )}
-            {submitLabel ?? 'Save'}
-          </Button>
-        </div>
+        <Button
+          type='button'
+          variant='outline'
+          disabled={isGenerating}
+          onClick={onDownload}
+          className='border-transparent bg-emerald-600 text-white shadow-xs hover:bg-emerald-700 hover:text-white focus-visible:ring-emerald-600/30 dark:bg-emerald-500 dark:hover:bg-emerald-400'
+        >
+          {isDownloading ? (
+            <Loader2 className='mr-1.5 h-4 w-4 animate-spin' />
+          ) : (
+            <Printer className='mr-1.5 h-4 w-4' />
+          )}
+          Print
+        </Button>
+        <Button
+          type='submit'
+          disabled={isGenerating || submitDisabled}
+          className='shrink-0'
+        >
+          {isSaving ? (
+            <Loader2 className='mr-1.5 h-4 w-4 animate-spin' />
+          ) : (
+            <Save className='mr-1.5 h-4 w-4' />
+          )}
+          {submitLabel ?? 'Save'}
+        </Button>
       </div>
     </form>
   )

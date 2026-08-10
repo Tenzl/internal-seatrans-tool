@@ -52,6 +52,8 @@ describe('port management helpers', () => {
     ).toEqual({
       name: 'Cai Mep',
       provinceId: null,
+      type: 'PORT',
+      inCharge: false,
       zoneCode: 'AS-SIN',
       countryCode: 'VN',
       latitude: '10.73',
@@ -66,6 +68,28 @@ describe('port management helpers', () => {
         true
       )
     ).toMatchObject({ portOfCall: '' })
+  })
+
+  it('requires area and province when inCharge is true', () => {
+    expect(() =>
+      buildSavePortPayload(
+        { ...EMPTY_PORT_FORM, name: 'Cai Mep', inCharge: true },
+        false
+      )
+    ).toThrow('Area is required when In charge is checked')
+
+    expect(() =>
+      buildSavePortPayload(
+        {
+          ...EMPTY_PORT_FORM,
+          name: 'Cai Mep',
+          inCharge: true,
+          area: '2',
+          provinceId: null,
+        },
+        false
+      )
+    ).toThrow('Province is required when In charge is checked')
   })
 
   it('rejects invalid coordinates before an API request', () => {

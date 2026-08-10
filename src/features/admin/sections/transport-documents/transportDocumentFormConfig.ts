@@ -295,8 +295,11 @@ export const TRANSPORT_DOCUMENT_FORM_SECTIONS: Record<
     {
       title: 'Vessel',
       fields: [
-        { key: 'oceanVessel', label: 'Ocean vessel' },
-        { key: 'voyageNumber', label: 'Voyage no.' },
+        {
+          key: 'oceanVessel',
+          label: 'Ocean vessel / voyage',
+          placeholder: 'e.g. SITC MINHE / 2615N',
+        },
       ],
     },
     {

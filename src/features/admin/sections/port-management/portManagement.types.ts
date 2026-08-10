@@ -1,9 +1,18 @@
 import type {
   Port,
   PortSearchFieldId,
+  PortType,
 } from '@/modules/logistics/services/portService'
 
 export const NO_SELECTION = '__NONE__'
+
+export const PORT_TYPE_OPTIONS: ReadonlyArray<{
+  value: PortType
+  label: string
+}> = [
+  { value: 'PORT', label: 'Port' },
+  { value: 'DEPORT', label: 'Deport' },
+]
 
 export const PORT_SEARCH_FIELDS: ReadonlyArray<{
   id: PortSearchFieldId
@@ -11,7 +20,7 @@ export const PORT_SEARCH_FIELDS: ReadonlyArray<{
 }> = [
   { id: 'area', label: 'Area' },
   { id: 'provinceName', label: 'Province' },
-  { id: 'name', label: 'Port Name' },
+  { id: 'name', label: 'Name' },
   { id: 'portOfCall', label: 'Port of Call' },
   { id: 'code', label: 'Code' },
   { id: 'zoneCode', label: 'Zone' },
@@ -33,6 +42,8 @@ export interface PortFormState {
   longitude: string
   area: string
   provinceId: number | null
+  type: PortType
+  inCharge: boolean
 }
 
 export const EMPTY_PORT_FORM: PortFormState = {
@@ -45,4 +56,6 @@ export const EMPTY_PORT_FORM: PortFormState = {
   longitude: '',
   area: NO_SELECTION,
   provinceId: null,
+  type: 'PORT',
+  inCharge: false,
 }

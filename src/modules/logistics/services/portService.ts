@@ -6,6 +6,9 @@ import { unwrapApiResponse } from '@/shared/utils/apiUnwrap'
 
 export type PortArea = PortAreaCode
 
+export const PORT_TYPES = ['PORT', 'DEPORT'] as const
+export type PortType = (typeof PORT_TYPES)[number]
+
 export type PortSearchFieldId =
   | 'area'
   | 'provinceName'
@@ -34,6 +37,8 @@ export interface Port {
   countryCode?: string
   latitude?: number
   longitude?: number
+  type?: PortType
+  inCharge?: boolean
   hasInfo?: number
   isActive?: boolean
   createdAt?: string
@@ -73,6 +78,8 @@ export interface SavePortPayload {
   countryCode?: string
   latitude?: string
   longitude?: string
+  type?: PortType
+  inCharge?: boolean
 }
 
 function buildPortsListUrl(params: ListPortsParams = {}): string {

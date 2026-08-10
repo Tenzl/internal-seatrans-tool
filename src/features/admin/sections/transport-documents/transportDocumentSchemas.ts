@@ -13,7 +13,7 @@ import {
   compactCargoVolumes,
   normalizeBookingCargoVolumes,
 } from './cargoVolumeModel'
-import { deriveNotifySameAsConsignee } from './notifyPartySameAsConsignee'
+import { deriveNotifySameAsConsignee, deriveNotifySameAsConsigned } from './notifyPartySameAsConsignee'
 import type {
   ArrivalNoticePayload,
   BillOfLadingPayload,
@@ -284,9 +284,9 @@ export const billOfLadingSchema = z.object({
   consigneePartyId: partyId,
   notifyAddress: longText,
   notifyPartyId: partyId,
+  notifyPartySameAsConsignee: z.boolean().default(false),
   placeOfReceipt: shortText,
   oceanVessel: shortText,
-  voyageNumber: shortText,
   portOfLoading: shortText,
   portOfDischarge: shortText,
   placeOfDelivery: shortText,
@@ -324,9 +324,9 @@ export const emptyBillOfLading = (): BillOfLadingPayload => ({
   consigneePartyId: null,
   notifyAddress: '',
   notifyPartyId: null,
+  notifyPartySameAsConsignee: false,
   placeOfReceipt: '',
   oceanVessel: '',
-  voyageNumber: '',
   portOfLoading: '',
   portOfDischarge: '',
   placeOfDelivery: '',
@@ -368,6 +368,7 @@ export function normalizeBillOfLadingPayload(
     includeCompanyStamp: _ignoredStamp,
     cargoRows: legacyCargoRows,
     marksAndNumbers: legacyMarksAndNumbers,
+    voyageNumber: legacyVoyageNumber,
     ...rest
   } = raw
   void _ignoredStamp
@@ -433,7 +434,19 @@ export function normalizeBillOfLadingPayload(
         ? rest.cleanOnBoard.replace(/^CLEAN\s+ON\s+BOARD\s*/i, '').trim()
         : ''
 
-  return billOfLadingSchema.parse({
+  // Fold legacy split voyageNumber into oceanVessel (field removed).
+  const rawVessel =
+    typeof rest.oceanVessel === 'string' ? rest.oceanVessel.trim() : ''
+  const rawVoyage =
+    typeof legacyVoyageNumber === 'string' ? legacyVoyageNumber.trim() : ''
+  const oceanVessel =
+    rawVessel &&
+    rawVoyage &&
+    !rawVessel.toLowerCase().includes(rawVoyage.toLowerCase())
+      ? `${rawVessel} / ${rawVoyage}`
+      : rawVessel || rawVoyage
+
+  const parsed = billOfLadingSchema.parse({
     ...emptyBillOfLading(),
     ...rest,
     blFormVariant,
@@ -441,6 +454,7 @@ export function normalizeBillOfLadingPayload(
     descriptionOfGoods,
     shippingMark,
     cleanOnBoardDate,
+    oceanVessel,
     grossWeight: hasStructuredCargo
       ? derived.grossWeight
       : typeof rest.grossWeight === 'string'
@@ -452,6 +466,26 @@ export function normalizeBillOfLadingPayload(
         ? rest.measurement
         : '',
   })
+  return finalizeBillOfLadingPayload(parsed, rest)
+}
+
+function finalizeBillOfLadingPayload(
+  parsed: BillOfLadingPayload,
+  rest: Record<string, unknown>
+): BillOfLadingPayload {
+  return {
+    ...parsed,
+    notifyPartySameAsConsignee: deriveNotifySameAsConsigned({
+      notifyPartySameAsConsignee:
+        typeof rest.notifyPartySameAsConsignee === 'boolean'
+          ? rest.notifyPartySameAsConsignee
+          : undefined,
+      consignedToOrderOf: parsed.consignedToOrderOf,
+      consigneePartyId: parsed.consigneePartyId,
+      notifyAddress: parsed.notifyAddress,
+      notifyPartyId: parsed.notifyPartyId,
+    }),
+  }
 }
 
 /**
@@ -603,20 +637,23 @@ export function normalizeArrivalNoticePayload(
   }
 }
 
-/** Strip legacy stamp keys before persisting a BL payload. */
+/** Strip legacy stamp / split-voyage keys before persisting a BL payload. */
 export function stripLegacyBillOfLadingKeys<T extends Record<string, unknown>>(
   payload: T
-): Omit<T, 'showSurrendered' | 'includeCompanyStamp'> {
+): Omit<T, 'showSurrendered' | 'includeCompanyStamp' | 'voyageNumber'> {
   const {
     showSurrendered: _a,
     includeCompanyStamp: _b,
+    voyageNumber: _c,
     ...rest
   } = payload as T & {
     showSurrendered?: unknown
     includeCompanyStamp?: unknown
+    voyageNumber?: unknown
   }
   void _a
   void _b
+  void _c
   return rest
 }
 

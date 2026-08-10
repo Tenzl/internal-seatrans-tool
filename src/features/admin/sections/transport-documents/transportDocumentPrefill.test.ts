@@ -194,6 +194,7 @@ describe('transportDocumentPrefill', () => {
   it('seeds BL route, schedule, and cargo from Booking without parties', () => {
     const booking = emptyBookingConfirmation()
     booking.date = '2026-08-05'
+    booking.etd = '2026-08-06'
     booking.placeOfReceipt = 'QUI NHON'
     booking.portOfLoading = 'DA NANG'
     booking.portOfDischarge = 'KOBE'
@@ -206,15 +207,15 @@ describe('transportDocumentPrefill', () => {
     booking.volume = "2 x 20'DC"
 
     const next = prefillBillOfLadingFromBooking(booking, emptyBillOfLading())
-    expect(next.dateOfIssue).toBe('2026-08-05')
+    expect(next.dateOfIssue).toBe('2026-08-06')
+    expect(next.cleanOnBoardDate).toBe('2026-08-06')
     expect(next.placeOfReceipt).toBe('QUI NHON')
     expect(next.portOfLoading).toBe('DA NANG')
     expect(next.portOfDischarge).toBe('KOBE')
     expect(next.placeOfDelivery).toBe('KOBE')
     expect(next.placeOfIssue).toBe('DA NANG')
     expect(next.freightPayableAt).toBe('KOBE')
-    expect(next.oceanVessel).toBe('YOUCAN')
-    expect(next.voyageNumber).toBe('001E')
+    expect(next.oceanVessel).toBe('YOUCAN / 001E')
     expect(next.fblNumber).toBe('')
     expect(next.consignor).toBe('')
     expect(next.serviceMode).toBe('')
@@ -384,6 +385,7 @@ describe('legacy BL stamp cleanup', () => {
       showSurrendered: 'yes',
       includeCompanyStamp: 'yes',
       blFormVariant: 'original',
+      voyageNumber: '001E',
     })
     expect(stripped).toEqual({
       fblNumber: 'X',
