@@ -12,18 +12,22 @@ import {
 } from '@/components/ui/select'
 import { AnContainersEditor } from './AnContainersEditor'
 import { BookingCommoditySelect } from './BookingCommoditySelect'
-import { CargoRowsEditor } from './CargoRowsEditor'
 import { CargoVolumeEditor } from './CargoVolumeEditor'
+import { TransportDocumentField } from './TransportDocumentField'
 import {
   compactCargoVolumes,
   formatCargoVolumes,
   normalizeBookingCargoVolumes,
   type CargoVolumes,
 } from './cargoVolumeModel'
-import { TransportDocumentField } from './TransportDocumentField'
+import {
+  applyNotifySameAsConsignee,
+  asPartyId,
+  canEnableNotifySameAsConsignee,
+  syncNotifyFromConsigneeEdit,
+} from './notifyPartySameAsConsignee'
 import type {
   AnContainer,
-  CargoRow,
   TransportDocumentType,
 } from './transportDocument.types'
 import {
@@ -31,17 +35,10 @@ import {
   TRANSPORT_DOCUMENT_FORM_SECTIONS,
   type TransportDocumentFieldSpec,
 } from './transportDocumentFormConfig'
-import {
-  applyNotifySameAsConsignee,
-  asPartyId,
-  canEnableNotifySameAsConsignee,
-  syncNotifyFromConsigneeEdit,
-} from './notifyPartySameAsConsignee'
 
 interface TransportDocumentFormProps {
   documentType: TransportDocumentType
   values: Record<string, unknown>
-  cargoRows: CargoRow[] | null
   containers: AnContainer[] | null
   isGenerating: boolean
   isSaving?: boolean
@@ -49,7 +46,6 @@ interface TransportDocumentFormProps {
   onFieldChange: (key: string, value: unknown) => void
   /** Atomic multi-key update (preferred for Same as Consignee). */
   onFieldsChange?: (patch: Record<string, unknown>) => void
-  onCargoRowsChange: (rows: CargoRow[]) => void
   onContainersChange: (rows: AnContainer[]) => void
   onSubmit: () => void
   onDownload: () => void
@@ -62,14 +58,12 @@ interface TransportDocumentFormProps {
 export function TransportDocumentForm({
   documentType,
   values,
-  cargoRows,
   containers,
   isGenerating,
   isSaving = false,
   isDownloading = false,
   onFieldChange,
   onFieldsChange,
-  onCargoRowsChange,
   onContainersChange,
   onSubmit,
   onDownload,
@@ -92,8 +86,7 @@ export function TransportDocumentForm({
             values.cargoVolumes && typeof values.cargoVolumes === 'object'
               ? (values.cargoVolumes as CargoVolumes)
               : {},
-          volume:
-            typeof values.volume === 'string' ? values.volume : undefined,
+          volume: typeof values.volume === 'string' ? values.volume : undefined,
         }).cargoVolumes
       : {}
 
@@ -133,6 +126,9 @@ export function TransportDocumentForm({
       selectedPartyId={asPartyId(
         field.partyIdKey ? values[field.partyIdKey] : null
       )}
+      selectedInternalUserId={asPartyId(
+        field.internalUserIdKey ? values[field.internalUserIdKey] : null
+      )}
       disabled={
         options?.disabled === true ||
         field.syncedFromAn === true ||
@@ -144,6 +140,11 @@ export function TransportDocumentForm({
       onPartyIdChange={
         field.partyIdKey
           ? (value) => updateField(field.partyIdKey!, value)
+          : undefined
+      }
+      onInternalUserIdChange={
+        field.internalUserIdKey
+          ? (value) => updateField(field.internalUserIdKey!, value)
           : undefined
       }
     />
@@ -242,7 +243,10 @@ export function TransportDocumentForm({
         <div className='grid gap-x-4 gap-y-3 md:grid-cols-2'>
           <BookingCommoditySelect
             value={String(values.commodity ?? '')}
-            onChange={(next) => updateField('commodity', next)}
+            selectedId={asPartyId(values.commodityId)}
+            onChange={(label, id) => {
+              patchFields({ commodity: label, commodityId: id })
+            }}
           />
           {grossWeight ? renderField(grossWeight) : null}
           {measurement ? renderField(measurement) : null}
@@ -284,10 +288,7 @@ export function TransportDocumentForm({
   const renderAnCargo = (fields: TransportDocumentFieldSpec[]) => (
     <div className='space-y-4'>
       {containers ? (
-        <AnContainersEditor
-          rows={containers}
-          onChange={onContainersChange}
-        />
+        <AnContainersEditor rows={containers} onChange={onContainersChange} />
       ) : null}
       <div className='grid gap-x-4 gap-y-3 md:grid-cols-2'>
         {fields.map((field) => renderField(field))}
@@ -303,10 +304,7 @@ export function TransportDocumentForm({
         here for the BL PDF.
       </p>
       {containers ? (
-        <AnContainersEditor
-          rows={containers}
-          onChange={onContainersChange}
-        />
+        <AnContainersEditor rows={containers} onChange={onContainersChange} />
       ) : null}
       <div className='grid gap-x-4 gap-y-3 md:grid-cols-3'>
         {fields.map((field) => renderField(field))}
@@ -391,10 +389,6 @@ export function TransportDocumentForm({
           )}
         </section>
       ))}
-
-      {cargoRows ? (
-        <CargoRowsEditor rows={cargoRows} onChange={onCargoRowsChange} />
-      ) : null}
 
       <div
         className={

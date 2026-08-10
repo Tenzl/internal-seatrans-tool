@@ -62,6 +62,7 @@ export interface ArrivalNoticePayload {
   serviceMode: string
   note: string
   marks: string
+  commodityId?: number | null
   /**
    * Shipment-level goods description (PDF cargo “Description of Goods”).
    * Separate from per-container `containers[].note`.
@@ -151,6 +152,7 @@ export interface BookingConfirmationPayload {
   vgmCutoff: string
   contact: string
   commodity: string
+  commodityId?: number | null
   /** Derived multiline display / PDF / prefill string (e.g. `3 x 20'DC`). */
   volume: string
   /** Structured cargo volumes; only types with qty > 0 are stored. */
@@ -162,6 +164,7 @@ export interface BookingConfirmationPayload {
   motherVessel: string
   motherVoyage: string
   pic: string
+  picUserId?: number | null
 }
 
 export interface BillOfLadingPayload {
@@ -201,7 +204,8 @@ export interface BillOfLadingPayload {
   /** Canonical multi-container rows (shared with Arrival Notice). */
   containers: AnContainer[]
   freightTerms: string
-  cleanOnBoard: string
+  /** Date only; PDF always prefixes with fixed "CLEAN ON BOARD". */
+  cleanOnBoardDate: string
   declarationOfInterest: string
   declaredValue: string
   freightAmount: string
@@ -227,6 +231,7 @@ export type TransportDocumentPayload =
 
 export interface TransportDocumentRecord {
   id: number
+  version: number
   documentType: TransportDocumentType
   /** Optional during rolling deployment for records created before workflows. */
   bookingFlow?: BookingFlow | null

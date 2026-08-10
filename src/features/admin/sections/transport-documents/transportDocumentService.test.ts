@@ -4,7 +4,8 @@ import { emptyArrivalNotice } from '@/features/admin/sections/transport-document
 import { transportDocumentService } from './transportDocumentService'
 
 vi.mock('@/shared/utils/apiClient', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@/shared/utils/apiClient')>()
+  const actual =
+    await importOriginal<typeof import('@/shared/utils/apiClient')>()
   return {
     ...actual,
     apiClient: { get: vi.fn(), post: vi.fn(), put: vi.fn(), delete: vi.fn() },
@@ -36,14 +37,15 @@ describe('transportDocumentService', () => {
     expect(result.type).toBe('application/pdf')
   })
 
-  it('rebuilds a PDF from the history payload', async () => {
+  it('previews a saved record from its immutable server snapshot', async () => {
     const payload = { ...emptyArrivalNotice(), anNumber: 'AN-001' }
-    vi.mocked(apiClient.post).mockResolvedValue(
+    vi.mocked(apiClient.get).mockResolvedValue(
       new Response(new Blob(['pdf']), { status: 200 })
     )
 
     await transportDocumentService.previewRecord({
       id: 5,
+      version: 3,
       documentType: 'an',
       referenceNumber: 'AN-001',
       payload,
@@ -58,9 +60,8 @@ describe('transportDocumentService', () => {
       createdBy: null,
     })
 
-    expect(apiClient.post).toHaveBeenCalledWith(
-      '/admin/booking-documents/an/preview',
-      payload,
+    expect(apiClient.get).toHaveBeenCalledWith(
+      '/admin/booking-documents/an/records/5/preview',
       { headers: { Accept: 'application/pdf' }, timeout: 60_000 }
     )
   })
@@ -83,17 +84,17 @@ describe('transportDocumentService', () => {
     ).rejects.toThrow('containers must contain no more than 20 elements')
   })
 
-  it('creates a transport-document record with status', async () => {
+  it('creates a transport-document record without client-decided status', async () => {
     const payload = {
       ...emptyArrivalNotice(),
       anNumber: 'AN-001',
-      status: 'PROCESSING' as const,
     }
     vi.mocked(apiClient.post).mockResolvedValue(
       new Response(
         JSON.stringify({
           data: {
             id: 5,
+            version: 1,
             documentType: 'an',
             referenceNumber: 'AN-001',
             payload,
@@ -118,6 +119,7 @@ describe('transportDocumentService', () => {
       '/admin/booking-documents/an/records',
       payload
     )
+    expect(payload).not.toHaveProperty('status')
     expect(result).toMatchObject({
       id: 5,
       referenceNumber: 'AN-001',
@@ -175,13 +177,17 @@ describe('transportDocumentService', () => {
     )
 
     await transportDocumentService.getById('an', 5)
-    await transportDocumentService.update('an', 5, {
-      ...emptyArrivalNotice(),
-      status: 'COMPLETED',
-    })
-    await transportDocumentService.lock('an', 5)
-    await transportDocumentService.unlock('an', 5)
-    await transportDocumentService.archive('an', 5)
+    await transportDocumentService.update(
+      'an',
+      5,
+      {
+        ...emptyArrivalNotice(),
+      },
+      3
+    )
+    await transportDocumentService.lock('an', 5, 4)
+    await transportDocumentService.unlock('an', 5, 5)
+    await transportDocumentService.archive('an', 5, 6)
     await transportDocumentService.permanentDelete('an', 5)
 
     expect(apiClient.get).toHaveBeenCalledWith(
@@ -189,19 +195,21 @@ describe('transportDocumentService', () => {
     )
     expect(apiClient.put).toHaveBeenCalledWith(
       '/admin/booking-documents/an/records/5',
-      expect.objectContaining({ status: 'COMPLETED' })
+      expect.objectContaining({ expectedVersion: 3 })
     )
     expect(apiClient.post).toHaveBeenNthCalledWith(
       1,
-      '/admin/booking-documents/an/records/5/lock'
+      '/admin/booking-documents/an/records/5/lock',
+      { expectedVersion: 4 }
     )
     expect(apiClient.post).toHaveBeenNthCalledWith(
       2,
-      '/admin/booking-documents/an/records/5/unlock'
+      '/admin/booking-documents/an/records/5/unlock',
+      { expectedVersion: 5 }
     )
     expect(apiClient.delete).toHaveBeenNthCalledWith(
       1,
-      '/admin/booking-documents/an/records/5'
+      '/admin/booking-documents/an/records/5?expectedVersion=6'
     )
     expect(apiClient.delete).toHaveBeenNthCalledWith(
       2,

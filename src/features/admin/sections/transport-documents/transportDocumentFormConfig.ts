@@ -48,6 +48,7 @@ export interface TransportDocumentFieldSpec {
     | 'shipperPartyId'
     | 'consigneePartyId'
     | 'notifyPartyId'
+  internalUserIdKey?: 'picUserId'
   additionType?: PartnerAdditionType
   customerType?: CustomerType
   /** `name` = fill partner name only (Booking Client). Default full block. */
@@ -218,6 +219,7 @@ export const TRANSPORT_DOCUMENT_FORM_SECTIONS: Record<
       fields: [
         {
           key: 'pic',
+          internalUserIdKey: 'picUserId',
           label: 'PIC',
           kind: 'internal-user',
           placeholder: 'Search internal user name or email...',
@@ -324,7 +326,7 @@ export const TRANSPORT_DOCUMENT_FORM_SECTIONS: Record<
       title: 'Commercial',
       fields: [
         { key: 'freightTerms', label: 'Freight terms' },
-        { key: 'cleanOnBoard', label: 'Clean on board' },
+        { key: 'cleanOnBoardDate', label: 'Clean on board date', kind: 'date' },
         { key: 'freightAmount', label: 'Freight amount' },
         { key: 'freightPayableAt', label: 'Freight payable at' },
         {

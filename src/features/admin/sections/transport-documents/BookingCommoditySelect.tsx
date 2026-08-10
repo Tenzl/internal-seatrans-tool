@@ -16,13 +16,17 @@ import { resolveSelectFieldOptions } from './transportDocumentFormConfig'
 
 interface BookingCommoditySelectProps {
   value: string
-  onChange: (value: string) => void
+  selectedId?: number | null
+  onChange: (value: string, id: number | null) => void
   disabled?: boolean
 }
+
+const EMPTY_COMMODITY_VALUE = '__empty__'
 
 /** Booking commodity picker — freight-forwarding commodities only. */
 export function BookingCommoditySelect({
   value,
+  selectedId,
   onChange,
   disabled = false,
 }: BookingCommoditySelectProps) {
@@ -32,10 +36,22 @@ export function BookingCommoditySelect({
   })
 
   const options = (optionsQuery.data ?? []).map((option) => ({
-    value: option.displayLabel,
+    value: String(option.id),
     label: option.displayLabel,
   }))
-  const resolved = resolveSelectFieldOptions(options, value)
+  const selectedValue = selectedId
+    ? String(selectedId)
+    : value
+      ? `legacy:${value}`
+      : EMPTY_COMMODITY_VALUE
+  const resolved = resolveSelectFieldOptions(
+    options,
+    selectedValue === EMPTY_COMMODITY_VALUE ? '' : selectedValue
+  ).map((option) =>
+    option.value === selectedValue && option.label === selectedValue
+      ? { ...option, label: value }
+      : option
+  )
   const isFilled = value.trim().length > 0
 
   return (
@@ -47,9 +63,18 @@ export function BookingCommoditySelect({
         Commodity
       </Label>
       <Select
-        value={value || '__empty__'}
+        value={selectedValue}
         disabled={disabled || optionsQuery.isPending}
-        onValueChange={(next) => onChange(next === '__empty__' ? '' : next)}
+        onValueChange={(next) => {
+          if (next === EMPTY_COMMODITY_VALUE) {
+            onChange('', null)
+            return
+          }
+          const option = optionsQuery.data?.find(
+            (item) => String(item.id) === next
+          )
+          if (option) onChange(option.displayLabel, option.id)
+        }}
       >
         <SelectTrigger
           id='transport-document-commodity'
@@ -71,7 +96,9 @@ export function BookingCommoditySelect({
           />
         </SelectTrigger>
         <SelectContent>
-          <SelectItem value='__empty__'>Select commodity</SelectItem>
+          <SelectItem value={EMPTY_COMMODITY_VALUE}>
+            Select commodity
+          </SelectItem>
           {resolved.map((option) => (
             <SelectItem
               key={option.value || '__empty-option__'}

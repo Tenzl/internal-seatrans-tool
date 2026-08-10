@@ -1,12 +1,4 @@
 import { z } from 'zod'
-import type {
-  ArrivalNoticePayload,
-  BillOfLadingPayload,
-  BookingConfirmationPayload,
-  DeliveryOrderPayload,
-  TransportDocumentPayloadMap,
-  TransportDocumentType,
-} from './transportDocument.types'
 import {
   AN_CONTAINER_MAX_ROWS,
   anContainersToBlCargoTextFields,
@@ -22,6 +14,14 @@ import {
   normalizeBookingCargoVolumes,
 } from './cargoVolumeModel'
 import { deriveNotifySameAsConsignee } from './notifyPartySameAsConsignee'
+import type {
+  ArrivalNoticePayload,
+  BillOfLadingPayload,
+  BookingConfirmationPayload,
+  DeliveryOrderPayload,
+  TransportDocumentPayloadMap,
+  TransportDocumentType,
+} from './transportDocument.types'
 
 const shortText = z.string().trim().max(500, 'Use 500 characters or fewer')
 const longText = z.string().trim().max(2_000, 'Use 2,000 characters or fewer')
@@ -83,6 +83,7 @@ export const arrivalNoticeSchema = z.object({
   serviceMode: shortText,
   note: longText,
   marks: longText,
+  commodityId: partyId,
   descriptionOfGoods: xlText,
   volume: shortText,
   customerAttention: longText,
@@ -153,6 +154,7 @@ export const bookingConfirmationSchema = z.object({
   vgmCutoff: shortText,
   contact: shortText,
   commodity: longText,
+  commodityId: partyId,
   volume: shortText,
   cargoVolumes: cargoVolumesSchema,
   grossWeight: shortText,
@@ -162,6 +164,7 @@ export const bookingConfirmationSchema = z.object({
   motherVessel: shortText,
   motherVoyage: shortText,
   pic: longText,
+  picUserId: partyId,
 })
 
 export const emptyCargoRow = () => ({
@@ -203,6 +206,7 @@ export const emptyArrivalNotice = (): ArrivalNoticePayload => ({
   serviceMode: '',
   note: '',
   marks: '',
+  commodityId: null,
   descriptionOfGoods: '',
   volume: '',
   customerAttention: '',
@@ -259,6 +263,7 @@ export const emptyBookingConfirmation = (): BookingConfirmationPayload => ({
   vgmCutoff: '',
   contact: '',
   commodity: '',
+  commodityId: null,
   volume: '',
   cargoVolumes: {},
   grossWeight: '',
@@ -268,6 +273,7 @@ export const emptyBookingConfirmation = (): BookingConfirmationPayload => ({
   motherVessel: '',
   motherVoyage: '',
   pic: '',
+  picUserId: null,
 })
 
 export const billOfLadingSchema = z.object({
@@ -297,7 +303,7 @@ export const billOfLadingSchema = z.object({
       `A maximum of ${AN_CONTAINER_MAX_ROWS} container rows is allowed`
     ),
   freightTerms: shortText,
-  cleanOnBoard: shortText,
+  cleanOnBoardDate: shortText,
   declarationOfInterest: shortText,
   declaredValue: shortText,
   freightAmount: shortText,
@@ -332,7 +338,7 @@ export const emptyBillOfLading = (): BillOfLadingPayload => ({
   measurement: '',
   containers: [emptyAnContainer()],
   freightTerms: '',
-  cleanOnBoard: '',
+  cleanOnBoardDate: '',
   declarationOfInterest: '',
   declaredValue: '',
   freightAmount: '',
@@ -419,6 +425,14 @@ export function normalizeBillOfLadingPayload(
         ? legacyMarksAndNumbers
         : ''
 
+  // Prefer cleanOnBoardDate; strip legacy "CLEAN ON BOARD …" free-text.
+  const cleanOnBoardDate =
+    typeof rest.cleanOnBoardDate === 'string' && rest.cleanOnBoardDate.trim()
+      ? rest.cleanOnBoardDate
+      : typeof rest.cleanOnBoard === 'string' && rest.cleanOnBoard.trim()
+        ? rest.cleanOnBoard.replace(/^CLEAN\s+ON\s+BOARD\s*/i, '').trim()
+        : ''
+
   return billOfLadingSchema.parse({
     ...emptyBillOfLading(),
     ...rest,
@@ -426,6 +440,7 @@ export function normalizeBillOfLadingPayload(
     containers,
     descriptionOfGoods,
     shippingMark,
+    cleanOnBoardDate,
     grossWeight: hasStructuredCargo
       ? derived.grossWeight
       : typeof rest.grossWeight === 'string'

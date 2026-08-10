@@ -3,17 +3,12 @@ import type { PageResponse } from '@/shared/types/api.types'
 import { apiClient } from '@/shared/utils/apiClient'
 import { unwrapApiResponse } from '@/shared/utils/apiUnwrap'
 import type {
-  ArrivalNoticePayload,
   BookingFlow,
   BookingWorkflow,
-  BookingConfirmationPayload,
-  DeliveryOrderPayload,
   TransportDocumentPayloadMap,
   TransportDocumentRecord,
-  TransportDocumentStatus,
   TransportDocumentType,
 } from './transportDocument.types'
-import { normalizeBillOfLadingPayload } from './transportDocumentSchemas'
 
 async function readError(response: Response): Promise<string> {
   const fallback = 'Failed to build PDF preview'
@@ -31,27 +26,9 @@ async function readError(response: Response): Promise<string> {
 
 type UpsertBody<T extends TransportDocumentType> =
   TransportDocumentPayloadMap[T] & {
-    status?: TransportDocumentStatus
     bookingFlow?: BookingFlow
     bookingId?: number
   }
-
-/** Drop legacy BL stamp toggles so they are never persisted. */
-function sanitizeUpsertBody<T extends TransportDocumentType>(
-  payload: UpsertBody<T>
-): UpsertBody<T> {
-  const {
-    showSurrendered: _a,
-    includeCompanyStamp: _b,
-    ...rest
-  } = payload as UpsertBody<T> & {
-    showSurrendered?: unknown
-    includeCompanyStamp?: unknown
-  }
-  void _a
-  void _b
-  return rest as UpsertBody<T>
-}
 
 export const transportDocumentService = {
   async create<T extends TransportDocumentType>(
@@ -60,7 +37,7 @@ export const transportDocumentService = {
   ): Promise<TransportDocumentRecord> {
     const response = await apiClient.post(
       API_CONFIG.BOOKING_DOCUMENTS.ADMIN_CREATE(type),
-      sanitizeUpsertBody(payload)
+      payload
     )
     return unwrapApiResponse<TransportDocumentRecord>(response)
   },
@@ -85,38 +62,47 @@ export const transportDocumentService = {
   async update<T extends TransportDocumentType>(
     type: T,
     id: number,
-    payload: UpsertBody<T>
+    payload: UpsertBody<T>,
+    expectedVersion: number
   ): Promise<TransportDocumentRecord> {
     const response = await apiClient.put(
       API_CONFIG.BOOKING_DOCUMENTS.ADMIN_UPDATE(type, id),
-      sanitizeUpsertBody(payload)
+      { ...payload, expectedVersion }
     )
     return unwrapApiResponse<TransportDocumentRecord>(response)
   },
 
   async lock(
     type: TransportDocumentType,
-    id: number
+    id: number,
+    expectedVersion: number
   ): Promise<TransportDocumentRecord> {
     const response = await apiClient.post(
-      API_CONFIG.BOOKING_DOCUMENTS.ADMIN_LOCK(type, id)
+      API_CONFIG.BOOKING_DOCUMENTS.ADMIN_LOCK(type, id),
+      { expectedVersion }
     )
     return unwrapApiResponse<TransportDocumentRecord>(response)
   },
 
   async unlock(
     type: TransportDocumentType,
-    id: number
+    id: number,
+    expectedVersion: number
   ): Promise<TransportDocumentRecord> {
     const response = await apiClient.post(
-      API_CONFIG.BOOKING_DOCUMENTS.ADMIN_UNLOCK(type, id)
+      API_CONFIG.BOOKING_DOCUMENTS.ADMIN_UNLOCK(type, id),
+      { expectedVersion }
     )
     return unwrapApiResponse<TransportDocumentRecord>(response)
   },
 
-  async archive(type: TransportDocumentType, id: number): Promise<void> {
+  async archive(
+    type: TransportDocumentType,
+    id: number,
+    expectedVersion: number
+  ): Promise<void> {
     const response = await apiClient.delete(
-      API_CONFIG.BOOKING_DOCUMENTS.ADMIN_ARCHIVE(type, id)
+      `${API_CONFIG.BOOKING_DOCUMENTS.ADMIN_ARCHIVE(type, id)}?expectedVersion=${expectedVersion}`
     )
     if (!response.ok) throw new Error(await readError(response))
   },
@@ -160,18 +146,15 @@ export const transportDocumentService = {
   },
 
   previewRecord(record: TransportDocumentRecord): Promise<Blob> {
-    switch (record.documentType) {
-      case 'an':
-        return this.preview('an', record.payload as ArrivalNoticePayload)
-      case 'booking':
-        return this.preview(
-          'booking',
-          record.payload as BookingConfirmationPayload
-        )
-      case 'do':
-        return this.preview('do', record.payload as DeliveryOrderPayload)
-      case 'bl':
-        return this.preview('bl', normalizeBillOfLadingPayload(record.payload))
-    }
+    return this.previewSaved(record.documentType, record.id)
+  },
+
+  async previewSaved(type: TransportDocumentType, id: number): Promise<Blob> {
+    const response = await apiClient.get(
+      API_CONFIG.BOOKING_DOCUMENTS.ADMIN_RECORD_PREVIEW(type, id),
+      { headers: { Accept: 'application/pdf' }, timeout: 60_000 }
+    )
+    if (!response.ok) throw new Error(await readError(response))
+    return response.blob()
   },
 }

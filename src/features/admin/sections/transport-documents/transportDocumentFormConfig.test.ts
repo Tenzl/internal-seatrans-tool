@@ -9,7 +9,6 @@ import {
 } from './transportDocumentFormConfig'
 import {
   buildTransportDocumentFileName,
-  getTransportDocumentCargoRows,
   getTransportDocumentContainers,
 } from './transportDocumentFormRules'
 import { createEmptyTransportDocuments } from './transportDocumentSchemas'
@@ -90,7 +89,7 @@ describe('transport document form config', () => {
       'shippingMark',
       'descriptionOfGoods',
       'freightTerms',
-      'cleanOnBoard',
+      'cleanOnBoardDate',
       'freightAmount',
       'freightPayableAt',
       'cargoInsurance',
@@ -180,12 +179,7 @@ describe('transport document form config', () => {
       TRANSPORT_DOCUMENT_FORM_SECTIONS.do
         .find((section) => section.title === 'Cargo')
         ?.fields.map((field) => field.key)
-    ).toEqual([
-      'descriptionOfGoods',
-      'marks',
-      'customerAttention',
-      'note',
-    ])
+    ).toEqual(['descriptionOfGoods', 'marks', 'customerAttention', 'note'])
   })
 
   it('exposes editable Shipping mark on BL Cargo; packages stay omitted', () => {
@@ -224,6 +218,13 @@ describe('transport document form config', () => {
       'measurement',
       'specialRemark',
     ])
+  })
+
+  it('persists the selected PIC user id alongside the display text', () => {
+    expect(fieldSpec('booking', 'pic')).toMatchObject({
+      kind: 'internal-user',
+      internalUserIdKey: 'picUserId',
+    })
   })
 
   it('keeps cargo columns in backend and PDF order', () => {
@@ -367,15 +368,15 @@ describe('transport document form config', () => {
     forms.an.anNumber = ' AN 25/01 '
     forms.booking.bookingNumber = 'BK_100'
 
-    expect(
-      buildTransportDocumentFileName('an', forms, 'Arrival Notice')
-    ).toBe('Arrival-Notice-AN-25-01.pdf')
+    expect(buildTransportDocumentFileName('an', forms, 'Arrival Notice')).toBe(
+      'Arrival-Notice-AN-25-01.pdf'
+    )
     expect(buildTransportDocumentFileName('booking', forms, 'Booking')).toBe(
       'Booking-BK_100.pdf'
     )
-    expect(
-      buildTransportDocumentFileName('do', forms, 'Delivery Order')
-    ).toBe('Delivery-Order.pdf')
+    expect(buildTransportDocumentFileName('do', forms, 'Delivery Order')).toBe(
+      'Delivery-Order.pdf'
+    )
   })
 
   it('renders Service Mode as a select with the six canonical options on AN, DO, and BL', () => {
@@ -410,22 +411,18 @@ describe('transport document form config', () => {
     expect(fieldSpec('bl', 'descriptionOfGoods')?.syncedFromAn).toBeUndefined()
   })
 
-  it('exposes containers for AN, BL and DO; legacy cargo rows are unused', () => {
+  it('exposes containers for AN, BL and DO', () => {
     const forms = createEmptyTransportDocuments()
 
-    expect(getTransportDocumentCargoRows('an', forms)).toBeNull()
     expect(getTransportDocumentContainers('an', forms)).toBe(
       forms.an.containers
     )
     expect(getTransportDocumentContainers('bl', forms)).toBe(
       forms.bl.containers
     )
-    expect(getTransportDocumentCargoRows('do', forms)).toBeNull()
     expect(getTransportDocumentContainers('do', forms)).toBe(
       forms.do.containers
     )
-    expect(getTransportDocumentCargoRows('booking', forms)).toBeNull()
-    expect(getTransportDocumentCargoRows('bl', forms)).toBeNull()
   })
 
   describe('resolveSelectFieldOptions', () => {

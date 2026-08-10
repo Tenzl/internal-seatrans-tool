@@ -82,9 +82,9 @@ describe('transport document schemas', () => {
       },
     ])
     expect(parsed.descriptionOfGoods).toBe('STONE')
-    expect(
-      Object.prototype.hasOwnProperty.call(parsed, 'cargoRows')
-    ).toBe(false)
+    expect(Object.prototype.hasOwnProperty.call(parsed, 'cargoRows')).toBe(
+      false
+    )
   })
 
   it('splits legacy AN etdEta into separate etd and eta date fields', () => {
@@ -100,9 +100,7 @@ describe('transport document schemas', () => {
     })
     expect(migrated.etd).toBe('2026-08-06')
     expect(migrated.eta).toBe('2026-08-12')
-    expect(
-      Object.prototype.hasOwnProperty.call(migrated, 'etdEta')
-    ).toBe(false)
+    expect(Object.prototype.hasOwnProperty.call(migrated, 'etdEta')).toBe(false)
 
     const prefersSplit = normalizeArrivalNoticePayload({
       ...emptyArrivalNotice(),
@@ -251,6 +249,21 @@ describe('transport document schemas', () => {
     expect(parsed.volume).toBe("2 x 40'HC")
   })
 
+  it('keeps Booking commodity and PIC ids with their display snapshots', () => {
+    const booking = emptyBookingConfirmation()
+    booking.commodity = 'RICE IN FOODSTUFFS'
+    booking.commodityId = 12
+    booking.pic = 'Operations, Email: ops@example.com'
+    booking.picUserId = 34
+
+    expect(parseTransportDocument('booking', booking)).toMatchObject({
+      commodity: 'RICE IN FOODSTUFFS',
+      commodityId: 12,
+      pic: 'Operations, Email: ops@example.com',
+      picUserId: 34,
+    })
+  })
+
   it('rejects more than 20 BL container rows before the preview request', () => {
     const payload = emptyBillOfLading()
     payload.containers = Array.from({ length: 21 }, () => ({
@@ -384,6 +397,7 @@ describe('transport document schemas', () => {
         'consignee',
         'consigneePartyId',
         'containers',
+        'commodityId',
         'customerAttention',
         'date',
         'descriptionOfGoods',
@@ -417,6 +431,7 @@ describe('transport document schemas', () => {
         'clientPartyId',
         'closingTime',
         'commodity',
+        'commodityId',
         'contact',
         'date',
         'dropoffPlace',
@@ -427,6 +442,7 @@ describe('transport document schemas', () => {
         'motherVessel',
         'motherVoyage',
         'pic',
+        'picUserId',
         'pickupDate',
         'pickupPlace',
         'placeOfDelivery',
@@ -477,7 +493,7 @@ describe('transport document schemas', () => {
       [
         'blFormVariant',
         'cargoInsurance',
-        'cleanOnBoard',
+        'cleanOnBoardDate',
         'consignedToOrderOf',
         'consigneePartyId',
         'consignor',

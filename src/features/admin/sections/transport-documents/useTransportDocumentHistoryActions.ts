@@ -52,7 +52,8 @@ export function useTransportDocumentHistoryActions(options: {
       } else {
         await transportDocumentService.archive(
           deleteTarget.documentType,
-          deleteTarget.id
+          deleteTarget.id,
+          deleteTarget.version
         )
         toast.success('Document record archived')
       }
@@ -83,7 +84,8 @@ export function useTransportDocumentHistoryActions(options: {
     try {
       await transportDocumentService.lock(
         lockTarget.documentType,
-        lockTarget.id
+        lockTarget.id,
+        lockTarget.version
       )
       toast.success('Document record locked')
       setLockTarget(null)
@@ -111,7 +113,8 @@ export function useTransportDocumentHistoryActions(options: {
     try {
       await transportDocumentService.unlock(
         unlockTarget.documentType,
-        unlockTarget.id
+        unlockTarget.id,
+        unlockTarget.version
       )
       toast.success('Document record unlocked')
       setUnlockTarget(null)

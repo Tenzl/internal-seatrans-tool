@@ -83,6 +83,8 @@ export const API_CONFIG = {
       `/admin/booking-documents/${type}/records`,
     ADMIN_BY_ID: (type: 'an' | 'booking' | 'do' | 'bl', id: number) =>
       `/admin/booking-documents/${type}/records/${id}`,
+    ADMIN_RECORD_PREVIEW: (type: 'an' | 'booking' | 'do' | 'bl', id: number) =>
+      `/admin/booking-documents/${type}/records/${id}/preview`,
     ADMIN_WORKFLOW: (bookingId: number) =>
       `/admin/booking-documents/bookings/${bookingId}/workflow`,
     ADMIN_UPDATE: (type: 'an' | 'booking' | 'do' | 'bl', id: number) =>

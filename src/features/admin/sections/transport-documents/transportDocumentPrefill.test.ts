@@ -58,7 +58,7 @@ describe('transportDocumentPrefill', () => {
     expect(next.containers[0]?.type).toBe('')
   })
 
-  it('maps Booking cargo onto AN on first save with typed container rows', () => {
+  it('maps Booking cargo onto a new AN with typed container rows', () => {
     const booking = emptyBookingConfirmation()
     booking.bookingNumber = 'BK-101'
     booking.placeOfReceipt = 'QUI NHON'
@@ -69,6 +69,7 @@ describe('transportDocumentPrefill', () => {
     booking.grossWeight = '24000'
     booking.measurement = '20'
     booking.commodity = 'Rice IN Foodstuffs'
+    booking.commodityId = 42
     booking.date = '2026-08-05'
     booking.etd = '2026-08-06'
     booking.eta = '2026-08-12'
@@ -91,9 +92,29 @@ describe('transportDocumentPrefill', () => {
     expect(next.containers[0]?.measurement).toBe('20')
     expect(next.containers[0]?.note).toBe('')
     expect(next.descriptionOfGoods).toBe('Rice IN Foodstuffs')
+    expect(next.commodityId).toBe(42)
     expect(next.containers[1]?.grossWeight).toBe('')
     expect(next.containers[1]?.measurement).toBe('')
     expect(next.containers[1]?.note).toBe('')
+  })
+
+  it('never overwrites AN container details already entered by staff', () => {
+    const booking = emptyBookingConfirmation()
+    booking.cargoVolumes = { "20'DC": 2 }
+    booking.commodity = 'STONE'
+
+    const current = emptyArrivalNotice()
+    current.descriptionOfGoods = 'CUSTOM DESCRIPTION'
+    current.containers[0] = {
+      ...current.containers[0]!,
+      containerNo: 'SEGU1234567',
+      sealNo: 'SEAL-01',
+    }
+
+    const next = mapArrivalNoticeCargoFromBooking(booking, current)
+
+    expect(next.containers).toEqual(current.containers)
+    expect(next.descriptionOfGoods).toBe('CUSTOM DESCRIPTION')
   })
 
   it('prefillArrivalNoticeFromBooking still applies header + cargo together', () => {
@@ -110,7 +131,7 @@ describe('transportDocumentPrefill', () => {
     expect(next.descriptionOfGoods).toBe('Rice IN Foodstuffs')
   })
 
-  it('seeds 3 typed rows from 20\'DC: 3 with GW/measurement on first row only', () => {
+  it("seeds 3 typed rows from 20'DC: 3 with GW/measurement on first row only", () => {
     const booking = emptyBookingConfirmation()
     booking.cargoVolumes = { "20'DC": 3 }
     booking.grossWeight = '15000 KGS'
@@ -126,12 +147,12 @@ describe('transportDocumentPrefill', () => {
     expect(next.containers.every((row) => row.containerNo === '')).toBe(true)
     expect(next.containers[0]?.grossWeight).toBe('15000 KGS')
     expect(next.containers[0]?.measurement).toBe('45 CBM')
-    expect(next.containers.slice(1).every((row) => row.grossWeight === '')).toBe(
-      true
-    )
-    expect(next.containers.slice(1).every((row) => row.measurement === '')).toBe(
-      true
-    )
+    expect(
+      next.containers.slice(1).every((row) => row.grossWeight === '')
+    ).toBe(true)
+    expect(
+      next.containers.slice(1).every((row) => row.measurement === '')
+    ).toBe(true)
   })
 
   it('parses legacy booking volume text when cargoVolumes is empty', () => {

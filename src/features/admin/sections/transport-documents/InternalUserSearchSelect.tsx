@@ -2,10 +2,6 @@
 
 import * as React from 'react'
 import { useQuery } from '@tanstack/react-query'
-import {
-  adminUsersService,
-  type PicOption,
-} from '@/features/admin/sections/user-management/api/adminUsersService'
 import { queryKeys } from '@/shared/config/react-query.config'
 import { useDebouncedValue } from '@/shared/hooks/useDebouncedValue'
 import { Check, ChevronsUpDown, Loader2 } from 'lucide-react'
@@ -24,12 +20,17 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from '@/components/ui/popover'
+import {
+  adminUsersService,
+  type PicOption,
+} from '@/features/admin/sections/user-management/api/adminUsersService'
 import { formatBookingPic } from './bookingPic'
 
 interface InternalUserSearchSelectProps {
   id?: string
   value: string
-  onValueChange: (value: string) => void
+  selectedId?: number | null
+  onChange: (value: string, id: number | null) => void
   placeholder?: string
   disabled?: boolean
   className?: string
@@ -49,7 +50,8 @@ function userSecondaryLabel(user: PicOption): string | null {
 export function InternalUserSearchSelect({
   id,
   value,
-  onValueChange,
+  selectedId,
+  onChange,
   placeholder = 'Search internal user...',
   disabled = false,
   className,
@@ -58,8 +60,7 @@ export function InternalUserSearchSelect({
   const [search, setSearch] = React.useState('')
   const debouncedSearch = useDebouncedValue(search, 250).trim()
   // Empty open uses prefetch cache; search only when q.length >= 2 (party picker).
-  const effectiveSearch =
-    debouncedSearch.length >= 2 ? debouncedSearch : ''
+  const effectiveSearch = debouncedSearch.length >= 2 ? debouncedSearch : ''
 
   const usersQuery = useQuery({
     queryKey: queryKeys.picOptions(effectiveSearch.toLowerCase()),
@@ -131,7 +132,7 @@ export function InternalUserSearchSelect({
                     <CommandItem
                       value='clear-pic-user'
                       onSelect={() => {
-                        onValueChange('')
+                        onChange('', null)
                         setOpen(false)
                       }}
                     >
@@ -147,7 +148,7 @@ export function InternalUserSearchSelect({
                         key={user.id}
                         value={`user-${user.id}`}
                         onSelect={() => {
-                          onValueChange(label)
+                          onChange(label, user.id)
                           setOpen(false)
                           setSearch('')
                         }}
@@ -155,7 +156,9 @@ export function InternalUserSearchSelect({
                         <Check
                           className={cn(
                             'h-4 w-4 shrink-0',
-                            value === label ? 'opacity-100' : 'opacity-0'
+                            selectedId === user.id || value === label
+                              ? 'opacity-100'
+                              : 'opacity-0'
                           )}
                         />
                         <span className='flex min-w-0 flex-col'>

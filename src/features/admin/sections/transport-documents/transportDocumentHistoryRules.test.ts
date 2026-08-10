@@ -25,6 +25,7 @@ const containers = [
 
 const record: TransportDocumentRecord = {
   id: 12,
+  version: 1,
   documentType: 'an',
   referenceNumber: 'AN 24/001',
   payload: {

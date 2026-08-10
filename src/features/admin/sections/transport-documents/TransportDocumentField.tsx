@@ -32,8 +32,10 @@ interface TransportDocumentFieldProps {
   field: TransportDocumentFieldSpec
   value: string
   selectedPartyId?: number | null
+  selectedInternalUserId?: number | null
   onChange: (value: unknown) => void
   onPartyIdChange?: (value: number | null) => void
+  onInternalUserIdChange?: (value: number | null) => void
   disabled?: boolean
 }
 
@@ -41,8 +43,10 @@ export function TransportDocumentField({
   field,
   value,
   selectedPartyId,
+  selectedInternalUserId,
   onChange,
   onPartyIdChange,
+  onInternalUserIdChange,
   disabled = false,
 }: TransportDocumentFieldProps) {
   const id = `transport-document-${field.key}`
@@ -134,8 +138,12 @@ export function TransportDocumentField({
         <InternalUserSearchSelect
           id={id}
           value={value}
+          selectedId={selectedInternalUserId}
           disabled={disabled}
-          onValueChange={onChange}
+          onChange={(next, userId) => {
+            onChange(next)
+            onInternalUserIdChange?.(userId)
+          }}
           placeholder={field.placeholder ?? 'Search internal user...'}
           className={filledRingClass}
         />

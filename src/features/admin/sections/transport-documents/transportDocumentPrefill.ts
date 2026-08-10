@@ -1,12 +1,3 @@
-import type {
-  AnContainer,
-  ArrivalNoticePayload,
-  BillOfLadingPayload,
-  BookingConfirmationPayload,
-  DeliveryOrderPayload,
-  TransportDocumentPayloadMap,
-  TransportDocumentType,
-} from './transportDocument.types'
 import {
   anContainersToBlCargoTextFields,
   anContainersToCargoRows,
@@ -16,6 +7,15 @@ import {
   seedAnContainersFromVolumes,
 } from './anContainerModel'
 import { normalizeBookingCargoVolumes } from './cargoVolumeModel'
+import type {
+  AnContainer,
+  ArrivalNoticePayload,
+  BillOfLadingPayload,
+  BookingConfirmationPayload,
+  DeliveryOrderPayload,
+  TransportDocumentPayloadMap,
+  TransportDocumentType,
+} from './transportDocument.types'
 
 /** Previous document type used to prefill the target form. */
 export const PREFILL_SOURCE_TYPE: Partial<
@@ -108,8 +108,10 @@ export function prefillArrivalNoticeHeaderFromBooking(
 }
 
 /**
- * Seed AN container rows from Booking cargo volumes on first AN save.
+ * Seed AN container rows from Booking cargo volumes when the create form opens.
  * Totals (GW / measurement) stay on row 1; each row keeps its Type.
+ * If staff already entered container data while the workflow was loading,
+ * preserve it instead of replacing it with Booking defaults.
  */
 export function mapArrivalNoticeCargoFromBooking(
   source: BookingConfirmationPayload,
@@ -118,13 +120,21 @@ export function mapArrivalNoticeCargoFromBooking(
   const { cargoVolumes } = normalizeBookingCargoVolumes(source)
   const seeded = seedAnContainersFromVolumes(cargoVolumes)
   const containers = applyBookingCargoTotalsToFirstRow(seeded, source)
+  const hasEnteredContainer = current.containers.some((row) =>
+    Object.values(row).some((value) => value.trim().length > 0)
+  )
+  const nextContainers = hasEnteredContainer
+    ? current.containers
+    : containers.length > 0
+      ? containers
+      : current.containers
 
   return {
     ...current,
-    descriptionOfGoods: source.commodity,
-    volume: anContainersToVolumeText(containers),
-    containers:
-      containers.length > 0 ? containers : current.containers,
+    commodityId: current.commodityId ?? source.commodityId ?? null,
+    descriptionOfGoods: current.descriptionOfGoods.trim() || source.commodity,
+    volume: current.volume.trim() || anContainersToVolumeText(nextContainers),
+    containers: nextContainers,
   }
 }
 
