@@ -22,7 +22,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
-import { PartnerFieldChangeHistory } from './PartnerFieldChangeHistory'
 import {
   APPROVE_STATUS_OPTIONS,
   createEmptyPartnerContact,
@@ -49,8 +48,6 @@ type PartnerFormDialogProps = {
   saving: boolean
   locking?: boolean
   isLocked?: boolean
-  canViewEditHistory?: boolean
-  historyRefreshKey?: number
   onOpenChange: (open: boolean) => void
   onFormChange: Dispatch<SetStateAction<PartnerFormState>>
   onSave: () => void
@@ -239,8 +236,6 @@ export function PartnerFormDialog({
   saving,
   locking = false,
   isLocked = false,
-  canViewEditHistory = false,
-  historyRefreshKey = 0,
   onOpenChange,
   onFormChange,
   onSave,
@@ -657,40 +652,30 @@ export function PartnerFormDialog({
           </FormSection>
         </fieldset>
 
-        <DialogFooter className='gap-2 sm:justify-between'>
-          <div className='flex flex-wrap items-center gap-2'>
-            {canViewEditHistory && editingId != null ? (
-              <PartnerFieldChangeHistory
-                partnerId={editingId}
-                refreshKey={historyRefreshKey}
-              />
-            ) : null}
-          </div>
-          <div className='flex flex-wrap items-center justify-end gap-2'>
+        <DialogFooter className='gap-2 sm:justify-end'>
+          <Button
+            variant='outline'
+            onClick={() => onOpenChange(false)}
+            disabled={saving || locking}
+          >
+            Cancel
+          </Button>
+          {editingId != null && !isLocked && onLock ? (
             <Button
               variant='outline'
-              onClick={() => onOpenChange(false)}
+              onClick={onLock}
               disabled={saving || locking}
+              className='gap-2'
             >
-              Cancel
+              <Lock className='h-4 w-4' />
+              {locking ? 'Locking...' : 'Lock edit'}
             </Button>
-            {editingId != null && !isLocked && onLock ? (
-              <Button
-                variant='outline'
-                onClick={onLock}
-                disabled={saving || locking}
-                className='gap-2'
-              >
-                <Lock className='h-4 w-4' />
-                {locking ? 'Locking...' : 'Lock edit'}
-              </Button>
-            ) : null}
-            {!isLocked ? (
-              <Button disabled={saving || locking} onClick={onSave}>
-                {saving ? 'Saving...' : 'Save'}
-              </Button>
-            ) : null}
-          </div>
+          ) : null}
+          {!isLocked ? (
+            <Button disabled={saving || locking} onClick={onSave}>
+              {saving ? 'Saving...' : 'Save'}
+            </Button>
+          ) : null}
         </DialogFooter>
       </DialogContent>
     </Dialog>

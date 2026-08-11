@@ -42,7 +42,6 @@ export function PartnerManagementScreen() {
   const queryClient = useQueryClient()
   const currentUser = useCurrentUser()
   const canHardDelete = isAdminRole(currentUser?.role)
-  const canViewEditHistory = isAdminRole(currentUser?.role)
   const [pageIndex, setPageIndex] = useState(0)
   const [search, setSearch] = useState('')
   const debouncedSearch = useDebouncedValue(search, 300)
@@ -61,7 +60,6 @@ export function PartnerManagementScreen() {
   const [lockConfirmOpen, setLockConfirmOpen] = useState(false)
   const [lockedAt, setLockedAt] = useState<string | null>(null)
   const [form, setForm] = useState(createEmptyPartnerForm)
-  const [fieldChangeHistoryKey, setFieldChangeHistoryKey] = useState(0)
 
   const partnersQuery = useQuery({
     queryKey: queryKeys.partnersList(
@@ -133,7 +131,6 @@ export function PartnerManagementScreen() {
       if (editingId != null) {
         await partnerManagementService.update(editingId, request)
         toast.success('Partner updated successfully')
-        setFieldChangeHistoryKey((key) => key + 1)
       } else {
         await partnerManagementService.create(request)
         toast.success('Partner created successfully')
@@ -158,7 +155,6 @@ export function PartnerManagementScreen() {
       setLocking(true)
       const locked = await partnerManagementService.lock(editingId)
       setLockedAt(locked.lockedAt ?? new Date().toISOString())
-      setFieldChangeHistoryKey((key) => key + 1)
       await resetPartnerCaches()
       setLockConfirmOpen(false)
       toast.success('Partner locked successfully')
@@ -259,8 +255,6 @@ export function PartnerManagementScreen() {
         saving={saving}
         locking={locking}
         isLocked={Boolean(lockedAt)}
-        canViewEditHistory={canViewEditHistory}
-        historyRefreshKey={fieldChangeHistoryKey}
         onOpenChange={(open) => {
           setFormDialogOpen(open)
           if (!open) {

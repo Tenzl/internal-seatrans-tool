@@ -64,8 +64,6 @@ export const API_CONFIG = {
     OPTIONS: '/admin/booking-management/partners/options',
     ADMIN_BASE: '/admin/booking-management/partners',
     ADMIN_BY_ID: (id: number) => `/admin/booking-management/partners/${id}`,
-    FIELD_CHANGES: (id: number, page = 0, size = 6) =>
-      `/admin/booking-management/partners/${id}/field-changes?page=${page}&size=${size}`,
     LOCK: (id: number) => `/admin/booking-management/partners/${id}/lock`,
     UPDATE_CUSTOMER_STATUS: (id: number) =>
       `/admin/booking-management/partners/${id}/customer-status`,

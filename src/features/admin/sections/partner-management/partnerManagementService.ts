@@ -213,19 +213,6 @@ export const partnerManagementService = {
     return unwrapApiResponse<BookingPartnerDetail>(response)
   },
 
-  async listFieldChanges(partnerId: number, page = 0, size = 6) {
-    const response = await apiClient.get(
-      API_CONFIG.BOOKING_PARTNERS.FIELD_CHANGES(partnerId, page, size)
-    )
-    return unwrapApiResponse<{
-      content: import('./partnerFieldChangeHistoryModel').PartnerFieldChangeLogEntry[]
-      totalElements: number
-      totalPages: number
-      size: number
-      number: number
-    }>(response)
-  },
-
   async lock(id: number): Promise<BookingPartnerDetail> {
     const response = await apiClient.post(
       API_CONFIG.BOOKING_PARTNERS.LOCK(id),
