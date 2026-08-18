@@ -97,33 +97,52 @@ describe('inquiryHistoryRules', () => {
     })
   })
 
-  it('derives archive, restore, delete and invoice actions from permissions', () => {
+  it('hides delete while locked and only lets admins unlock EPDA', () => {
     expect(
       getInquiryRowCapabilities({
-        inquiry: inquiry({ isArchived: true, status: 'QUOTED' }),
+        inquiry: inquiry({
+          status: 'COMPLETED',
+          epdaLockedAt: '2026-08-01T00:00:00.000Z',
+        }),
         isAdmin: true,
-        canSoftDelete: false,
         canHardDelete: true,
+        canUnlock: false,
         fallbackServiceType: 'shipping-agency',
       })
     ).toMatchObject({
-      canArchive: false,
-      canDelete: true,
-      canRestore: true,
+      canDelete: false,
+      canUnlock: false,
+      showLocked: true,
       canViewInvoice: false,
+    })
+
+    expect(
+      getInquiryRowCapabilities({
+        inquiry: inquiry({
+          status: 'COMPLETED',
+          epdaLockedAt: '2026-08-01T00:00:00.000Z',
+        }),
+        isAdmin: true,
+        canHardDelete: true,
+        canUnlock: true,
+        fallbackServiceType: 'shipping-agency',
+      })
+    ).toMatchObject({
+      canDelete: false,
+      canUnlock: true,
+      showLocked: false,
     })
 
     expect(
       getInquiryRowCapabilities({
         inquiry: inquiry({ status: 'QUOTED' }),
         isAdmin: false,
-        canSoftDelete: false,
         canHardDelete: false,
+        canUnlock: false,
         fallbackServiceType: 'shipping-agency',
       })
     ).toMatchObject({
       canDelete: false,
-      canRestore: false,
       canViewInvoice: true,
     })
   })

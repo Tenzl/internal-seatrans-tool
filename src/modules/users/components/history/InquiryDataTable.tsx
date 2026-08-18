@@ -42,8 +42,6 @@ import {
 } from '@/components/ui/table'
 import { INQUIRY_PAGE_SIZE } from './useInquiryData'
 
-export type InquiryDeleteMode = 'soft' | 'hard'
-
 export interface InquiryDataTableProps<TData extends { id: number }> {
   columns: ColumnDef<TData, unknown>[]
   data: TData[]
@@ -61,8 +59,8 @@ export interface InquiryDataTableProps<TData extends { id: number }> {
   pageCount: number
   totalElements: number
   onPageChange: (page: number) => void
-  onDelete?: (ids: number[], mode: InquiryDeleteMode) => Promise<void>
-  canHardDelete?: boolean
+  onDelete?: (ids: number[]) => Promise<void>
+  canSelectRow?: (row: TData) => boolean
   /** Initial column visibility (e.g. hide port/date on small screens). */
   initialColumnVisibility?: VisibilityState
 }
@@ -85,7 +83,7 @@ export function InquiryDataTable<TData extends { id: number }>({
   totalElements,
   onPageChange,
   onDelete,
-  canHardDelete = false,
+  canSelectRow,
   initialColumnVisibility,
 }: InquiryDataTableProps<TData>) {
   const [columnVisibility, setColumnVisibility] =
@@ -93,8 +91,6 @@ export function InquiryDataTable<TData extends { id: number }>({
   const [rowSelection, setRowSelection] = React.useState({})
 
   const [showDeleteDialog, setShowDeleteDialog] = React.useState(false)
-  const [pendingDeleteMode, setPendingDeleteMode] =
-    React.useState<InquiryDeleteMode>('soft')
   const [isDeleting, setIsDeleting] = React.useState(false)
 
   const selectColumn = React.useMemo<ColumnDef<TData>>(
@@ -114,6 +110,7 @@ export function InquiryDataTable<TData extends { id: number }>({
         <Checkbox
           checked={row.getIsSelected()}
           onCheckedChange={(value) => row.toggleSelected(!!value)}
+          disabled={!row.getCanSelect()}
           aria-label='Select row'
         />
       ),
@@ -143,6 +140,7 @@ export function InquiryDataTable<TData extends { id: number }>({
     },
     onColumnVisibilityChange: setColumnVisibility,
     onRowSelectionChange: setRowSelection,
+    enableRowSelection: (row) => canSelectRow?.(row.original) ?? true,
     onPaginationChange: (updater) => {
       const next = functionalUpdate(updater, {
         pageIndex,
@@ -163,25 +161,20 @@ export function InquiryDataTable<TData extends { id: number }>({
   const selectedRows = table.getSelectedRowModel().rows
   const selectedCount = selectedRows.length
 
-  const handleDelete = async (mode: InquiryDeleteMode) => {
+  const handleDelete = async () => {
     if (!onDelete || selectedCount === 0) return
 
     setIsDeleting(true)
     try {
       const ids = selectedRows.map((row) => row.original.id)
-      await onDelete(ids, mode)
+      await onDelete(ids)
       setRowSelection({})
       setShowDeleteDialog(false)
     } catch {
-      // The caller owns user-facing error reporting for archive/delete failures.
+      // The caller owns user-facing error reporting for delete failures.
     } finally {
       setIsDeleting(false)
     }
-  }
-
-  const openDeleteDialog = (mode: InquiryDeleteMode) => {
-    setPendingDeleteMode(mode)
-    setShowDeleteDialog(true)
   }
 
   return (
@@ -231,30 +224,15 @@ export function InquiryDataTable<TData extends { id: number }>({
 
           <div className='flex flex-wrap items-center gap-2 sm:ml-auto'>
             {onDelete && selectedCount > 0 && (
-              <>
-                {!canHardDelete && (
-                  <Button
-                    variant='outline'
-                    size='sm'
-                    onClick={() => openDeleteDialog('soft')}
-                    className='h-10 gap-2 active:scale-[0.98] sm:h-9'
-                  >
-                    <Trash2 className='h-4 w-4' />
-                    Archive ({selectedCount})
-                  </Button>
-                )}
-                {canHardDelete && (
-                  <Button
-                    variant='destructive'
-                    size='sm'
-                    onClick={() => openDeleteDialog('hard')}
-                    className='h-10 gap-2 active:scale-[0.98] sm:h-9'
-                  >
-                    <Trash2 className='h-4 w-4' />
-                    Delete permanently ({selectedCount})
-                  </Button>
-                )}
-              </>
+              <Button
+                variant='destructive'
+                size='sm'
+                onClick={() => setShowDeleteDialog(true)}
+                className='h-10 gap-2 active:scale-[0.98] sm:h-9'
+              >
+                <Trash2 className='h-4 w-4' />
+                Delete permanently ({selectedCount})
+              </Button>
             )}
 
             <DropdownMenu>
@@ -371,33 +349,21 @@ export function InquiryDataTable<TData extends { id: number }>({
       <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>
-              {pendingDeleteMode === 'hard'
-                ? 'Permanently delete inquiries?'
-                : 'Archive inquiries?'}
-            </AlertDialogTitle>
+            <AlertDialogTitle>Permanently delete inquiries?</AlertDialogTitle>
             <AlertDialogDescription>
-              {pendingDeleteMode === 'hard'
-                ? `This will permanently delete ${selectedCount} inquiry${selectedCount > 1 ? 'ies' : ''} and attached documents. This cannot be undone.`
-                : `This will archive ${selectedCount} inquiry${selectedCount > 1 ? 'ies' : ''}. They will be hidden from user/staff history but remain visible to administrators.`}
+              This will permanently delete {selectedCount}{' '}
+              {selectedCount === 1 ? 'inquiry' : 'inquiries'} and attached
+              documents. This cannot be undone.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel disabled={isDeleting}>Cancel</AlertDialogCancel>
             <AlertDialogAction
-              onClick={() => handleDelete(pendingDeleteMode)}
+              onClick={() => handleDelete()}
               disabled={isDeleting}
-              className={
-                pendingDeleteMode === 'hard'
-                  ? 'text-destructive-foreground bg-destructive hover:bg-destructive/90'
-                  : undefined
-              }
+              className='text-destructive-foreground bg-destructive hover:bg-destructive/90'
             >
-              {isDeleting
-                ? 'Processing...'
-                : pendingDeleteMode === 'hard'
-                  ? 'Delete permanently'
-                  : 'Archive'}
+              {isDeleting ? 'Processing...' : 'Delete permanently'}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

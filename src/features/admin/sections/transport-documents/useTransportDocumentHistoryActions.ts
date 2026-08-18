@@ -1,11 +1,11 @@
 import { useState } from 'react'
 import { toast } from '@/shared/utils/toast'
 import { useRouter } from 'next/navigation'
-import type {
-  TransportDocumentDeleteMode,
-  TransportDocumentRecord,
-} from './transportDocument.types'
-import { buildTransportDocumentDetailUrl } from './transportDocumentHistoryRules'
+import type { TransportDocumentRecord } from './transportDocument.types'
+import {
+  buildBookingCopyUrl,
+  buildTransportDocumentDetailUrl,
+} from './transportDocumentHistoryRules'
 import { transportDocumentService } from './transportDocumentService'
 
 export function useTransportDocumentHistoryActions(options: {
@@ -14,30 +14,25 @@ export function useTransportDocumentHistoryActions(options: {
   const router = useRouter()
   const [deleteTarget, setDeleteTarget] =
     useState<TransportDocumentRecord | null>(null)
-  const [deleteMode, setDeleteMode] =
-    useState<TransportDocumentDeleteMode>('soft')
   const [lockTarget, setLockTarget] = useState<TransportDocumentRecord | null>(
     null
   )
   const [unlockTarget, setUnlockTarget] =
     useState<TransportDocumentRecord | null>(null)
-  const [restoreTarget, setRestoreTarget] =
-    useState<TransportDocumentRecord | null>(null)
   const [isDeleting, setIsDeleting] = useState(false)
   const [isLocking, setIsLocking] = useState(false)
   const [isUnlocking, setIsUnlocking] = useState(false)
-  const [isRestoring, setIsRestoring] = useState(false)
 
   const openDetail = (record: TransportDocumentRecord) => {
     router.push(buildTransportDocumentDetailUrl(record), { scroll: false })
   }
 
-  const openDelete = (
-    record: TransportDocumentRecord,
-    mode: TransportDocumentDeleteMode
-  ) => {
+  const copyBooking = (record: TransportDocumentRecord) => {
+    router.push(buildBookingCopyUrl(record), { scroll: false })
+  }
+
+  const openDelete = (record: TransportDocumentRecord) => {
     setDeleteTarget(record)
-    setDeleteMode(mode)
   }
 
   const closeDelete = () => setDeleteTarget(null)
@@ -46,29 +41,18 @@ export function useTransportDocumentHistoryActions(options: {
     if (!deleteTarget) return
     setIsDeleting(true)
     try {
-      if (deleteMode === 'hard') {
-        await transportDocumentService.permanentDelete(
-          deleteTarget.documentType,
-          deleteTarget.id
-        )
-        toast.success('Document record deleted')
-      } else {
-        await transportDocumentService.archive(
-          deleteTarget.documentType,
-          deleteTarget.id,
-          deleteTarget.version
-        )
-        toast.success('Document record archived')
-      }
+      await transportDocumentService.delete(
+        deleteTarget.documentType,
+        deleteTarget.id
+      )
+      toast.success('Document record permanently deleted')
       setDeleteTarget(null)
       await options.onMutated()
     } catch (error) {
       toast.error(
         error instanceof Error
           ? error.message
-          : deleteMode === 'hard'
-            ? 'Failed to delete document record'
-            : 'Failed to archive document record'
+          : 'Failed to delete document record'
       )
     } finally {
       setIsDeleting(false)
@@ -133,46 +117,15 @@ export function useTransportDocumentHistoryActions(options: {
     }
   }
 
-  const openRestore = (record: TransportDocumentRecord) => {
-    setRestoreTarget(record)
-  }
-
-  const closeRestore = () => setRestoreTarget(null)
-
-  const confirmRestore = async () => {
-    if (!restoreTarget) return
-    setIsRestoring(true)
-    try {
-      await transportDocumentService.restore(
-        restoreTarget.documentType,
-        restoreTarget.id,
-        restoreTarget.version
-      )
-      toast.success('Document record restored')
-      setRestoreTarget(null)
-      await options.onMutated()
-    } catch (error) {
-      toast.error(
-        error instanceof Error
-          ? error.message
-          : 'Failed to restore document record'
-      )
-    } finally {
-      setIsRestoring(false)
-    }
-  }
-
   return {
     deleteTarget,
-    deleteMode,
     lockTarget,
     unlockTarget,
-    restoreTarget,
     isDeleting,
     isLocking,
     isUnlocking,
-    isRestoring,
     openDetail,
+    copyBooking,
     openDelete,
     closeDelete,
     confirmDelete,
@@ -182,8 +135,5 @@ export function useTransportDocumentHistoryActions(options: {
     openUnlock,
     closeUnlock,
     confirmUnlock,
-    openRestore,
-    closeRestore,
-    confirmRestore,
   }
 }

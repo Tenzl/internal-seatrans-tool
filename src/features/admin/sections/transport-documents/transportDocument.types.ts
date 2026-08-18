@@ -261,12 +261,44 @@ export interface BookingWorkflow {
   documents: Partial<Record<TransportDocumentType, TransportDocumentRecord>>
 }
 
-export type TransportDocumentDeleteMode = 'soft' | 'hard'
+export interface BookingCopySource {
+  sourceBookingId: number
+  bookingFlow: BookingFlow
+  payload: BookingConfirmationPayload
+}
+
+export interface BillOfLadingNumberDuplicate {
+  id: number
+  bookingId: number | null
+  bookingNumber: string | null
+  number: string
+  createdAt: string
+}
+
+export interface BillOfLadingNumberCheck {
+  number: string
+  duplicate: boolean
+  matches: BillOfLadingNumberDuplicate[]
+}
+
+export interface DocumentNumberDuplicateMatch {
+  id: number
+  documentType: TransportDocumentType
+  bookingId: number | null
+  bookingNumber: string | null
+  number: string
+  createdAt: string
+}
+
+export interface DocumentNumberCheck {
+  documentType: TransportDocumentType
+  number: string
+  duplicate: boolean
+  matches: DocumentNumberDuplicateMatch[]
+}
 
 export type TransportDocumentActionPermissions = {
   canLock: boolean
   canUnlock: boolean
-  canArchive: boolean
-  canRestore: boolean
   canHardDelete: boolean
 }

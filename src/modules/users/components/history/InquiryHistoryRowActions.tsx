@@ -1,11 +1,10 @@
 import {
-  Archive,
   Eye,
   FileText,
   Lock,
   MoreHorizontal,
-  RotateCcw,
   Trash2,
+  Unlock,
 } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -13,10 +12,8 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
-  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
-import type { InquiryDeleteMode } from './InquiryDataTable'
 import type {
   InquiryActionPermissions,
   InquiryHistoryRecord,
@@ -28,9 +25,7 @@ const ACTION_VIEW_CLASS =
   'border-sky-500/40 bg-sky-500/10 text-sky-800 hover:bg-sky-500/15 hover:text-sky-900 dark:border-sky-400/35 dark:bg-sky-400/10 dark:text-sky-200 dark:hover:bg-sky-400/15 dark:hover:text-sky-100'
 const ACTION_LOCK_CLASS =
   'border-amber-500/45 bg-amber-500/10 text-amber-900 hover:bg-amber-500/15 hover:text-amber-950 dark:border-amber-400/40 dark:bg-amber-400/10 dark:text-amber-200 dark:hover:bg-amber-400/15 dark:hover:text-amber-100'
-const ACTION_ARCHIVE_CLASS =
-  'border-rose-500/40 bg-rose-500/10 text-rose-800 hover:bg-rose-500/15 hover:text-rose-900 dark:border-rose-400/35 dark:bg-rose-400/10 dark:text-rose-200 dark:hover:bg-rose-400/15 dark:hover:text-rose-100'
-const ACTION_RESTORE_CLASS =
+const ACTION_UNLOCK_CLASS =
   'border-emerald-500/40 bg-emerald-500/10 text-emerald-800 hover:bg-emerald-500/15 hover:text-emerald-900 dark:border-emerald-400/35 dark:bg-emerald-400/10 dark:text-emerald-200 dark:hover:bg-emerald-400/15 dark:hover:text-emerald-100'
 
 type InquiryHistoryRowActionsProps = {
@@ -39,9 +34,9 @@ type InquiryHistoryRowActionsProps = {
   fallbackServiceType?: string
   onOpenDetail: (inquiry: InquiryHistoryRecord) => void
   onViewQuote: (inquiry: InquiryHistoryRecord) => void
-  onDelete: (inquiry: InquiryHistoryRecord, mode: InquiryDeleteMode) => void
-  onRestore: (inquiry: InquiryHistoryRecord) => void
+  onDelete: (inquiry: InquiryHistoryRecord) => void
   onLock: (inquiry: InquiryHistoryRecord) => void
+  onUnlock: (inquiry: InquiryHistoryRecord) => void
 }
 
 export function InquiryHistoryRowActions(props: InquiryHistoryRowActionsProps) {
@@ -72,8 +67,8 @@ function DesktopRowActions({
   onOpenDetail,
   onViewQuote,
   onDelete,
-  onRestore,
   onLock,
+  onUnlock,
 }: InquiryHistoryRowActionsProps & { capabilities: RowCapabilities }) {
   if (!permissions.isAdmin) {
     return (
@@ -108,6 +103,17 @@ function DesktopRowActions({
           Lock edit
         </Button>
       )}
+      {capabilities.canUnlock && (
+        <Button
+          variant='outline'
+          size='sm'
+          onClick={() => onUnlock(inquiry)}
+          className={`gap-2 ${ACTION_UNLOCK_CLASS}`}
+        >
+          <Unlock className='h-4 w-4' />
+          Unlock edit
+        </Button>
+      )}
       {capabilities.showLocked && (
         <Badge
           variant='outline'
@@ -117,34 +123,9 @@ function DesktopRowActions({
           Locked
         </Badge>
       )}
-      {capabilities.canArchive && (
-        <Button
-          variant='outline'
-          size='sm'
-          onClick={() => onDelete(inquiry, 'soft')}
-          className={`gap-2 ${ACTION_ARCHIVE_CLASS}`}
-        >
-          <Archive className='h-4 w-4' />
-          Archive
-        </Button>
+      {capabilities.canDelete && (
+        <DeleteButton onClick={() => onDelete(inquiry)} />
       )}
-      {capabilities.canDelete &&
-        (capabilities.canRestore ? (
-          <>
-            <Button
-              variant='outline'
-              size='sm'
-              onClick={() => onRestore(inquiry)}
-              className={`gap-2 ${ACTION_RESTORE_CLASS}`}
-            >
-              <RotateCcw className='h-4 w-4' />
-              Restore
-            </Button>
-            <DeleteButton onClick={() => onDelete(inquiry, 'hard')} />
-          </>
-        ) : (
-          <DeleteButton onClick={() => onDelete(inquiry, 'hard')} />
-        ))}
     </div>
   )
 }
@@ -156,8 +137,8 @@ function MobileRowActions({
   onOpenDetail,
   onViewQuote,
   onDelete,
-  onRestore,
   onLock,
+  onUnlock,
 }: InquiryHistoryRowActionsProps & { capabilities: RowCapabilities }) {
   return (
     <DropdownMenu>
@@ -188,50 +169,29 @@ function MobileRowActions({
             Lock edit
           </DropdownMenuItem>
         )}
+        {capabilities.canUnlock && (
+          <DropdownMenuItem
+            onClick={() => onUnlock(inquiry)}
+            className='text-emerald-800 focus:bg-emerald-500/10 focus:text-emerald-900 dark:text-emerald-200'
+          >
+            <Unlock className='mr-2 h-4 w-4' />
+            Unlock edit
+          </DropdownMenuItem>
+        )}
         {capabilities.showLocked && (
           <DropdownMenuItem disabled>
             <Lock className='mr-2 h-4 w-4' />
             Locked
           </DropdownMenuItem>
         )}
-        {capabilities.canArchive && (
+        {permissions.isAdmin && capabilities.canDelete && (
           <DropdownMenuItem
-            onClick={() => onDelete(inquiry, 'soft')}
-            className='text-rose-800 focus:bg-rose-500/10 focus:text-rose-900 dark:text-rose-200'
+            onClick={() => onDelete(inquiry)}
+            className='text-destructive focus:text-destructive'
           >
-            <Archive className='mr-2 h-4 w-4' />
-            Archive
+            <Trash2 className='mr-2 h-4 w-4' />
+            Delete permanently
           </DropdownMenuItem>
-        )}
-        {permissions.isAdmin &&
-          capabilities.canDelete &&
-          !capabilities.canRestore && (
-            <DropdownMenuItem
-              onClick={() => onDelete(inquiry, 'hard')}
-              className='text-destructive focus:text-destructive'
-            >
-              <Trash2 className='mr-2 h-4 w-4' />
-              Delete
-            </DropdownMenuItem>
-          )}
-        {capabilities.canRestore && (
-          <>
-            <DropdownMenuItem
-              onClick={() => onRestore(inquiry)}
-              className='text-emerald-800 focus:bg-emerald-500/10 focus:text-emerald-900 dark:text-emerald-200'
-            >
-              <RotateCcw className='mr-2 h-4 w-4' />
-              Restore
-            </DropdownMenuItem>
-            <DropdownMenuSeparator />
-            <DropdownMenuItem
-              onClick={() => onDelete(inquiry, 'hard')}
-              className='text-destructive focus:text-destructive'
-            >
-              <Trash2 className='mr-2 h-4 w-4' />
-              Delete permanently
-            </DropdownMenuItem>
-          </>
         )}
         {capabilities.canViewInvoice && (
           <DropdownMenuItem onClick={() => onViewQuote(inquiry)}>

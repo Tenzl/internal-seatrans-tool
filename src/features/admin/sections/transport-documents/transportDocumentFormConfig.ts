@@ -235,7 +235,7 @@ export const TRANSPORT_DOCUMENT_FORM_SECTIONS: Record<
       description:
         'Fields and the author signature overlay onto the Bill of Lading form selected in the bottom bar.',
       fields: [
-        { key: 'fblNumber', label: 'FBL No.' },
+        { key: 'fblNumber', label: 'HBL/FBL No.' },
         { key: 'placeOfIssue', label: 'Place of issue', kind: 'port-name' },
         { key: 'dateOfIssue', label: 'Date of issue', kind: 'date' },
         { key: 'numberOfOriginals', label: "Number of Original FBL's" },

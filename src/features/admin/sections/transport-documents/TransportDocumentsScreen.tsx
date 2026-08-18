@@ -7,9 +7,17 @@ import { isAdminRole } from '@/config/section-catalog'
 import { PdfPreviewDialog } from '@/shared/components/PdfPreviewDialog'
 import { queryKeys } from '@/shared/config/react-query.config'
 import { toast } from '@/shared/utils/toast'
-import { FileOutput, Loader2, Lock, Unlock } from 'lucide-react'
+import {
+  AlertTriangle,
+  Copy,
+  FileOutput,
+  Loader2,
+  Lock,
+  Unlock,
+} from 'lucide-react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { useCurrentUser } from '@/hooks/use-current-user'
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import {
   AlertDialog,
   AlertDialogAction,
@@ -27,18 +35,28 @@ import { adminUsersService } from '../user-management/api/adminUsersService'
 import { BookingFlowChooser } from './BookingFlowChooser'
 import { BookingWorkflowNav } from './BookingWorkflowNav'
 import { TransportDocumentForm } from './TransportDocumentForm'
-import { formatBookingPic, resolveBookingPic, resolveUserPicEmail } from './bookingPic'
+import {
+  formatBookingPic,
+  resolveBookingPic,
+  resolveUserPicEmail,
+} from './bookingPic'
 import {
   buildBookingWorkflowUrl,
   getWorkflowRecord,
   recordBelongsToBooking,
 } from './bookingWorkflow'
+import {
+  formatDocumentNumberDuplicateMessage,
+  getDocumentNumber,
+  getDocumentNumberLabel,
+} from './documentNumberDuplicate'
 import type {
   AnContainer,
   ArrivalNoticePayload,
   BookingConfirmationPayload,
   DeliveryOrderPayload,
   BookingFlow,
+  DocumentNumberCheck,
   TransportDocumentPayloadMap,
   TransportDocumentRecord,
   TransportDocumentStatus,
@@ -84,6 +102,7 @@ export function TransportDocumentsScreen({
   const isAdmin = isAdminRole(currentUser?.role)
   const recordIdParam = searchParams.get('recordId')
   const bookingIdParam = searchParams.get('bookingId')
+  const copyFromParam = searchParams.get('copyFrom')
   const flowParam = searchParams.get('flow')
   const previewParam = searchParams.get('preview')
   const parsedRecordId = recordIdParam
@@ -100,6 +119,18 @@ export function TransportDocumentsScreen({
     parsedBookingId != null && Number.isFinite(parsedBookingId)
       ? parsedBookingId
       : null
+  const parsedCopySourceId = copyFromParam
+    ? Number.parseInt(copyFromParam, 10)
+    : null
+  const validCopySourceId =
+    documentType === 'booking' &&
+    validRecordId == null &&
+    validBookingId == null &&
+    parsedCopySourceId != null &&
+    Number.isFinite(parsedCopySourceId) &&
+    parsedCopySourceId > 0
+      ? parsedCopySourceId
+      : null
   const flowFromUrl: BookingFlow | null =
     flowParam === 'IMPORT' || flowParam === 'EXPORT' ? flowParam : null
 
@@ -109,7 +140,14 @@ export function TransportDocumentsScreen({
     enabled: validBookingId != null,
   })
   const workflow = workflowQuery.data ?? null
-  const selectedFlow: BookingFlow | null = workflow?.flow ?? flowFromUrl
+  const copySourceQuery = useQuery({
+    queryKey: queryKeys.bookingCopySource(validCopySourceId ?? 0),
+    queryFn: () =>
+      transportDocumentService.bookingCopySource(validCopySourceId as number),
+    enabled: validCopySourceId != null,
+  })
+  const selectedFlow: BookingFlow | null =
+    workflow?.flow ?? copySourceQuery.data?.bookingFlow ?? flowFromUrl
   const needsFlowSelection =
     documentType === 'booking' &&
     validRecordId == null &&
@@ -142,6 +180,7 @@ export function TransportDocumentsScreen({
   const [isGenerating, setIsGenerating] = useState(false)
   const [isSaving, setIsSaving] = useState(false)
   const [isUnlocking, setIsUnlocking] = useState(false)
+  const [isCheckingDuplicate, setIsCheckingDuplicate] = useState(false)
   const [leaveDialogOpen, setLeaveDialogOpen] = useState(false)
   const [pendingHref, setPendingHref] = useState<string | null>(null)
   const [recordCreator, setRecordCreator] =
@@ -152,8 +191,12 @@ export function TransportDocumentsScreen({
   const [trackedRecordId, setTrackedRecordId] = useState(validRecordId)
   const [doCargoSyncKey, setDoCargoSyncKey] = useState<string | null>(null)
   const [bookingPicSeedApplied, setBookingPicSeedApplied] = useState(false)
+  const [debouncedDocumentNumber, setDebouncedDocumentNumber] = useState('')
+  const [saveDuplicateCheck, setSaveDuplicateCheck] =
+    useState<DocumentNumberCheck | null>(null)
   const autoPreviewDone = useRef(false)
   const autoWorkflowPrefillKey = useRef<string | null>(null)
+  const hydratedCopySourceId = useRef<number | null>(null)
   const isDirtyRef = useRef(false)
 
   // Adjust session state when URL recordId changes (avoid setState-in-effect).
@@ -217,6 +260,7 @@ export function TransportDocumentsScreen({
   const document = getTransportDocumentDefinition(documentType)
   const activePayload = forms[documentType]
   const activeRecord = activePayload as unknown as Record<string, unknown>
+  const documentNumber = getDocumentNumber(documentType, activeRecord)
   const containers = getTransportDocumentContainers(documentType, forms)
   const workflowRootLockedAt = workflow?.documents.booking?.lockedAt ?? null
   const isLocked = Boolean(lockedAt || workflowRootLockedAt)
@@ -224,6 +268,41 @@ export function TransportDocumentsScreen({
     if (isLocked) return false
     return payloadSnapshot(activePayload) !== savedSnapshot
   }, [activePayload, isLocked, savedSnapshot])
+
+  useEffect(() => {
+    const timer = window.setTimeout(
+      () => setDebouncedDocumentNumber(documentNumber),
+      400
+    )
+    return () => window.clearTimeout(timer)
+  }, [documentNumber])
+
+  const duplicateNumberQuery = useQuery({
+    queryKey: queryKeys.documentNumberDuplicates(
+      documentType,
+      debouncedDocumentNumber,
+      activeRecordId
+    ),
+    queryFn: () =>
+      transportDocumentService.checkDocumentNumber(
+        documentType,
+        debouncedDocumentNumber,
+        activeRecordId ?? undefined
+      ),
+    enabled:
+      debouncedDocumentNumber.length > 0 &&
+      debouncedDocumentNumber === documentNumber,
+    staleTime: 30_000,
+  })
+  const duplicateNumberCheck = [
+    saveDuplicateCheck,
+    duplicateNumberQuery.data,
+  ].find(
+    (check) =>
+      check?.documentType === documentType &&
+      check.number.trim().toLowerCase() === documentNumber.toLowerCase()
+  )
+  const duplicateBlocksSave = duplicateNumberCheck?.duplicate === true
 
   const fileName = useMemo(
     () =>
@@ -252,6 +331,15 @@ export function TransportDocumentsScreen({
         : 'Failed to load booking workflow'
     )
   }, [workflowQuery.error])
+
+  useEffect(() => {
+    if (!copySourceQuery.error) return
+    toast.error(
+      copySourceQuery.error instanceof Error
+        ? copySourceQuery.error.message
+        : 'Failed to load the booking copy source'
+    )
+  }, [copySourceQuery.error])
 
   useEffect(() => {
     return () => {
@@ -349,6 +437,28 @@ export function TransportDocumentsScreen({
     },
     [currentUser, documentType, recordCreator]
   )
+
+  useEffect(() => {
+    if (validCopySourceId == null) {
+      hydratedCopySourceId.current = null
+      return
+    }
+    const source = copySourceQuery.data
+    if (!source || hydratedCopySourceId.current === source.sourceBookingId) {
+      return
+    }
+    hydratedCopySourceId.current = source.sourceBookingId
+    const copiedPayload = normalizeBookingConfirmationPayload(source.payload)
+    setForms((previous) => ({
+      ...previous,
+      booking: copiedPayload,
+    }))
+    setSavedSnapshot(payloadSnapshot(createEmptyTransportDocuments().booking))
+    setRecordCreator(null)
+    toast.info(
+      `Copied Booking #${source.sourceBookingId}. Saving will create a new booking.`
+    )
+  }, [copySourceQuery.data, validCopySourceId])
 
   // Seed default PIC from the signed-in user on new booking forms.
   // Adjust during render (not an effect) so lint stays clean and auto-seed
@@ -487,66 +597,60 @@ export function TransportDocumentsScreen({
     [activeRecordId, documentType, isDirty, validatePayload]
   )
 
-  const handleSave = useCallback(async () => {
-    if (isLocked) return false
-    if (documentType === 'booking' && selectedFlow == null) {
-      toast.error('Choose Import or Export before creating the booking')
-      return false
-    }
-    const wasNew = activeRecordId == null
-    const validated = validatePayload()
-    if (!validated) return false
+  const performSave = useCallback(
+    async (validated: TransportDocumentPayloadMap[typeof documentType]) => {
+      const wasNew = activeRecordId == null
 
-    setIsSaving(true)
-    try {
-      const record = await persistRecord(validated)
-      // applyRecord normalizes payload and sets savedSnapshot to that same
-      // value so isDirty clears. Do not markSaved(record.payload): the raw
-      // API payload often differs from the normalized form (defaults,
-      // cargoVolumes compact, BL/AN migrations) and would leave the leave
-      // guard thinking there are unsaved changes.
-      applyRecord(record)
-      // Click / beforeunload guards read the ref before React re-renders.
-      isDirtyRef.current = false
-      const rootBookingId =
-        documentType === 'booking' ? record.id : validBookingId
-      if (wasNew && rootBookingId != null && selectedFlow != null) {
-        router.replace(
-          buildBookingWorkflowUrl(
-            selectedFlow,
-            rootBookingId,
-            documentType,
-            record
-          ),
-          { scroll: false }
-        )
+      setIsSaving(true)
+      try {
+        const record = await persistRecord(validated)
+        // applyRecord normalizes payload and sets savedSnapshot to that same
+        // value so isDirty clears. Do not markSaved(record.payload): the raw
+        // API payload often differs from the normalized form (defaults,
+        // cargoVolumes compact, BL/AN migrations) and would leave the leave
+        // guard thinking there are unsaved changes.
+        applyRecord(record)
+        // Click / beforeunload guards read the ref before React re-renders.
+        isDirtyRef.current = false
+        const rootBookingId =
+          documentType === 'booking' ? record.id : validBookingId
+        if (wasNew && rootBookingId != null && selectedFlow != null) {
+          router.replace(
+            buildBookingWorkflowUrl(
+              selectedFlow,
+              rootBookingId,
+              documentType,
+              record
+            ),
+            { scroll: false }
+          )
+        }
+        if (rootBookingId != null) {
+          void queryClient.invalidateQueries({
+            queryKey: queryKeys.bookingWorkflow(rootBookingId),
+          })
+        }
+        toast.success(`${document.label} saved`)
+        return true
+      } catch (error) {
+        toast.error(error instanceof Error ? error.message : 'Failed to save')
+        return false
+      } finally {
+        setIsSaving(false)
       }
-      if (rootBookingId != null) {
-        void queryClient.invalidateQueries({
-          queryKey: queryKeys.bookingWorkflow(rootBookingId),
-        })
-      }
-      toast.success(`${document.label} saved`)
-      return true
-    } catch (error) {
-      toast.error(error instanceof Error ? error.message : 'Failed to save')
-      return false
-    } finally {
-      setIsSaving(false)
-    }
-  }, [
-    activeRecordId,
-    applyRecord,
-    document.label,
-    documentType,
-    isLocked,
-    persistRecord,
-    queryClient,
-    router,
-    selectedFlow,
-    validatePayload,
-    validBookingId,
-  ])
+    },
+    [
+      activeRecordId,
+      applyRecord,
+      document.label,
+      documentType,
+      persistRecord,
+      queryClient,
+      router,
+      selectedFlow,
+      validBookingId,
+    ]
+  )
 
   useEffect(() => {
     if (validRecordId == null) {
@@ -694,13 +798,69 @@ export function TransportDocumentsScreen({
     setPreviewUrl(null)
   }
 
-  const navigatePending = () => {
+  const navigatePending = useCallback(() => {
     if (!pendingHref) return
     const href = pendingHref
     setPendingHref(null)
     setLeaveDialogOpen(false)
     router.push(href)
-  }
+  }, [pendingHref, router])
+
+  const requestSave = useCallback(
+    async (navigateAfterSave = false) => {
+      if (isLocked) return false
+      if (documentType === 'booking' && selectedFlow == null) {
+        toast.error('Choose Import or Export before creating the booking')
+        return false
+      }
+      const validated = validatePayload()
+      if (!validated) return false
+
+      const currentNumber = getDocumentNumber(
+        documentType,
+        validated as unknown as Record<string, unknown>
+      )
+      if (currentNumber) {
+        setIsCheckingDuplicate(true)
+        try {
+          const check = await transportDocumentService.checkDocumentNumber(
+            documentType,
+            currentNumber,
+            activeRecordId ?? undefined
+          )
+          setSaveDuplicateCheck(check)
+          if (check.duplicate) {
+            toast.error(
+              `${formatDocumentNumberDuplicateMessage(check)} Enter a different number before saving.`
+            )
+            return false
+          }
+        } catch (error) {
+          toast.error(
+            error instanceof Error
+              ? error.message
+              : `Could not check the ${getDocumentNumberLabel(documentType)}; please try again`
+          )
+          return false
+        } finally {
+          setIsCheckingDuplicate(false)
+        }
+      }
+
+      const saved = await performSave(validated)
+      if (saved && navigateAfterSave) navigatePending()
+      return saved
+    },
+    [
+      activeRecordId,
+      documentType,
+      isLocked,
+      navigatePending,
+      performSave,
+      selectedFlow,
+      validatePayload,
+    ]
+  )
 
   const handleLeaveWithoutSaving = () => {
     setSavedSnapshot(payloadSnapshot(activePayload))
@@ -708,9 +868,7 @@ export function TransportDocumentsScreen({
   }
 
   const handleLeaveWithSave = async () => {
-    const ok = await handleSave()
-    if (!ok) return
-    navigatePending()
+    await requestSave(true)
   }
 
   const handleUnlock = useCallback(async () => {
@@ -776,6 +934,8 @@ export function TransportDocumentsScreen({
     isSaving ||
     isHydrating ||
     isUnlocking ||
+    isCheckingDuplicate ||
+    copySourceQuery.isLoading ||
     workflowQuery.isLoading
   const formReady = !needsFlowSelection || selectedFlow != null
   const prefillSourceType = getPrefillSourceType(documentType)
@@ -845,9 +1005,11 @@ export function TransportDocumentsScreen({
             <h1 className='text-xl font-semibold tracking-tight'>
               {activeRecordId
                 ? `Edit ${document.label}`
-                : documentType === 'booking'
-                  ? 'Create Booking'
-                  : `Create ${document.label}`}
+                : validCopySourceId != null
+                  ? 'Create Booking from copy'
+                  : documentType === 'booking'
+                    ? 'Create Booking'
+                    : `Create ${document.label}`}
             </h1>
             {selectedFlow && documentType === 'booking' ? (
               <Badge variant='outline' className='font-medium'>
@@ -926,6 +1088,32 @@ export function TransportDocumentsScreen({
         />
       ) : null}
 
+      {validCopySourceId != null && copySourceQuery.data ? (
+        <Alert className='border-violet-500/40 bg-violet-500/5'>
+          <Copy />
+          <AlertTitle>New booking copied from #{validCopySourceId}</AlertTitle>
+          <AlertDescription>
+            Review the copied fields and booking number. Saving creates a new
+            booking and does not change the source booking.
+          </AlertDescription>
+        </Alert>
+      ) : null}
+
+      {duplicateNumberCheck?.duplicate ? (
+        <Alert className='border-amber-500/50 bg-amber-500/10 text-amber-950 dark:text-amber-100'>
+          <AlertTriangle />
+          <AlertTitle>
+            Duplicate {getDocumentNumberLabel(documentType)}
+          </AlertTitle>
+          <AlertDescription className='text-amber-900/80 dark:text-amber-100/80'>
+            <p>
+              {formatDocumentNumberDuplicateMessage(duplicateNumberCheck)} Enter
+              a different number to enable Create/Save.
+            </p>
+          </AlertDescription>
+        </Alert>
+      ) : null}
+
       {isHydrating ? (
         <div className='flex min-h-40 items-center justify-center'>
           <Loader2 className='h-6 w-6 animate-spin text-muted-foreground' />
@@ -942,7 +1130,7 @@ export function TransportDocumentsScreen({
             onFieldChange={updateField}
             onFieldsChange={updateFields}
             onContainersChange={setContainers}
-            onSubmit={() => void handleSave()}
+            onSubmit={() => void requestSave()}
             onDownload={() => void openPreview()}
             onReset={resetActiveForm}
             submitLabel={
@@ -953,7 +1141,11 @@ export function TransportDocumentsScreen({
                   : `Create ${document.shortLabel}`
             }
             resetLabel={`Reset ${document.shortLabel}`}
-            submitDisabled={needsFlowSelection && !selectedFlow}
+            submitDisabled={
+              (needsFlowSelection && !selectedFlow) ||
+              duplicateBlocksSave ||
+              (documentNumber.length > 0 && duplicateNumberQuery.isFetching)
+            }
           />
         </fieldset>
       ) : null}
@@ -1001,7 +1193,7 @@ export function TransportDocumentsScreen({
               Don&apos;t save
             </Button>
             <AlertDialogAction
-              disabled={isSaving}
+              disabled={isSaving || duplicateBlocksSave}
               onClick={(event) => {
                 event.preventDefault()
                 void handleLeaveWithSave()

@@ -107,4 +107,25 @@ export const queryKeys = {
     ['transportDocuments', 'bookings', page, size] as const,
   bookingWorkflow: (bookingId: number) =>
     ['transportDocuments', 'workflow', bookingId] as const,
+  bookingCopySource: (bookingId: number) =>
+    ['transportDocuments', 'booking-copy-source', bookingId] as const,
+  billOfLadingNumberDuplicates: (number: string, excludeId: number | null) =>
+    [
+      'transportDocuments',
+      'hbl-duplicates',
+      number.toLowerCase(),
+      excludeId,
+    ] as const,
+  documentNumberDuplicates: (
+    type: string,
+    number: string,
+    excludeId: number | null
+  ) =>
+    [
+      'transportDocuments',
+      'number-duplicates',
+      type,
+      number.toLowerCase(),
+      excludeId,
+    ] as const,
 }

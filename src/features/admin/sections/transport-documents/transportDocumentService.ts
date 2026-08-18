@@ -3,8 +3,11 @@ import type { PageResponse } from '@/shared/types/api.types'
 import { apiClient } from '@/shared/utils/apiClient'
 import { unwrapApiResponse } from '@/shared/utils/apiUnwrap'
 import type {
+  BillOfLadingNumberCheck,
+  BookingCopySource,
   BookingFlow,
   BookingWorkflow,
+  DocumentNumberCheck,
   TransportDocumentPayloadMap,
   TransportDocumentRecord,
   TransportDocumentType,
@@ -59,6 +62,38 @@ export const transportDocumentService = {
     return unwrapApiResponse<BookingWorkflow>(response)
   },
 
+  async bookingCopySource(bookingId: number): Promise<BookingCopySource> {
+    const response = await apiClient.get(
+      API_CONFIG.BOOKING_DOCUMENTS.ADMIN_BOOKING_COPY_SOURCE(bookingId)
+    )
+    return unwrapApiResponse<BookingCopySource>(response)
+  },
+
+  async checkBillOfLadingNumber(
+    number: string,
+    excludeId?: number
+  ): Promise<BillOfLadingNumberCheck> {
+    const response = await apiClient.get(
+      API_CONFIG.BOOKING_DOCUMENTS.ADMIN_HBL_DUPLICATES(number, excludeId)
+    )
+    return unwrapApiResponse<BillOfLadingNumberCheck>(response)
+  },
+
+  async checkDocumentNumber(
+    type: TransportDocumentType,
+    number: string,
+    excludeId?: number
+  ): Promise<DocumentNumberCheck> {
+    const response = await apiClient.get(
+      API_CONFIG.BOOKING_DOCUMENTS.ADMIN_NUMBER_DUPLICATES(
+        type,
+        number,
+        excludeId
+      )
+    )
+    return unwrapApiResponse<DocumentNumberCheck>(response)
+  },
+
   async update<T extends TransportDocumentType>(
     type: T,
     id: number,
@@ -96,35 +131,9 @@ export const transportDocumentService = {
     return unwrapApiResponse<TransportDocumentRecord>(response)
   },
 
-  async archive(
-    type: TransportDocumentType,
-    id: number,
-    expectedVersion: number
-  ): Promise<void> {
+  async delete(type: TransportDocumentType, id: number): Promise<void> {
     const response = await apiClient.delete(
-      `${API_CONFIG.BOOKING_DOCUMENTS.ADMIN_ARCHIVE(type, id)}?expectedVersion=${expectedVersion}`
-    )
-    if (!response.ok) throw new Error(await readError(response))
-  },
-
-  async restore(
-    type: TransportDocumentType,
-    id: number,
-    expectedVersion: number
-  ): Promise<void> {
-    const response = await apiClient.post(
-      API_CONFIG.BOOKING_DOCUMENTS.ADMIN_RESTORE(type, id),
-      { expectedVersion }
-    )
-    if (!response.ok) throw new Error(await readError(response))
-  },
-
-  async permanentDelete(
-    type: TransportDocumentType,
-    id: number
-  ): Promise<void> {
-    const response = await apiClient.delete(
-      API_CONFIG.BOOKING_DOCUMENTS.ADMIN_PERMANENT_DELETE(type, id)
+      API_CONFIG.BOOKING_DOCUMENTS.ADMIN_DELETE(type, id)
     )
     if (!response.ok) throw new Error(await readError(response))
   },
@@ -133,12 +142,10 @@ export const transportDocumentService = {
     type: TransportDocumentType
     page?: number
     size?: number
-    archived?: 'active' | 'archived' | 'all'
   }): Promise<PageResponse<TransportDocumentRecord>> {
     const params = new URLSearchParams()
     params.set('page', String(options.page ?? 0))
     params.set('size', String(options.size ?? 10))
-    params.set('archived', options.archived ?? 'active')
     const response = await apiClient.get(
       `${API_CONFIG.BOOKING_DOCUMENTS.ADMIN_HISTORY(options.type)}?${params.toString()}`
     )

@@ -1,10 +1,9 @@
 'use client'
 
 import { isAdminRole } from '@/config/section-catalog'
+import { toast } from '@/shared/utils/toast'
 import { useCurrentUser } from '@/hooks/use-current-user'
 import { useIsMobile } from '@/hooks/use-mobile'
-import { toast } from '@/shared/utils/toast'
-import type { InquiryDeleteMode } from './InquiryDataTable'
 import { InquiryDetailOverlay } from './InquiryDetailOverlay'
 import { InquiryHistoryCard } from './InquiryHistoryCard'
 import { InquiryHistoryRowActions } from './InquiryHistoryRowActions'
@@ -32,9 +31,6 @@ export function BaseInquiryHistoryLayout({
     error,
     fetchInquiries,
     deleteInquiries,
-    restoreInquiries,
-    archivedFilter,
-    setArchivedFilter,
     page,
     setPage,
     totalPages,
@@ -52,20 +48,16 @@ export function BaseInquiryHistoryLayout({
   const isMobile = useIsMobile()
   const permissions: InquiryActionPermissions = {
     isAdmin,
-    // Staff and ROLE_ADMIN can archive on the admin history screen.
-    canSoftDelete: isAdmin,
-    // Only ROLE_ADMIN can restore / permanently delete (matches BE).
-    canHardDelete: isAdmin && isAdminRole(currentUser?.role),
+    canHardDelete: isAdmin,
+    canUnlock: isAdmin && isAdminRole(currentUser?.role),
   }
   const rows = inquiries as InquiryHistoryRecord[]
   const isShippingAgencyHistory = serviceType === 'shipping-agency'
   const actions = useInquiryHistoryActions({
     serviceType,
     isAdmin,
-    archivedFilter,
     fetchInquiries,
     deleteInquiries,
-    restoreInquiries,
   })
 
   const columns = buildInquiryHistoryColumns({
@@ -79,23 +71,19 @@ export function BaseInquiryHistoryLayout({
         onOpenDetail={actions.openDetail}
         onViewQuote={actions.viewQuote}
         onDelete={actions.openDelete}
-        onRestore={actions.openRestore}
         onLock={actions.openLock}
+        onUnlock={actions.openUnlock}
       />
     ),
   })
 
-  const handleBulkDelete = async (ids: number[], mode: InquiryDeleteMode) => {
-    await deleteInquiries(ids, mode)
+  const handleBulkDelete = async (ids: number[]) => {
+    await deleteInquiries(ids)
     const count = ids.length
     toast.success(
-      mode === 'hard'
-        ? count === 1
-          ? 'Inquiry permanently deleted.'
-          : `${count} inquiries permanently deleted.`
-        : count === 1
-          ? 'Inquiry archived.'
-          : `${count} inquiries archived.`
+      count === 1
+        ? 'Inquiry permanently deleted.'
+        : `${count} inquiries permanently deleted.`
     )
   }
 
@@ -108,9 +96,8 @@ export function BaseInquiryHistoryLayout({
         columns={columns}
         isLoading={isLoading}
         error={error}
-        canHardDelete={permissions.canHardDelete}
-        canDelete={permissions.canSoftDelete || permissions.canHardDelete}
-        archivedFilter={archivedFilter}
+        canDelete={permissions.canHardDelete}
+        canSelectRow={(row) => !row.epdaLockedAt}
         searchKey={
           isAdmin ? (isShippingAgencyHistory ? 'mv' : 'fullName') : undefined
         }
@@ -141,7 +128,6 @@ export function BaseInquiryHistoryLayout({
               }
             : undefined
         }
-        onArchivedFilterChange={setArchivedFilter}
         onReload={() => void fetchInquiries()}
         onDelete={handleBulkDelete}
       />

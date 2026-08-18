@@ -1,51 +1,36 @@
-import {
-  Archive,
-  Eye,
-  Lock,
-  MoreHorizontal,
-  RotateCcw,
-  Trash2,
-  Unlock,
-} from 'lucide-react'
+import { Copy, Eye, Lock, MoreHorizontal, Trash2, Unlock } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
-  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 import type {
   TransportDocumentActionPermissions,
-  TransportDocumentDeleteMode,
   TransportDocumentRecord,
 } from './transportDocument.types'
 import { getTransportDocumentRowCapabilities } from './transportDocumentHistoryRules'
 
-/** Semantic action tints — muted character, distinct hue roles (info / warning / archive). */
+/** Semantic action tints — muted character with distinct action roles. */
 const ACTION_VIEW_CLASS =
   'border-sky-500/40 bg-sky-500/10 text-sky-800 hover:bg-sky-500/15 hover:text-sky-900 dark:border-sky-400/35 dark:bg-sky-400/10 dark:text-sky-200 dark:hover:bg-sky-400/15 dark:hover:text-sky-100'
 const ACTION_LOCK_CLASS =
   'border-amber-500/45 bg-amber-500/10 text-amber-900 hover:bg-amber-500/15 hover:text-amber-950 dark:border-amber-400/40 dark:bg-amber-400/10 dark:text-amber-200 dark:hover:bg-amber-400/15 dark:hover:text-amber-100'
-const ACTION_ARCHIVE_CLASS =
-  'border-rose-500/40 bg-rose-500/10 text-rose-800 hover:bg-rose-500/15 hover:text-rose-900 dark:border-rose-400/35 dark:bg-rose-400/10 dark:text-rose-200 dark:hover:bg-rose-400/15 dark:hover:text-rose-100'
-const ACTION_RESTORE_CLASS =
-  'border-emerald-500/40 bg-emerald-500/10 text-emerald-800 hover:bg-emerald-500/15 hover:text-emerald-900 dark:border-emerald-400/35 dark:bg-emerald-400/10 dark:text-emerald-200 dark:hover:bg-emerald-400/15 dark:hover:text-emerald-100'
 const ACTION_UNLOCK_CLASS =
   'border-emerald-500/40 bg-emerald-500/10 text-emerald-800 hover:bg-emerald-500/15 hover:text-emerald-900 dark:border-emerald-400/35 dark:bg-emerald-400/10 dark:text-emerald-200 dark:hover:bg-emerald-400/15 dark:hover:text-emerald-100'
+const ACTION_COPY_CLASS =
+  'border-violet-500/40 bg-violet-500/10 text-violet-800 hover:bg-violet-500/15 hover:text-violet-900 dark:border-violet-400/35 dark:bg-violet-400/10 dark:text-violet-200 dark:hover:bg-violet-400/15 dark:hover:text-violet-100'
 
 interface TransportDocumentHistoryActionsProps {
   record: TransportDocumentRecord
   permissions: TransportDocumentActionPermissions
   onViewDetails: (record: TransportDocumentRecord) => void
+  onCopy: (record: TransportDocumentRecord) => void
   onLock: (record: TransportDocumentRecord) => void
   onUnlock: (record: TransportDocumentRecord) => void
-  onRestore: (record: TransportDocumentRecord) => void
-  onDelete: (
-    record: TransportDocumentRecord,
-    mode: TransportDocumentDeleteMode
-  ) => void
+  onDelete: (record: TransportDocumentRecord) => void
 }
 
 /** Row actions matching EPDA InquiryHistoryRowActions interaction pattern. */
@@ -75,9 +60,9 @@ function DesktopRowActions({
   record,
   capabilities,
   onViewDetails,
+  onCopy,
   onLock,
   onUnlock,
-  onRestore,
   onDelete,
 }: TransportDocumentHistoryActionsProps & { capabilities: RowCapabilities }) {
   return (
@@ -92,6 +77,18 @@ function DesktopRowActions({
         <Eye className='h-4 w-4' />
         View
       </Button>
+      {capabilities.canCopy && (
+        <Button
+          type='button'
+          variant='outline'
+          size='sm'
+          onClick={() => onCopy(record)}
+          className={`gap-2 ${ACTION_COPY_CLASS}`}
+        >
+          <Copy className='h-4 w-4' />
+          Copy
+        </Button>
+      )}
       {capabilities.canLock && (
         <Button
           type='button'
@@ -125,36 +122,12 @@ function DesktopRowActions({
           Locked
         </Badge>
       )}
-      {capabilities.canArchive && (
-        <Button
-          type='button'
-          variant='outline'
-          size='sm'
-          onClick={() => onDelete(record, 'soft')}
-          className={`gap-2 ${ACTION_ARCHIVE_CLASS}`}
-        >
-          <Archive className='h-4 w-4' />
-          Archive
-        </Button>
-      )}
-      {capabilities.canRestore && (
-        <Button
-          type='button'
-          variant='outline'
-          size='sm'
-          onClick={() => onRestore(record)}
-          className={`gap-2 ${ACTION_RESTORE_CLASS}`}
-        >
-          <RotateCcw className='h-4 w-4' />
-          Restore
-        </Button>
-      )}
       {capabilities.canDelete && (
         <Button
           type='button'
           variant='destructive'
           size='sm'
-          onClick={() => onDelete(record, 'hard')}
+          onClick={() => onDelete(record)}
           className='gap-2'
         >
           <Trash2 className='h-4 w-4' />
@@ -169,9 +142,9 @@ function MobileRowActions({
   record,
   capabilities,
   onViewDetails,
+  onCopy,
   onLock,
   onUnlock,
-  onRestore,
   onDelete,
 }: TransportDocumentHistoryActionsProps & { capabilities: RowCapabilities }) {
   return (
@@ -195,6 +168,15 @@ function MobileRowActions({
           <Eye className='mr-2 h-4 w-4' />
           View
         </DropdownMenuItem>
+        {capabilities.canCopy && (
+          <DropdownMenuItem
+            onClick={() => onCopy(record)}
+            className='text-violet-800 focus:bg-violet-500/10 focus:text-violet-900 dark:text-violet-200'
+          >
+            <Copy className='mr-2 h-4 w-4' />
+            Copy to new booking
+          </DropdownMenuItem>
+        )}
         {capabilities.canLock && (
           <DropdownMenuItem
             onClick={() => onLock(record)}
@@ -219,35 +201,14 @@ function MobileRowActions({
             Locked
           </DropdownMenuItem>
         )}
-        {capabilities.canArchive && (
-          <DropdownMenuItem
-            onClick={() => onDelete(record, 'soft')}
-            className='text-rose-800 focus:bg-rose-500/10 focus:text-rose-900 dark:text-rose-200'
-          >
-            <Archive className='mr-2 h-4 w-4' />
-            Archive
-          </DropdownMenuItem>
-        )}
-        {capabilities.canRestore && (
-          <DropdownMenuItem
-            onClick={() => onRestore(record)}
-            className='text-emerald-800 focus:bg-emerald-500/10 focus:text-emerald-900 dark:text-emerald-200'
-          >
-            <RotateCcw className='mr-2 h-4 w-4' />
-            Restore
-          </DropdownMenuItem>
-        )}
         {capabilities.canDelete && (
-          <>
-            {capabilities.canRestore ? <DropdownMenuSeparator /> : null}
-            <DropdownMenuItem
-              className='text-destructive focus:text-destructive'
-              onClick={() => onDelete(record, 'hard')}
-            >
-              <Trash2 className='mr-2 h-4 w-4' />
-              Delete
-            </DropdownMenuItem>
-          </>
+          <DropdownMenuItem
+            className='text-destructive focus:text-destructive'
+            onClick={() => onDelete(record)}
+          >
+            <Trash2 className='mr-2 h-4 w-4' />
+            Delete permanently
+          </DropdownMenuItem>
         )}
       </DropdownMenuContent>
     </DropdownMenu>

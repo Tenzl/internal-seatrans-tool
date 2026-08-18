@@ -1,4 +1,8 @@
-import type { ColumnDef, SortingState, VisibilityState } from '@tanstack/react-table'
+import type {
+  ColumnDef,
+  SortingState,
+  VisibilityState,
+} from '@tanstack/react-table'
 import { AlertCircle, Loader2, RefreshCw } from 'lucide-react'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
@@ -9,16 +13,8 @@ import {
   CardHeader,
   CardTitle,
 } from '@/components/ui/card'
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select'
-import { InquiryDataTable, type InquiryDeleteMode } from './InquiryDataTable'
+import { InquiryDataTable } from './InquiryDataTable'
 import type { InquiryHistoryRecord } from './inquiryHistory.types'
-import type { AdminArchivedFilter } from './useInquiryData'
 
 type InquiryHistoryCardProps = {
   title?: string
@@ -27,9 +23,8 @@ type InquiryHistoryCardProps = {
   columns: ColumnDef<InquiryHistoryRecord>[]
   isLoading: boolean
   error: string | null
-  canHardDelete: boolean
   canDelete: boolean
-  archivedFilter: AdminArchivedFilter
+  canSelectRow?: (row: InquiryHistoryRecord) => boolean
   searchKey?: string
   searchPlaceholder: string
   search: string
@@ -45,9 +40,8 @@ type InquiryHistoryCardProps = {
   totalElements: number
   onPageChange: (page: number) => void
   initialColumnVisibility?: VisibilityState
-  onArchivedFilterChange: (filter: AdminArchivedFilter) => void
   onReload: () => void
-  onDelete: (ids: number[], mode: InquiryDeleteMode) => Promise<void>
+  onDelete: (ids: number[]) => Promise<void>
 }
 
 export function InquiryHistoryCard({
@@ -57,9 +51,8 @@ export function InquiryHistoryCard({
   columns,
   isLoading,
   error,
-  canHardDelete,
   canDelete,
-  archivedFilter,
+  canSelectRow,
   searchKey,
   searchPlaceholder,
   search,
@@ -75,7 +68,6 @@ export function InquiryHistoryCard({
   totalElements,
   onPageChange,
   initialColumnVisibility,
-  onArchivedFilterChange,
   onReload,
   onDelete,
 }: InquiryHistoryCardProps) {
@@ -96,23 +88,6 @@ export function InquiryHistoryCard({
             )}
           </div>
           <div className='flex w-full flex-wrap items-center gap-2 sm:w-auto sm:justify-end'>
-            {canHardDelete && (
-              <Select
-                value={archivedFilter}
-                onValueChange={(value) =>
-                  onArchivedFilterChange(value as AdminArchivedFilter)
-                }
-              >
-                <SelectTrigger className='h-10 w-full sm:h-9 sm:w-[140px]'>
-                  <SelectValue placeholder='Filter' />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value='active'>Active</SelectItem>
-                  <SelectItem value='archived'>Archived</SelectItem>
-                  <SelectItem value='all'>All</SelectItem>
-                </SelectContent>
-              </Select>
-            )}
             <Button
               variant='outline'
               size='sm'
@@ -157,7 +132,7 @@ export function InquiryHistoryCard({
             totalElements={totalElements}
             onPageChange={onPageChange}
             onDelete={canDelete ? onDelete : undefined}
-            canHardDelete={canHardDelete}
+            canSelectRow={canSelectRow}
             initialColumnVisibility={initialColumnVisibility}
           />
         )}

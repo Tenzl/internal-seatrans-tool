@@ -149,7 +149,77 @@ describe('transportDocumentService', () => {
     expect(result).toMatchObject({ id: 12, flow: 'EXPORT' })
   })
 
-  it('updates, locks, unlocks, archives, restores, and permanently deletes records', async () => {
+  it('loads a booking payload as the source for a new copy', async () => {
+    vi.mocked(apiClient.get).mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          data: {
+            sourceBookingId: 12,
+            bookingFlow: 'IMPORT',
+            payload: { bookingNumber: 'BK-12' },
+          },
+        }),
+        { status: 200 }
+      )
+    )
+
+    const result = await transportDocumentService.bookingCopySource(12)
+
+    expect(apiClient.get).toHaveBeenCalledWith(
+      '/admin/booking-documents/bookings/12/copy-source'
+    )
+    expect(result).toMatchObject({ sourceBookingId: 12, bookingFlow: 'IMPORT' })
+  })
+
+  it('checks a BL number while excluding the record being edited', async () => {
+    vi.mocked(apiClient.get).mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          data: { number: 'HBL-1', duplicate: true, matches: [{ id: 8 }] },
+        }),
+        { status: 200 }
+      )
+    )
+
+    const result = await transportDocumentService.checkBillOfLadingNumber(
+      'HBL-1',
+      5
+    )
+
+    expect(apiClient.get).toHaveBeenCalledWith(
+      '/admin/booking-documents/bl/hbl-duplicates?number=HBL-1&excludeId=5'
+    )
+    expect(result.duplicate).toBe(true)
+  })
+
+  it('checks a primary document number across all forms', async () => {
+    vi.mocked(apiClient.get).mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          data: {
+            documentType: 'an',
+            number: 'AN-1',
+            duplicate: true,
+            matches: [{ id: 8, documentType: 'an', bookingNumber: 'BK-15' }],
+          },
+        }),
+        { status: 200 }
+      )
+    )
+
+    const result = await transportDocumentService.checkDocumentNumber(
+      'an',
+      'AN-1',
+      5
+    )
+
+    expect(apiClient.get).toHaveBeenCalledWith(
+      '/admin/booking-documents/an/number-duplicates?number=AN-1&excludeId=5'
+    )
+    expect(result).toMatchObject({ documentType: 'an', duplicate: true })
+  })
+
+  it('updates, locks, unlocks, and hard deletes records', async () => {
     vi.mocked(apiClient.get).mockResolvedValue(
       new Response(JSON.stringify({ data: { id: 5, status: 'PROCESSING' } }), {
         status: 200,
@@ -172,11 +242,6 @@ describe('transportDocumentService', () => {
           status: 200,
         })
       )
-      .mockResolvedValueOnce(
-        new Response(JSON.stringify({ data: { id: 5, deletedAt: null } }), {
-          status: 200,
-        })
-      )
     vi.mocked(apiClient.delete).mockResolvedValue(
       new Response(null, { status: 204 })
     )
@@ -192,9 +257,7 @@ describe('transportDocumentService', () => {
     )
     await transportDocumentService.lock('an', 5, 4)
     await transportDocumentService.unlock('an', 5, 5)
-    await transportDocumentService.archive('an', 5, 6)
-    await transportDocumentService.restore('an', 5, 7)
-    await transportDocumentService.permanentDelete('an', 5)
+    await transportDocumentService.delete('an', 5)
 
     expect(apiClient.get).toHaveBeenCalledWith(
       '/admin/booking-documents/an/records/5'
@@ -213,18 +276,8 @@ describe('transportDocumentService', () => {
       '/admin/booking-documents/an/records/5/unlock',
       { expectedVersion: 5 }
     )
-    expect(apiClient.post).toHaveBeenNthCalledWith(
-      3,
-      '/admin/booking-documents/an/records/5/restore',
-      { expectedVersion: 7 }
-    )
-    expect(apiClient.delete).toHaveBeenNthCalledWith(
-      1,
-      '/admin/booking-documents/an/records/5?expectedVersion=6'
-    )
-    expect(apiClient.delete).toHaveBeenNthCalledWith(
-      2,
-      '/admin/booking-documents/an/records/5/permanent'
+    expect(apiClient.delete).toHaveBeenCalledWith(
+      '/admin/booking-documents/an/records/5'
     )
   })
 
@@ -251,7 +304,7 @@ describe('transportDocumentService', () => {
     })
 
     expect(apiClient.get).toHaveBeenCalledWith(
-      '/admin/booking-documents/do/records?page=2&size=10&archived=active'
+      '/admin/booking-documents/do/records?page=2&size=10'
     )
   })
 })

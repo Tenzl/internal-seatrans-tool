@@ -1,5 +1,5 @@
-import type { InquiryRecord } from './useInquiryData'
 import type { InquiryParty } from '@/modules/inquiries/types/shippingAgencyEpda'
+import type { InquiryRecord } from './useInquiryData'
 
 export interface BaseInquiryHistoryLayoutProps {
   serviceType?: string
@@ -30,6 +30,6 @@ export type InquiryHistoryRecord = InquiryRecord & {
 
 export type InquiryActionPermissions = {
   isAdmin: boolean
-  canSoftDelete: boolean
   canHardDelete: boolean
+  canUnlock: boolean
 }

@@ -1,45 +1,35 @@
 import { useState } from 'react'
 import { buildEpdaLockSnapshotFromAdminInquiry } from '@/modules/inquiries/components/common/buildEpdaLockSnapshot'
 import { quoteFormFromStored } from '@/modules/inquiries/components/common/quoteForm'
+import { extractWorkingParams } from '@/modules/inquiries/components/common/quoteParameters'
 import { inquiryService } from '@/modules/inquiries/services/inquiryService'
 import { resolveEffectiveParams } from '@/modules/inquiries/services/resolveEffectiveParams'
 import { shippingAgencyEpdaService } from '@/modules/inquiries/services/shippingAgencyEpdaService'
 import type { ShippingAgencyAdminInquiry } from '@/modules/inquiries/types/shippingAgencyEpda'
 import { buildDashboardUrl } from '@/shared/utils/dashboardNavigation'
 import { toast } from '@/shared/utils/toast'
-import { extractWorkingParams } from '@/modules/inquiries/components/common/quoteParameters'
 import { usePathname, useRouter } from 'next/navigation'
-import type { InquiryDeleteMode } from './InquiryDataTable'
 import type { InquiryHistoryRecord } from './inquiryHistory.types'
 import {
   getShippingAgencyDetailParams,
   resolveInquiryServiceSlug,
 } from './inquiryHistoryRules'
-import type { AdminArchivedFilter } from './useInquiryData'
 import { useInvoicePreview } from './useInvoicePreview'
 
-type DeleteInquiries = (
-  ids: number[],
-  mode: InquiryDeleteMode
-) => Promise<unknown>
-type RestoreInquiries = (ids: number[]) => Promise<unknown>
+type DeleteInquiries = (ids: number[]) => Promise<unknown>
 
 type UseInquiryHistoryActionsOptions = {
   serviceType?: string
   isAdmin: boolean
-  archivedFilter: AdminArchivedFilter
   fetchInquiries: () => Promise<unknown>
   deleteInquiries: DeleteInquiries
-  restoreInquiries: RestoreInquiries
 }
 
 export function useInquiryHistoryActions({
   serviceType,
   isAdmin,
-  archivedFilter,
   fetchInquiries,
   deleteInquiries,
-  restoreInquiries,
 }: UseInquiryHistoryActionsOptions) {
   const router = useRouter()
   const pathname = usePathname()
@@ -52,15 +42,15 @@ export function useInquiryHistoryActions({
   const [deleteTarget, setDeleteTarget] = useState<InquiryHistoryRecord | null>(
     null
   )
-  const [deleteMode, setDeleteMode] = useState<InquiryDeleteMode>('soft')
-  const [restoreTarget, setRestoreTarget] =
-    useState<InquiryHistoryRecord | null>(null)
   const [lockTarget, setLockTarget] = useState<InquiryHistoryRecord | null>(
     null
   )
+  const [unlockTarget, setUnlockTarget] = useState<InquiryHistoryRecord | null>(
+    null
+  )
   const [isDeleting, setIsDeleting] = useState(false)
-  const [isRestoring, setIsRestoring] = useState(false)
   const [isLocking, setIsLocking] = useState(false)
+  const [isUnlocking, setIsUnlocking] = useState(false)
 
   const viewQuote = async (inquiry: InquiryHistoryRecord) => {
     setQuoteInquiry(inquiry)
@@ -98,45 +88,21 @@ export function useInquiryHistoryActions({
     setDetailInquiry(null)
   }
 
-  const openDelete = (
-    inquiry: InquiryHistoryRecord,
-    mode: InquiryDeleteMode
-  ) => {
+  const openDelete = (inquiry: InquiryHistoryRecord) => {
     setDeleteTarget(inquiry)
-    setDeleteMode(mode)
   }
 
   const confirmDelete = async () => {
     if (!deleteTarget) return
     setIsDeleting(true)
     try {
-      await deleteInquiries([deleteTarget.id], deleteMode)
+      await deleteInquiries([deleteTarget.id])
       setDeleteTarget(null)
-      toast.success(
-        deleteMode === 'hard'
-          ? 'Inquiry permanently deleted.'
-          : 'Inquiry archived.'
-      )
+      toast.success('Inquiry permanently deleted.')
     } catch (error) {
       toast.error('Failed to delete inquiry', error)
     } finally {
       setIsDeleting(false)
-    }
-  }
-
-  const confirmRestore = async () => {
-    if (!restoreTarget) return
-    setIsRestoring(true)
-    try {
-      await restoreInquiries([restoreTarget.id])
-      setRestoreTarget(null)
-      if (archivedFilter === 'archived') {
-        await fetchInquiries()
-      }
-    } catch (error) {
-      toast.error('Failed to restore inquiry', error)
-    } finally {
-      setIsRestoring(false)
     }
   }
 
@@ -180,16 +146,32 @@ export function useInquiryHistoryActions({
     }
   }
 
+  const confirmUnlock = async () => {
+    if (!unlockTarget) return
+    setIsUnlocking(true)
+    try {
+      await shippingAgencyEpdaService.unlockEpda(unlockTarget.id)
+      toast.success('EPDA unlocked — staff can edit it again.')
+      setUnlockTarget(null)
+      await fetchInquiries()
+    } catch (error) {
+      toast.error(
+        error instanceof Error ? error.message : 'Failed to unlock EPDA'
+      )
+    } finally {
+      setIsUnlocking(false)
+    }
+  }
+
   return {
     detailInquiry,
     quoteInquiry,
     deleteTarget,
-    deleteMode,
-    restoreTarget,
     lockTarget,
+    unlockTarget,
     isDeleting,
-    isRestoring,
     isLocking,
+    isUnlocking,
     quoteHtml: invoicePreview.quoteHtml,
     isLoadingQuote: invoicePreview.isLoading,
     openDetail,
@@ -200,12 +182,12 @@ export function useInquiryHistoryActions({
     openDelete,
     closeDelete: () => setDeleteTarget(null),
     confirmDelete,
-    openRestore: setRestoreTarget,
-    closeRestore: () => setRestoreTarget(null),
-    confirmRestore,
     openLock: setLockTarget,
     closeLock: () => setLockTarget(null),
     confirmLock,
+    openUnlock: setUnlockTarget,
+    closeUnlock: () => setUnlockTarget(null),
+    confirmUnlock,
   }
 }
 

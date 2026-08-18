@@ -3,7 +3,6 @@
 import { useCallback, useMemo, useState } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import type { SortingState } from '@tanstack/react-table'
-import { useCurrentUser } from '@/hooks/use-current-user'
 import { API_CONFIG } from '@/shared/config/api.config'
 import { toInquiryServiceSlug } from '@/shared/domain/inquiryService'
 import { useDebouncedValue } from '@/shared/hooks/useDebouncedValue'
@@ -11,6 +10,7 @@ import type { User } from '@/shared/types/dashboard'
 import { apiClient } from '@/shared/utils/apiClient'
 import { isInternalStaff } from '@/shared/utils/auth'
 import { parseLocalDateTime } from '@/shared/utils/dateTimePicker'
+import { useCurrentUser } from '@/hooks/use-current-user'
 
 export const INQUIRY_PAGE_SIZE = 20
 export const INQUIRIES_QUERY_ROOT = ['inquiries'] as const
@@ -42,8 +42,6 @@ interface ApiErrorBody {
   error?: { message?: string }
   message?: string
 }
-
-export type AdminArchivedFilter = 'active' | 'archived' | 'all'
 
 interface UseInquiryDataOptions {
   serviceType?: string
@@ -112,10 +110,7 @@ function extractPage(
 }
 
 /** Convert local picker value to ISO bound for ListInquiriesQueryDto. */
-function toApiDateBound(
-  value: string,
-  endOfDay: boolean
-): string | undefined {
+function toApiDateBound(value: string, endOfDay: boolean): string | undefined {
   const parsed = parseLocalDateTime(value)
   if (!parsed) return undefined
   if (endOfDay) {
@@ -140,7 +135,11 @@ function sortRows(
     if (left == null && right == null) return 0
     if (left == null) return 1
     if (right == null) return -1
-    if (left instanceof Date || right instanceof Date || key === 'submittedAt') {
+    if (
+      left instanceof Date ||
+      right instanceof Date ||
+      key === 'submittedAt'
+    ) {
       const leftTime = new Date(left as string | number | Date).getTime()
       const rightTime = new Date(right as string | number | Date).getTime()
       return (leftTime - rightTime) * dir
@@ -156,7 +155,6 @@ async function fetchInquiryPage(options: {
   isAdmin: boolean
   currentUser: User | null
   serviceType?: string
-  archivedFilter: AdminArchivedFilter
   page: number
   size: number
   q?: string
@@ -168,7 +166,6 @@ async function fetchInquiryPage(options: {
     isAdmin,
     currentUser,
     serviceType,
-    archivedFilter,
     page,
     size,
     q,
@@ -203,13 +200,9 @@ async function fetchInquiryPage(options: {
     )
     if (!response.ok) throw new Error('Failed to fetch inquiries')
     const data = (await response.json()) as
-      | PageResponse<InquiryRecord>
-      | InquiryRecord[]
-      | InquiryPageEnvelope
+      PageResponse<InquiryRecord> | InquiryRecord[] | InquiryPageEnvelope
     return extractPage(data)
   }
-
-  params.append('archived', archivedFilter)
 
   const response = await apiClient.get<PageResponse<InquiryRecord>>(
     `${API_CONFIG.INQUIRIES.ADMIN_BASE}?${params.toString()}`,
@@ -217,9 +210,7 @@ async function fetchInquiryPage(options: {
   )
   if (!response.ok) throw new Error('Failed to fetch inquiries')
   const data = (await response.json()) as
-    | PageResponse<InquiryRecord>
-    | InquiryRecord[]
-    | InquiryPageEnvelope
+    PageResponse<InquiryRecord> | InquiryRecord[] | InquiryPageEnvelope
   return extractPage(data)
 }
 
@@ -235,9 +226,6 @@ export function useInquiryData(options: UseInquiryDataOptions = {}) {
   const [sorting, setSorting] = useState<SortingState>([
     { id: 'submittedAt', desc: true },
   ])
-  const [archivedFilter, setArchivedFilterState] =
-    useState<AdminArchivedFilter>('all')
-
   const debouncedSearch = useDebouncedValue(search, 300)
   const useAdminApi = shouldUseAdminInquiryApi(isAdmin, currentUser)
 
@@ -254,7 +242,6 @@ export function useInquiryData(options: UseInquiryDataOptions = {}) {
         q: debouncedSearch,
         dateFrom,
         dateTo,
-        archived: archivedFilter,
       },
     ],
     queryFn: ({ signal }) =>
@@ -262,7 +249,6 @@ export function useInquiryData(options: UseInquiryDataOptions = {}) {
         isAdmin,
         currentUser,
         serviceType,
-        archivedFilter,
         page,
         size: INQUIRY_PAGE_SIZE,
         q: debouncedSearch,
@@ -297,11 +283,6 @@ export function useInquiryData(options: UseInquiryDataOptions = {}) {
     setPage(0)
   }, [])
 
-  const setArchivedFilter = useCallback((value: AdminArchivedFilter) => {
-    setArchivedFilterState(value)
-    setPage(0)
-  }, [])
-
   const invalidateInquiries = useCallback(() => {
     return queryClient.invalidateQueries({ queryKey: INQUIRIES_QUERY_ROOT })
   }, [queryClient])
@@ -329,7 +310,7 @@ export function useInquiryData(options: UseInquiryDataOptions = {}) {
   )
 
   const deleteInquiries = useCallback(
-    async (ids: number[], mode: 'soft' | 'hard' = 'soft') => {
+    async (ids: number[]) => {
       const adminApi = shouldUseAdminInquiryApi(isAdmin, currentUser)
       const serviceSlug = toInquiryServiceSlug(serviceType)
       if (!serviceSlug) {
@@ -357,21 +338,18 @@ export function useInquiryData(options: UseInquiryDataOptions = {}) {
         )
       }
 
-      // Hard delete: use per-id path (no DELETE body). Batch DELETE+body is easy
-      // to break through proxies and returns a generic 404 when ids miss.
-      if (adminApi && mode === 'hard') {
+      // Admin history permanently deletes via the standard per-id path.
+      if (adminApi) {
         for (const id of normalizedIds) {
           const response = await apiClient.delete(
-            API_CONFIG.INQUIRIES.ADMIN_HARD_DELETE(serviceSlug, id)
+            API_CONFIG.INQUIRIES.ADMIN_DELETE(serviceSlug, id)
           )
           if (!response.ok) {
             throw new Error(await readDeleteError(response))
           }
         }
       } else {
-        const endpoint = adminApi
-          ? API_CONFIG.INQUIRIES.ADMIN_BATCH_DELETE(mode, serviceSlug)
-          : API_CONFIG.INQUIRIES.USER_BATCH_DELETE(serviceSlug)
+        const endpoint = API_CONFIG.INQUIRIES.USER_BATCH_DELETE(serviceSlug)
 
         const response = await apiClient.delete(endpoint, {
           body: JSON.stringify({ ids: normalizedIds }),
@@ -386,26 +364,6 @@ export function useInquiryData(options: UseInquiryDataOptions = {}) {
       return { success: true }
     },
     [currentUser, invalidateInquiries, isAdmin, serviceType]
-  )
-
-  const restoreInquiries = useCallback(
-    async (ids: number[]) => {
-      const endpoint = API_CONFIG.INQUIRIES.ADMIN_BATCH_RESTORE(serviceType)
-      const response = await apiClient.post(endpoint, { ids })
-
-      if (!response.ok) {
-        const body = (await response
-          .json()
-          .catch(() => null)) as ApiErrorBody | null
-        throw new Error(
-          body?.error?.message || body?.message || 'Failed to restore inquiries'
-        )
-      }
-
-      await invalidateInquiries()
-      return { success: true }
-    },
-    [invalidateInquiries, serviceType]
   )
 
   const refreshInquiries = useCallback(() => {
@@ -442,9 +400,6 @@ export function useInquiryData(options: UseInquiryDataOptions = {}) {
     setSorting,
     fetchInquiries,
     deleteInquiries,
-    restoreInquiries,
-    archivedFilter,
-    setArchivedFilter,
     updateStatus,
     refreshInquiries,
   }

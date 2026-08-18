@@ -41,6 +41,14 @@ export const shippingAgencyEpdaService = {
     return unwrapApiResponse<ShippingAgencyAdminInquiry>(response)
   },
 
+  async unlockEpda(inquiryId: number): Promise<ShippingAgencyAdminInquiry> {
+    const response = await apiClient.post(
+      API_CONFIG.INQUIRIES.ADMIN_SHIPPING_AGENCY_EPDA_UNLOCK(inquiryId),
+      {}
+    )
+    return unwrapApiResponse<ShippingAgencyAdminInquiry>(response)
+  },
+
   async listFieldChanges(inquiryId: number, page = 0, size = 6) {
     const response = await apiClient.get(
       API_CONFIG.INQUIRIES.ADMIN_SHIPPING_AGENCY_FIELD_CHANGES(

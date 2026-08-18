@@ -1,6 +1,6 @@
 'use client'
 
-import { Archive, Loader2, Lock, RotateCcw, Trash2, Unlock } from 'lucide-react'
+import { Loader2, Lock, Trash2, Unlock } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import {
   Dialog,
@@ -14,7 +14,7 @@ import type { useTransportDocumentHistoryActions } from './useTransportDocumentH
 
 type HistoryActions = ReturnType<typeof useTransportDocumentHistoryActions>
 
-/** Confirm dialogs mirroring InquiryMutationDialogs for lock / unlock / archive / delete. */
+/** Confirm dialogs for permanent delete and edit lock/unlock. */
 export function TransportDocumentMutationDialogs({
   actions,
 }: {
@@ -23,7 +23,6 @@ export function TransportDocumentMutationDialogs({
   return (
     <>
       <DeleteDialog actions={actions} />
-      <RestoreDialog actions={actions} />
       <LockDialog actions={actions} />
       <UnlockDialog actions={actions} />
     </>
@@ -31,8 +30,6 @@ export function TransportDocumentMutationDialogs({
 }
 
 function DeleteDialog({ actions }: { actions: HistoryActions }) {
-  const isHardDelete = actions.deleteMode === 'hard'
-
   return (
     <Dialog
       open={Boolean(actions.deleteTarget)}
@@ -42,28 +39,11 @@ function DeleteDialog({ actions }: { actions: HistoryActions }) {
     >
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>
-            {isHardDelete
-              ? 'Permanently delete document record?'
-              : 'Archive document record?'}
-          </DialogTitle>
+          <DialogTitle>Permanently delete document record?</DialogTitle>
           <DialogDescription>
-            {isHardDelete ? (
-              <>
-                Record #
-                {actions.deleteTarget?.referenceNumber ||
-                  actions.deleteTarget?.id}{' '}
-                will be permanently removed. This cannot be undone.
-              </>
-            ) : (
-              <>
-                Record #
-                {actions.deleteTarget?.referenceNumber ||
-                  actions.deleteTarget?.id}{' '}
-                will be archived. Admins can restore it from the archived
-                filter.
-              </>
-            )}
+            Record #
+            {actions.deleteTarget?.referenceNumber || actions.deleteTarget?.id}{' '}
+            will be permanently removed. This cannot be undone.
           </DialogDescription>
         </DialogHeader>
         <DialogFooter className='gap-2 sm:gap-2'>
@@ -75,63 +55,17 @@ function DeleteDialog({ actions }: { actions: HistoryActions }) {
             Cancel
           </Button>
           <Button
-            variant={isHardDelete ? 'destructive' : 'default'}
+            variant='destructive'
             onClick={() => void actions.confirmDelete()}
             disabled={actions.isDeleting}
             className='gap-2'
           >
             {actions.isDeleting ? (
               <Loader2 className='h-4 w-4 animate-spin' />
-            ) : isHardDelete ? (
+            ) : (
               <Trash2 className='h-4 w-4' />
-            ) : (
-              <Archive className='h-4 w-4' />
             )}
-            {isHardDelete ? 'Delete permanently' : 'Archive'}
-          </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
-  )
-}
-
-function RestoreDialog({ actions }: { actions: HistoryActions }) {
-  return (
-    <Dialog
-      open={Boolean(actions.restoreTarget)}
-      onOpenChange={(open) => {
-        if (!open && !actions.isRestoring) actions.closeRestore()
-      }}
-    >
-      <DialogContent>
-        <DialogHeader>
-          <DialogTitle>Restore document record?</DialogTitle>
-          <DialogDescription>
-            Record #
-            {actions.restoreTarget?.referenceNumber ||
-              actions.restoreTarget?.id}{' '}
-            will return to the active history list.
-          </DialogDescription>
-        </DialogHeader>
-        <DialogFooter className='gap-2 sm:gap-2'>
-          <Button
-            variant='outline'
-            onClick={actions.closeRestore}
-            disabled={actions.isRestoring}
-          >
-            Cancel
-          </Button>
-          <Button
-            onClick={() => void actions.confirmRestore()}
-            disabled={actions.isRestoring}
-            className='gap-2'
-          >
-            {actions.isRestoring ? (
-              <Loader2 className='h-4 w-4 animate-spin' />
-            ) : (
-              <RotateCcw className='h-4 w-4' />
-            )}
-            Restore
+            Delete permanently
           </Button>
         </DialogFooter>
       </DialogContent>

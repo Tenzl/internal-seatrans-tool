@@ -1,3 +1,4 @@
+import { normalizeAnContainers } from './anContainerModel'
 import { buildBookingWorkflowUrl } from './bookingWorkflow'
 import type {
   AnContainer,
@@ -11,7 +12,6 @@ import {
   TRANSPORT_DOCUMENT_FORM_SECTIONS,
   type TransportDocumentFieldSpec,
 } from './transportDocumentFormConfig'
-import { normalizeAnContainers } from './anContainerModel'
 
 export interface HistoryDocumentField {
   label: string
@@ -107,20 +107,26 @@ export function buildTransportDocumentDetailUrl(
   return `${path}?${params.toString()}`
 }
 
+export function buildBookingCopyUrl(record: TransportDocumentRecord): string {
+  const params = new URLSearchParams({
+    flow: record.bookingFlow ?? 'EXPORT',
+    copyFrom: String(record.id),
+  })
+  return `${EDITOR_PATH_BY_TYPE.booking}?${params.toString()}`
+}
+
 export function getTransportDocumentRowCapabilities(
   record: TransportDocumentRecord,
   permissions: TransportDocumentActionPermissions
 ) {
   const isLocked = Boolean(record.lockedAt)
-  const isArchived = Boolean(record.deletedAt)
   return {
     canViewDetails: true,
-    canLock: permissions.canLock && !isLocked && !isArchived,
-    canUnlock: permissions.canUnlock && isLocked && !isArchived,
-    showLocked: isLocked && !permissions.canUnlock && !isArchived,
-    canArchive: permissions.canArchive && !isArchived,
-    canRestore: permissions.canRestore && isArchived,
-    canDelete: permissions.canHardDelete,
+    canCopy: record.documentType === 'booking',
+    canLock: permissions.canLock && !isLocked,
+    canUnlock: permissions.canUnlock && isLocked,
+    showLocked: isLocked && !permissions.canUnlock,
+    canDelete: permissions.canHardDelete && !isLocked,
   }
 }
 

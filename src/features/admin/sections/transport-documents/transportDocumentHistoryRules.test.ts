@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import type { TransportDocumentRecord } from './transportDocument.types'
 import {
+  buildBookingCopyUrl,
   buildHistoryDocumentFileName,
   buildTransportDocumentDetailUrl,
   getHistoryDocumentSections,
@@ -102,6 +103,16 @@ const doRecord: TransportDocumentRecord = {
 }
 
 describe('transport document history actions', () => {
+  it('opens a copied booking as a new record with the source flow', () => {
+    expect(
+      buildBookingCopyUrl({
+        ...record,
+        documentType: 'booking',
+        bookingFlow: 'IMPORT',
+      })
+    ).toBe('/booking/documents/booking-confirmation?flow=IMPORT&copyFrom=12')
+  })
+
   it('builds a safe PDF file name from the immutable record', () => {
     expect(buildHistoryDocumentFileName(record)).toBe(
       'Arrival-Notice-AN-24-001.pdf'
@@ -156,22 +167,18 @@ describe('transport document history actions', () => {
     ).toBe('/booking/documents/arrival-notice?recordId=12&preview=1')
   })
 
-  it('exposes lock / unlock / archive / restore / delete capabilities by role', () => {
+  it('hides delete while locked and only lets admins unlock', () => {
     expect(
       getTransportDocumentRowCapabilities(record, {
         canLock: true,
         canUnlock: false,
-        canArchive: true,
-        canRestore: true,
-        canHardDelete: false,
+        canHardDelete: true,
       })
     ).toMatchObject({
       canLock: true,
       canUnlock: false,
       showLocked: false,
-      canArchive: true,
-      canRestore: false,
-      canDelete: false,
+      canDelete: true,
     })
 
     expect(
@@ -180,8 +187,6 @@ describe('transport document history actions', () => {
         {
           canLock: true,
           canUnlock: false,
-          canArchive: false,
-          canRestore: true,
           canHardDelete: true,
         }
       )
@@ -189,9 +194,7 @@ describe('transport document history actions', () => {
       canLock: false,
       canUnlock: false,
       showLocked: true,
-      canArchive: false,
-      canRestore: false,
-      canDelete: true,
+      canDelete: false,
     })
 
     expect(
@@ -200,8 +203,6 @@ describe('transport document history actions', () => {
         {
           canLock: true,
           canUnlock: true,
-          canArchive: false,
-          canRestore: true,
           canHardDelete: true,
         }
       )
@@ -209,28 +210,7 @@ describe('transport document history actions', () => {
       canLock: false,
       canUnlock: true,
       showLocked: false,
-      canArchive: false,
-      canRestore: false,
-      canDelete: true,
-    })
-
-    expect(
-      getTransportDocumentRowCapabilities(
-        { ...record, deletedAt: '2026-08-01T00:00:00.000Z' },
-        {
-          canLock: true,
-          canUnlock: true,
-          canArchive: true,
-          canRestore: true,
-          canHardDelete: true,
-        }
-      )
-    ).toMatchObject({
-      canArchive: false,
-      canRestore: true,
-      canDelete: true,
-      canLock: false,
-      canUnlock: false,
+      canDelete: false,
     })
   })
 })

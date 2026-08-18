@@ -1,4 +1,4 @@
-import { Archive, Loader2, Lock, RotateCcw, Trash2 } from 'lucide-react'
+import { Loader2, Lock, Trash2, Unlock } from 'lucide-react'
 import {
   AlertDialog,
   AlertDialogAction,
@@ -28,15 +28,13 @@ export function InquiryMutationDialogs({
   return (
     <>
       <DeleteInquiryDialog actions={actions} />
-      <RestoreInquiryDialog actions={actions} />
       <LockEpdaDialog actions={actions} />
+      <UnlockEpdaDialog actions={actions} />
     </>
   )
 }
 
 function DeleteInquiryDialog({ actions }: { actions: InquiryHistoryActions }) {
-  const isHardDelete = actions.deleteMode === 'hard'
-
   return (
     <Dialog
       open={Boolean(actions.deleteTarget)}
@@ -46,22 +44,10 @@ function DeleteInquiryDialog({ actions }: { actions: InquiryHistoryActions }) {
     >
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>
-            {isHardDelete ? 'Permanently delete inquiry?' : 'Archive inquiry?'}
-          </DialogTitle>
+          <DialogTitle>Permanently delete inquiry?</DialogTitle>
           <DialogDescription>
-            {isHardDelete ? (
-              <>
-                Inquiry #{actions.deleteTarget?.id} and its attached documents
-                will be permanently removed. This cannot be undone.
-              </>
-            ) : (
-              <>
-                Inquiry #{actions.deleteTarget?.id} will be archived and hidden
-                from user/staff history. Administrators will still see it as
-                archived.
-              </>
-            )}
+            Inquiry #{actions.deleteTarget?.id} and its attached documents will
+            be permanently removed. This cannot be undone.
           </DialogDescription>
         </DialogHeader>
         <DialogFooter className='gap-2 sm:gap-2'>
@@ -73,61 +59,17 @@ function DeleteInquiryDialog({ actions }: { actions: InquiryHistoryActions }) {
             Cancel
           </Button>
           <Button
-            variant={isHardDelete ? 'destructive' : 'default'}
+            variant='destructive'
             onClick={() => void actions.confirmDelete()}
             disabled={actions.isDeleting}
             className='gap-2'
           >
             {actions.isDeleting ? (
               <Loader2 className='h-4 w-4 animate-spin' />
-            ) : isHardDelete ? (
+            ) : (
               <Trash2 className='h-4 w-4' />
-            ) : (
-              <Archive className='h-4 w-4' />
             )}
-            {isHardDelete ? 'Delete permanently' : 'Archive'}
-          </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
-  )
-}
-
-function RestoreInquiryDialog({ actions }: { actions: InquiryHistoryActions }) {
-  return (
-    <Dialog
-      open={Boolean(actions.restoreTarget)}
-      onOpenChange={(open) => {
-        if (!open && !actions.isRestoring) actions.closeRestore()
-      }}
-    >
-      <DialogContent>
-        <DialogHeader>
-          <DialogTitle>Restore inquiry?</DialogTitle>
-          <DialogDescription>
-            Inquiry #{actions.restoreTarget?.id} will be moved back to the
-            active list.
-          </DialogDescription>
-        </DialogHeader>
-        <DialogFooter className='gap-2 sm:gap-2'>
-          <Button
-            variant='outline'
-            onClick={actions.closeRestore}
-            disabled={actions.isRestoring}
-          >
-            Cancel
-          </Button>
-          <Button
-            onClick={() => void actions.confirmRestore()}
-            disabled={actions.isRestoring}
-            className='gap-2'
-          >
-            {actions.isRestoring ? (
-              <Loader2 className='h-4 w-4 animate-spin' />
-            ) : (
-              <RotateCcw className='h-4 w-4' />
-            )}
-            Restore
+            Delete permanently
           </Button>
         </DialogFooter>
       </DialogContent>
@@ -148,8 +90,8 @@ function LockEpdaDialog({ actions }: { actions: InquiryHistoryActions }) {
           <AlertDialogTitle>Lock this EPDA?</AlertDialogTitle>
           <AlertDialogDescription>
             After locking inquiry #{actions.lockTarget?.id}, you will no longer
-            be able to edit this EPDA. Tariff rates will be frozen in a
-            snapshot. This cannot be undone.
+            be able to edit this EPDA. Tariff rates will be frozen in a snapshot
+            until an administrator unlocks edit.
           </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>
@@ -170,6 +112,47 @@ function LockEpdaDialog({ actions }: { actions: InquiryHistoryActions }) {
               <Lock className='h-4 w-4' />
             )}
             Lock edit
+          </AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
+  )
+}
+
+function UnlockEpdaDialog({ actions }: { actions: InquiryHistoryActions }) {
+  return (
+    <AlertDialog
+      open={Boolean(actions.unlockTarget)}
+      onOpenChange={(open) => {
+        if (!open && !actions.isUnlocking) actions.closeUnlock()
+      }}
+    >
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle>Unlock this EPDA?</AlertDialogTitle>
+          <AlertDialogDescription>
+            Inquiry #{actions.unlockTarget?.id} will become editable again. Only
+            administrators can perform this action.
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancel disabled={actions.isUnlocking}>
+            Cancel
+          </AlertDialogCancel>
+          <AlertDialogAction
+            disabled={actions.isUnlocking}
+            onClick={(event) => {
+              event.preventDefault()
+              void actions.confirmUnlock()
+            }}
+            className='gap-2'
+          >
+            {actions.isUnlocking ? (
+              <Loader2 className='h-4 w-4 animate-spin' />
+            ) : (
+              <Unlock className='h-4 w-4' />
+            )}
+            Unlock edit
           </AlertDialogAction>
         </AlertDialogFooter>
       </AlertDialogContent>

@@ -47,6 +47,7 @@ const ACTION_LABELS: Partial<
   EPDA_SAVE_DRAFT: 'Save draft',
   EPDA_ISSUE: 'Issue to customer',
   EPDA_LOCK: 'Lock edit',
+  EPDA_UNLOCK: 'Unlock edit',
 }
 
 export function formatFieldChangeAction(

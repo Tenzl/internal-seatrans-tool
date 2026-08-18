@@ -72,7 +72,12 @@ export type InquiryFieldChangeLogEntry = {
   id: number
   inquiryId: number
   /** EPDA_ISSUE is historical only (issue-to-customer removed). */
-  action: 'EPDA_CREATE' | 'EPDA_SAVE_DRAFT' | 'EPDA_ISSUE' | 'EPDA_LOCK'
+  action:
+    | 'EPDA_CREATE'
+    | 'EPDA_SAVE_DRAFT'
+    | 'EPDA_ISSUE'
+    | 'EPDA_LOCK'
+    | 'EPDA_UNLOCK'
   fieldName: string
   previousValue: string | null
   newValue: string | null

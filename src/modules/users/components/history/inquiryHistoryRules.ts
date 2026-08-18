@@ -79,30 +79,28 @@ export function getShippingAgencyDetailParams(inquiry: InquiryHistoryRecord) {
 export function getInquiryRowCapabilities({
   inquiry,
   isAdmin,
-  canSoftDelete,
   canHardDelete,
+  canUnlock,
   fallbackServiceType,
 }: {
   inquiry: InquiryHistoryRecord
   isAdmin: boolean
-  canSoftDelete: boolean
   canHardDelete: boolean
+  canUnlock: boolean
   fallbackServiceType?: string
 }) {
   const isShippingAgency =
     resolveInquiryServiceSlug(inquiry, fallbackServiceType) ===
     'shipping-agency'
+  const isLocked = isShippingAgency && Boolean(inquiry.epdaLockedAt)
+  const isArchived = Boolean(inquiry.isArchived || inquiry.deletedAt)
 
   return {
     isShippingAgency,
     canLock: canLockInquiryEpda(inquiry, isAdmin, fallbackServiceType),
-    showLocked: isAdmin && isShippingAgency && Boolean(inquiry.epdaLockedAt),
-    canArchive: isAdmin && canSoftDelete && !inquiry.isArchived && !inquiry.deletedAt,
-    canDelete: isAdmin && canHardDelete,
-    canRestore:
-      isAdmin &&
-      canHardDelete &&
-      Boolean(inquiry.isArchived || inquiry.deletedAt),
+    canUnlock: isAdmin && canUnlock && isLocked && !isArchived,
+    showLocked: isAdmin && isLocked && !canUnlock,
+    canDelete: isAdmin && canHardDelete && !isLocked && !isArchived,
     canViewInvoice:
       !isAdmin && isShippingAgency && inquiry.status === STATUS_QUOTED,
   }

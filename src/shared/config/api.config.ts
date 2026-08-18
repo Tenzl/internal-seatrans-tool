@@ -85,20 +85,30 @@ export const API_CONFIG = {
       `/admin/booking-documents/${type}/records/${id}/preview`,
     ADMIN_WORKFLOW: (bookingId: number) =>
       `/admin/booking-documents/bookings/${bookingId}/workflow`,
+    ADMIN_BOOKING_COPY_SOURCE: (bookingId: number) =>
+      `/admin/booking-documents/bookings/${bookingId}/copy-source`,
+    ADMIN_HBL_DUPLICATES: (number: string, excludeId?: number) => {
+      const params = new URLSearchParams({ number })
+      if (excludeId != null) params.set('excludeId', String(excludeId))
+      return `/admin/booking-documents/bl/hbl-duplicates?${params.toString()}`
+    },
+    ADMIN_NUMBER_DUPLICATES: (
+      type: 'an' | 'booking' | 'do' | 'bl',
+      number: string,
+      excludeId?: number
+    ) => {
+      const params = new URLSearchParams({ number })
+      if (excludeId != null) params.set('excludeId', String(excludeId))
+      return `/admin/booking-documents/${type}/number-duplicates?${params.toString()}`
+    },
     ADMIN_UPDATE: (type: 'an' | 'booking' | 'do' | 'bl', id: number) =>
       `/admin/booking-documents/${type}/records/${id}`,
     ADMIN_LOCK: (type: 'an' | 'booking' | 'do' | 'bl', id: number) =>
       `/admin/booking-documents/${type}/records/${id}/lock`,
     ADMIN_UNLOCK: (type: 'an' | 'booking' | 'do' | 'bl', id: number) =>
       `/admin/booking-documents/${type}/records/${id}/unlock`,
-    ADMIN_ARCHIVE: (type: 'an' | 'booking' | 'do' | 'bl', id: number) =>
+    ADMIN_DELETE: (type: 'an' | 'booking' | 'do' | 'bl', id: number) =>
       `/admin/booking-documents/${type}/records/${id}`,
-    ADMIN_RESTORE: (type: 'an' | 'booking' | 'do' | 'bl', id: number) =>
-      `/admin/booking-documents/${type}/records/${id}/restore`,
-    ADMIN_PERMANENT_DELETE: (
-      type: 'an' | 'booking' | 'do' | 'bl',
-      id: number
-    ) => `/admin/booking-documents/${type}/records/${id}/permanent`,
   },
 
   SERVICE_TYPES: {
@@ -110,11 +120,7 @@ export const API_CONFIG = {
   COMMODITIES: {
     BASE: '/commodities',
     /** GET /commodities?serviceTypeId=&q=&limit= */
-    LIST: (params?: {
-      serviceTypeId?: number
-      q?: string
-      limit?: number
-    }) => {
+    LIST: (params?: { serviceTypeId?: number; q?: string; limit?: number }) => {
       const search = new URLSearchParams()
       if (params?.serviceTypeId != null) {
         search.set('serviceTypeId', String(params.serviceTypeId))
@@ -145,9 +151,7 @@ export const API_CONFIG = {
         search.set('q', params.q.trim())
       }
       const qs = search.toString()
-      return qs
-        ? `/admin/commodity-groups?${qs}`
-        : '/admin/commodity-groups'
+      return qs ? `/admin/commodity-groups?${qs}` : '/admin/commodity-groups'
     },
     ADMIN_BY_ID: (id: number) => `/admin/commodity-groups/${id}`,
     ADMIN_COMMODITIES: (id: number) =>
@@ -202,35 +206,20 @@ export const API_CONFIG = {
       `/admin/inquiries/shipping-agency/${id}/epda`,
     ADMIN_SHIPPING_AGENCY_EPDA_LOCK: (id: number) =>
       `/admin/inquiries/shipping-agency/${id}/epda/lock`,
+    ADMIN_SHIPPING_AGENCY_EPDA_UNLOCK: (id: number) =>
+      `/admin/inquiries/shipping-agency/${id}/epda/unlock`,
     ADMIN_SHIPPING_AGENCY_FIELD_CHANGES: (id: number, page = 0, size = 6) =>
       `/admin/inquiries/shipping-agency/${id}/epda/field-changes?page=${page}&size=${size}`,
     USER_BATCH_DELETE: (serviceSlug: string) =>
-
       `/inquiries/batch?${new URLSearchParams({ serviceSlug }).toString()}`,
-    ADMIN_BATCH_DELETE: (
-      mode: 'soft' | 'hard' = 'soft',
-      serviceSlug?: string
-    ) => {
-      const qs = new URLSearchParams()
-      if (serviceSlug?.trim()) qs.set('serviceSlug', serviceSlug.trim())
-      const path =
-        mode === 'hard'
-          ? '/admin/inquiries/batch/permanent'
-          : '/admin/inquiries/batch'
-      const suffix = qs.toString()
-      return `${path}${suffix ? `?${suffix}` : ''}`
-    },
-    /** Prefer this for hard delete — id is in the path (no DELETE body). */
-    ADMIN_HARD_DELETE: (serviceSlug: string, id: number) =>
-      `/admin/inquiries/${encodeURIComponent(serviceSlug)}/${id}/permanent`,
-    ADMIN_BATCH_RESTORE: (serviceSlug?: string) => {
+    ADMIN_BATCH_DELETE: (serviceSlug?: string) => {
       const qs = new URLSearchParams()
       if (serviceSlug?.trim()) qs.set('serviceSlug', serviceSlug.trim())
       const suffix = qs.toString()
-      return `/admin/inquiries/batch/restore${suffix ? `?${suffix}` : ''}`
+      return `/admin/inquiries/batch${suffix ? `?${suffix}` : ''}`
     },
-    ADMIN_RESTORE: (serviceType: string, id: number) =>
-      `/admin/inquiries/${encodeURIComponent(serviceType)}/${id}/restore`,
+    ADMIN_DELETE: (serviceSlug: string, id: number) =>
+      `/admin/inquiries/${encodeURIComponent(serviceSlug)}/${id}`,
   },
 
   DOCUMENTS: {
