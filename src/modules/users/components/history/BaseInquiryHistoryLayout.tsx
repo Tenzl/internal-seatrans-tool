@@ -124,7 +124,6 @@ export function BaseInquiryHistoryLayout({
                 portOfCall: false,
                 submittedAt: false,
                 employeeInCharge: false,
-                clientSubmittedBy: false,
               }
             : undefined
         }

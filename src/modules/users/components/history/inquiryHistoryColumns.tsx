@@ -57,30 +57,16 @@ export function buildInquiryHistoryColumns({
   ]
 
   if (showShippingParties) {
-    columns.splice(
-      2,
-      0,
-      {
-        id: 'employeeInCharge',
-        header: 'Employee in charge',
-        cell: ({ row }) => (
-          <span className='text-sm'>
-            {partyLabel(row.original.employeeInCharge)}
-          </span>
-        ),
-        enableSorting: false,
-      },
-      {
-        id: 'clientSubmittedBy',
-        header: 'Client submitted by',
-        cell: ({ row }) => (
-          <span className='text-sm'>
-            {partyLabel(row.original.clientSubmittedBy)}
-          </span>
-        ),
-        enableSorting: false,
-      }
-    )
+    columns.splice(2, 0, {
+      id: 'employeeInCharge',
+      header: 'Employee in charge',
+      cell: ({ row }) => (
+        <span className='text-sm'>
+          {partyLabel(row.original.employeeInCharge)}
+        </span>
+      ),
+      enableSorting: false,
+    })
   }
 
   if (isShippingAgencyHistory) {
@@ -119,9 +105,7 @@ export function buildInquiryHistoryColumns({
   return columns
 }
 
-function partyLabel(
-  party: InquiryHistoryRecord['employeeInCharge']
-): string {
+function partyLabel(party: InquiryHistoryRecord['employeeInCharge']): string {
   return party?.fullName?.trim() || party?.email?.trim() || '—'
 }
 
