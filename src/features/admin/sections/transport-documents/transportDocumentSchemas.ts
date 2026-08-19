@@ -13,7 +13,10 @@ import {
   compactCargoVolumes,
   normalizeBookingCargoVolumes,
 } from './cargoVolumeModel'
-import { deriveNotifySameAsConsignee, deriveNotifySameAsConsigned } from './notifyPartySameAsConsignee'
+import {
+  deriveNotifySameAsConsignee,
+  deriveNotifySameAsConsigned,
+} from './notifyPartySameAsConsignee'
 import type {
   ArrivalNoticePayload,
   BillOfLadingPayload,
@@ -83,7 +86,10 @@ export const arrivalNoticeSchema = z.object({
   serviceMode: shortText,
   note: longText,
   marks: longText,
+  commodityTypeId: partyId,
+  commodityType: shortText,
   commodityId: partyId,
+  commodityName: shortText,
   descriptionOfGoods: xlText,
   volume: shortText,
   customerAttention: longText,
@@ -153,8 +159,11 @@ export const bookingConfirmationSchema = z.object({
   siCutoff: shortText,
   vgmCutoff: shortText,
   contact: shortText,
-  commodity: longText,
+  commodityTypeId: partyId,
+  commodityType: shortText,
   commodityId: partyId,
+  commodityName: shortText,
+  commodity: longText,
   volume: shortText,
   cargoVolumes: cargoVolumesSchema,
   grossWeight: shortText,
@@ -206,7 +215,10 @@ export const emptyArrivalNotice = (): ArrivalNoticePayload => ({
   serviceMode: '',
   note: '',
   marks: '',
+  commodityTypeId: null,
+  commodityType: '',
   commodityId: null,
+  commodityName: '',
   descriptionOfGoods: '',
   volume: '',
   customerAttention: '',
@@ -262,8 +274,11 @@ export const emptyBookingConfirmation = (): BookingConfirmationPayload => ({
   siCutoff: '',
   vgmCutoff: '',
   contact: '',
-  commodity: '',
+  commodityTypeId: null,
+  commodityType: '',
   commodityId: null,
+  commodityName: '',
+  commodity: '',
   volume: '',
   cargoVolumes: {},
   grossWeight: '',
@@ -275,6 +290,64 @@ export const emptyBookingConfirmation = (): BookingConfirmationPayload => ({
   pic: '',
   picUserId: null,
 })
+
+export type BookingCatalogChange =
+  | { field: 'type'; id: number | null; name: string }
+  | { field: 'commodity'; id: number | null; name: string }
+
+type BookingCatalogState = Pick<
+  BookingConfirmationPayload,
+  | 'commodityTypeId'
+  | 'commodityType'
+  | 'commodityId'
+  | 'commodityName'
+  | 'commodity'
+>
+
+/** Stable Booking cargo label used by preview and AN/BL one-time prefill. */
+export function formatBookingCommodityDescription(
+  commodityName: string,
+  commodityType: string
+): string {
+  const commodity = commodityName.trim()
+  const type = commodityType.trim()
+  if (commodity && type) return `${commodity} IN ${type}`
+  return commodity || type
+}
+
+/**
+ * Apply one catalog selection without coupling it to the other catalog.
+ * Generated descriptions follow new selections. A custom or legacy
+ * description remains an immutable historical snapshot.
+ */
+export function applyBookingCatalogChange(
+  current: BookingCatalogState,
+  change: BookingCatalogChange
+): BookingCatalogState {
+  const currentDescription = current.commodity.trim()
+  const currentGeneratedDescription = formatBookingCommodityDescription(
+    current.commodityName,
+    current.commodityType
+  )
+  const canRegenerateDescription =
+    !currentDescription || currentDescription === currentGeneratedDescription
+  const next: BookingCatalogState = { ...current }
+  if (change.field === 'type') {
+    next.commodityTypeId = change.id
+    next.commodityType = change.name
+  } else {
+    next.commodityId = change.id
+    next.commodityName = change.name
+  }
+
+  if (canRegenerateDescription) {
+    next.commodity = formatBookingCommodityDescription(
+      next.commodityName,
+      next.commodityType
+    )
+  }
+  return next
+}
 
 export const billOfLadingSchema = z.object({
   fblNumber: shortText,

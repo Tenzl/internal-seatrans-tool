@@ -12,6 +12,7 @@ import {
 import {
   commodityService,
   type Commodity,
+  type CommodityType,
 } from '@/modules/gallery/services/commodityService'
 import {
   portService,
@@ -38,12 +39,14 @@ export interface GalleryManageFilterState {
   setFilterPort: (value: number | null) => void
   filterServiceType: number | null
   setFilterServiceType: (value: number | null) => void
+  filterCommodityType: number | null
+  setFilterCommodityType: (value: number | null) => void
   filterCommodity: number | null
   setFilterCommodity: (value: number | null) => void
   availablePorts: Port[]
+  availableCommodityTypes: CommodityType[]
   availableCommodities: Commodity[]
   serviceTypes: ServiceType[]
-  commodityCounts: Record<string, number>
   filterProvinceId: number | undefined
   hasActiveFilters: boolean
   handleClearAll: () => void
@@ -70,14 +73,17 @@ export function GalleryManageProvider({ children }: { children: ReactNode }) {
   const [filterServiceType, setFilterServiceType] = useState<number | null>(
     null
   )
+  const [filterCommodityType, setFilterCommodityType] = useState<number | null>(
+    null
+  )
   const [filterCommodity, setFilterCommodity] = useState<number | null>(null)
   const [availablePorts, setAvailablePorts] = useState<Port[]>([])
+  const [availableCommodityTypes, setAvailableCommodityTypes] = useState<
+    CommodityType[]
+  >([])
   const [availableCommodities, setAvailableCommodities] = useState<Commodity[]>(
     []
   )
-  const [commodityCounts, setCommodityCounts] = useState<
-    Record<string, number>
-  >({})
 
   useEffect(() => {
     void serviceTypeService
@@ -113,102 +119,34 @@ export function GalleryManageProvider({ children }: { children: ReactNode }) {
     if (!filterServiceType) return
 
     const controller = new AbortController()
-    void commodityService
-      .getCommoditiesByServiceType(filterServiceType, controller.signal)
-      .then((data) => {
-        if (controller.signal.aborted) return
-        setAvailableCommodities(data)
-        setFilterCommodity(null)
-      })
-      .catch((error) => {
-        if (controller.signal.aborted) return
-        toast.error('Failed to load commodities', error)
-      })
+    void Promise.allSettled([
+      commodityService.listCommodityTypes(filterServiceType, controller.signal),
+      commodityService.getCommoditiesByServiceType(
+        filterServiceType,
+        controller.signal
+      ),
+    ]).then(([typesResult, commoditiesResult]) => {
+      if (controller.signal.aborted) return
+
+      if (typesResult.status === 'fulfilled') {
+        setAvailableCommodityTypes(typesResult.value)
+      } else {
+        setAvailableCommodityTypes([])
+        toast.error('Failed to load commodity types', typesResult.reason)
+      }
+
+      if (commoditiesResult.status === 'fulfilled') {
+        setAvailableCommodities(commoditiesResult.value)
+      } else {
+        setAvailableCommodities([])
+        toast.error('Failed to load commodities', commoditiesResult.reason)
+      }
+    })
 
     return () => {
       controller.abort()
     }
   }, [filterServiceType])
-
-  useEffect(() => {
-    if (!filterCommodity) return
-    const provinceId = filterPort
-      ? availablePorts.find((port) => port.id === filterPort)?.provinceId
-      : undefined
-    // When the scoped multi-count effect can run, skip this single lookup.
-    if (filterServiceType && filterPort && provinceId) return
-
-    const controller = new AbortController()
-    void commodityService
-      .getImageCount(
-        filterCommodity,
-        provinceId ?? undefined,
-        filterPort ?? undefined,
-        filterServiceType ?? undefined,
-        controller.signal
-      )
-      .then((countData) => {
-        if (controller.signal.aborted) return
-        setCommodityCounts((prev) => ({
-          ...prev,
-          [filterCommodity]: countData.current,
-        }))
-      })
-      .catch((error) => {
-        if (controller.signal.aborted) return
-        toast.error('Failed to load image count', error)
-      })
-
-    return () => {
-      controller.abort()
-    }
-  }, [filterCommodity, filterPort, filterServiceType, availablePorts])
-
-  useEffect(() => {
-    const provinceId = filterPort
-      ? availablePorts.find((port) => port.id === filterPort)?.provinceId
-      : undefined
-    if (
-      !filterServiceType ||
-      !filterPort ||
-      !provinceId ||
-      availableCommodities.length === 0
-    ) {
-      return
-    }
-
-    const controller = new AbortController()
-    void commodityService
-      .getImageCounts(
-        {
-          provinceId,
-          portId: filterPort,
-          serviceTypeId: filterServiceType,
-        },
-        controller.signal
-      )
-      .then((countsById) => {
-        if (controller.signal.aborted) return
-        setCommodityCounts((prev) => {
-          const next = { ...prev }
-          for (const type of availableCommodities) {
-            const current = countsById[type.id] ?? 0
-            const scopedKey = `${provinceId}_${filterPort}_${filterServiceType}_${type.id}`
-            next[scopedKey] = current
-            next[type.id] = current
-          }
-          return next
-        })
-      })
-      .catch((error) => {
-        if (controller.signal.aborted) return
-        toast.error('Failed to load image counts', error)
-      })
-
-    return () => {
-      controller.abort()
-    }
-  }, [availableCommodities, filterPort, filterServiceType, availablePorts])
 
   const selectedFilterPort = filterPort
     ? availablePorts.find((port) => port.id === filterPort)
@@ -216,7 +154,11 @@ export function GalleryManageProvider({ children }: { children: ReactNode }) {
   const filterProvinceId = selectedFilterPort?.provinceId ?? undefined
 
   const hasActiveFilters = Boolean(
-    filterArea || filterPort || filterServiceType || filterCommodity
+    filterArea ||
+    filterPort ||
+    filterServiceType ||
+    filterCommodityType ||
+    filterCommodity
   )
 
   const handleClearAll = useCallback(() => {
@@ -224,6 +166,8 @@ export function GalleryManageProvider({ children }: { children: ReactNode }) {
     setAvailablePorts([])
     setFilterPort(null)
     setFilterServiceType(null)
+    setAvailableCommodityTypes([])
+    setFilterCommodityType(null)
     setAvailableCommodities([])
     setFilterCommodity(null)
   }, [])
@@ -236,6 +180,8 @@ export function GalleryManageProvider({ children }: { children: ReactNode }) {
 
   const handleServiceTypeChange = useCallback((value: number | null) => {
     setFilterServiceType(value)
+    setAvailableCommodityTypes([])
+    setFilterCommodityType(null)
     setAvailableCommodities([])
     setFilterCommodity(null)
   }, [])
@@ -248,12 +194,14 @@ export function GalleryManageProvider({ children }: { children: ReactNode }) {
       setFilterPort,
       filterServiceType,
       setFilterServiceType: handleServiceTypeChange,
+      filterCommodityType,
+      setFilterCommodityType,
       filterCommodity,
       setFilterCommodity,
       availablePorts,
+      availableCommodityTypes,
       availableCommodities,
       serviceTypes,
-      commodityCounts,
       filterProvinceId,
       hasActiveFilters,
       handleClearAll,
@@ -262,11 +210,12 @@ export function GalleryManageProvider({ children }: { children: ReactNode }) {
       filterArea,
       filterPort,
       filterServiceType,
+      filterCommodityType,
       filterCommodity,
       availablePorts,
+      availableCommodityTypes,
       availableCommodities,
       serviceTypes,
-      commodityCounts,
       filterProvinceId,
       hasActiveFilters,
       handleClearAll,
@@ -302,19 +251,17 @@ export function GalleryImageFilters({
     setFilterPort,
     filterServiceType,
     setFilterServiceType,
+    filterCommodityType,
+    setFilterCommodityType,
     filterCommodity,
     setFilterCommodity,
     availablePorts,
+    availableCommodityTypes,
     availableCommodities,
     serviceTypes,
-    commodityCounts,
     hasActiveFilters,
     handleClearAll,
   } = useGalleryManageFilters()
-
-  const provinceId = filterPort
-    ? availablePorts.find((port) => port.id === filterPort)?.provinceId
-    : undefined
 
   return (
     <div
@@ -349,7 +296,7 @@ export function GalleryImageFilters({
           'gap-3',
           layout === 'sidebar'
             ? 'flex flex-col'
-            : 'grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4'
+            : 'grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5'
         )}
       >
         <div className='flex flex-col gap-2'>
@@ -435,7 +382,34 @@ export function GalleryImageFilters({
 
         <div className='flex flex-col gap-2'>
           <label className='text-xs font-medium text-muted-foreground'>
-            Cargo
+            Type
+          </label>
+          <select
+            value={filterCommodityType ?? ''}
+            onChange={(event) =>
+              setFilterCommodityType(
+                event.target.value ? Number(event.target.value) : null
+              )
+            }
+            disabled={!filterServiceType || (mode === 'add' && !filterPort)}
+            className={selectClassName}
+            title='Commodity type filter'
+            aria-label='Commodity type filter'
+          >
+            <option value=''>
+              {mode === 'add' ? 'Select type' : 'All types'}
+            </option>
+            {availableCommodityTypes.map((commodityType) => (
+              <option key={commodityType.id} value={commodityType.id}>
+                {commodityType.name}
+              </option>
+            ))}
+          </select>
+        </div>
+
+        <div className='flex flex-col gap-2'>
+          <label className='text-xs font-medium text-muted-foreground'>
+            Commodity
           </label>
           <select
             value={filterCommodity ?? ''}
@@ -444,25 +418,17 @@ export function GalleryImageFilters({
             }
             disabled={!filterServiceType || (mode === 'add' && !filterPort)}
             className={selectClassName}
-            title='Cargo type filter'
-            aria-label='Cargo type filter'
+            title='Commodity filter'
+            aria-label='Commodity filter'
           >
             <option value=''>
-              {mode === 'add' ? 'Select cargo' : 'All cargo types'}
+              {mode === 'add' ? 'Select commodity' : 'All commodities'}
             </option>
-            {availableCommodities.map((type) => {
-              const scopedKey =
-                provinceId && filterPort && filterServiceType
-                  ? `${provinceId}_${filterPort}_${filterServiceType}_${type.id}`
-                  : String(type.id)
-              const current =
-                commodityCounts[scopedKey] ?? commodityCounts[type.id] ?? 0
-              return (
-                <option key={type.id} value={type.id}>
-                  {type.displayName} ({current}/{type.requiredImageCount})
-                </option>
-              )
-            })}
+            {availableCommodities.map((commodity) => (
+              <option key={commodity.id} value={commodity.id}>
+                {commodity.displayName}
+              </option>
+            ))}
           </select>
         </div>
       </div>

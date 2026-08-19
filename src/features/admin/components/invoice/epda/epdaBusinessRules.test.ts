@@ -48,7 +48,7 @@ describe('EPDA business rules', () => {
     expect(isLoaAtOrAboveTugMaximum('', params)).toBe(false)
   })
 
-  it('keeps an inquiry cargo name only when its type exists in the catalog', () => {
+  it('preserves an inquiry Commodity independently when Type is missing', () => {
     const cargo = {
       cargoType: 'IN_BAGS',
       cargoName: 'Rice',
@@ -66,12 +66,14 @@ describe('EPDA business rules', () => {
     ]
 
     expect(resolveInquiryCargo(cargo, catalog)).toEqual({
-      cargoType: 'IN_BAG_PACK',
+      commodityTypeId: null,
+      cargoType: 'IN_BAGS',
       cargoName: 'Rice',
     })
     expect(resolveInquiryCargo(cargo, [])).toEqual({
-      cargoType: 'IN_BAG_PACK',
-      cargoName: '',
+      commodityTypeId: null,
+      cargoType: 'IN_BAGS',
+      cargoName: 'Rice',
     })
   })
 })

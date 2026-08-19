@@ -62,7 +62,12 @@ export interface ArrivalNoticePayload {
   serviceMode: string
   note: string
   marks: string
+  /** Booking Type identity and stable snapshot copied when AN is created. */
+  commodityTypeId?: number | null
+  commodityType?: string
+  /** Booking Commodity identity and stable snapshot copied when AN is created. */
   commodityId?: number | null
+  commodityName?: string
   /**
    * Shipment-level goods description (PDF cargo “Description of Goods”).
    * Separate from per-container `containers[].note`.
@@ -151,8 +156,14 @@ export interface BookingConfirmationPayload {
   siCutoff: string
   vgmCutoff: string
   contact: string
-  commodity: string
+  /** Independent Freight Forwarding Type identity and stable display snapshot. */
+  commodityTypeId?: number | null
+  commodityType: string
+  /** Independent Freight Forwarding Commodity identity and stable name snapshot. */
   commodityId?: number | null
+  commodityName: string
+  /** Stable rendered description; generated selections update, custom legacy text does not. */
+  commodity: string
   /** Derived multiline display / PDF / prefill string (e.g. `3 x 20'DC`). */
   volume: string
   /** Structured cargo volumes; only types with qty > 0 are stored. */

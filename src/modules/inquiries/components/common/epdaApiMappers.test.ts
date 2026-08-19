@@ -20,6 +20,22 @@ describe('EPDA quantity API contract', () => {
     expect(payload).not.toHaveProperty('customerUserId')
   })
 
+  it('submits the authoritative Type id with its name snapshot', () => {
+    const payload = buildInternalCreatePayload({
+      quoteForm: 'HCM',
+      commodityTypeId: 11,
+      cargoType: 'Renamed bulk cargo',
+      boatHireQuarantineAmount: '',
+    } as BuildInvoiceQuoteDataParams & {
+      boatHireQuarantineAmount: string
+    })
+
+    expect(payload).toMatchObject({
+      commodityTypeId: 11,
+      cargoType: 'Renamed bulk cargo',
+    })
+  })
+
   it('sends quantityTons when editing an existing EPDA', () => {
     const payload = buildEpdaPatchPayload({
       quoteForm: 'HCM',
@@ -72,9 +88,7 @@ describe('EPDA quantity API contract', () => {
     const payload = buildEpdaPatchPayload({
       quoteForm: 'HCM',
       agencyFeeMode: 'TARRIF_AGENCY',
-      agencyOtherExpenses: [
-        { id: '1', name: 'Should clear', amount: '10' },
-      ],
+      agencyOtherExpenses: [{ id: '1', name: 'Should clear', amount: '10' }],
       boatHireQuarantineAmount: '',
     } as BuildInvoiceQuoteDataParams & {
       boatHireQuarantineAmount: string

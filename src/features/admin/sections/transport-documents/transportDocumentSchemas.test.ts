@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import type { ArrivalNoticePayload } from './transportDocument.types'
 import {
+  applyBookingCatalogChange,
   cargoRowSchema,
   emptyArrivalNotice,
   emptyBillOfLading,
@@ -8,6 +9,7 @@ import {
   emptyDeliveryOrder,
   normalizeArrivalNoticePayload,
   normalizeBillOfLadingPayload,
+  normalizeBookingConfirmationPayload,
   normalizeDeliveryOrderPayload,
   parseTransportDocument,
   resolveArrivalNoticeScheduleFields,
@@ -256,16 +258,92 @@ describe('transport document schemas', () => {
 
   it('keeps Booking commodity and PIC ids with their display snapshots', () => {
     const booking = emptyBookingConfirmation()
-    booking.commodity = 'RICE IN FOODSTUFFS'
+    booking.commodityTypeId = 7
+    booking.commodityType = 'FOODSTUFFS'
     booking.commodityId = 12
+    booking.commodityName = 'RICE'
+    booking.commodity = 'RICE IN FOODSTUFFS'
     booking.pic = 'Operations, Email: ops@example.com'
     booking.picUserId = 34
 
     expect(parseTransportDocument('booking', booking)).toMatchObject({
+      commodityTypeId: 7,
+      commodityType: 'FOODSTUFFS',
       commodity: 'RICE IN FOODSTUFFS',
       commodityId: 12,
+      commodityName: 'RICE',
       pic: 'Operations, Email: ops@example.com',
       picUserId: 34,
+    })
+  })
+
+  it('updates Booking Type and Commodity independently and generates only an empty description', () => {
+    const afterCommodity = applyBookingCatalogChange(
+      {
+        commodityTypeId: 7,
+        commodityType: 'FOODSTUFFS',
+        commodityId: null,
+        commodityName: '',
+        commodity: '',
+      },
+      { field: 'commodity', id: 12, name: 'RICE' }
+    )
+
+    expect(afterCommodity).toEqual({
+      commodityTypeId: 7,
+      commodityType: 'FOODSTUFFS',
+      commodityId: 12,
+      commodityName: 'RICE',
+      commodity: 'RICE IN FOODSTUFFS',
+    })
+
+    expect(
+      applyBookingCatalogChange(afterCommodity, {
+        field: 'type',
+        id: 8,
+        name: 'REEFER',
+      })
+    ).toEqual({
+      commodityTypeId: 8,
+      commodityType: 'REEFER',
+      commodityId: 12,
+      commodityName: 'RICE',
+      commodity: 'RICE IN REEFER',
+    })
+  })
+
+  it('round-trips both independent Booking catalog identities and snapshots', () => {
+    const saved = normalizeBookingConfirmationPayload({
+      ...emptyBookingConfirmation(),
+      commodityTypeId: 7,
+      commodityType: 'FOODSTUFFS',
+      commodityId: 12,
+      commodityName: 'RICE',
+      commodity: 'RICE IN FOODSTUFFS',
+    })
+
+    expect(normalizeBookingConfirmationPayload(saved)).toMatchObject({
+      commodityTypeId: 7,
+      commodityType: 'FOODSTUFFS',
+      commodityId: 12,
+      commodityName: 'RICE',
+      commodity: 'RICE IN FOODSTUFFS',
+    })
+  })
+
+  it('keeps a legacy Booking description and missing catalog snapshots unchanged', () => {
+    const legacy = normalizeBookingConfirmationPayload({
+      ...emptyBookingConfirmation(),
+      commodityId: 91,
+      commodity: 'Historical commodity IN Old group',
+    })
+
+    expect(legacy).toMatchObject({
+      commodityTypeId: null,
+      commodityType: '',
+      commodityId: 91,
+      commodityName: '',
+      commodity: 'Historical commodity IN Old group',
     })
   })
 
@@ -427,6 +505,9 @@ describe('transport document schemas', () => {
         'consigneePartyId',
         'containers',
         'commodityId',
+        'commodityName',
+        'commodityType',
+        'commodityTypeId',
         'customerAttention',
         'date',
         'descriptionOfGoods',
@@ -461,6 +542,9 @@ describe('transport document schemas', () => {
         'closingTime',
         'commodity',
         'commodityId',
+        'commodityName',
+        'commodityType',
+        'commodityTypeId',
         'contact',
         'date',
         'dropoffPlace',

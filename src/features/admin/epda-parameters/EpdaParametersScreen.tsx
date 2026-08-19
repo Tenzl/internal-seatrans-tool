@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { commodityService } from '@/modules/gallery/services/commodityService'
 import {
   defaultParameterValues,
   mergeParameterValues,
@@ -44,6 +45,7 @@ import {
 import { ValuesEditor } from './EpdaValuesEditor'
 import { ParamHistoryButton } from './ParamHistoryButton'
 import { PortOverridesCard } from './PortOverridesCard'
+import { canonicalizeCargoAgencyRates } from './cargoAgencyRateRules'
 import { AREA_SET_HIDDEN_SECTION_IDS } from './epdaParameterSections'
 import { cloneParameterValues } from './parameterOverrides'
 
@@ -65,6 +67,15 @@ export function EpdaParametersScreen() {
     queryKey: ['epda-parameters'],
     queryFn: () => epdaParametersService.listAll(),
   })
+  const { data: commodityTypes = [], isLoading: isLoadingCommodityTypes } =
+    useQuery({
+      queryKey: ['epda-parameters', 'commodity-types', 'shipping-agency'],
+      queryFn: async () => {
+        const serviceTypeId =
+          await commodityService.resolveServiceTypeId('shipping-agency')
+        return commodityService.listCommodityTypes(serviceTypeId)
+      },
+    })
 
   const variant = AREA_TO_VARIANT[area]
   const areaSet = useMemo<EpdaParameterSet | undefined>(
@@ -91,7 +102,17 @@ export function EpdaParametersScreen() {
 
   const saveArea = useMutation({
     mutationFn: () =>
-      epdaParametersService.upsertArea(area, draft, areaSet?.version ?? null),
+      epdaParametersService.upsertArea(
+        area,
+        {
+          ...draft,
+          cargoAgencyRates: canonicalizeCargoAgencyRates(
+            commodityTypes,
+            draft.cargoAgencyRates
+          ),
+        },
+        areaSet?.version ?? null
+      ),
     onSuccess: () => {
       toast.success(`Saved parameters for ${area}`)
       qc.invalidateQueries({ queryKey: ['epda-parameters'] })
@@ -187,7 +208,7 @@ export function EpdaParametersScreen() {
           </div>
         </div>
 
-        {isLoading ? (
+        {isLoading || isLoadingCommodityTypes ? (
           <div className='flex min-h-[200px] items-center justify-center'>
             <Loader2 className='h-6 w-6 animate-spin text-muted-foreground' />
           </div>
@@ -242,6 +263,7 @@ export function EpdaParametersScreen() {
                 <ValuesEditor
                   variant={variant}
                   values={draft}
+                  commodityTypes={commodityTypes}
                   onChange={setDraft}
                   hiddenSectionIds={AREA_SET_HIDDEN_SECTION_IDS}
                 />
@@ -260,6 +282,7 @@ export function EpdaParametersScreen() {
                 groups={(sets ?? []).filter(
                   (s) => s.scope === 'GROUP' && s.area === area
                 )}
+                commodityTypes={commodityTypes}
               />
             </div>
           </div>

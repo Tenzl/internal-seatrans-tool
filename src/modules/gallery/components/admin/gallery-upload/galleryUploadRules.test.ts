@@ -1,12 +1,11 @@
 import { describe, expect, it, vi } from 'vitest'
+import * as uploadRules from './galleryUploadRules'
 import {
-  buildCommodityCountKey,
   canEnableGalleryUpload,
-  getUploadRequirement,
   uploadGalleryFilesSequentially,
 } from './galleryUploadRules'
 
-const file = (name: string) => ({ name }) as File
+const file = (name: string, size = 1) => ({ name, size }) as File
 
 describe('gallery upload rules', () => {
   it('requires the complete scoped selection and at least one file', () => {
@@ -23,21 +22,39 @@ describe('gallery upload rules', () => {
     expect(canEnableGalleryUpload({ ...complete, files: [] })).toBe(false)
   })
 
-  it('builds the same scoped count key as the gallery filters', () => {
-    expect(buildCommodityCountKey(10, 20, 30, 40)).toBe('10_20_30_40')
-    expect(buildCommodityCountKey(10, null, 30, 40)).toBeNull()
-  })
+  it('keeps per-request batch and file-size limits without quota rules', () => {
+    const selection = {
+      area: '1',
+      portId: 20,
+      serviceTypeId: 30,
+      commodityId: 40,
+      files: [file('port.jpg')],
+    }
 
-  it('describes remaining and excess image requirements', () => {
-    expect(getUploadRequirement(2, 5)).toEqual({
-      complete: false,
-      message: '3 more images needed to reach the required 5.',
-    })
-    expect(getUploadRequirement(5, 5)).toEqual({
-      complete: true,
-      message:
-        'This type already has 5 images. Additional uploads will exceed the limit.',
-    })
+    expect(
+      canEnableGalleryUpload({
+        ...selection,
+        files: Array.from({ length: 20 }, (_, index) =>
+          file(`image-${index}.jpg`, 10 * 1024 * 1024)
+        ),
+      })
+    ).toBe(true)
+    expect(
+      canEnableGalleryUpload({
+        ...selection,
+        files: Array.from({ length: 21 }, (_, index) =>
+          file(`image-${index}.jpg`)
+        ),
+      })
+    ).toBe(false)
+    expect(
+      canEnableGalleryUpload({
+        ...selection,
+        files: [file('too-large.jpg', 10 * 1024 * 1024 + 1)],
+      })
+    ).toBe(false)
+    expect(uploadRules).not.toHaveProperty('getUploadRequirement')
+    expect(uploadRules).not.toHaveProperty('buildCommodityCountKey')
   })
 
   it('uploads sequentially and keeps per-file failures', async () => {

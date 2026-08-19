@@ -35,11 +35,14 @@ export interface LoaTier {
   label: string
 }
 
-/** Agency fee on cargo (BB section) keyed by cargo type code, USD/MT. */
+/** Agency fee on cargo (BB section), canonically keyed by Commodity Type id. */
 export interface CargoAgencyRate {
-  /** Normalized cargo type code (e.g. IN_BULK, EQUIPMENT). */
-  code: string
-  label: string
+  commodityTypeId?: number | null
+  typeNameSnapshot?: string
+  /** Legacy read compatibility only; new writes must use commodityTypeId. */
+  code?: string
+  /** Legacy display compatibility only. */
+  label?: string
   rate: number
 }
 
@@ -546,14 +549,22 @@ export function resolveGrtTier(
  * to zero so the PDF shows a complete zero-valued row instead of a partial formula.
  */
 export function resolveCargoAgencyRate(
-  cargoType: string | null | undefined,
+  commodityTypeId: number | null | undefined,
+  cargoTypeSnapshot: string | null | undefined,
   params: EpdaParameterValues
 ): number | undefined {
-  const code = legacyCargoTypeToCode(cargoType)
+  if (commodityTypeId && commodityTypeId > 0) {
+    const configuredRate = (params.cargoAgencyRates ?? []).find(
+      (row) => row.commodityTypeId === commodityTypeId
+    )
+    return parseFiniteNumber(configuredRate?.rate) ?? 0
+  }
+
+  const code = legacyCargoTypeToCode(cargoTypeSnapshot)
   if (!code) return undefined
 
   const configuredRate = (params.cargoAgencyRates ?? []).find(
-    (row) => legacyCargoTypeToCode(row.code) === code
+    (row) => row.code && legacyCargoTypeToCode(row.code) === code
   )
   return parseFiniteNumber(configuredRate?.rate) ?? 0
 }
@@ -610,7 +621,12 @@ export function extractWorkingParams(
 ): EpdaParameterValues | null {
   if (!value || typeof value !== 'object' || Array.isArray(value)) return null
   const v = value as Partial<EpdaParameterValues>
-  if (!Array.isArray(v.agencyFeeTiers) || !v.coeff || !v.hours || !v.quarantine) {
+  if (
+    !Array.isArray(v.agencyFeeTiers) ||
+    !v.coeff ||
+    !v.hours ||
+    !v.quarantine
+  ) {
     return null
   }
   return normalizeParameterValues(value as EpdaParameterValues)

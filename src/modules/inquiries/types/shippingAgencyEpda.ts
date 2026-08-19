@@ -24,6 +24,7 @@ export type ShippingAgencyAdminInquiry = {
   dwt?: string | number | null
   grt?: string | number | null
   loa?: string | number | null
+  commodityTypeId?: number | null
   cargoType?: string | null
   cargoName?: string | null
   cargoNameOther?: string | null

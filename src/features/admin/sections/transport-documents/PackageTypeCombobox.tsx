@@ -1,6 +1,7 @@
 'use client'
 
 import * as React from 'react'
+import { useQuery } from '@tanstack/react-query'
 import { Check, ChevronsUpDown } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import {
@@ -16,10 +17,7 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from '@/components/ui/popover'
-import {
-  AN_CONTAINER_PACKAGE_TYPE_OPTIONS,
-  isAnContainerPackageType,
-} from './anContainerModel'
+import { packageTypeService } from './packageTypeService'
 
 interface PackageTypeComboboxProps {
   value: string
@@ -29,11 +27,9 @@ interface PackageTypeComboboxProps {
 }
 
 /**
- * Searchable package-type picker for AN container rows. Typing filters the
- * ~90-option list by approximate match (cmdk's built-in subsequence scoring)
- * so "PAL", "carton", or "DR" surface the right entries without scrolling a
- * long native `<select>`. A stored legacy value outside the canonical list
- * (`AN_CONTAINER_PACKAGE_TYPES`) stays selectable at the top of the list.
+ * Searchable database-backed Package Type picker shared by BL/AN/DO container
+ * rows. The stored document snapshot is always pinned first and remains usable
+ * even after its catalog row is renamed, deactivated, or removed.
  */
 export function PackageTypeCombobox({
   value,
@@ -43,13 +39,30 @@ export function PackageTypeCombobox({
 }: PackageTypeComboboxProps) {
   const [open, setOpen] = React.useState(false)
   const [search, setSearch] = React.useState('')
+  const catalogQuery = useQuery({
+    queryKey: ['admin', 'booking-documents', 'package-types', 'active'],
+    queryFn: ({ signal }) => packageTypeService.listActive(signal),
+    retry: false,
+    staleTime: 5 * 60 * 1000,
+  })
 
   const options = React.useMemo(() => {
-    if (value && !isAnContainerPackageType(value)) {
-      return [{ value, label: value }, ...AN_CONTAINER_PACKAGE_TYPE_OPTIONS]
-    }
-    return AN_CONTAINER_PACKAGE_TYPE_OPTIONS
-  }, [value])
+    const normalizedSnapshot = value.trim().toUpperCase()
+    const catalog = (catalogQuery.data ?? [])
+      .filter((item) => item.code.trim().toUpperCase() !== normalizedSnapshot)
+      .map((item) => ({
+        value: item.code,
+        label: item.displayName,
+        keywords: `${item.code} ${item.displayName}`,
+      }))
+    return [
+      ...(value ? [{ value, label: value, keywords: value }] : []),
+      { value: '', label: '—', keywords: 'empty clear' },
+      ...catalog,
+    ]
+  }, [catalogQuery.data, value])
+
+  const fallback = search.trim()
 
   return (
     <Popover
@@ -67,7 +80,7 @@ export function PackageTypeCombobox({
           aria-label={ariaLabel}
           disabled={disabled}
           className={cn(
-            'flex min-h-9 w-full items-center justify-between gap-1.5 self-stretch rounded-none border-0 bg-background px-2 text-left text-sm outline-none transition-colors',
+            'flex min-h-9 w-full items-center justify-between gap-1.5 self-stretch rounded-none border-0 bg-background px-2 text-left text-sm transition-colors outline-none',
             'hover:bg-accent/40',
             'focus-visible:relative focus-visible:z-10 focus-visible:ring-1 focus-visible:ring-ring',
             'disabled:pointer-events-none disabled:cursor-not-allowed disabled:opacity-70'
@@ -92,7 +105,7 @@ export function PackageTypeCombobox({
               {options.map((option) => (
                 <CommandItem
                   key={option.value || 'empty'}
-                  value={option.label}
+                  value={option.keywords}
                   onSelect={() => {
                     onValueChange(option.value)
                     setOpen(false)
@@ -108,6 +121,20 @@ export function PackageTypeCombobox({
                   <span className='truncate'>{option.label}</span>
                 </CommandItem>
               ))}
+              {catalogQuery.isError &&
+              fallback &&
+              fallback.toUpperCase() !== value.trim().toUpperCase() ? (
+                <CommandItem
+                  value={fallback}
+                  onSelect={() => {
+                    onValueChange(fallback)
+                    setOpen(false)
+                    setSearch('')
+                  }}
+                >
+                  <span className='truncate'>Use &quot;{fallback}&quot;</span>
+                </CommandItem>
+              ) : null}
             </CommandGroup>
           </CommandList>
         </Command>

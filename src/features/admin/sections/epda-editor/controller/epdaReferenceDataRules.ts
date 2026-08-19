@@ -1,8 +1,12 @@
 import type {
   CargoType,
   Commodity,
+  CommodityType,
 } from '@/modules/gallery/services/commodityService'
-import { legacyCargoTypeToCode } from '@/modules/gallery/shippingAgencyCargoCatalog'
+import {
+  legacyCargoTypeToCode,
+  type EpdaCargoTypeOption,
+} from '@/modules/gallery/shippingAgencyCargoCatalog'
 import type { Port as LogisticsPort } from '@/modules/logistics/services/portService'
 
 export function findShippingAgencyServiceTypeId(
@@ -33,16 +37,11 @@ export function buildPortOptions(ports: LogisticsPort[]) {
 
 export function buildCargoNameOptions(
   catalog: Commodity[],
-  cargoType: CargoType | '',
   selectedCargoName: string
 ) {
-  if (!cargoType) return []
-  const matching = catalog.filter(
-    (item) => legacyCargoTypeToCode(item.cargoType) === cargoType
-  )
   if (
     selectedCargoName &&
-    !matching.some((item) => item.name === selectedCargoName)
+    !catalog.some((item) => item.name === selectedCargoName)
   ) {
     return [
       {
@@ -51,12 +50,99 @@ export function buildCargoNameOptions(
         displayName: selectedCargoName,
         serviceTypeId: 0,
         requiredImageCount: 0,
-        cargoType,
+        cargoType: '',
       },
-      ...matching,
+      ...catalog,
     ]
   }
-  return matching
+  return catalog
+}
+
+export function buildCargoTypeOptions(
+  catalog: CommodityType[],
+  selectedCargoType: CargoType | '',
+  selectedCommodityTypeId: number | null
+): EpdaCargoTypeOption[] {
+  const options = catalog.map((item) => ({
+    id: item.id,
+    value: String(item.id),
+    label: item.name,
+    nameSnapshot: item.name,
+  }))
+  if (selectedCommodityTypeId) {
+    if (options.some((item) => item.id === selectedCommodityTypeId)) {
+      return options
+    }
+    const snapshot = selectedCargoType.trim()
+    if (!snapshot) return options
+    return [
+      {
+        id: selectedCommodityTypeId,
+        value: String(selectedCommodityTypeId),
+        label: snapshot,
+        nameSnapshot: snapshot,
+      },
+      ...options,
+    ]
+  }
+
+  const legacyCode = legacyCargoTypeToCode(selectedCargoType)
+  if (legacyCode) {
+    const snapshot = selectedCargoType.trim() || legacyCode
+    return [
+      {
+        id: null,
+        value: `legacy:${legacyCode}`,
+        label: snapshot,
+        nameSnapshot: snapshot,
+        legacyCode,
+      },
+      ...options,
+    ]
+  }
+  return options
+}
+
+export function resolveEpdaTypeSnapshot(
+  catalog: CommodityType[],
+  commodityTypeId: number | null,
+  storedSnapshot: string
+) {
+  if (!commodityTypeId) return storedSnapshot
+  return (
+    catalog.find((item) => item.id === commodityTypeId)?.name ?? storedSnapshot
+  )
+}
+
+export function resolveEpdaCatalogIds(
+  commodityTypeId: number | null,
+  commodities: Commodity[],
+  cargoName: string
+) {
+  const selectedCommodity = commodities.find(
+    (item) => item.name === cargoName || item.displayName === cargoName
+  )
+  return {
+    commodityTypeId:
+      commodityTypeId && commodityTypeId > 0 ? commodityTypeId : undefined,
+    commodityId:
+      selectedCommodity && selectedCommodity.id > 0
+        ? selectedCommodity.id
+        : undefined,
+  }
+}
+
+export function resolveEpdaCargoTypeSelection(
+  options: EpdaCargoTypeOption[],
+  selectionValue: string
+) {
+  const selected = options.find((option) => option.value === selectionValue)
+  if (!selected) return null
+  return {
+    commodityTypeId: selected.id,
+    cargoType: selected.nameSnapshot,
+    tallyEligibilityKey: selected.legacyCode ?? selected.nameSnapshot,
+  }
 }
 
 export function resolveSelectedPortId({

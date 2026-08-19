@@ -98,6 +98,81 @@ describe('transportDocumentPrefill', () => {
     expect(next.containers[1]?.note).toBe('')
   })
 
+  it('prefills AN and BL from the independent Booking Type and Commodity snapshots', () => {
+    const booking = emptyBookingConfirmation()
+    booking.commodityTypeId = 7
+    booking.commodityType = 'FOODSTUFFS'
+    booking.commodityId = 42
+    booking.commodityName = 'RICE'
+    booking.commodity = ''
+
+    const an = prefillArrivalNoticeFromBooking(booking, emptyArrivalNotice())
+    expect(an).toMatchObject({
+      commodityTypeId: 7,
+      commodityType: 'FOODSTUFFS',
+      commodityId: 42,
+      commodityName: 'RICE',
+      descriptionOfGoods: 'RICE IN FOODSTUFFS',
+    })
+
+    const bl = prefillBillOfLadingFromBooking(booking, emptyBillOfLading())
+    expect(bl.descriptionOfGoods).toBe('RICE IN FOODSTUFFS')
+  })
+
+  it.each([
+    {
+      label: 'Commodity only',
+      typeId: null,
+      typeName: '',
+      commodityId: 42,
+      commodityName: 'RICE',
+      expected: 'RICE',
+    },
+    {
+      label: 'Type only',
+      typeId: 7,
+      typeName: 'FOODSTUFFS',
+      commodityId: null,
+      commodityName: '',
+      expected: 'FOODSTUFFS',
+    },
+  ])(
+    'prefills a Booking with $label without inventing the missing side',
+    (row) => {
+      const booking = emptyBookingConfirmation()
+      booking.commodityTypeId = row.typeId
+      booking.commodityType = row.typeName
+      booking.commodityId = row.commodityId
+      booking.commodityName = row.commodityName
+      booking.commodity = ''
+
+      const an = prefillArrivalNoticeFromBooking(booking, emptyArrivalNotice())
+      expect(an).toMatchObject({
+        commodityTypeId: row.typeId,
+        commodityType: row.typeName,
+        commodityId: row.commodityId,
+        commodityName: row.commodityName,
+        descriptionOfGoods: row.expected,
+      })
+      expect(
+        prefillBillOfLadingFromBooking(booking, emptyBillOfLading())
+          .descriptionOfGoods
+      ).toBe(row.expected)
+    }
+  )
+
+  it('preserves the exact legacy Booking description through AN and BL prefill', () => {
+    const booking = emptyBookingConfirmation()
+    booking.commodityId = 42
+    booking.commodity = 'Historical commodity IN Old group'
+
+    const an = prefillArrivalNoticeFromBooking(booking, emptyArrivalNotice())
+    const bl = prefillBillOfLadingFromBooking(booking, emptyBillOfLading())
+
+    expect(an.descriptionOfGoods).toBe('Historical commodity IN Old group')
+    expect(bl.descriptionOfGoods).toBe('Historical commodity IN Old group')
+  })
+
   it('never overwrites AN container details already entered by staff', () => {
     const booking = emptyBookingConfirmation()
     booking.cargoVolumes = { "20'DC": 2 }
@@ -247,6 +322,8 @@ describe('transportDocumentPrefill', () => {
   it('maps every selected Booking cargo unit without a leading blank BL row', () => {
     const booking = emptyBookingConfirmation()
     booking.cargoVolumes = { "40'HC": 2, "45'HC": 2, "40'HQ": 3 }
+    booking.commodityTypeId = 19
+    booking.commodityType = 'PALLET(S)'
 
     const next = prefillBillOfLadingFromBooking(booking, emptyBillOfLading())
 
@@ -258,6 +335,15 @@ describe('transportDocumentPrefill', () => {
       "40'HQ",
       "40'HQ",
       "40'HQ",
+    ])
+    expect(next.containers.map((row) => row.packageType)).toEqual([
+      'PALLET(S)',
+      'PALLET(S)',
+      'PALLET(S)',
+      'PALLET(S)',
+      'PALLET(S)',
+      'PALLET(S)',
+      'PALLET(S)',
     ])
   })
 

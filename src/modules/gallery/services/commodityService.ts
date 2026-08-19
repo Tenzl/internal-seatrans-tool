@@ -5,9 +5,13 @@ import { ApiError, apiClient } from '@/shared/utils/apiClient'
 
 export type CargoType = string
 
-export type CommodityAdminServiceSlug =
-  | 'shipping-agency'
-  | 'freight-forwarding'
+export type CommodityAdminServiceSlug = string
+
+export interface CommodityAdminService {
+  id: number
+  slug: CommodityAdminServiceSlug
+  label: string
+}
 
 export interface Commodity {
   id: number
@@ -15,6 +19,7 @@ export interface Commodity {
   displayName: string
   serviceTypeId: number
   serviceTypeName?: string
+  description?: string | null
   requiredImageCount: number
   cargoType: CargoType
   groupId?: number | null
@@ -35,6 +40,19 @@ export interface CommodityGroup {
   updatedAt?: string
 }
 
+export interface CommodityType {
+  id: number
+  serviceTypeId: number
+  name: string
+  createdAt: string
+  updatedAt: string
+}
+
+export interface SaveCommodityTypeRequest {
+  serviceTypeId: number
+  name: string
+}
+
 export interface BookingCommodityOption {
   id: number
   commodityName: string
@@ -42,18 +60,15 @@ export interface BookingCommodityOption {
   displayLabel: string
 }
 
-export interface CargoTypeCatalogItem {
-  code: string
-  displayLabel: string
-  serviceTypeType: string
-}
-
 export interface CreateCommodityRequest {
-  name: string
+  /** Optional legacy key. The backend generates it from displayName. */
+  name?: string
   displayName: string
   serviceTypeId: number
-  requiredImageCount: number
-  cargoType: CargoType
+  description?: string
+  /** Legacy callers only; independent Commodity API ignores these fields. */
+  requiredImageCount?: number
+  cargoType?: CargoType
 }
 
 export interface CreateGroupedCommodityInput {
@@ -132,8 +147,7 @@ const unwrapOne = async <T>(response: Response): Promise<T> => {
 
 function mapCommodity(raw: Record<string, unknown>): Commodity {
   const displayName = (raw.displayName as string) ?? ''
-  const groupName =
-    typeof raw.groupName === 'string' ? raw.groupName : null
+  const groupName = typeof raw.groupName === 'string' ? raw.groupName : null
   const beLabel =
     typeof raw.displayLabel === 'string' ? raw.displayLabel.trim() : ''
   return {
@@ -141,6 +155,7 @@ function mapCommodity(raw: Record<string, unknown>): Commodity {
     name: raw.name as string,
     displayName,
     serviceTypeId: raw.serviceTypeId as number,
+    description: typeof raw.description === 'string' ? raw.description : null,
     requiredImageCount: (raw.requiredImageCount as number) ?? 18,
     cargoType: (raw.cargoType as string) ?? 'IN_BULK',
     groupId:
@@ -153,7 +168,10 @@ function mapCommodity(raw: Record<string, unknown>): Commodity {
     displayLabel:
       beLabel ||
       (groupName
-        ? formatCommodityInGroupLabel(displayName || String(raw.name ?? ''), groupName)
+        ? formatCommodityInGroupLabel(
+            displayName || String(raw.name ?? ''),
+            groupName
+          )
         : null),
   }
 }
@@ -168,14 +186,38 @@ function mapGroup(raw: Record<string, unknown>): CommodityGroup {
     commodities: commoditiesRaw.map((item) =>
       mapCommodity(item as Record<string, unknown>)
     ),
-    createdAt:
-      typeof raw.createdAt === 'string' ? raw.createdAt : undefined,
-    updatedAt:
-      typeof raw.updatedAt === 'string' ? raw.updatedAt : undefined,
+    createdAt: typeof raw.createdAt === 'string' ? raw.createdAt : undefined,
+    updatedAt: typeof raw.updatedAt === 'string' ? raw.updatedAt : undefined,
   }
 }
 
-function mapBookingOption(raw: Record<string, unknown>): BookingCommodityOption {
+function mapCommodityType(raw: Record<string, unknown>): CommodityType {
+  return {
+    id: Number(raw.id),
+    serviceTypeId: Number(raw.serviceTypeId),
+    name: String(raw.name ?? ''),
+    createdAt: String(raw.createdAt ?? ''),
+    updatedAt: String(raw.updatedAt ?? ''),
+  }
+}
+
+function serviceSlugKey(value: unknown): string {
+  return String(value ?? '')
+    .trim()
+    .replace(/[\s-]+/g, '_')
+    .toUpperCase()
+}
+
+function serviceSlug(value: unknown): CommodityAdminServiceSlug {
+  return String(value ?? '')
+    .trim()
+    .replace(/[\s_]+/g, '-')
+    .toLowerCase()
+}
+
+function mapBookingOption(
+  raw: Record<string, unknown>
+): BookingCommodityOption {
   const commodityName = String(raw.commodityName ?? '').trim()
   const groupName = String(raw.groupName ?? '').trim()
   const beLabel =
@@ -190,6 +232,100 @@ function mapBookingOption(raw: Record<string, unknown>): BookingCommodityOption 
 }
 
 export const commodityService = {
+  listCommodityAdminServices: async (
+    signal?: AbortSignal
+  ): Promise<CommodityAdminService[]> => {
+    const response = await apiClient.get<
+      ApiResponse<Record<string, unknown>[]>
+    >(API_CONFIG.SERVICE_TYPES.ACTIVE, { signal })
+    const rows = await unwrapList<Record<string, unknown>>(response)
+    return rows
+      .map((row) => ({
+        id: Number(row.id),
+        slug: serviceSlug(row.name),
+        label: String(row.displayName ?? row.name ?? '').trim(),
+      }))
+      .filter(
+        (row) => Number.isInteger(row.id) && row.id > 0 && Boolean(row.slug)
+      )
+  },
+
+  resolveServiceTypeId: async (
+    serviceSlug: CommodityAdminServiceSlug,
+    signal?: AbortSignal
+  ): Promise<number> => {
+    const response = await apiClient.get<
+      ApiResponse<Record<string, unknown>[]>
+    >(API_CONFIG.SERVICE_TYPES.BASE, { signal })
+    const rows = await unwrapList<Record<string, unknown>>(response)
+    const expected = serviceSlugKey(serviceSlug)
+    const match = rows.find(
+      (row) =>
+        serviceSlugKey(row.name) === expected ||
+        serviceSlugKey(row.displayName) === expected
+    )
+    const id = Number(match?.id)
+    if (!Number.isInteger(id) || id < 1) {
+      throw new Error(`Service Type not found for ${serviceSlug}`)
+    }
+    return id
+  },
+
+  listCommodityTypes: async (
+    serviceTypeId: number,
+    signal?: AbortSignal
+  ): Promise<CommodityType[]> => {
+    const search = new URLSearchParams({
+      serviceTypeId: String(serviceTypeId),
+    })
+    const response = await apiClient.get<
+      ApiResponse<Record<string, unknown>[]>
+    >(`/admin/commodity-types?${search.toString()}`, { signal })
+    const rows = await unwrapList<Record<string, unknown>>(response)
+    return rows.map(mapCommodityType)
+  },
+
+  createCommodityType: async (
+    data: SaveCommodityTypeRequest
+  ): Promise<CommodityType> => {
+    const response = await apiClient.post<ApiResponse<Record<string, unknown>>>(
+      '/admin/commodity-types',
+      data
+    )
+    if (!response.ok) {
+      await throwApiFailure(response, 'Failed to create Type')
+    }
+    return mapCommodityType(await unwrapOne<Record<string, unknown>>(response))
+  },
+
+  updateCommodityType: async (
+    id: number,
+    data: SaveCommodityTypeRequest
+  ): Promise<CommodityType> => {
+    const response = await apiClient.patch<
+      ApiResponse<Record<string, unknown>>
+    >(`/admin/commodity-types/${id}`, data)
+    if (!response.ok) {
+      await throwApiFailure(response, 'Failed to update Type')
+    }
+    return mapCommodityType(await unwrapOne<Record<string, unknown>>(response))
+  },
+
+  deleteCommodityType: async (
+    id: number,
+    serviceTypeId: number
+  ): Promise<void> => {
+    const search = new URLSearchParams({
+      serviceTypeId: String(serviceTypeId),
+    })
+    const response = await apiClient.delete(
+      `/admin/commodity-types/${id}?${search.toString()}`
+    )
+    if (!response.ok) {
+      await throwApiFailure(response, 'Failed to delete Type')
+    }
+  },
+
   list: async (
     params?: {
       serviceTypeId?: number
@@ -201,6 +337,20 @@ export const commodityService = {
     const response = await apiClient.get<
       ApiResponse<Record<string, unknown>[]>
     >(API_CONFIG.COMMODITIES.LIST(params), { signal })
+    const rows = await unwrapList<Record<string, unknown>>(response)
+    return rows.map(mapCommodity)
+  },
+
+  listAdminCommodities: async (
+    serviceTypeId: number,
+    signal?: AbortSignal
+  ): Promise<Commodity[]> => {
+    const search = new URLSearchParams({
+      serviceTypeId: String(serviceTypeId),
+    })
+    const response = await apiClient.get<
+      ApiResponse<Record<string, unknown>[]>
+    >(`/admin/commodities?${search.toString()}`, { signal })
     const rows = await unwrapList<Record<string, unknown>>(response)
     return rows.map(mapCommodity)
   },
@@ -263,10 +413,9 @@ export const commodityService = {
     id: number,
     data: { name: string }
   ): Promise<CommodityGroup> => {
-    const response = await apiClient.patch<ApiResponse<Record<string, unknown>>>(
-      API_CONFIG.COMMODITY_GROUPS.ADMIN_BY_ID(id),
-      data
-    )
+    const response = await apiClient.patch<
+      ApiResponse<Record<string, unknown>>
+    >(API_CONFIG.COMMODITY_GROUPS.ADMIN_BY_ID(id), data)
     if (!response.ok) {
       await throwApiFailure(response, 'Failed to rename commodity group')
     }

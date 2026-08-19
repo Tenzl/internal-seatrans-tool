@@ -38,3 +38,23 @@ imports are prohibited. `pnpm architecture:check` enforces these rules.
 
 Run `pnpm validate` before merging. It checks formatting, architecture,
 linting, TypeScript, tests, and unused files/dependencies.
+
+## Commodity catalog integration
+
+- Commodity Type and Commodity are fetched and mutated as independent catalogs
+  for the selected Service. UI state for one catalog must not filter, clear, or
+  invalidate the other catalog.
+- Gallery, EPDA, and Booking controls submit independent catalog IDs while also
+  preserving text snapshots used by historical documents.
+- Commodity Type client contracts use only ID, Service and name. Type create
+  and edit UI must never add a code field or infer identity from a mutable name.
+- EPDA Type options use the numeric Type ID as their value and the Type name as
+  their label. Parameter writes canonicalize every cargo agency rate to
+  `{ commodityTypeId, typeNameSnapshot, label, rate }` and never resend a
+  legacy `code` key. Existing nonblank snapshots and labels remain stable when
+  a Type is renamed.
+- BL/AN/DO Package Type options come from the backend Package Type catalog.
+  A stored inactive or legacy text value remains renderable when reopening an
+  existing document.
+- Runtime components must not restore the legacy Commodity Group membership or
+  per-Commodity required-image quota.

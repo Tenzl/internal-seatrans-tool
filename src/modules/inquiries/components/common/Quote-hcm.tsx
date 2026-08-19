@@ -158,8 +158,7 @@ const buildAARows = (
     const leg1Width = P.coeff.pilotageLeg1Miles
     const leg2Width = P.coeff.pilotageLeg2Miles
     const buoyPositionNumeric = toNumber(options?.pilotageThirdMiles)
-    const buoyPosition =
-      buoyPositionNumeric === null ? 47 : buoyPositionNumeric
+    const buoyPosition = buoyPositionNumeric === null ? 47 : buoyPositionNumeric
     const pilotageFirstMiles = buoyPosition > 0 ? leg1Width : 0
     const pilotageSecondMiles = buoyPosition > leg1Width ? leg2Width : 0
     const pilotageThirdMiles = Math.max(buoyPosition - leg1Width - leg2Width, 0)
@@ -592,6 +591,7 @@ const buildBBRows = (
   grt?: string | number,
   cargoQtyMt?: string | number,
   cargoName?: string,
+  commodityTypeId?: number,
   cargoType?: string,
   transportLs?: string | number,
   boatHire?: string | number,
@@ -616,7 +616,7 @@ const buildBBRows = (
     })
 
   const pickCargoFee = (value?: string) => {
-    return resolveCargoAgencyRate(value, P)
+    return resolveCargoAgencyRate(commodityTypeId, value, P)
   }
 
   const renderRow = (row: QuoteRow, index: number) => {
@@ -876,6 +876,7 @@ export const renderQuoteHtml = (template: string, data: QuoteData) => {
     normalizedData.grt,
     normalizedData.cargo_qty_mt,
     normalizedData.cargo_name_upper,
+    normalizedData.commodity_type_id,
     normalizedData.cargo_type,
     normalizedData.transport_ls,
     normalizedData.boat_hire_entry,

@@ -1,4 +1,3 @@
-import type { CargoType } from '@/modules/gallery/services/commodityService'
 import { mergeEpdaFieldClasses } from '@/modules/inquiries/components/common/epdaCustomerFieldTracking'
 import { isHcmWorksheet } from '@/modules/inquiries/components/common/quoteForm'
 import { DateTimePicker } from '@/shared/components/DateTimePicker'
@@ -53,6 +52,14 @@ export function GeneralInvoiceSection({
   const { t } = useI18n()
   const { fieldClass: customerClass, labelClass: customerLabelClass } =
     createCustomerFieldStyles(getRequiredState, getCustomerFieldClass)
+  const selectedCargoTypeValue =
+    options.cargoTypeOptions.find(
+      (option) => option.id !== null && option.id === values.commodityTypeId
+    )?.value ??
+    options.cargoTypeOptions.find(
+      (option) => option.id === null && option.nameSnapshot === values.cargoType
+    )?.value ??
+    ''
 
   const handlePurposeChange = (purpose: PurposeOption) => {
     handlers.setPurposeOfCalling(purpose)
@@ -338,8 +345,8 @@ export function GeneralInvoiceSection({
             {t('epda.cargoType')}
           </FieldLabel>
           <Select
-            value={values.cargoType}
-            onValueChange={(value) => handlers.setCargoType(value as CargoType)}
+            value={selectedCargoTypeValue}
+            onValueChange={handlers.setCargoType}
             disabled={
               computed.isLoadingCargoCatalog ||
               options.cargoTypeOptions.length === 0
@@ -364,8 +371,8 @@ export function GeneralInvoiceSection({
             </SelectTrigger>
             <SelectContent>
               {options.cargoTypeOptions.map((option) => (
-                <SelectItem key={option.code} value={option.code}>
-                  {option.displayLabel}
+                <SelectItem key={option.value} value={option.value}>
+                  {option.label}
                 </SelectItem>
               ))}
             </SelectContent>

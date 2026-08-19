@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { SHIPPING_AGENCY_CARGO_TYPES } from '@/modules/gallery/shippingAgencyCargoCatalog'
+import type { CommodityType } from '@/modules/gallery/services/commodityService'
 import type {
   CargoAgencyRate,
   GrtTier,
@@ -24,21 +24,21 @@ import {
   ScanRow,
 } from './EpdaCalculatorPrimitives'
 
-const normalizeCargoTypeCode = (value: string): string =>
-  value
-    .trim()
-    .toUpperCase()
-    .replace(/[\s-]+/g, '_')
-
-export function CargoAgencyCalculator({ rates }: { rates: CargoAgencyRate[] }) {
+export function CargoAgencyCalculator({
+  rates,
+  commodityTypes,
+}: {
+  rates: CargoAgencyRate[]
+  commodityTypes: CommodityType[]
+}) {
   const { t } = useI18n()
-  const [code, setCode] = useState(SHIPPING_AGENCY_CARGO_TYPES[0]?.code ?? '')
+  const [typeId, setTypeId] = useState(
+    commodityTypes[0] ? String(commodityTypes[0].id) : ''
+  )
   const [mtText, setMtText] = useState('')
   const mt = parseFiniteNumber(mtText) ?? 0
   const rate =
-    rates.find(
-      (r) => normalizeCargoTypeCode(r.code) === normalizeCargoTypeCode(code)
-    )?.rate ?? 0
+    rates.find((row) => row.commodityTypeId === Number(typeId))?.rate ?? 0
   const fee = rate * mt
 
   return (
@@ -50,14 +50,14 @@ export function CargoAgencyCalculator({ rates }: { rates: CargoAgencyRate[] }) {
           <Label className='text-sm font-medium text-muted-foreground'>
             {t('cargoRate.colType')}
           </Label>
-          <Select value={code} onValueChange={setCode}>
+          <Select value={typeId} onValueChange={setTypeId}>
             <SelectTrigger className='h-11 w-full'>
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
-              {SHIPPING_AGENCY_CARGO_TYPES.map((ct) => (
-                <SelectItem key={ct.code} value={ct.code}>
-                  {ct.displayLabel}
+              {commodityTypes.map((type) => (
+                <SelectItem key={type.id} value={String(type.id)}>
+                  {type.name}
                 </SelectItem>
               ))}
             </SelectContent>

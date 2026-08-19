@@ -31,7 +31,10 @@ export class ApiError extends Error {
   readonly isNetworkError: boolean
 
   constructor(message: string, options: ApiErrorOptions = {}) {
-    super(message, options.cause !== undefined ? { cause: options.cause } : undefined)
+    super(
+      message,
+      options.cause !== undefined ? { cause: options.cause } : undefined
+    )
     this.name = 'ApiError'
     this.status = options.status
     this.isNetworkError = options.isNetworkError === true
@@ -67,12 +70,16 @@ export function getErrorStatus(error: unknown): number | undefined {
   return undefined
 }
 
-function isAbortError(error: unknown): boolean {
+export function isAbortError(error: unknown): boolean {
+  const message =
+    error instanceof Error ? error.message.trim().toLowerCase() : ''
   return (
     (typeof DOMException !== 'undefined' &&
       error instanceof DOMException &&
       error.name === 'AbortError') ||
-    (error instanceof Error && error.name === 'AbortError')
+    (error instanceof Error && error.name === 'AbortError') ||
+    message === 'signal is aborted without reason' ||
+    message === 'the operation was aborted'
   )
 }
 

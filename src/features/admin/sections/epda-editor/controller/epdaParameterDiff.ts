@@ -1,9 +1,4 @@
 import {
-  createEpdaParameterLabelFns,
-  type EpdaParameterLabelFns,
-  type EpdaTranslateFn,
-} from '@/features/admin/epda-parameters/epdaParameterLabels'
-import {
   normalizeParameterValues,
   type CargoAgencyRate,
   type EpdaParameterValues,
@@ -11,6 +6,11 @@ import {
   type LoaTier,
 } from '@/modules/inquiries/components/common/quoteParameters'
 import { messages } from '@/shared/i18n/messages'
+import {
+  createEpdaParameterLabelFns,
+  type EpdaParameterLabelFns,
+  type EpdaTranslateFn,
+} from '@/features/admin/epda-parameters/epdaParameterLabels'
 
 export type EpdaParameterDiffRow = {
   path: string
@@ -114,8 +114,7 @@ function pairByIdentityElseIndex<T>(
   current.forEach((row, ci) => {
     const id = identity(row)
     const li = latest.findIndex(
-      (candidate, index) =>
-        !usedLatest.has(index) && identity(candidate) === id
+      (candidate, index) => !usedLatest.has(index) && identity(candidate) === id
     )
     if (li >= 0) {
       usedLatest.add(li)
@@ -163,7 +162,8 @@ function diffGrtTierAmounts(
 ) {
   const pairs = pairByIdentityElseIndex(current, latest, grtIdentity)
   for (const pair of pairs) {
-    const bandLabel = pair.current?.label ?? pair.latest?.label ?? `#${pair.pathIndex + 1}`
+    const bandLabel =
+      pair.current?.label ?? pair.latest?.label ?? `#${pair.pathIndex + 1}`
     const leftAmt = pair.current?.amount
     const rightAmt = pair.latest?.amount
     if (leftAmt === rightAmt) continue
@@ -185,7 +185,8 @@ function diffLoaTierAmounts(
   const group = 'tugTiers'
   const pairs = pairByIdentityElseIndex(current, latest, loaIdentity)
   for (const pair of pairs) {
-    const bandLabel = pair.current?.label ?? pair.latest?.label ?? `#${pair.pathIndex + 1}`
+    const bandLabel =
+      pair.current?.label ?? pair.latest?.label ?? `#${pair.pathIndex + 1}`
     const leftAmt = pair.current?.amount
     const rightAmt = pair.latest?.amount
     if (leftAmt === rightAmt) continue
@@ -199,7 +200,9 @@ function diffLoaTierAmounts(
 }
 
 function cargoIdentity(row: CargoAgencyRate): string {
-  return row.code
+  return row.commodityTypeId
+    ? `id:${row.commodityTypeId}`
+    : `legacy:${row.code ?? ''}`
 }
 
 function diffCargoAgencyRates(
@@ -211,6 +214,8 @@ function diffCargoAgencyRates(
   const pairs = pairByIdentityElseIndex(current, latest, cargoIdentity)
   for (const pair of pairs) {
     const display =
+      pair.current?.typeNameSnapshot ||
+      pair.latest?.typeNameSnapshot ||
       pair.current?.label ||
       pair.latest?.label ||
       pair.current?.code ||

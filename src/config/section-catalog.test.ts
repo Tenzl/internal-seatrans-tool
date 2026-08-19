@@ -57,7 +57,7 @@ describe('dashboard section catalog contract', () => {
         {
           "group": "Data Management",
           "key": "data-ports",
-          "label": "Ports",
+          "label": "Ports & Deports",
         },
         {
           "group": "Data Management",

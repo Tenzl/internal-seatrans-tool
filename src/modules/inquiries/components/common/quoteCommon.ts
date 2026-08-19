@@ -24,6 +24,7 @@ export interface QuoteData {
   eta?: string
   cargo_qty_mt?: string
   cargo_name_upper?: string
+  commodity_type_id?: number
   cargo_type?: string
   ship_type?: string
   purpose_of_calling?: string

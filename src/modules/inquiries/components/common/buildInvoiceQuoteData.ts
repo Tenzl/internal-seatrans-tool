@@ -1,7 +1,4 @@
-import type {
-  CargoTypeCatalogItem,
-  Commodity,
-} from '@/modules/gallery/services/commodityService'
+import type { Commodity } from '@/modules/gallery/services/commodityService'
 import { resolveGarbageUsdRate } from '@/modules/inquiries/components/common/garbageFeeDefaults'
 import type { QuoteData } from '@/modules/inquiries/components/common/quoteCommon'
 import { getEpdaVariantConfig } from '@/modules/inquiries/components/common/quoteForm'
@@ -27,8 +24,8 @@ export interface BuildInvoiceQuoteDataParams {
   eta: string
   cargoQty: string
   cargoName: string
+  commodityTypeId?: number | null
   cargoType: string
-  cargoTypeOptions: CargoTypeCatalogItem[]
   filteredCargoNames: Commodity[]
   shipType: string
   /** Canonical backend port identity; display text remains in `port`. */
@@ -69,13 +66,6 @@ export interface BuildInvoiceQuoteDataParams {
   params?: EpdaParameterValues
 }
 
-function getCargoTypeLabel(
-  value: string,
-  options: CargoTypeCatalogItem[]
-): string {
-  return options.find((option) => option.code === value)?.displayLabel ?? value
-}
-
 export function buildInvoiceQuoteData(
   params: BuildInvoiceQuoteDataParams
 ): InvoiceQuoteData {
@@ -102,9 +92,8 @@ export function buildInvoiceQuoteData(
     eta: params.eta || 'TBN',
     cargo_qty_mt: params.cargoQty,
     cargo_name_upper: cargoDisplayName.toUpperCase(),
-    cargo_type: params.cargoType
-      ? getCargoTypeLabel(params.cargoType, params.cargoTypeOptions)
-      : '',
+    commodity_type_id: params.commodityTypeId ?? undefined,
+    cargo_type: params.cargoType || '',
     ship_type: params.shipType,
     port_upper: params.port.toUpperCase(),
     loading_term: params.frtTaxType,

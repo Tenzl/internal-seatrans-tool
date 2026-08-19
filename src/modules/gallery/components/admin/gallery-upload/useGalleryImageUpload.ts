@@ -13,6 +13,7 @@ interface UseGalleryImageUploadOptions {
   provinceId?: number | null
   portId?: number | null
   serviceTypeId?: number | null
+  commodityTypeId?: number | null
   commodityId?: number | null
   onUploadSuccess?: () => void
 }
@@ -22,6 +23,7 @@ export function useGalleryImageUpload({
   provinceId,
   portId,
   serviceTypeId,
+  commodityTypeId,
   commodityId,
   onUploadSuccess,
 }: UseGalleryImageUploadOptions) {
@@ -72,7 +74,8 @@ export function useGalleryImageUpload({
         provinceId,
         portId,
         serviceTypeId,
-        commodityId
+        commodityId,
+        commodityTypeId
       )
     )
     setIsUploading(false)
@@ -89,6 +92,7 @@ export function useGalleryImageUpload({
     )
   }, [
     commodityId,
+    commodityTypeId,
     dismissResult,
     onUploadSuccess,
     portId,

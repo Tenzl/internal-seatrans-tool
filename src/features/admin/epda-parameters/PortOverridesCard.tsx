@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import type { CommodityType } from '@/modules/gallery/services/commodityService'
 import {
   mergeParameterValues,
   type QuoteVariant,
@@ -37,6 +38,7 @@ import {
   type AreaOption,
 } from '@/features/admin/components/invoice/epdaFormParameters'
 import { OverriddenBadges, ValuesEditor } from './EpdaValuesEditor'
+import { canonicalizeCargoAgencyRates } from './cargoAgencyRateRules'
 import { PORT_OVERRIDE_VISIBLE_SECTION_IDS } from './epdaParameterSections'
 import {
   diffParameterValues,
@@ -60,12 +62,14 @@ export function PortOverridesCard({
   areaValues,
   overrides,
   groups,
+  commodityTypes,
 }: {
   area: AreaOption
   variant: QuoteVariant
   areaValues: EpdaParameterValues
   overrides: EpdaParameterSet[]
   groups: EpdaParameterSet[]
+  commodityTypes: CommodityType[]
 }) {
   const qc = useQueryClient()
   const { t } = useI18n()
@@ -124,7 +128,13 @@ export function PortOverridesCard({
       }
       const existing = overrideByPort.get(portId)
       const baseline = baselineForPort(portId)
-      const values = diffParameterValues(baseline, draft)
+      const values = diffParameterValues(baseline, {
+        ...draft,
+        cargoAgencyRates: canonicalizeCargoAgencyRates(
+          commodityTypes,
+          draft.cargoAgencyRates
+        ),
+      })
       const plan = planPortOverrideWrite(values, existing)
       if (plan.action === 'none') {
         return 'unchanged' as const
@@ -291,6 +301,7 @@ export function PortOverridesCard({
               <ValuesEditor
                 variant={variant}
                 values={draft}
+                commodityTypes={commodityTypes}
                 onChange={setDraft}
                 visibleSectionIds={PORT_OVERRIDE_VISIBLE_SECTION_IDS}
               />

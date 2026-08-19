@@ -1,5 +1,8 @@
 import { useEffect, useRef, useState, type MutableRefObject } from 'react'
-import type { Commodity } from '@/modules/gallery/services/commodityService'
+import type {
+  Commodity,
+  CommodityType,
+} from '@/modules/gallery/services/commodityService'
 import type { InquiryCargoFields } from '@/modules/gallery/shippingAgencyCargoCatalog'
 import {
   applyAdminInquiryToForm,
@@ -17,6 +20,7 @@ import {
 } from '@/features/admin/components/invoice/epda/epdaBusinessRules'
 import { extractWorkingParams } from './epdaParameterDiff'
 import type { EpdaQuoteForm } from './epdaPreviewRules'
+import { resolveEpdaTypeSnapshot } from './epdaReferenceDataRules'
 
 type InquiryFormSetters = Parameters<typeof applyAdminInquiryToForm>[1]
 type ShippingAgencyPortSelection = Awaited<
@@ -30,6 +34,7 @@ export type EpdaInquiryHydrationBindings = {
   setEffectiveParams: (params: EpdaParameterValues) => void
   setWorkingParams: (params: EpdaParameterValues | null) => void
   setQuoteForm: (quoteForm: EpdaQuoteForm) => void
+  setCommodityTypeId: (commodityTypeId: number | null) => void
   setCargoType: (cargoType: string) => void
   setCargoName: (cargoName: string) => void
   clearTallyFee: () => void
@@ -43,6 +48,7 @@ type UseEpdaInquiryHydrationOptions = {
   reloadKey: boolean
   autoPreviewTriggeredRef: MutableRefObject<boolean>
   cargoCatalogRef: MutableRefObject<Commodity[]>
+  cargoTypeCatalogRef: MutableRefObject<CommodityType[]>
   pendingCargoRef: MutableRefObject<InquiryCargoFields | null>
   pendingPortRef: MutableRefObject<string | null>
   bindings: EpdaInquiryHydrationBindings
@@ -53,6 +59,7 @@ export function useEpdaInquiryHydration({
   reloadKey,
   autoPreviewTriggeredRef,
   cargoCatalogRef,
+  cargoTypeCatalogRef,
   pendingCargoRef,
   pendingPortRef,
   bindings,
@@ -102,7 +109,13 @@ export function useEpdaInquiryHydration({
         }
         current.setQuoteForm(quoteFormFromStored(inquiry.quoteForm))
 
-        hydrateCargo(inquiry, cargoCatalogRef, pendingCargoRef, current)
+        hydrateCargo(
+          inquiry,
+          cargoCatalogRef,
+          cargoTypeCatalogRef,
+          pendingCargoRef,
+          current
+        )
 
         if (inquiry.portId || inquiry.portOfCall?.trim()) {
           const selection = await findPortSelectionFromInquiry(
@@ -132,6 +145,7 @@ export function useEpdaInquiryHydration({
     reloadKey,
     autoPreviewTriggeredRef,
     cargoCatalogRef,
+    cargoTypeCatalogRef,
     pendingCargoRef,
     pendingPortRef,
   ])
@@ -142,10 +156,12 @@ export function useEpdaInquiryHydration({
 function hydrateCargo(
   inquiry: ShippingAgencyAdminInquiry,
   cargoCatalogRef: MutableRefObject<Commodity[]>,
+  cargoTypeCatalogRef: MutableRefObject<CommodityType[]>,
   pendingCargoRef: MutableRefObject<InquiryCargoFields | null>,
   bindings: EpdaInquiryHydrationBindings
 ) {
   const inquiryCargo: InquiryCargoFields = {
+    commodityTypeId: inquiry.commodityTypeId,
     cargoType: inquiry.cargoType,
     cargoName: inquiry.cargoName,
     cargoNameOther: inquiry.cargoNameOther,
@@ -154,7 +170,16 @@ function hydrateCargo(
 
   if (catalog.length > 0) {
     const resolved = resolveInquiryCargo(inquiryCargo, catalog)
-    if (resolved.cargoType) bindings.setCargoType(resolved.cargoType)
+    bindings.setCommodityTypeId(resolved.commodityTypeId)
+    if (resolved.cargoType) {
+      bindings.setCargoType(
+        resolveEpdaTypeSnapshot(
+          cargoTypeCatalogRef.current,
+          resolved.commodityTypeId,
+          resolved.cargoType
+        )
+      )
+    }
     bindings.setCargoName(resolved.cargoName)
     if (!isTallyFeeEligibleCargo(resolved.cargoType)) {
       bindings.clearTallyFee()
@@ -165,5 +190,10 @@ function hydrateCargo(
   }
 
   pendingCargoRef.current = inquiryCargo
+  bindings.setCommodityTypeId(
+    typeof inquiry.commodityTypeId === 'number' && inquiry.commodityTypeId > 0
+      ? inquiry.commodityTypeId
+      : null
+  )
   bindings.setPendingCargo(inquiryCargo)
 }

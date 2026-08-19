@@ -6,7 +6,7 @@ import { isAdminRole } from '@/config/section-catalog'
 import { queryKeys } from '@/shared/config/react-query.config'
 import { useDebouncedValue } from '@/shared/hooks/useDebouncedValue'
 import { toast } from '@/shared/utils/toast'
-import { AlertCircle, History, Loader2, RefreshCw, Search } from 'lucide-react'
+import { AlertCircle, History, Loader2, RefreshCw } from 'lucide-react'
 import Link from 'next/link'
 import { useCurrentUser } from '@/hooks/use-current-user'
 import { useIsMobile } from '@/hooks/use-mobile'
@@ -19,7 +19,6 @@ import {
   CardHeader,
   CardTitle,
 } from '@/components/ui/card'
-import { Input } from '@/components/ui/input'
 import { TransportDocumentHistoryActions } from './TransportDocumentHistoryActions'
 import { TransportDocumentHistoryDataTable } from './TransportDocumentHistoryDataTable'
 import { TransportDocumentMutationDialogs } from './TransportDocumentMutationDialogs'
@@ -65,6 +64,7 @@ export function BookingHistoryScreen() {
 
   const records: TransportDocumentRecord[] = bookingQuery.data?.content ?? []
   const totalPages = bookingQuery.data?.totalPages ?? 0
+  const totalElements = bookingQuery.data?.totalElements ?? 0
   const actions = useTransportDocumentHistoryActions({
     onMutated: () => bookingQuery.refetch(),
   })
@@ -129,20 +129,6 @@ export function BookingHistoryScreen() {
               </CardDescription>
             </div>
             <div className='flex w-full flex-wrap gap-2 sm:w-auto'>
-              <div className='relative min-w-0 flex-1 sm:w-[260px] sm:flex-none'>
-                <Search className='pointer-events-none absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-muted-foreground' />
-                <Input
-                  type='search'
-                  aria-label='Search by Booking No.'
-                  placeholder='Search Booking No.…'
-                  value={bookingNo}
-                  onChange={(event) => {
-                    setBookingNo(event.target.value)
-                    setPage(0)
-                  }}
-                  className='h-10 pl-9 sm:h-9'
-                />
-              </div>
               <Button
                 type='button'
                 variant='outline'
@@ -171,20 +157,16 @@ export function BookingHistoryScreen() {
               <AlertCircle className='h-4 w-4' />
               <AlertDescription>{errorMessage}</AlertDescription>
             </Alert>
-          ) : records.length === 0 ? (
+          ) : records.length === 0 && !bookingNo.trim() ? (
             <div className='space-y-3 py-8 text-center'>
               <p className='text-muted-foreground'>
-                {debouncedBookingNo
-                  ? `No bookings found for “${debouncedBookingNo}”.`
-                  : 'No bookings yet. Create a booking to begin.'}
+                No bookings yet. Create a booking to begin.
               </p>
-              {!debouncedBookingNo ? (
-                <Button asChild variant='outline' size='sm'>
-                  <Link href='/booking/documents/booking-confirmation'>
-                    Create Booking
-                  </Link>
-                </Button>
-              ) : null}
+              <Button asChild variant='outline' size='sm'>
+                <Link href='/booking/documents/booking-confirmation'>
+                  Create Booking
+                </Link>
+              </Button>
             </div>
           ) : (
             <TransportDocumentHistoryDataTable
@@ -192,8 +174,13 @@ export function BookingHistoryScreen() {
               data={records}
               page={page}
               totalPages={totalPages}
+              totalElements={totalElements}
               isBusy={busy}
               onPageChange={setPage}
+              searchKey='referenceNumber'
+              searchPlaceholder='Search Booking No.…'
+              search={bookingNo}
+              onSearchChange={setBookingNo}
               initialColumnVisibility={
                 isMobile ? { createdAt: false, createdBy: false } : undefined
               }

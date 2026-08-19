@@ -52,6 +52,7 @@ function ManageImagesBody({ embedded = false }: { embedded?: boolean }) {
   const {
     filterPort,
     filterServiceType,
+    filterCommodityType,
     filterCommodity,
     filterProvinceId,
     serviceTypes,
@@ -102,6 +103,7 @@ function ManageImagesBody({ embedded = false }: { embedded?: boolean }) {
           filterPort || undefined,
           filterServiceType || undefined,
           filterCommodity || undefined,
+          filterCommodityType || undefined,
           page,
           GALLERY_IMAGES_PER_PAGE
         )
@@ -126,6 +128,7 @@ function ManageImagesBody({ embedded = false }: { embedded?: boolean }) {
     },
     [
       filterCommodity,
+      filterCommodityType,
       filterPort,
       filterProvinceId,
       filterServiceType,

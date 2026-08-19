@@ -12,38 +12,19 @@ export interface GalleryUploadSelection {
   files: File[]
 }
 
+export const GALLERY_UPLOAD_MAX_FILES = 20
+export const GALLERY_UPLOAD_MAX_FILE_SIZE = 10 * 1024 * 1024
+
 export function canEnableGalleryUpload(selection: GalleryUploadSelection) {
   return Boolean(
     selection.area &&
     selection.portId &&
     selection.serviceTypeId &&
     selection.commodityId &&
-    selection.files.length > 0
+    selection.files.length > 0 &&
+    selection.files.length <= GALLERY_UPLOAD_MAX_FILES &&
+    selection.files.every((file) => file.size <= GALLERY_UPLOAD_MAX_FILE_SIZE)
   )
-}
-
-export function buildCommodityCountKey(
-  provinceId?: number | null,
-  portId?: number | null,
-  serviceTypeId?: number | null,
-  commodityId?: number | null
-) {
-  return provinceId && portId && serviceTypeId && commodityId
-    ? `${provinceId}_${portId}_${serviceTypeId}_${commodityId}`
-    : null
-}
-
-export function getUploadRequirement(
-  currentCount: number,
-  requiredCount: number
-) {
-  const complete = currentCount >= requiredCount
-  return {
-    complete,
-    message: complete
-      ? `This type already has ${requiredCount} images. Additional uploads will exceed the limit.`
-      : `${requiredCount - currentCount} more images needed to reach the required ${requiredCount}.`,
-  }
 }
 
 export async function uploadGalleryFilesSequentially(

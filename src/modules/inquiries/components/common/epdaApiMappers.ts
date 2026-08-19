@@ -76,6 +76,8 @@ export function buildEpdaPatchPayload(
   params: BuildInvoiceQuoteDataParams & {
     boatHireQuarantineAmount: string
     transportQuarantine?: string
+    commodityTypeId?: number | null
+    commodityId?: number | null
   }
 ): EpdaApiPayload {
   const payload: EpdaApiPayload = {
@@ -87,6 +89,8 @@ export function buildEpdaPatchPayload(
     eta: params.eta || undefined,
     cargoType: params.cargoType || undefined,
     cargoName: params.cargoName || undefined,
+    commodityTypeId: params.commodityTypeId,
+    commodityId: params.commodityId,
     quantityTons: toNum(params.cargoQty),
     frtTaxType: params.frtTaxType || undefined,
     purposeOfCalling: params.purposeOfCalling || undefined,
@@ -148,6 +152,8 @@ export function buildEpdaPatchPayload(
 export function buildInternalCreatePayload(
   params: BuildInvoiceQuoteDataParams & {
     boatHireQuarantineAmount: string
+    commodityTypeId?: number | null
+    commodityId?: number | null
   },
   notes?: string
 ): EpdaApiPayload {
@@ -161,6 +167,8 @@ export function buildInternalCreatePayload(
     eta: params.eta || undefined,
     cargoType: params.cargoType || undefined,
     cargoName: params.cargoName || undefined,
+    commodityTypeId: params.commodityTypeId,
+    commodityId: params.commodityId,
     quantityTons: toNum(params.cargoQty),
     frtTaxType: params.frtTaxType || undefined,
     purposeOfCalling: params.purposeOfCalling || undefined,
@@ -315,9 +323,8 @@ export function applyAdminInquiryToForm(
           }
         })
         .filter(
-          (
-            row
-          ): row is { id: string; name: string; amount: string } => row != null
+          (row): row is { id: string; name: string; amount: string } =>
+            row != null
         )
     : []
   setters.setAgencyOtherExpenses(otherExpenses)

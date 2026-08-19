@@ -34,6 +34,7 @@ export function createInitialEpdaEditorFormFields(): EpdaEditorFormFields {
     grt: '',
     loa: '',
     cargoQty: '',
+    commodityTypeId: null,
     cargoType: '',
     cargoName: '',
     shipType: 'BULK_SHIP',
@@ -115,6 +116,8 @@ export function useEpdaEditorFormState() {
       setGrt: (value: string) => setField('grt', value),
       setLoa: (value: string) => setField('loa', value),
       setCargoQty: (value: string) => setField('cargoQty', value),
+      setCommodityTypeId: (value: number | null) =>
+        setField('commodityTypeId', value),
       setCargoType: (value: CargoType) => setField('cargoType', value),
       setCargoName: (value: string) => setField('cargoName', value),
       setShipType: (value: InvoiceVariantFormValues['shipType']) =>

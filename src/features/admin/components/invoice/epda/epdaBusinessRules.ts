@@ -3,7 +3,7 @@ import type {
   Commodity,
 } from '@/modules/gallery/services/commodityService'
 import {
-  legacyCargoTypeToCode,
+  isTallyFeeEligibleCargoType,
   readInquiryCargoForEpda,
   type InquiryCargoFields,
 } from '@/modules/gallery/shippingAgencyCargoCatalog'
@@ -16,10 +16,8 @@ const normalizeOptionCode = (value: string) =>
     .toUpperCase()
     .replace(/[\s-]+/g, '_')
 
-export const isTallyFeeEligibleCargo = (value: string) => {
-  const code = legacyCargoTypeToCode(value)
-  return code === 'IN_BAG_PACK' || code === 'IN_EQUIPMENT'
-}
+export const isTallyFeeEligibleCargo = (value: string) =>
+  isTallyFeeEligibleCargoType(value)
 
 export const isLoaAtOrAboveTugMaximum = (
   value: string,
@@ -69,19 +67,19 @@ export const isImportFrtTaxType = (value: string) =>
 export const resolveInquiryCargo = (
   inquiryCargo: InquiryCargoFields,
   catalog: Commodity[]
-): { cargoType: CargoType | ''; cargoName: string } => {
-  const { cargoType, cargoName } = readInquiryCargoForEpda(
+): {
+  commodityTypeId: number | null
+  cargoType: CargoType | ''
+  cargoName: string
+} => {
+  const { commodityTypeId, cargoType, cargoName } = readInquiryCargoForEpda(
     inquiryCargo,
     catalog
   )
-  const catalogContainsCargoType = cargoType
-    ? catalog.some(
-        (item) => legacyCargoTypeToCode(item.cargoType) === cargoType
-      )
-    : false
 
   return {
+    commodityTypeId,
     cargoType: cargoType as CargoType | '',
-    cargoName: catalogContainsCargoType ? cargoName : '',
+    cargoName,
   }
 }

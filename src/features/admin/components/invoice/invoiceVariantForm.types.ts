@@ -1,8 +1,8 @@
 import type {
   CargoType,
-  CargoTypeCatalogItem,
   Commodity,
 } from '@/modules/gallery/services/commodityService'
+import type { EpdaCargoTypeOption } from '@/modules/gallery/shippingAgencyCargoCatalog'
 import type { EpdaCustomerTrackedField } from '@/modules/inquiries/components/common/epdaCustomerFieldTracking'
 import type { EpdaParameterValues } from '@/modules/inquiries/components/common/quoteParameters'
 import type { EpdaSectionId } from './epdaFormLayout.config'
@@ -51,6 +51,7 @@ export interface InvoiceVariantFormValues {
   grt: string
   loa: string
   cargoQty: string
+  commodityTypeId: number | null
   cargoType: CargoType | ''
   cargoName: string
   shipType: ShipTypeOption
@@ -87,7 +88,7 @@ export interface InvoiceVariantFormHandlers {
   setGrt: (value: string) => void
   setLoa: (value: string) => void
   setCargoQty: (value: string) => void
-  setCargoType: (value: CargoType) => void
+  setCargoType: (selectionValue: string) => void
   setCargoName: (value: string) => void
   setShipType: (value: ShipTypeOption) => void
   setBerthHours: (value: string) => void
@@ -120,7 +121,7 @@ export interface InvoiceVariantFormHandlers {
 }
 
 export interface InvoiceVariantFormOptions {
-  cargoTypeOptions: CargoTypeCatalogItem[]
+  cargoTypeOptions: EpdaCargoTypeOption[]
   filteredCargoNames: Commodity[]
   shipTypeOptions: SelectOption[]
   purposeOptions: SelectOption[]

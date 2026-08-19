@@ -16,6 +16,7 @@ import type {
   TransportDocumentPayloadMap,
   TransportDocumentType,
 } from './transportDocument.types'
+import { formatBookingCommodityDescription } from './transportDocumentSchemas'
 
 /** Previous document type used to prefill the target form. */
 export const PREFILL_SOURCE_TYPE: Partial<
@@ -112,11 +113,20 @@ export function mapArrivalNoticeCargoFromBooking(
     : containers.length > 0
       ? containers
       : current.containers
+  const bookingDescription =
+    source.commodity.trim() ||
+    formatBookingCommodityDescription(
+      source.commodityName,
+      source.commodityType
+    )
 
   return {
     ...current,
+    commodityTypeId: current.commodityTypeId ?? source.commodityTypeId ?? null,
+    commodityType: (current.commodityType ?? '').trim() || source.commodityType,
     commodityId: current.commodityId ?? source.commodityId ?? null,
-    descriptionOfGoods: current.descriptionOfGoods.trim() || source.commodity,
+    commodityName: (current.commodityName ?? '').trim() || source.commodityName,
+    descriptionOfGoods: current.descriptionOfGoods.trim() || bookingDescription,
     volume: current.volume.trim() || anContainersToVolumeText(nextContainers),
     containers: nextContainers,
   }
@@ -142,10 +152,19 @@ export function prefillBillOfLadingFromBooking(
   current: BillOfLadingPayload
 ): BillOfLadingPayload {
   const { cargoVolumes } = normalizeBookingCargoVolumes(source)
-  const seeded = seedAnContainersFromVolumes(cargoVolumes)
+  const packageType = source.commodityType.trim()
+  const seeded = seedAnContainersFromVolumes(cargoVolumes).map((row) => ({
+    ...row,
+    packageType,
+  }))
   const containers =
     seeded.length > 0 ? applyBookingCargoTotalsToFirstRow(seeded, source) : []
-  const descriptionOfGoods = source.commodity.trim()
+  const descriptionOfGoods =
+    source.commodity.trim() ||
+    formatBookingCommodityDescription(
+      source.commodityName,
+      source.commodityType
+    )
   const cargoText = anContainersToBlCargoTextFields(
     containers,
     descriptionOfGoods

@@ -12,6 +12,8 @@ export interface GalleryImageApiDto {
   serviceTypeId: number
   commodityId: number
   commodityName: string
+  commodityTypeId?: number | null
+  commodityTypeName?: string | null
   provinceId?: number | null
   provinceName?: string | null
   portId?: number | null
@@ -33,6 +35,8 @@ export interface GalleryImage {
   serviceTypeName: string
   commodityId?: number
   commodityName: string
+  commodityTypeId?: number | null
+  commodityTypeName?: string | null
   uploadedBy?: number
   uploadedAt?: string
 }
@@ -42,6 +46,13 @@ export interface UpdateImageRequest {
   portId?: number
   serviceTypeId?: number
   commodityId?: number
+  commodityTypeId?: number | null
+}
+
+export interface GalleryCatalogSelection {
+  serviceTypeId: number | null
+  commodityTypeId: number | null
+  commodityId: number | null
 }
 
 export interface GalleryCommodityCount {
@@ -61,14 +72,41 @@ const toGalleryImage = (raw: GalleryImageApiDto): GalleryImage => ({
   serviceTypeName: '',
   commodityId: raw.commodityId,
   commodityName: raw.commodityName,
+  commodityTypeId: raw.commodityTypeId ?? null,
+  commodityTypeName: raw.commodityTypeName ?? null,
   uploadedBy: raw.uploadedById,
   uploadedAt: raw.uploadedAt,
 })
+
+export function changeGalleryCommodityType(
+  selection: GalleryCatalogSelection,
+  commodityTypeId: number | null
+): GalleryCatalogSelection {
+  return { ...selection, commodityTypeId }
+}
+
+export function changeGalleryService(
+  _selection: GalleryCatalogSelection,
+  serviceTypeId: number | null
+): GalleryCatalogSelection {
+  return { serviceTypeId, commodityTypeId: null, commodityId: null }
+}
+
+export function galleryCatalogSelectionFromImage(
+  image: Pick<GalleryImage, 'serviceTypeId' | 'commodityTypeId' | 'commodityId'>
+): GalleryCatalogSelection {
+  return {
+    serviceTypeId: image.serviceTypeId ?? null,
+    commodityTypeId: image.commodityTypeId ?? null,
+    commodityId: image.commodityId ?? null,
+  }
+}
 
 export const galleryService = {
   getPublicImages: async (
     serviceTypeId?: number,
     commodityId?: number,
+    commodityTypeId?: number,
     page: number = 0,
     size: number = 100,
     signal?: AbortSignal
@@ -76,6 +114,8 @@ export const galleryService = {
     const params = new URLSearchParams()
     if (serviceTypeId) params.append('serviceTypeId', serviceTypeId.toString())
     if (commodityId) params.append('commodityId', commodityId.toString())
+    if (commodityTypeId)
+      params.append('commodityTypeId', commodityTypeId.toString())
     params.append('page', page.toString())
     params.append('size', size.toString())
 
@@ -107,6 +147,7 @@ export const galleryService = {
     portId?: number,
     serviceTypeId?: number,
     commodityId?: number,
+    commodityTypeId?: number,
     page: number = 0,
     size: number = 20
   ): Promise<PageResponse<GalleryImage>> => {
@@ -115,6 +156,8 @@ export const galleryService = {
     if (portId) params.append('portId', portId.toString())
     if (serviceTypeId) params.append('serviceTypeId', serviceTypeId.toString())
     if (commodityId) params.append('commodityId', commodityId.toString())
+    if (commodityTypeId)
+      params.append('commodityTypeId', commodityTypeId.toString())
     params.append('page', page.toString())
     params.append('size', size.toString())
 
@@ -145,9 +188,10 @@ export const galleryService = {
     if (params.serviceTypeId)
       search.append('serviceTypeId', params.serviceTypeId.toString())
 
-    const response = await apiClient.get<
-      ApiResponse<GalleryCommodityCount[]>
-    >(`${API_CONFIG.GALLERY.ADMIN_COUNTS}?${search.toString()}`, { signal })
+    const response = await apiClient.get<ApiResponse<GalleryCommodityCount[]>>(
+      `${API_CONFIG.GALLERY.ADMIN_COUNTS}?${search.toString()}`,
+      { signal }
+    )
 
     const result = await response.json()
     if (!response.ok || result.success === false) {
@@ -162,7 +206,8 @@ export const galleryService = {
     provinceId: number,
     portId: number,
     serviceTypeId: number,
-    commodityId: number
+    commodityId: number,
+    commodityTypeId?: number | null
   ): Promise<GalleryImage> => {
     const formData = new FormData()
     formData.append('file', file)
@@ -174,6 +219,7 @@ export const galleryService = {
       port_id: String(portId),
       service_type_id: String(serviceTypeId),
       commodity_id: String(commodityId),
+      commodity_type_id: commodityTypeId == null ? '' : String(commodityTypeId),
     })
 
     const response = await apiClient.post<ApiResponse<GalleryImageApiDto>>(
@@ -215,7 +261,8 @@ export const galleryService = {
     provinceId: number,
     portId: number,
     serviceTypeId: number,
-    commodityId: number
+    commodityId: number,
+    commodityTypeId?: number | null
   ): Promise<GalleryImage[]> => {
     const formData = new FormData()
     files.forEach((file) => formData.append('files', file))
@@ -223,6 +270,10 @@ export const galleryService = {
     formData.append('port_id', portId.toString())
     formData.append('service_type_id', serviceTypeId.toString())
     formData.append('commodity_id', commodityId.toString())
+    formData.append(
+      'commodity_type_id',
+      commodityTypeId == null ? '' : commodityTypeId.toString()
+    )
 
     const response = await apiClient.post<ApiResponse<GalleryImageApiDto[]>>(
       API_CONFIG.GALLERY.ADMIN_BATCH,

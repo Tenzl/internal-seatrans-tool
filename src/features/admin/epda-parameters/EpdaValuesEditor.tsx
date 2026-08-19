@@ -1,6 +1,7 @@
 'use client'
 
 import { useMemo, useState, type ReactNode } from 'react'
+import type { CommodityType } from '@/modules/gallery/services/commodityService'
 import {
   isHcmWorksheet,
   usesQnPilotage,
@@ -88,6 +89,7 @@ export function OverriddenBadges({ labels }: { labels: string[] }) {
 export function ValuesEditor({
   variant,
   values,
+  commodityTypes,
   onChange,
   visibleSectionIds,
   hiddenSectionIds,
@@ -95,6 +97,7 @@ export function ValuesEditor({
 }: {
   variant: QuoteVariant
   values: EpdaParameterValues
+  commodityTypes: CommodityType[]
   onChange: (v: EpdaParameterValues) => void
   visibleSectionIds?: readonly string[]
   hiddenSectionIds?: readonly string[]
@@ -222,9 +225,13 @@ export function ValuesEditor({
         <div className='space-y-6'>
           <CargoAgencyRateTable
             rates={values.cargoAgencyRates}
+            commodityTypes={commodityTypes}
             onChange={(rows) => onChange({ ...values, cargoAgencyRates: rows })}
           />
-          <CargoAgencyCalculator rates={values.cargoAgencyRates} />
+          <CargoAgencyCalculator
+            rates={values.cargoAgencyRates}
+            commodityTypes={commodityTypes}
+          />
         </div>
       ),
     },

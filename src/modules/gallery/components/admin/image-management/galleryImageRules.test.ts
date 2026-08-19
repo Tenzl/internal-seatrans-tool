@@ -1,6 +1,12 @@
-import type { GalleryImage } from '@/modules/gallery/services/galleryService'
+import {
+  changeGalleryCommodityType,
+  changeGalleryService,
+  galleryCatalogSelectionFromImage,
+  galleryService,
+  type GalleryImage,
+} from '@/modules/gallery/services/galleryService'
 import { API_CONFIG } from '@/shared/config/api.config'
-import { describe, expect, it } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 import {
   galleryImageMatchesSearch,
   getDeleteWarningType,
@@ -8,6 +14,14 @@ import {
   getGalleryImageUrl,
   hasEditableMetadata,
 } from './galleryImageRules'
+
+const apiClientMock = vi.hoisted(() => ({
+  get: vi.fn(),
+}))
+
+vi.mock('@/shared/utils/apiClient', () => ({
+  apiClient: apiClientMock,
+}))
 
 const image: GalleryImage = {
   id: 1,
@@ -24,6 +38,10 @@ const image: GalleryImage = {
 }
 
 describe('gallery image rules', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+  })
+
   it('normalizes relative asset paths but preserves non-Cloudinary remote URLs', () => {
     expect(getGalleryImageUrl('gallery\\photo.jpg')).toBe(
       `${API_CONFIG.ASSET_BASE_URL}/gallery/photo.jpg`
@@ -76,5 +94,55 @@ describe('gallery image rules', () => {
     expect(galleryImageMatchesSearch(image, 'STEEL')).toBe(true)
     expect(galleryImageMatchesSearch(image, 'green port')).toBe(true)
     expect(galleryImageMatchesSearch(image, 'container')).toBe(false)
+  })
+
+  it('changes Type without clearing or filtering Commodity selection', () => {
+    expect(
+      changeGalleryCommodityType(
+        { serviceTypeId: 4, commodityTypeId: 6, commodityId: 5 },
+        9
+      )
+    ).toEqual({ serviceTypeId: 4, commodityTypeId: 9, commodityId: 5 })
+  })
+
+  it('clears both independent catalogs when Service changes', () => {
+    expect(
+      changeGalleryService(
+        { serviceTypeId: 4, commodityTypeId: 6, commodityId: 5 },
+        8
+      )
+    ).toEqual({ serviceTypeId: 8, commodityTypeId: null, commodityId: null })
+  })
+
+  it('keeps legacy null Type editable without clearing Commodity', () => {
+    expect(
+      galleryCatalogSelectionFromImage({
+        ...image,
+        commodityTypeId: null,
+      })
+    ).toEqual({ serviceTypeId: 4, commodityTypeId: null, commodityId: 5 })
+  })
+
+  it('sends independent Type and Commodity filters to the image list API', async () => {
+    apiClientMock.get.mockResolvedValue({
+      json: async () => ({
+        data: {
+          content: [],
+          totalElements: 0,
+          totalPages: 0,
+          size: 20,
+          number: 0,
+        },
+      }),
+    })
+
+    await galleryService.getAllImages(2, 3, 4, 5, 6, 0, 20)
+
+    expect(apiClientMock.get).toHaveBeenCalledWith(
+      expect.stringContaining('commodityId=5')
+    )
+    expect(apiClientMock.get).toHaveBeenCalledWith(
+      expect.stringContaining('commodityTypeId=6')
+    )
   })
 })

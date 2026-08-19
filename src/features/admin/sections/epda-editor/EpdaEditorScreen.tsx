@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { isAdminRole } from '@/config/section-catalog'
+import type { EpdaParameterValues } from '@/modules/inquiries/services/epdaParametersService'
 import type { ShippingAgencyAdminInquiry } from '@/modules/inquiries/types/shippingAgencyEpda'
 import { PdfPreviewDialog } from '@/shared/components/PdfPreviewDialog'
 import { AdminSection } from '@/shared/components/layout/dashboard/admin'
@@ -29,6 +30,7 @@ import {
   EPDA_SECTIONS,
   type EpdaSectionId,
 } from '@/features/admin/components/invoice/epdaFormLayout.config'
+import { EpdaParameterDiffDialog } from '@/features/admin/sections/epda-editor/EpdaParameterDiffDialog'
 import { findFirstMissingEpdaSection } from '@/features/admin/sections/epda-editor/controller/epdaEditorRules'
 import { useEpdaEditorFormModel } from '@/features/admin/sections/epda-editor/controller/useEpdaEditorFormModel'
 import { useEpdaEditorFormState } from '@/features/admin/sections/epda-editor/controller/useEpdaEditorFormState'
@@ -37,8 +39,6 @@ import { useEpdaParameterApplySkip } from '@/features/admin/sections/epda-editor
 import { useEpdaPersistence } from '@/features/admin/sections/epda-editor/controller/useEpdaPersistence'
 import { useEpdaPreview } from '@/features/admin/sections/epda-editor/controller/useEpdaPreview'
 import { useEpdaReferenceData } from '@/features/admin/sections/epda-editor/controller/useEpdaReferenceData'
-import { EpdaParameterDiffDialog } from '@/features/admin/sections/epda-editor/EpdaParameterDiffDialog'
-import type { EpdaParameterValues } from '@/modules/inquiries/services/epdaParametersService'
 
 function useLatest<T>(value: T) {
   const ref = useRef(value)
@@ -104,13 +104,11 @@ export function EpdaEditorScreen({
     (currentUser?.id ? `User #${currentUser.id}` : null)
   /** When set, EPDA is frozen — quote uses snapshot params and Edit is hidden. */
   const [epdaLockedAt, setEpdaLockedAt] = useState<string | null>(null)
-  const [workingParams, setWorkingParams] = useState<EpdaParameterValues | null>(
-    null
-  )
+  const [workingParams, setWorkingParams] =
+    useState<EpdaParameterValues | null>(null)
   const [workingParamsReady, setWorkingParamsReady] = useState(false)
-  const [workingParamsInquiryId, setWorkingParamsInquiryId] = useState(
-    linkedInquiryId
-  )
+  const [workingParamsInquiryId, setWorkingParamsInquiryId] =
+    useState(linkedInquiryId)
   if (workingParamsInquiryId !== linkedInquiryId) {
     setWorkingParamsInquiryId(linkedInquiryId)
     if (!linkedInquiryId) {
@@ -130,6 +128,7 @@ export function EpdaEditorScreen({
   const formState = useEpdaEditorFormState()
   const { fields, setters: formSetters } = formState
   const {
+    commodityTypeId,
     cargoType,
     cargoName,
     port,
@@ -154,12 +153,14 @@ export function EpdaEditorScreen({
   // summary once both are chosen, so the pinned header stays compact.
   const [portPickerCollapsed, setPortPickerCollapsed] = useState(false)
   const referenceData = useEpdaReferenceData({
+    commodityTypeId,
     cargoType,
     cargoName,
     port,
     dischargeLoadingLocation,
     linkedInquiryId,
     bindings: {
+      setCommodityTypeId: formSetters.setCommodityTypeId,
       setCargoType: formSetters.setCargoType,
       setCargoName,
       clearTallyFee: () => setTallyFeeAmount(''),
@@ -180,7 +181,8 @@ export function EpdaEditorScreen({
   })
   const {
     cargoTypeOptions,
-    cargoCatalogRef: cargoTypeCatalogRef,
+    cargoTypeCatalogRef,
+    cargoCatalogRef,
     isLoadingCargoCatalog,
     pendingInquiryCargo,
     pendingInquiryCargoRef,
@@ -238,7 +240,8 @@ export function EpdaEditorScreen({
     inquiryId: linkedInquiryId,
     reloadKey: readOnly,
     autoPreviewTriggeredRef,
-    cargoCatalogRef: cargoTypeCatalogRef,
+    cargoCatalogRef,
+    cargoTypeCatalogRef,
     pendingCargoRef: pendingInquiryCargoRef,
     pendingPortRef: pendingPortOfCallRef,
     bindings: {
@@ -251,6 +254,7 @@ export function EpdaEditorScreen({
         setWorkingParamsReady(true)
       },
       setQuoteForm: setLoadedInquiryQuoteForm,
+      setCommodityTypeId: formSetters.setCommodityTypeId,
       setCargoType: formSetters.setCargoType,
       setCargoName,
       clearTallyFee: () => setTallyFeeAmount(''),
@@ -393,9 +397,13 @@ export function EpdaEditorScreen({
         base.buoyDueHours !== '' ? hourFields.berthHours : base.buoyDueHours,
     }
 
-    await persistence.saveDraft(quoteInput, missingRequiredFields.length === 0, {
-      successMessage: 'Latest tariffs applied and saved.',
-    })
+    await persistence.saveDraft(
+      quoteInput,
+      missingRequiredFields.length === 0,
+      {
+        successMessage: 'Latest tariffs applied and saved.',
+      }
+    )
     // Apply to PDF only after the user chose Latest (and save succeeded).
     if (missingRequiredFields.length === 0) {
       await preview.generate(params)

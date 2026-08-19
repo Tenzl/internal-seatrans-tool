@@ -2,8 +2,12 @@ import { type ReactNode, useEffect, useState } from 'react'
 import {
   commodityService,
   type Commodity,
+  type CommodityType,
 } from '@/modules/gallery/services/commodityService'
 import {
+  changeGalleryCommodityType,
+  changeGalleryService,
+  galleryCatalogSelectionFromImage,
   galleryService,
   type GalleryImage,
 } from '@/modules/gallery/services/galleryService'
@@ -26,6 +30,7 @@ type EditForm = {
   provinceId: number | null
   portId: number | null
   serviceTypeId: number | null
+  commodityTypeId: number | null
   commodityId: number | null
 }
 
@@ -49,22 +54,24 @@ export function EditGalleryImageDialog({
 }: EditGalleryImageDialogProps) {
   const [saving, setSaving] = useState(false)
   const [ports, setPorts] = useState<Port[]>([])
+  const [commodityTypes, setCommodityTypes] = useState<CommodityType[]>([])
   const [commodities, setCommodities] = useState<Commodity[]>([])
   const [form, setForm] = useState<EditForm>({
     provinceId: image.provinceId ?? null,
     portId: image.portId ?? null,
-    serviceTypeId: image.serviceTypeId ?? null,
-    commodityId: image.commodityId ?? null,
+    ...galleryCatalogSelectionFromImage(image),
   })
 
   useEffect(() => {
     let active = true
 
     const loadOptions = async () => {
-      const [portsResult, commoditiesResult] = await Promise.allSettled([
-        portService.getPortsByProvince(image.provinceId!),
-        commodityService.getCommoditiesByServiceType(image.serviceTypeId!),
-      ])
+      const [portsResult, typesResult, commoditiesResult] =
+        await Promise.allSettled([
+          portService.getPortsByProvince(image.provinceId!),
+          commodityService.listCommodityTypes(image.serviceTypeId!),
+          commodityService.getCommoditiesByServiceType(image.serviceTypeId!),
+        ])
 
       if (!active) return
 
@@ -73,6 +80,13 @@ export function EditGalleryImageDialog({
       } else {
         setPorts([])
         toast.error('Failed to load ports', portsResult.reason)
+      }
+
+      if (typesResult.status === 'fulfilled') {
+        setCommodityTypes(typesResult.value)
+      } else {
+        setCommodityTypes([])
+        toast.error('Failed to load commodity types', typesResult.reason)
       }
 
       if (commoditiesResult.status === 'fulfilled') {
@@ -105,19 +119,31 @@ export function EditGalleryImageDialog({
   }
 
   const changeServiceType = async (serviceTypeId: number | null) => {
-    setForm((current) => ({ ...current, serviceTypeId, commodityId: null }))
+    setForm((current) => ({
+      ...current,
+      ...changeGalleryService(current, serviceTypeId),
+    }))
+    setCommodityTypes([])
+    setCommodities([])
     if (!serviceTypeId) {
-      setCommodities([])
       return
     }
 
-    try {
-      setCommodities(
-        await commodityService.getCommoditiesByServiceType(serviceTypeId)
-      )
-    } catch (error) {
+    const [typesResult, commoditiesResult] = await Promise.allSettled([
+      commodityService.listCommodityTypes(serviceTypeId),
+      commodityService.getCommoditiesByServiceType(serviceTypeId),
+    ])
+    if (typesResult.status === 'fulfilled') {
+      setCommodityTypes(typesResult.value)
+    } else {
+      setCommodityTypes([])
+      toast.error('Failed to load commodity types', typesResult.reason)
+    }
+    if (commoditiesResult.status === 'fulfilled') {
+      setCommodities(commoditiesResult.value)
+    } else {
       setCommodities([])
-      toast.error('Failed to load commodities', error)
+      toast.error('Failed to load commodities', commoditiesResult.reason)
     }
   }
 
@@ -138,6 +164,7 @@ export function EditGalleryImageDialog({
         provinceId: form.provinceId,
         portId: form.portId,
         serviceTypeId: form.serviceTypeId,
+        commodityTypeId: form.commodityTypeId,
         commodityId: form.commodityId,
       })
       onClose()
@@ -154,7 +181,7 @@ export function EditGalleryImageDialog({
       <DialogContent className='max-w-xl'>
         <DialogTitle>Edit Image Information</DialogTitle>
         <DialogDescription>
-          Update province, port, service type, and cargo type for this image.
+          Update province, port, service, type, and commodity independently.
         </DialogDescription>
 
         <div className='grid gap-4 py-2'>
@@ -198,7 +225,25 @@ export function EditGalleryImageDialog({
           </SelectField>
 
           <SelectField
-            label='Cargo Type'
+            label='Type'
+            value={form.commodityTypeId}
+            disabled={!form.serviceTypeId}
+            onChange={(commodityTypeId) =>
+              setForm((current) => ({
+                ...current,
+                ...changeGalleryCommodityType(current, commodityTypeId),
+              }))
+            }
+          >
+            {commodityTypes.map((commodityType) => (
+              <option key={commodityType.id} value={commodityType.id}>
+                {commodityType.name}
+              </option>
+            ))}
+          </SelectField>
+
+          <SelectField
+            label='Commodity'
             value={form.commodityId}
             disabled={!form.serviceTypeId}
             onChange={(commodityId) =>

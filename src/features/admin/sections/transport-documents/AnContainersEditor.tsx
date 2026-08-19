@@ -1,3 +1,5 @@
+import { NumberInput } from '@/shared/components/NumberInput'
+import { formatNumberInputValue } from '@/shared/utils/numberInput'
 import { Plus, Trash2 } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -9,8 +11,7 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { Textarea } from '@/components/ui/textarea'
-import { NumberInput } from '@/shared/components/NumberInput'
-import { formatNumberInputValue } from '@/shared/utils/numberInput'
+import { PackageTypeCombobox } from './PackageTypeCombobox'
 import {
   AN_CONTAINER_MAX_ROWS,
   AN_CONTAINER_TYPE_OPTIONS,
@@ -18,7 +19,6 @@ import {
   emptyAnContainer,
   summarizeAnContainers,
 } from './anContainerModel'
-import { PackageTypeCombobox } from './PackageTypeCombobox'
 import type { AnContainer } from './transportDocument.types'
 import { AN_CONTAINER_COLUMNS } from './transportDocumentFormConfig'
 
@@ -142,10 +142,7 @@ export function AnContainersEditor({
                 {AN_CONTAINER_COLUMNS.map((column) => {
                   if (column.key === 'type') {
                     return (
-                      <div
-                        key={column.key}
-                        className='bg-background'
-                      >
+                      <div key={column.key} className='bg-background'>
                         <Select
                           value={row.type || TYPE_EMPTY_VALUE}
                           disabled={readOnly}
@@ -269,10 +266,7 @@ export function AnContainersEditor({
       </div>
 
       {rows.length > 0 ? (
-        <div
-          data-testid='an-containers-summary'
-          className='flex justify-end'
-        >
+        <div data-testid='an-containers-summary' className='flex justify-end'>
           <dl className='grid min-w-[16rem] grid-cols-[auto_auto] gap-x-6 gap-y-1.5 text-base'>
             <dt className='text-muted-foreground'>Total Shipment:</dt>
             <dd className='flex flex-wrap justify-end gap-1.5'>
@@ -297,7 +291,7 @@ export function AnContainersEditor({
             </dd>
 
             <dt className='text-muted-foreground'>Net Weight (KGS):</dt>
-            <dd className='text-right tabular-nums text-muted-foreground' />
+            <dd className='text-right text-muted-foreground tabular-nums' />
 
             <dt className='text-muted-foreground'>Total Measurement (CBM):</dt>
             <dd className='text-right tabular-nums'>

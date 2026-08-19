@@ -2,14 +2,10 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import {
   commodityService,
   type CargoType,
-  type CargoTypeCatalogItem,
   type Commodity,
+  type CommodityType,
 } from '@/modules/gallery/services/commodityService'
-import {
-  legacyCargoTypeToCode,
-  SHIPPING_AGENCY_CARGO_TYPES,
-  type InquiryCargoFields,
-} from '@/modules/gallery/shippingAgencyCargoCatalog'
+import { type InquiryCargoFields } from '@/modules/gallery/shippingAgencyCargoCatalog'
 import { quoteFormFromArea } from '@/modules/inquiries/components/common/quoteForm'
 import {
   epdaParametersService,
@@ -30,12 +26,15 @@ import { defaultParameterValues } from '@/features/admin/components/invoice/epda
 import type { EpdaQuoteForm } from './epdaPreviewRules'
 import {
   buildCargoNameOptions,
+  buildCargoTypeOptions,
   buildPortOptions,
   findShippingAgencyServiceTypeId,
   resolveSelectedPortId,
+  resolveEpdaTypeSnapshot,
 } from './epdaReferenceDataRules'
 
 type ReferenceDataBindings = {
+  setCommodityTypeId: (commodityTypeId: number | null) => void
   setCargoType: (cargoType: CargoType) => void
   setCargoName: (cargoName: string) => void
   clearTallyFee: () => void
@@ -44,6 +43,7 @@ type ReferenceDataBindings = {
 }
 
 type UseEpdaReferenceDataOptions = {
+  commodityTypeId: number | null
   cargoType: CargoType | ''
   cargoName: string
   port: string
@@ -53,6 +53,7 @@ type UseEpdaReferenceDataOptions = {
 }
 
 export function useEpdaReferenceData({
+  commodityTypeId,
   cargoType,
   cargoName,
   port,
@@ -60,9 +61,7 @@ export function useEpdaReferenceData({
   linkedInquiryId,
   bindings,
 }: UseEpdaReferenceDataOptions) {
-  const [cargoTypeOptions, setCargoTypeOptions] = useState<
-    CargoTypeCatalogItem[]
-  >([])
+  const [cargoTypeCatalog, setCargoTypeCatalog] = useState<CommodityType[]>([])
   const [cargoCatalog, setCargoCatalog] = useState<Commodity[]>([])
   const [isLoadingCargoCatalog, setIsLoadingCargoCatalog] = useState(false)
   const [ports, setPorts] = useState<LogisticsPort[]>([])
@@ -79,6 +78,7 @@ export function useEpdaReferenceData({
   )
   const [pendingInquiryCargo, setPendingInquiryCargo] =
     useState<InquiryCargoFields | null>(null)
+  const cargoTypeCatalogRef = useRef<CommodityType[]>([])
   const cargoCatalogRef = useRef<Commodity[]>([])
   const pendingInquiryCargoRef = useRef<InquiryCargoFields | null>(null)
   const pendingPortOfCallRef = useRef<string | null>(null)
@@ -101,25 +101,35 @@ export function useEpdaReferenceData({
         const serviceTypes = await serviceTypeService.getAllServiceTypes()
         const serviceTypeId = findShippingAgencyServiceTypeId(serviceTypes)
         if (!serviceTypeId) {
-          setCargoTypeOptions([])
+          setCargoTypeCatalog([])
           setCargoCatalog([])
           toast.error('Shipping Agency service type not found')
           return
         }
 
-        // Cargo types are fixed; only cargo names are loaded from the database.
-        const commodities =
-          await commodityService.getCommoditiesByServiceType(serviceTypeId)
+        const [types, commodities] = await Promise.all([
+          commodityService.listCommodityTypes(serviceTypeId),
+          commodityService.getCommoditiesByServiceType(serviceTypeId),
+        ])
+        const typeCatalog = Array.isArray(types) ? types : []
         const catalog = Array.isArray(commodities) ? commodities : []
+        cargoTypeCatalogRef.current = typeCatalog
         cargoCatalogRef.current = catalog
-        setCargoTypeOptions(SHIPPING_AGENCY_CARGO_TYPES)
+        setCargoTypeCatalog(typeCatalog)
         setCargoCatalog(catalog)
 
         const pending = pendingInquiryCargoRef.current
         if (pending) {
           const resolved = resolveInquiryCargo(pending, catalog)
+          bindingsRef.current.setCommodityTypeId(resolved.commodityTypeId)
           if (resolved.cargoType) {
-            bindingsRef.current.setCargoType(resolved.cargoType)
+            bindingsRef.current.setCargoType(
+              resolveEpdaTypeSnapshot(
+                typeCatalog,
+                resolved.commodityTypeId,
+                resolved.cargoType
+              )
+            )
           }
           bindingsRef.current.setCargoName(resolved.cargoName)
           if (!isTallyFeeEligibleCargo(resolved.cargoType)) {
@@ -129,8 +139,8 @@ export function useEpdaReferenceData({
           setPendingInquiryCargo(null)
         }
       } catch {
-        toast.error('Failed to load cargo names from database')
-        setCargoTypeOptions([])
+        toast.error('Failed to load cargo catalogs from database')
+        setCargoTypeCatalog([])
         setCargoCatalog([])
       } finally {
         setIsLoadingCargoCatalog(false)
@@ -236,15 +246,14 @@ export function useEpdaReferenceData({
     setFrozenParams(null)
   }
 
-  const cargoNameDisabled = useMemo(() => {
-    if (!cargoType || isLoadingCargoCatalog) return false
-    return !cargoCatalog.some(
-      (item) => legacyCargoTypeToCode(item.cargoType) === cargoType
-    )
-  }, [cargoType, cargoCatalog, isLoadingCargoCatalog])
+  const cargoTypeOptions = useMemo(
+    () => buildCargoTypeOptions(cargoTypeCatalog, cargoType, commodityTypeId),
+    [cargoTypeCatalog, cargoType, commodityTypeId]
+  )
 
   return {
     cargoTypeOptions,
+    cargoTypeCatalogRef,
     cargoCatalogRef,
     isLoadingCargoCatalog,
     pendingInquiryCargo,
@@ -266,8 +275,8 @@ export function useEpdaReferenceData({
     setFrozenParams,
     setPendingInquiryCargo,
     quoteForm,
-    cargoNameDisabled,
-    cargoNameOptions: buildCargoNameOptions(cargoCatalog, cargoType, cargoName),
+    cargoNameDisabled: false,
+    cargoNameOptions: buildCargoNameOptions(cargoCatalog, cargoName),
     selectArea,
     reset,
   }

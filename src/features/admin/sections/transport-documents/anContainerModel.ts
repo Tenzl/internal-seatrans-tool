@@ -14,126 +14,6 @@ export const AN_CONTAINER_TYPE_OPTIONS = [
   ...CARGO_VOLUME_TYPES.map((type) => ({ value: type, label: type })),
 ] as const
 
-/** Package-type dropdown values for AN/BL container rows (fixed casing/order). */
-export const AN_CONTAINER_PACKAGE_TYPES = [
-  'CRT',
-  'PKGS',
-  'CAS',
-  'BAL',
-  'CTNS',
-  'BAG(S)',
-  'BALE(S)',
-  'BOX(S)',
-  'BULK(S)',
-  'BUNDLE(S)',
-  'CARTON(S)',
-  'CASE(S)',
-  'COIL(S)',
-  'CRATE(S)',
-  'CYLINDER(S)',
-  'DRUM(S)',
-  'JUMBO BAG(S)',
-  'LINE DETENTION',
-  'PACKAGE(S)',
-  'PACKING CARTON(S)',
-  'PALLET(S)',
-  'PIECES',
-  'WOODEN BOX(S)',
-  'WOODEN CRATES',
-  'WOODEN CASE(S)',
-  'ROLL(S)',
-  'SET(S)',
-  'UNIT(S)',
-  'STEEL DRUMS',
-  'CLEATED PLYWOOD BOXES',
-  'FIBREBOARD BOXES',
-  'CARDBOARD BOXES',
-  'DOZEN',
-  'PAIR',
-  'PAIL',
-  'CASKS',
-  'KEGS',
-  'SLAB(S)',
-  'SACK',
-  'SKIDS',
-  'BARRELS',
-  'BLISTER',
-  'CAN',
-  'CUP',
-  'CAPSULE',
-  'FOIL',
-  'PACKET',
-  'TABLET',
-  'TANK',
-  'TOTE',
-  'BOTTLE',
-  'FLOWPACK',
-  'JAR',
-  'TRAY',
-  'CAGE',
-  'ROLL CAGE',
-  'SLIT BOX',
-  'PRESSURIZED CONTAINER',
-  'BA',
-  'BE',
-  'BG',
-  'BK',
-  'BASKET(S)',
-  'BL',
-  'BN',
-  'BR',
-  'BX',
-  'CA',
-  'CG',
-  'CK',
-  'CL',
-  'CN',
-  'CO',
-  'CP',
-  'CR',
-  'CS',
-  'CT',
-  'CX',
-  'CY',
-  'DR',
-  'KG',
-  'LG',
-  'LZ',
-  'MST',
-  'MT',
-  'NE',
-  'NT',
-  'PA',
-  'PC',
-  'PE',
-  'PG',
-  'PI',
-  'PK',
-  'PL',
-  'PP',
-  'PLTS',
-  'PS',
-  'PU',
-  'RL',
-  'TY',
-  'ZZ',
-] as const
-
-export type AnContainerPackageType = (typeof AN_CONTAINER_PACKAGE_TYPES)[number]
-
-const AN_CONTAINER_PACKAGE_TYPE_SET = new Set<string>(AN_CONTAINER_PACKAGE_TYPES)
-
-export function isAnContainerPackageType(
-  value: string
-): value is AnContainerPackageType {
-  return AN_CONTAINER_PACKAGE_TYPE_SET.has(value)
-}
-
-export const AN_CONTAINER_PACKAGE_TYPE_OPTIONS = [
-  { value: '', label: '—' },
-  ...AN_CONTAINER_PACKAGE_TYPES.map((type) => ({ value: type, label: type })),
-] as const
-
 export function emptyAnContainer(): AnContainer {
   return {
     type: '',
@@ -421,9 +301,7 @@ export function anContainersToVolumeText(containers: AnContainer[]): string {
 }
 
 /** Aggregate shipment counts and numeric totals for the AN containers summary panel. */
-export function summarizeAnContainers(
-  rows: AnContainer[]
-): AnContainerSummary {
+export function summarizeAnContainers(rows: AnContainer[]): AnContainerSummary {
   const typeCounts = anContainersToCargoVolumes(rows)
   let totalGrossWeight = 0
   let totalMeasurement = 0

@@ -4,7 +4,9 @@ import { calculateAgencyFeeSummary } from './agencyFeeSummary'
 
 const params = {
   ...defaultParameterValues('HCM'),
-  cargoAgencyRates: [{ code: 'IN_BULK', rate: 0.06, label: 'Bulk' }],
+  cargoAgencyRates: [
+    { commodityTypeId: 11, typeNameSnapshot: 'Bulk', rate: 0.06 },
+  ],
 }
 
 describe('calculateAgencyFeeSummary', () => {
@@ -13,6 +15,7 @@ describe('calculateAgencyFeeSummary', () => {
       {
         grt: '3000',
         cargoQty: '2500',
+        commodityTypeId: 11,
         cargoType: 'IN_BULK',
         discountPercent: '10',
       },
@@ -30,6 +33,7 @@ describe('calculateAgencyFeeSummary', () => {
       {
         grt: 'not-a-number',
         cargoQty: '-5',
+        commodityTypeId: null,
         cargoType: '',
         discountPercent: '150',
       },
@@ -39,6 +43,7 @@ describe('calculateAgencyFeeSummary', () => {
       {
         grt: '',
         cargoQty: '',
+        commodityTypeId: null,
         cargoType: '',
         discountPercent: '-20',
       },

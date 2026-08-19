@@ -1,6 +1,6 @@
 'use client'
 
-import { SHIPPING_AGENCY_CARGO_TYPES } from '@/modules/gallery/shippingAgencyCargoCatalog'
+import type { CommodityType } from '@/modules/gallery/services/commodityService'
 import {
   withAutoGrtTierLabels,
   withAutoLoaTierLabels,
@@ -22,6 +22,7 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table'
+import { buildCanonicalCargoAgencyRates } from './cargoAgencyRateRules'
 
 export function NumberField({
   label,
@@ -226,44 +227,27 @@ export function LoaTierTable({
   )
 }
 
-const normalizeCargoTypeCode = (value: string): string =>
-  (value || '')
-    .trim()
-    .toUpperCase()
-    .replace(/[\s-]+/g, '_')
-
 /**
- * "Agency fee on cargo" table — one USD/MT rate per cargo type. Cargo types are a
- * FIXED enum (Bag/Pack, Equipment, Bulk); staff edit only the rate, never the set.
+ * "Agency fee on cargo" table — one USD/MT rate per database Commodity Type.
  */
 export function CargoAgencyRateTable({
   rates,
+  commodityTypes,
   onChange,
 }: {
   rates: CargoAgencyRate[]
+  commodityTypes: CommodityType[]
   onChange: (rates: CargoAgencyRate[]) => void
 }) {
   const { t } = useI18n()
 
-  const rateFor = (code: string) =>
-    rates.find(
-      (r) => normalizeCargoTypeCode(r.code) === normalizeCargoTypeCode(code)
-    )?.rate ?? 0
+  const rateFor = (commodityTypeId: number) =>
+    rates.find((row) => row.commodityTypeId === commodityTypeId)?.rate ?? 0
 
-  // Always emit exactly the 3 fixed types, in enum order, with the edited rate.
-  const setRate = (code: string, rate: number) => {
-    const edited = new Map(
-      rates.map((r) => [normalizeCargoTypeCode(r.code), r.rate])
-    )
-    edited.set(normalizeCargoTypeCode(code), rate)
+  const setRate = (type: CommodityType, rate: number) =>
     onChange(
-      SHIPPING_AGENCY_CARGO_TYPES.map((ct) => ({
-        code: ct.code,
-        label: ct.displayLabel,
-        rate: edited.get(normalizeCargoTypeCode(ct.code)) ?? 0,
-      }))
+      buildCanonicalCargoAgencyRates(commodityTypes, rates, type.id, rate)
     )
-  }
 
   return (
     <div>
@@ -277,14 +261,14 @@ export function CargoAgencyRateTable({
           </TableRow>
         </TableHeader>
         <TableBody>
-          {SHIPPING_AGENCY_CARGO_TYPES.map((ct) => (
-            <TableRow key={ct.code}>
-              <TableCell className='text-base'>{ct.displayLabel}</TableCell>
+          {commodityTypes.map((type) => (
+            <TableRow key={type.id}>
+              <TableCell className='text-base'>{type.name}</TableCell>
               <TableCell>
                 <NumberInput
                   className='text-base tabular-nums'
-                  value={rateFor(ct.code)}
-                  onValueChange={(next) => setRate(ct.code, next ?? 0)}
+                  value={rateFor(type.id)}
+                  onValueChange={(next) => setRate(type, next ?? 0)}
                 />
               </TableCell>
             </TableRow>

@@ -8,6 +8,7 @@ import { getAgencyFeeByGrt } from '../epdaFormParameters'
 interface AgencyFeeSummaryInput {
   grt: string
   cargoQty: string
+  commodityTypeId: number | null
   cargoType: CargoType | ''
   discountPercent: string
 }
@@ -34,7 +35,8 @@ export function calculateAgencyFeeSummary(
   const normalizedCargoQty =
     Number.isFinite(cargoQty) && cargoQty > 0 ? cargoQty : 0
   // Keep the on-screen preview aligned with the PDF: missing cargo rates are zero.
-  const cargoRate = resolveCargoAgencyRate(input.cargoType, params) ?? 0
+  const cargoRate =
+    resolveCargoAgencyRate(input.commodityTypeId, input.cargoType, params) ?? 0
 
   return {
     grtBand:

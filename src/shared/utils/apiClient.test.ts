@@ -3,6 +3,7 @@ import {
   ApiError,
   apiClient,
   getErrorStatus,
+  isAbortError,
   shouldRetryApiError,
 } from './apiClient'
 
@@ -57,7 +58,8 @@ describe('apiClient request lifecycle', () => {
       message: 'Network error. Please check your connection.',
     })
     await expect(apiClient.get('/health')).rejects.toSatisfy(
-      (error: unknown) => error instanceof ApiError && error.status === undefined
+      (error: unknown) =>
+        error instanceof ApiError && error.status === undefined
     )
   })
 })
@@ -65,9 +67,7 @@ describe('apiClient request lifecycle', () => {
 describe('shouldRetryApiError', () => {
   it('retries network failures and omits status', () => {
     expect(
-      shouldRetryApiError(
-        new ApiError('down', { isNetworkError: true })
-      )
+      shouldRetryApiError(new ApiError('down', { isNetworkError: true }))
     ).toBe(true)
     expect(shouldRetryApiError(new TypeError('Failed to fetch'))).toBe(true)
   })
@@ -97,6 +97,9 @@ describe('shouldRetryApiError', () => {
     const abort = new Error('Aborted')
     abort.name = 'AbortError'
     expect(shouldRetryApiError(abort)).toBe(false)
+    expect(isAbortError(new Error('signal is aborted without reason'))).toBe(
+      true
+    )
   })
 
   it('reads status from Axios-like errors', () => {

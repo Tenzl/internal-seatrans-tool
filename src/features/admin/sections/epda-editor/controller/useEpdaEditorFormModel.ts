@@ -1,9 +1,6 @@
 import { useCallback, useMemo } from 'react'
-import type {
-  CargoType,
-  CargoTypeCatalogItem,
-  Commodity,
-} from '@/modules/gallery/services/commodityService'
+import type { Commodity } from '@/modules/gallery/services/commodityService'
+import type { EpdaCargoTypeOption } from '@/modules/gallery/shippingAgencyCargoCatalog'
 import type { BuildInvoiceQuoteDataParams } from '@/modules/inquiries/components/common/buildInvoiceQuoteData'
 import { getDefaultGarbageUsdRate } from '@/modules/inquiries/components/common/garbageFeeDefaults'
 import { isHcmWorksheet } from '@/modules/inquiries/components/common/quoteForm'
@@ -34,6 +31,10 @@ import {
 } from '@/features/admin/components/invoice/invoiceValidation'
 import { EPDA_STATIC_FORM_OPTIONS } from './epdaEditorOptions'
 import type { EpdaQuoteForm } from './epdaPreviewRules'
+import {
+  resolveEpdaCatalogIds,
+  resolveEpdaCargoTypeSelection,
+} from './epdaReferenceDataRules'
 import type {
   EpdaEditorFormFields,
   useEpdaEditorFormState,
@@ -48,7 +49,7 @@ type UseEpdaEditorFormModelOptions = {
   quoteForm: EpdaQuoteForm
   effectiveParams: EpdaParameterValues
   selectedPortId: number | null
-  cargoTypeOptions: CargoTypeCatalogItem[]
+  cargoTypeOptions: EpdaCargoTypeOption[]
   filteredCargoNames: Commodity[]
   cargoNameDisabled: boolean
   isLoadingCargoCatalog: boolean
@@ -117,7 +118,10 @@ export function useEpdaEditorFormModel({
   ])
 
   const buildQuoteInput = useCallback(
-    (): BuildInvoiceQuoteDataParams => ({
+    (): BuildInvoiceQuoteDataParams & {
+      commodityTypeId?: number
+      commodityId?: number
+    } => ({
       quoteForm,
       formCreatedDate: fields.formCreatedDate,
       toShipowner: fields.toShipowner,
@@ -130,7 +134,11 @@ export function useEpdaEditorFormModel({
       cargoQty: fields.cargoQty,
       cargoName: cargoNameDisabled ? '' : fields.cargoName,
       cargoType: fields.cargoType,
-      cargoTypeOptions,
+      ...resolveEpdaCatalogIds(
+        fields.commodityTypeId,
+        filteredCargoNames,
+        fields.cargoName
+      ),
       filteredCargoNames,
       shipType: fields.shipType,
       portId: selectedPortId,
@@ -175,7 +183,6 @@ export function useEpdaEditorFormModel({
       quoteForm,
       fields,
       cargoNameDisabled,
-      cargoTypeOptions,
       filteredCargoNames,
       selectedPortId,
       isLoaOverTugMax,
@@ -194,6 +201,7 @@ export function useEpdaEditorFormModel({
       grt: fields.grt,
       loa: fields.loa,
       cargoQty: fields.cargoQty,
+      commodityTypeId: fields.commodityTypeId,
       cargoType: fields.cargoType,
       cargoName: fields.cargoName,
       shipType: fields.shipType,
@@ -244,10 +252,17 @@ export function useEpdaEditorFormModel({
           setters.setTugAssistanceAmount('')
         }
       },
-      setCargoType: (value: CargoType) => {
-        setters.setCargoType(value)
-        setters.setCargoName('')
-        if (!isTallyFeeEligibleCargo(value)) setters.setTallyFeeAmount('')
+      setCargoType: (selectionValue: string) => {
+        const selected = resolveEpdaCargoTypeSelection(
+          cargoTypeOptions,
+          selectionValue
+        )
+        if (!selected) return
+        setters.setCommodityTypeId(selected.commodityTypeId)
+        setters.setCargoType(selected.cargoType)
+        if (!isTallyFeeEligibleCargo(selected.tallyEligibilityKey)) {
+          setters.setTallyFeeAmount('')
+        }
       },
       setPurposeOfCalling: (value) => {
         setters.setPurposeOfCalling(value)
@@ -299,7 +314,13 @@ export function useEpdaEditorFormModel({
         )
       },
     }),
-    [setters, effectiveParams, fields.agencyOtherExpenses, quoteForm]
+    [
+      setters,
+      effectiveParams,
+      fields.agencyOtherExpenses,
+      quoteForm,
+      cargoTypeOptions,
+    ]
   )
 
   const formOptions = useMemo<InvoiceVariantFormOptions>(

@@ -1,40 +1,28 @@
-import type {
-  CargoTypeCatalogItem,
-  Commodity,
-} from '@/modules/gallery/services/commodityService'
+import type { Commodity } from '@/modules/gallery/services/commodityService'
 
 export const CARGO_NAME_OTHER = 'OTHER'
 
-/**
- * Shipping-agency cargo types are a FIXED set of three — they never change, so
- * they live in code as an enum rather than the editable cargo-type catalog.
- * Cargo *names* still come from the commodities table, keyed by these codes.
- */
-export const SHIPPING_AGENCY_CARGO_TYPES: CargoTypeCatalogItem[] = [
-  {
-    code: 'IN_BAG_PACK',
-    displayLabel: 'Bag/Pack',
-    serviceTypeType: 'SHIPPING_AGENCY',
-  },
-  {
-    code: 'IN_EQUIPMENT',
-    displayLabel: 'Equipment',
-    serviceTypeType: 'SHIPPING_AGENCY',
-  },
-  { code: 'IN_BULK', displayLabel: 'Bulk', serviceTypeType: 'SHIPPING_AGENCY' },
-]
+export type EpdaCargoTypeOption = {
+  id: number | null
+  value: string
+  label: string
+  nameSnapshot: string
+  /** Read-only compatibility key for an unmatched legacy snapshot. */
+  legacyCode?: string
+}
 
 export type InquiryCargoFields = {
+  commodityTypeId?: number | null
   cargoType?: string | null
   cargoName?: string | null
   cargoNameOther?: string | null
 }
 
-const normalizeKey = (value: string) =>
-  value
+const normalizeKey = (value?: string | null) =>
+  (value ?? '')
     .trim()
     .toUpperCase()
-    .replace(/[\s_-]+/g, '_')
+    .replace(/[^A-Z0-9]+/g, '_')
 
 export function isTallyFeeEligibleCargoType(
   cargoType?: string | null
@@ -43,7 +31,11 @@ export function isTallyFeeEligibleCargoType(
   const key = normalizeKey(cargoType)
   // Bag/Pack and Equipment incur a tally fee; Bulk does not.
   return (
-    key === 'IN_BAG_PACK' || key === 'IN_EQUIPMENT' || key.includes('IN_BAG')
+    key === 'BAG_PACK' ||
+    key === 'EQUIPMENT' ||
+    key === 'IN_BAG_PACK' ||
+    key === 'IN_EQUIPMENT' ||
+    key.includes('IN_BAG')
   )
 }
 
@@ -76,22 +68,15 @@ const LEGACY_CARGO_NAME_ALIASES: Record<string, string[]> = {
 
 function legacyCargoNameToCode(
   catalog: Commodity[],
-  cargoTypeCode: string,
   cargoName?: string | null,
   cargoNameOther?: string | null
 ): string {
   const rawLabel = (cargoNameOther?.trim() || cargoName?.trim() || '').trim()
   if (!rawLabel) return ''
 
-  const pool = cargoTypeCode
-    ? catalog.filter(
-        (item) => (item.cargoType || 'IN_BULK').toUpperCase() === cargoTypeCode
-      )
-    : catalog
-
   const rawKey = normalizeKey(rawLabel)
 
-  for (const item of pool) {
+  for (const item of catalog) {
     const nameKey = normalizeKey(item.name)
     if (nameKey === rawKey) return item.name
     const aliases = LEGACY_CARGO_NAME_ALIASES[nameKey] ?? []
@@ -107,35 +92,27 @@ function legacyCargoNameToCode(
 export function readInquiryCargoForEpda(
   raw: InquiryCargoFields,
   catalog: Commodity[]
-): { cargoType: string; cargoName: string } {
-  const catalogTypes = new Set(
-    catalog.map((item) => (item.cargoType || 'IN_BULK').toUpperCase())
-  )
-
-  let cargoType = ''
-  if (raw.cargoType?.trim()) {
-    const key = raw.cargoType.trim().toUpperCase().replace(/\s+/g, '_')
-    cargoType = catalogTypes.has(key)
-      ? key
-      : legacyCargoTypeToCode(raw.cargoType)
-  }
+): { commodityTypeId: number | null; cargoType: string; cargoName: string } {
+  const commodityTypeId =
+    typeof raw.commodityTypeId === 'number' && raw.commodityTypeId > 0
+      ? raw.commodityTypeId
+      : null
+  const cargoType = raw.cargoType?.trim() ?? ''
 
   if (normalizeKey(raw.cargoName ?? '') === CARGO_NAME_OTHER) {
     const other = raw.cargoNameOther?.trim()
-    return { cargoType, cargoName: other || CARGO_NAME_OTHER }
+    return { commodityTypeId, cargoType, cargoName: other || CARGO_NAME_OTHER }
   }
 
   const name = raw.cargoName?.trim()
-  if (!name) return { cargoType, cargoName: '' }
+  if (!name) return { commodityTypeId, cargoType, cargoName: '' }
 
   const inCatalog = catalog.some(
-    (item) =>
-      item.name === name &&
-      (!cargoType || (item.cargoType || 'IN_BULK').toUpperCase() === cargoType)
+    (item) => item.name === name || item.displayName === name
   )
   const cargoName = inCatalog
     ? name
-    : legacyCargoNameToCode(catalog, cargoType, name, raw.cargoNameOther)
+    : legacyCargoNameToCode(catalog, name, raw.cargoNameOther)
 
-  return { cargoType, cargoName }
+  return { commodityTypeId, cargoType, cargoName }
 }

@@ -402,6 +402,7 @@ const buildBBRows = (
   grt?: string | number,
   cargoQtyMt?: string | number,
   cargoName?: string,
+  commodityTypeId?: number,
   cargoType?: string,
   transportLs?: string | number,
   boatHire?: string | number,
@@ -426,7 +427,7 @@ const buildBBRows = (
     })
 
   const pickCargoFee = (value?: string) => {
-    return resolveCargoAgencyRate(value, P)
+    return resolveCargoAgencyRate(commodityTypeId, value, P)
   }
 
   const renderRow = (row: QuoteRow, index: number) => {
@@ -682,6 +683,7 @@ export const renderQuoteHtml = (template: string, data: QuoteData) => {
     normalizedData.grt,
     normalizedData.cargo_qty_mt,
     normalizedData.cargo_name_upper,
+    normalizedData.commodity_type_id,
     normalizedData.cargo_type,
     normalizedData.transport_ls,
     normalizedData.boat_hire_entry,

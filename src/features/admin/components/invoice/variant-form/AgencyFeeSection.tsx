@@ -1,6 +1,7 @@
 import type { EpdaParameterValues } from '@/modules/inquiries/components/common/quoteParameters'
 import { NumberInput } from '@/shared/components/NumberInput'
 import { useI18n } from '@/shared/i18n/I18nProvider'
+import { Plus, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import {
@@ -10,7 +11,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
-import { Plus, X } from 'lucide-react'
 import {
   EpdaComputedSummary,
   EpdaFormSection,
@@ -48,6 +48,7 @@ export function AgencyFeeSection({
     {
       grt: values.grt,
       cargoQty: values.cargoQty,
+      commodityTypeId: values.commodityTypeId,
       cargoType: values.cargoType,
       discountPercent: values.agencyDiscountPercent,
     },

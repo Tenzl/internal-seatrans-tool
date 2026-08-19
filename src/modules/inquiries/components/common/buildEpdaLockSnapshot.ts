@@ -1,8 +1,5 @@
 import type { Commodity } from '@/modules/gallery/services/commodityService'
-import {
-  isTallyFeeEligibleCargoType,
-  SHIPPING_AGENCY_CARGO_TYPES,
-} from '@/modules/gallery/shippingAgencyCargoCatalog'
+import { isTallyFeeEligibleCargoType } from '@/modules/gallery/shippingAgencyCargoCatalog'
 import { buildInvoiceQuoteData } from '@/modules/inquiries/components/common/buildInvoiceQuoteData'
 import {
   mapAgencyFeeModeFromApi,
@@ -84,8 +81,8 @@ export function buildEpdaLockSnapshotFromAdminInquiry(
     eta: toStr(inquiry.eta),
     cargoQty: toStr(inquiry.cargoQuantity),
     cargoName,
+    commodityTypeId: inquiry.commodityTypeId,
     cargoType,
-    cargoTypeOptions: SHIPPING_AGENCY_CARGO_TYPES,
     filteredCargoNames: cargoName
       ? ([
           {

@@ -38,6 +38,7 @@ import {
   TRANSPORT_DOCUMENT_FORM_SECTIONS,
   type TransportDocumentFieldSpec,
 } from './transportDocumentFormConfig'
+import { applyBookingCatalogChange } from './transportDocumentSchemas'
 
 interface TransportDocumentFormProps {
   documentType: TransportDocumentType
@@ -251,6 +252,13 @@ export function TransportDocumentForm({
     const grossWeight = byKey.grossWeight
     const measurement = byKey.measurement
     const specialRemark = byKey.specialRemark
+    const catalogState = {
+      commodityTypeId: asPartyId(values.commodityTypeId),
+      commodityType: String(values.commodityType ?? ''),
+      commodityId: asPartyId(values.commodityId),
+      commodityName: String(values.commodityName ?? ''),
+      commodity: String(values.commodity ?? ''),
+    }
 
     return (
       <div className='space-y-4'>
@@ -264,10 +272,28 @@ export function TransportDocumentForm({
         />
         <div className='grid gap-x-4 gap-y-3 md:grid-cols-2'>
           <BookingCommoditySelect
-            value={String(values.commodity ?? '')}
-            selectedId={asPartyId(values.commodityId)}
-            onChange={(label, id) => {
-              patchFields({ commodity: label, commodityId: id })
+            commodityType={catalogState.commodityType}
+            commodityTypeId={catalogState.commodityTypeId}
+            commodityName={catalogState.commodityName}
+            commodityId={catalogState.commodityId}
+            description={catalogState.commodity}
+            onTypeChange={(name, id) => {
+              patchFields(
+                applyBookingCatalogChange(catalogState, {
+                  field: 'type',
+                  id,
+                  name,
+                })
+              )
+            }}
+            onCommodityChange={(name, id) => {
+              patchFields(
+                applyBookingCatalogChange(catalogState, {
+                  field: 'commodity',
+                  id,
+                  name,
+                })
+              )
             }}
           />
           {grossWeight ? renderField(grossWeight) : null}
