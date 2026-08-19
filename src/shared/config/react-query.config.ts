@@ -103,8 +103,8 @@ export const queryKeys = {
   adminUserRoles: (roleGroup: string) => ['adminUserRoles', roleGroup] as const,
   storageList: (prefix: string) => ['storage', 'list', prefix] as const,
   storageListPrefix: () => ['storage', 'list'] as const,
-  bookingHistoryList: (page: number, size: number) =>
-    ['transportDocuments', 'bookings', page, size] as const,
+  bookingHistoryList: (page: number, size: number, bookingNo = '') =>
+    ['transportDocuments', 'bookings', page, size, bookingNo] as const,
   bookingWorkflow: (bookingId: number) =>
     ['transportDocuments', 'workflow', bookingId] as const,
   bookingCopySource: (bookingId: number) =>

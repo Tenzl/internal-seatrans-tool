@@ -142,10 +142,14 @@ export const transportDocumentService = {
     type: TransportDocumentType
     page?: number
     size?: number
+    bookingNo?: string
   }): Promise<PageResponse<TransportDocumentRecord>> {
     const params = new URLSearchParams()
     params.set('page', String(options.page ?? 0))
     params.set('size', String(options.size ?? 10))
+    if (options.bookingNo?.trim()) {
+      params.set('bookingNo', options.bookingNo.trim())
+    }
     const response = await apiClient.get(
       `${API_CONFIG.BOOKING_DOCUMENTS.ADMIN_HISTORY(options.type)}?${params.toString()}`
     )

@@ -143,15 +143,14 @@ export function prefillBillOfLadingFromBooking(
 ): BillOfLadingPayload {
   const { cargoVolumes } = normalizeBookingCargoVolumes(source)
   const seeded = seedAnContainersFromVolumes(cargoVolumes)
-  const containers = applyBookingCargoTotalsToFirstRow(seeded, source)
-  const seededContainers =
-    containers.length > 0 ? containers : [{ ...emptyAnContainer() }]
+  const containers =
+    seeded.length > 0 ? applyBookingCargoTotalsToFirstRow(seeded, source) : []
   const descriptionOfGoods = source.commodity.trim()
   const cargoText = anContainersToBlCargoTextFields(
-    seededContainers,
+    containers,
     descriptionOfGoods
   )
-  const volumeText = anContainersToVolumeText(seededContainers)
+  const volumeText = anContainersToVolumeText(containers)
 
   return {
     ...current,
@@ -166,7 +165,7 @@ export function prefillBillOfLadingFromBooking(
     placeOfIssue: source.portOfLoading,
     freightPayableAt: source.placeOfDelivery,
     numberAndKindOfPackages: volumeText,
-    containers: seededContainers,
+    containers,
     descriptionOfGoods: cargoText.descriptionOfGoods,
     grossWeight: cargoText.grossWeight,
     measurement: cargoText.measurement,

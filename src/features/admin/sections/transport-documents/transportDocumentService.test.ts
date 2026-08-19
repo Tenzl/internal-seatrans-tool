@@ -307,4 +307,32 @@ describe('transportDocumentService', () => {
       '/admin/booking-documents/do/records?page=2&size=10'
     )
   })
+
+  it('adds a trimmed Booking No. search to the history request', async () => {
+    vi.mocked(apiClient.get).mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          data: {
+            content: [],
+            totalElements: 0,
+            totalPages: 0,
+            size: 10,
+            number: 0,
+          },
+        }),
+        { status: 200 }
+      )
+    )
+
+    await transportDocumentService.history({
+      type: 'booking',
+      page: 0,
+      size: 10,
+      bookingNo: ' BK 24/001 ',
+    })
+
+    expect(apiClient.get).toHaveBeenCalledWith(
+      '/admin/booking-documents/booking/records?page=0&size=10&bookingNo=BK+24%2F001'
+    )
+  })
 })

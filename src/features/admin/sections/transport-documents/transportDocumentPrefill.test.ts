@@ -232,6 +232,35 @@ describe('transportDocumentPrefill', () => {
     expect(next.measurement).toBe('20 CBM')
   })
 
+  it('keeps BL at zero rows when Booking has no selected cargo type', () => {
+    const booking = emptyBookingConfirmation()
+    booking.cargoVolumes = {}
+    booking.volume = ''
+    booking.grossWeight = '24000'
+    booking.measurement = '7.26'
+
+    const next = prefillBillOfLadingFromBooking(booking, emptyBillOfLading())
+
+    expect(next.containers).toEqual([])
+  })
+
+  it('maps every selected Booking cargo unit without a leading blank BL row', () => {
+    const booking = emptyBookingConfirmation()
+    booking.cargoVolumes = { "40'HC": 2, "45'HC": 2, "40'HQ": 3 }
+
+    const next = prefillBillOfLadingFromBooking(booking, emptyBillOfLading())
+
+    expect(next.containers.map((row) => row.type)).toEqual([
+      "40'HC",
+      "40'HC",
+      "45'HC",
+      "45'HC",
+      "40'HQ",
+      "40'HQ",
+      "40'HQ",
+    ])
+  })
+
   it('maps AN containers onto DO cargo rows without sharing arrays', () => {
     const an = emptyArrivalNotice()
     an.mblNumber = 'MBL1'

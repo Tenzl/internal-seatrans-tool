@@ -4,8 +4,9 @@ import { useEffect, useMemo, useState } from 'react'
 import { keepPreviousData, useQuery } from '@tanstack/react-query'
 import { isAdminRole } from '@/config/section-catalog'
 import { queryKeys } from '@/shared/config/react-query.config'
+import { useDebouncedValue } from '@/shared/hooks/useDebouncedValue'
 import { toast } from '@/shared/utils/toast'
-import { AlertCircle, History, Loader2, RefreshCw } from 'lucide-react'
+import { AlertCircle, History, Loader2, RefreshCw, Search } from 'lucide-react'
 import Link from 'next/link'
 import { useCurrentUser } from '@/hooks/use-current-user'
 import { useIsMobile } from '@/hooks/use-mobile'
@@ -18,6 +19,7 @@ import {
   CardHeader,
   CardTitle,
 } from '@/components/ui/card'
+import { Input } from '@/components/ui/input'
 import { TransportDocumentHistoryActions } from './TransportDocumentHistoryActions'
 import { TransportDocumentHistoryDataTable } from './TransportDocumentHistoryDataTable'
 import { TransportDocumentMutationDialogs } from './TransportDocumentMutationDialogs'
@@ -32,6 +34,8 @@ import { useTransportDocumentHistoryActions } from './useTransportDocumentHistor
 /** Booking-root list; child documents are managed inside the workflow view. */
 export function BookingHistoryScreen() {
   const [page, setPage] = useState(0)
+  const [bookingNo, setBookingNo] = useState('')
+  const debouncedBookingNo = useDebouncedValue(bookingNo, 300).trim()
   const pageSize = 10
   const currentUser = useCurrentUser()
   const isMobile = useIsMobile()
@@ -46,12 +50,15 @@ export function BookingHistoryScreen() {
   )
 
   const bookingQuery = useQuery({
-    queryKey: [...queryKeys.bookingHistoryList(page, pageSize)],
+    queryKey: [
+      ...queryKeys.bookingHistoryList(page, pageSize, debouncedBookingNo),
+    ],
     queryFn: () =>
       transportDocumentService.history({
         type: 'booking',
         page,
         size: pageSize,
+        bookingNo: debouncedBookingNo || undefined,
       }),
     placeholderData: keepPreviousData,
   })
@@ -121,7 +128,21 @@ export function BookingHistoryScreen() {
                 Delivery Order (Import).
               </CardDescription>
             </div>
-            <div className='flex flex-wrap gap-2'>
+            <div className='flex w-full flex-wrap gap-2 sm:w-auto'>
+              <div className='relative min-w-0 flex-1 sm:w-[260px] sm:flex-none'>
+                <Search className='pointer-events-none absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-muted-foreground' />
+                <Input
+                  type='search'
+                  aria-label='Search by Booking No.'
+                  placeholder='Search Booking No.…'
+                  value={bookingNo}
+                  onChange={(event) => {
+                    setBookingNo(event.target.value)
+                    setPage(0)
+                  }}
+                  className='h-10 pl-9 sm:h-9'
+                />
+              </div>
               <Button
                 type='button'
                 variant='outline'
@@ -153,13 +174,17 @@ export function BookingHistoryScreen() {
           ) : records.length === 0 ? (
             <div className='space-y-3 py-8 text-center'>
               <p className='text-muted-foreground'>
-                No bookings yet. Create a booking to begin.
+                {debouncedBookingNo
+                  ? `No bookings found for “${debouncedBookingNo}”.`
+                  : 'No bookings yet. Create a booking to begin.'}
               </p>
-              <Button asChild variant='outline' size='sm'>
-                <Link href='/booking/documents/booking-confirmation'>
-                  Create Booking
-                </Link>
-              </Button>
+              {!debouncedBookingNo ? (
+                <Button asChild variant='outline' size='sm'>
+                  <Link href='/booking/documents/booking-confirmation'>
+                    Create Booking
+                  </Link>
+                </Button>
+              ) : null}
             </div>
           ) : (
             <TransportDocumentHistoryDataTable

@@ -336,7 +336,7 @@ export const emptyBillOfLading = (): BillOfLadingPayload => ({
   descriptionOfGoods: '',
   grossWeight: '',
   measurement: '',
-  containers: [emptyAnContainer()],
+  containers: [],
   freightTerms: '',
   cleanOnBoardDate: '',
   declarationOfInterest: '',
@@ -393,10 +393,6 @@ export function normalizeBillOfLadingPayload(
       numberAndKindOfPackages: rest.numberAndKindOfPackages,
     })
   }
-  if (containers.length === 0) {
-    containers = [emptyAnContainer()]
-  }
-
   const descriptionOfGoods = resolveDescriptionOfGoods({
     descriptionOfGoods: rest.descriptionOfGoods,
     containers,

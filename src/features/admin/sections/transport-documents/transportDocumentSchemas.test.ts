@@ -14,6 +14,11 @@ import {
 } from './transportDocumentSchemas'
 
 describe('transport document schemas', () => {
+  it('keeps a new or empty BL at zero container rows', () => {
+    expect(emptyBillOfLading().containers).toEqual([])
+    expect(normalizeBillOfLadingPayload({}).containers).toEqual([])
+  })
+
   it('keeps the backend cargo row property names intact', () => {
     expect(
       cargoRowSchema.parse({

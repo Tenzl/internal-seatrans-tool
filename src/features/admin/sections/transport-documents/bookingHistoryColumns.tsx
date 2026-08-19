@@ -33,7 +33,7 @@ export function buildBookingHistoryColumns({
     {
       accessorKey: 'referenceNumber',
       header: ({ column }) =>
-        renderSortableHeader('Reference', () =>
+        renderSortableHeader('Booking No.', () =>
           column.toggleSorting(column.getIsSorted() === 'asc')
         ),
       cell: ({ row }) => (
