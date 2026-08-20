@@ -1,17 +1,16 @@
-import { useMemo, useState } from 'react'
-import type { Commodity } from '@/modules/gallery/services/commodityService'
+import { useCallback, useMemo, useRef, useState } from 'react'
 import {
-  Boxes,
-  Edit2,
-  Package,
-  Plus,
-  Save,
-  Search,
-  Trash2,
-  X,
-} from 'lucide-react'
+  type ColumnDef,
+  getCoreRowModel,
+  getFilteredRowModel,
+  useReactTable,
+} from '@tanstack/react-table'
+import type { Commodity } from '@/modules/gallery/services/commodityService'
+import { Boxes, Package, Plus, Search } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import { DataTableContent } from '@/components/ui/data-table'
 import { Input } from '@/components/ui/input'
+import { CatalogRowActions } from './CatalogRowActions'
 import type { CommodityInput } from './useCommodities'
 
 interface CommoditiesTableProps {
@@ -38,40 +37,116 @@ export function CommoditiesTable({
 }: CommoditiesTableProps) {
   const [createInput, setCreateInput] = useState(EMPTY_INPUT)
   const [editingId, setEditingId] = useState<number | null>(null)
-  const [editingInput, setEditingInput] = useState(EMPTY_INPUT)
-  const [query, setQuery] = useState('')
-  const visibleCommodities = useMemo(() => {
-    const normalizedQuery = query.trim().toLocaleLowerCase()
-    if (!normalizedQuery) return commodities
-    return commodities.filter((commodity) =>
-      commodity.displayName.toLocaleLowerCase().includes(normalizedQuery)
-    )
-  }, [commodities, query])
+  const editingIdRef = useRef<number | null>(null)
+  const editingInputRef = useRef(EMPTY_INPUT)
 
   const submitCreate = async () => {
     if (await onCreate(createInput)) setCreateInput(EMPTY_INPUT)
   }
 
-  const startEdit = (commodity: Commodity) => {
+  const startEdit = useCallback((commodity: Commodity) => {
+    editingIdRef.current = commodity.id
     setEditingId(commodity.id)
-    setEditingInput({
+    const nextInput = {
       displayName: commodity.displayName,
       description: commodity.description ?? '',
-    })
-  }
+    }
+    editingInputRef.current = nextInput
+  }, [])
 
-  const cancelEdit = () => {
+  const cancelEdit = useCallback(() => {
+    editingIdRef.current = null
     setEditingId(null)
-    setEditingInput(EMPTY_INPUT)
-  }
+    editingInputRef.current = EMPTY_INPUT
+  }, [])
 
-  const saveEdit = async () => {
-    if (editingId == null) return
-    if (await onUpdate(editingId, editingInput)) cancelEdit()
-  }
+  const saveEdit = useCallback(async () => {
+    const currentEditingId = editingIdRef.current
+    if (currentEditingId == null) return
+    if (await onUpdate(currentEditingId, editingInputRef.current)) cancelEdit()
+  }, [cancelEdit, onUpdate])
+
+  const columns = useMemo<ColumnDef<Commodity>[]>(
+    () => [
+      {
+        accessorKey: 'displayName',
+        header: () => null,
+        cell: ({ row }) => {
+          const commodity = row.original
+          const editing = editingId === commodity.id
+          return editing ? (
+            <Input
+              defaultValue={commodity.displayName}
+              onChange={(event) => {
+                editingInputRef.current = {
+                  ...editingInputRef.current,
+                  displayName: event.target.value,
+                }
+              }}
+              aria-label='Edit Commodity name'
+              disabled={loading}
+              className='h-9 bg-background'
+            />
+          ) : (
+            commodity.displayName
+          )
+        },
+      },
+      ...(canManage
+        ? [
+            {
+              id: 'actions',
+              header: () => null,
+              enableColumnFilter: false,
+              cell: ({ row }) => {
+                const commodity = row.original
+                const editing = editingId === commodity.id
+                return (
+                  <CatalogRowActions
+                    editing={editing}
+                    itemLabel={`Commodity ${commodity.displayName}`}
+                    loading={loading}
+                    onEdit={() => startEdit(commodity)}
+                    onSave={() => void saveEdit()}
+                    onCancel={cancelEdit}
+                    onDelete={() => void onDelete(commodity.id)}
+                  />
+                )
+              },
+            } satisfies ColumnDef<Commodity>,
+          ]
+        : []),
+    ],
+    [canManage, cancelEdit, editingId, loading, onDelete, saveEdit, startEdit]
+  )
+
+  // TanStack Table intentionally owns the catalog filtering and row model.
+  // eslint-disable-next-line react-hooks/incompatible-library
+  const table = useReactTable({
+    data: commodities,
+    columns,
+    getCoreRowModel: getCoreRowModel(),
+    getFilteredRowModel: getFilteredRowModel(),
+  })
+  const visibleCount = table.getFilteredRowModel().rows.length
 
   return (
-    <section className='min-w-0 overflow-hidden rounded-2xl bg-card shadow-[0_22px_55px_-44px_color-mix(in_oklch,var(--foreground)_45%,transparent)] ring-1 ring-border/70'>
+    <section
+      className='min-w-0 overflow-hidden rounded-2xl bg-card shadow-[0_22px_55px_-44px_color-mix(in_oklch,var(--foreground)_45%,transparent)] ring-1 ring-border/70'
+      onKeyDownCapture={(event) => {
+        const target = event.target as HTMLElement
+        if (target.getAttribute('aria-label') !== 'Edit Commodity name') {
+          return
+        }
+        if (event.key === 'Enter') {
+          event.preventDefault()
+          void saveEdit()
+        } else if (event.key === 'Escape') {
+          event.preventDefault()
+          cancelEdit()
+        }
+      }}
+    >
       <header className='flex min-h-[5.75rem] flex-col gap-4 px-4 pt-4 pb-3.5 sm:flex-row sm:items-start sm:justify-between sm:px-5 sm:pt-5'>
         <div className='flex min-w-0 items-start gap-3'>
           <span className='flex size-9 shrink-0 items-center justify-center rounded-lg bg-primary text-primary-foreground shadow-sm'>
@@ -135,15 +210,22 @@ export function CommoditiesTable({
             />
             <Input
               type='search'
-              value={query}
-              onChange={(event) => setQuery(event.target.value)}
+              value={
+                (table.getColumn('displayName')?.getFilterValue() as string) ??
+                ''
+              }
+              onChange={(event) =>
+                table
+                  .getColumn('displayName')
+                  ?.setFilterValue(event.target.value)
+              }
               aria-label='Search Commodities'
               placeholder='Search Commodities'
               className='h-9 bg-background pr-3 pl-9 shadow-none'
             />
           </div>
           <p className='font-mono text-xs text-muted-foreground tabular-nums'>
-            {visibleCommodities.length} shown
+            {visibleCount} shown
           </p>
         </div>
       ) : null}
@@ -168,7 +250,7 @@ export function CommoditiesTable({
             generated automatically.
           </p>
         </div>
-      ) : visibleCommodities.length === 0 ? (
+      ) : visibleCount === 0 ? (
         <div className='px-5 py-12 text-center'>
           <span className='mx-auto mb-3 flex size-11 items-center justify-center rounded-xl bg-muted text-muted-foreground'>
             <Search className='size-5' aria-hidden='true' />
@@ -181,96 +263,18 @@ export function CommoditiesTable({
           </p>
         </div>
       ) : (
-        <div className='max-h-[15rem] overflow-x-auto overflow-y-auto overscroll-contain'>
-          <table className='w-full' aria-label='Commodities catalog'>
-            <tbody>
-              {visibleCommodities.map((commodity) => {
-                const editing = editingId === commodity.id
-                return (
-                  <tr
-                    key={commodity.id}
-                    className='group border-t border-border/50 transition-colors duration-200 hover:bg-muted/30'
-                  >
-                    <td className='px-4 py-2.5'>
-                      {editing ? (
-                        <Input
-                          value={editingInput.displayName}
-                          onChange={(event) =>
-                            setEditingInput((current) => ({
-                              ...current,
-                              displayName: event.target.value,
-                            }))
-                          }
-                          aria-label='Edit Commodity name'
-                          disabled={loading}
-                          className='h-9 bg-background'
-                        />
-                      ) : (
-                        commodity.displayName
-                      )}
-                    </td>
-                    {canManage ? (
-                      <td className='px-4 py-2.5'>
-                        <div className='flex justify-end gap-1'>
-                          {editing ? (
-                            <>
-                              <Button
-                                type='button'
-                                variant='ghost'
-                                size='icon'
-                                className='size-8 active:translate-y-px'
-                                disabled={loading}
-                                aria-label='Save Commodity'
-                                onClick={() => void saveEdit()}
-                              >
-                                <Save className='size-3.5' />
-                              </Button>
-                              <Button
-                                type='button'
-                                variant='ghost'
-                                size='icon'
-                                className='size-8 active:translate-y-px'
-                                disabled={loading}
-                                aria-label='Cancel Commodity edit'
-                                onClick={cancelEdit}
-                              >
-                                <X className='size-3.5' />
-                              </Button>
-                            </>
-                          ) : (
-                            <>
-                              <Button
-                                type='button'
-                                variant='ghost'
-                                size='icon'
-                                className='size-8 text-muted-foreground opacity-70 transition-opacity group-hover:opacity-100 focus-visible:opacity-100 active:translate-y-px'
-                                aria-label={`Edit Commodity ${commodity.displayName}`}
-                                onClick={() => startEdit(commodity)}
-                              >
-                                <Edit2 className='size-3.5' />
-                              </Button>
-                              <Button
-                                type='button'
-                                variant='ghost'
-                                size='icon'
-                                disabled={loading}
-                                aria-label={`Delete Commodity ${commodity.displayName}`}
-                                className='size-8 text-destructive opacity-70 transition-opacity group-hover:opacity-100 hover:bg-destructive/10 focus-visible:opacity-100 active:translate-y-px'
-                                onClick={() => void onDelete(commodity.id)}
-                              >
-                                <Trash2 className='size-3.5' />
-                              </Button>
-                            </>
-                          )}
-                        </div>
-                      </td>
-                    ) : null}
-                  </tr>
-                )
-              })}
-            </tbody>
-          </table>
-        </div>
+        <DataTableContent
+          table={table}
+          columnCount={columns.length}
+          ariaLabel='Commodities catalog'
+          showHeader={false}
+          maxHeight='15rem'
+          containerClassName='overflow-x-auto overflow-y-auto overscroll-contain rounded-none border-x-0 border-b-0'
+          tableClassName='w-full'
+          columnClassName={(columnId) =>
+            columnId === 'actions' ? 'w-14 px-4 py-2.5 sm:w-44' : 'px-4 py-2.5'
+          }
+        />
       )}
     </section>
   )

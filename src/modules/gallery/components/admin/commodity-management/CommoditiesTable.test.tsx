@@ -73,11 +73,17 @@ describe('CommoditiesTable hidden internal code contract', () => {
       })
     )
 
-    fireEvent.click(screen.getByLabelText('Edit Commodity Wood Chips'))
-    fireEvent.change(screen.getByLabelText('Edit Commodity name'), {
+    const editButton = screen.getByLabelText('Edit Commodity Wood Chips')
+    expect(editButton).toHaveTextContent('Edit')
+    expect(
+      screen.getByLabelText('Delete Commodity Wood Chips')
+    ).toHaveTextContent('Delete')
+    fireEvent.click(editButton)
+    const editInput = screen.getByLabelText('Edit Commodity name')
+    fireEvent.change(editInput, {
       target: { value: 'Biomass' },
     })
-    fireEvent.click(screen.getByLabelText('Save Commodity'))
+    fireEvent.keyDown(editInput, { key: 'Enter' })
 
     await waitFor(() =>
       expect(onUpdate).toHaveBeenCalledWith(9, {
@@ -108,11 +114,13 @@ describe('CommoditiesTable hidden internal code contract', () => {
       />
     )
 
-    const catalog = screen.getByRole('table', {
+    const table = screen.getByRole('table', {
       name: 'Commodities catalog',
-    }).parentElement
-    expect(catalog).toHaveClass('overflow-y-auto')
-    expect(catalog).toHaveClass('max-h-[15rem]')
+    })
+    const catalog = table.closest('.admin-data-table')
+    expect(catalog).not.toBeNull()
+    expect((catalog as HTMLElement).style.maxHeight).toBe('15rem')
+    expect(screen.queryByRole('columnheader')).toBeNull()
 
     fireEvent.change(screen.getByLabelText('Search Commodities'), {
       target: { value: 'rice' },

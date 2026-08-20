@@ -1,5 +1,11 @@
 // @vitest-environment jsdom
-import { cleanup, fireEvent, render, screen } from '@testing-library/react'
+import {
+  cleanup,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { CommodityTypesTable } from './CommodityTypesTable'
@@ -55,14 +61,21 @@ describe('CommodityTypesTable', () => {
     )
 
     expect(screen.queryByRole('columnheader', { name: 'Code' })).toBeNull()
-    await user.click(screen.getByRole('button', { name: 'Edit Type Bulk' }))
+    const editButton = screen.getByRole('button', { name: 'Edit Type Bulk' })
+    expect(editButton).toHaveTextContent('Edit')
+    expect(
+      screen.getByRole('button', { name: 'Delete Type Bulk' })
+    ).toHaveTextContent('Delete')
+    await user.click(editButton)
     expect(screen.queryByLabelText('Edit Type code')).not.toBeInTheDocument()
 
     const name = screen.getByRole('textbox', { name: 'Edit Type name' })
     await user.clear(name)
     await user.type(name, 'Dry Bulk')
-    await user.click(screen.getByRole('button', { name: 'Save Type' }))
-    expect(onUpdate).toHaveBeenCalledWith(1, { name: 'Dry Bulk' })
+    await user.keyboard('{Enter}')
+    await waitFor(() =>
+      expect(onUpdate).toHaveBeenCalledWith(1, { name: 'Dry Bulk' })
+    )
 
     await user.click(screen.getByRole('button', { name: 'Delete Type Bulk' }))
     expect(onDelete).toHaveBeenCalledWith(1)
@@ -86,9 +99,11 @@ describe('CommodityTypesTable', () => {
       />
     )
 
-    const catalog = screen.getByRole('list', { name: 'Types catalog' })
-    expect(catalog).toHaveClass('overflow-y-auto')
-    expect(catalog).toHaveClass('max-h-[13.25rem]')
+    const table = screen.getByRole('table', { name: 'Types catalog' })
+    const catalog = table.closest('.admin-data-table')
+    expect(catalog).not.toBeNull()
+    expect((catalog as HTMLElement).style.maxHeight).toBe('13.25rem')
+    expect(screen.queryByRole('columnheader')).toBeNull()
 
     fireEvent.change(screen.getByLabelText('Search Types'), {
       target: { value: 'liquid' },

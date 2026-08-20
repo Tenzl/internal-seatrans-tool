@@ -93,6 +93,10 @@ interface DataTableContentProps<TData> {
   containerClassName?: string
   /** Extra className on the <Table> element (e.g. "w-max min-w-full" for sticky cols) */
   tableClassName?: string
+  /** Accessible name for the rendered table. */
+  ariaLabel?: string
+  /** Hide the visual header row for compact, self-explanatory catalogs. */
+  showHeader?: boolean
 }
 
 export function DataTableContent<TData>({
@@ -104,32 +108,39 @@ export function DataTableContent<TData>({
   columnClassName,
   containerClassName,
   tableClassName,
+  ariaLabel,
+  showHeader = true,
 }: DataTableContentProps<TData>) {
   return (
     <div
       className={cn('admin-data-table', containerClassName)}
       style={maxHeight ? { maxHeight } : undefined}
     >
-      <table className={cn('w-full caption-bottom text-sm', tableClassName)}>
-        <TableHeader>
-          {table.getHeaderGroups().map((headerGroup) => (
-            <TableRow key={headerGroup.id}>
-              {headerGroup.headers.map((header) => (
-                <TableHead
-                  key={header.id}
-                  className={columnClassName?.(header.column.id, 'header')}
-                >
-                  {header.isPlaceholder
-                    ? null
-                    : flexRender(
-                        header.column.columnDef.header,
-                        header.getContext()
-                      )}
-                </TableHead>
-              ))}
-            </TableRow>
-          ))}
-        </TableHeader>
+      <table
+        aria-label={ariaLabel}
+        className={cn('w-full caption-bottom text-sm', tableClassName)}
+      >
+        {showHeader ? (
+          <TableHeader>
+            {table.getHeaderGroups().map((headerGroup) => (
+              <TableRow key={headerGroup.id}>
+                {headerGroup.headers.map((header) => (
+                  <TableHead
+                    key={header.id}
+                    className={columnClassName?.(header.column.id, 'header')}
+                  >
+                    {header.isPlaceholder
+                      ? null
+                      : flexRender(
+                          header.column.columnDef.header,
+                          header.getContext()
+                        )}
+                  </TableHead>
+                ))}
+              </TableRow>
+            ))}
+          </TableHeader>
+        ) : null}
         <TableBody>
           {loading ? (
             <TableRow>
