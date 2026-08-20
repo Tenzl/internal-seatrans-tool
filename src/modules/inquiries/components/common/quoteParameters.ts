@@ -532,13 +532,30 @@ export function resolveGrtTier(
 ): { amount: number; label: string } | undefined {
   const grtNum = parseFiniteNumber(grt)
   if (grtNum === null || !tiers.length) return undefined
-  for (const tier of tiers) {
+
+  // Historical parameter documents may predate the backend ordering guard.
+  // Resolve defensively without mutating the frozen snapshot.
+  const orderedTiers = tiers
+    .map((tier, index) => ({ tier, index }))
+    .sort((left, right) => {
+      const leftMax =
+        left.tier.maxGrt === null ? null : parseFiniteNumber(left.tier.maxGrt)
+      const rightMax =
+        right.tier.maxGrt === null ? null : parseFiniteNumber(right.tier.maxGrt)
+      if (leftMax === null && rightMax === null) return left.index - right.index
+      if (leftMax === null) return 1
+      if (rightMax === null) return -1
+      return leftMax - rightMax || left.index - right.index
+    })
+    .map(({ tier }) => tier)
+
+  for (const tier of orderedTiers) {
     const maxGrt = tier.maxGrt === null ? null : parseFiniteNumber(tier.maxGrt)
     if (maxGrt === null || grtNum <= maxGrt) {
       return { amount: parseFiniteNumber(tier.amount) ?? 0, label: tier.label }
     }
   }
-  const last = tiers[tiers.length - 1]
+  const last = orderedTiers[orderedTiers.length - 1]
   return { amount: parseFiniteNumber(last.amount) ?? 0, label: last.label }
 }
 

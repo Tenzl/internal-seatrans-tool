@@ -17,7 +17,7 @@ export function createCustomerFieldStyles(
     value: string | null | undefined
   ) =>
     mergeEpdaFieldClasses(
-      getRequiredState(value).fieldClass,
+      getRequiredState(value, field).fieldClass,
       getCustomerFieldClass?.(field) ?? ''
     )
 
@@ -26,7 +26,7 @@ export function createCustomerFieldStyles(
     value: string | null | undefined
   ) =>
     mergeEpdaFieldClasses(
-      getRequiredState(value).labelClass,
+      getRequiredState(value, field).labelClass,
       getCustomerFieldClass?.(field)
         ? 'text-emerald-700 dark:text-emerald-400'
         : ''

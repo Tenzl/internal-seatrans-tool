@@ -369,8 +369,8 @@ export function useEpdaEditorFormModel({
   )
 
   const getRequiredState = useCallback(
-    (value: string | null | undefined) =>
-      getRequiredFieldState(value, showValidationErrors),
+    (value: string | null | undefined, field?: string) =>
+      getRequiredFieldState(value, showValidationErrors, field),
     [showValidationErrors]
   )
 

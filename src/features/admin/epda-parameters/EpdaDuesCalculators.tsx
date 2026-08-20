@@ -413,17 +413,14 @@ export function BerthDuesCalculator({
       <h4 className='text-base font-semibold'>{t('berthDuesCalc.title')}</h4>
 
       {/* Inputs (hours) */}
-      <div
-        className={`grid gap-3 sm:max-w-2xl ${isHcmWorksheet(variant) ? 'sm:grid-cols-3' : 'sm:grid-cols-2'}`}
-      >
+      <div className='grid gap-3 sm:max-w-2xl sm:grid-cols-3'>
         {inputField(t('tonnageCalc.grtLabel'), grtText, setGrtText)}
         {inputField(t('f.berthHours'), berthHoursText, setBerthHoursText)}
-        {isHcmWorksheet(variant) &&
-          inputField(
-            t('f.anchorageHours'),
-            anchorageHoursText,
-            setAnchorageHoursText
-          )}
+        {inputField(
+          t('f.anchorageHours'),
+          anchorageHoursText,
+          setAnchorageHoursText
+        )}
       </div>
 
       {/* Detail below — recomputes live from the inputs */}
@@ -454,18 +451,16 @@ export function BerthDuesCalculator({
               test={boldNumbers(`= USD ${fmtNum(buoy)}`)}
             />
           )}
-          {isHcmWorksheet(variant) && (
-            <ScanRow
-              label={boldNumbers(
-                t('berthDuesCalc.anchorageLine', {
-                  rate: coeff.anchoragePerGrtHour,
-                  hours: fmtNum(anchorageHours),
-                  grt: fmtNum(grt),
-                })
-              )}
-              test={boldNumbers(`= USD ${fmtNum(anchorage)}`)}
-            />
-          )}
+          <ScanRow
+            label={boldNumbers(
+              t('berthDuesCalc.anchorageLine', {
+                rate: coeff.anchoragePerGrtHour,
+                hours: fmtNum(anchorageHours),
+                grt: fmtNum(grt),
+              })
+            )}
+            test={boldNumbers(`= USD ${fmtNum(anchorage)}`)}
+          />
         </div>
       </div>
     </div>

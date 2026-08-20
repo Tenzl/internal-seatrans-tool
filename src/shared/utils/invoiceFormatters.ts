@@ -108,6 +108,12 @@ const normalizeInvoiceNumericValue = (
   // would break tug/GRT calculations that multiply tier amounts.
   if (key === 'params') return value
 
+  // IDs are calculation identities, not display amounts. Converting 2 to "2"
+  // breaks strict lookups such as commodity Type rate resolution.
+  if (key && (key === 'id' || key.endsWith('_id') || key.endsWith('Id'))) {
+    return value
+  }
+
   if (typeof value === 'number') {
     if (!Number.isFinite(value)) return value
     return value.toLocaleString('en-US')

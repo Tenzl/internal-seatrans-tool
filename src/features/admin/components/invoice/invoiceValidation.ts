@@ -37,6 +37,27 @@ export interface RequiredFieldOptions {
   requireCargoName?: boolean
 }
 
+const POSITIVE_NUMERIC_REQUIRED_FIELDS = new Set<RequiredFieldKey>([
+  'dwt',
+  'grt',
+  'loa',
+  'cargoQty',
+])
+
+function isMissingRequiredValue(
+  value: string | null | undefined,
+  key?: string
+): boolean {
+  const raw = String(value ?? '').trim()
+  if (!raw) return true
+  if (!key || !POSITIVE_NUMERIC_REQUIRED_FIELDS.has(key as RequiredFieldKey)) {
+    return false
+  }
+
+  const numeric = Number(raw.replaceAll(',', ''))
+  return !Number.isFinite(numeric) || numeric <= 0
+}
+
 const REQUIRED_FIELD_CONFIG: Array<{ key: RequiredFieldKey; label: string }> = [
   { key: 'toShipowner', label: 'To (Ship Owner/Company)' },
   { key: 'mv', label: 'M/V (Vessel Name)' },
@@ -72,14 +93,17 @@ export function buildRequiredFields(
 export function getMissingRequiredFields(
   fields: RequiredField[]
 ): RequiredField[] {
-  return fields.filter((field) => String(field.value ?? '').trim() === '')
+  return fields.filter((field) =>
+    isMissingRequiredValue(field.value, field.key)
+  )
 }
 
 export function getRequiredFieldState(
   value: string | null | undefined,
-  showError: boolean
+  showError: boolean,
+  key?: string
 ) {
-  const hasValue = String(value ?? '').trim() !== ''
+  const hasValue = !isMissingRequiredValue(value, key)
   return {
     labelClass: !showError || hasValue ? 'text-foreground' : 'text-red-600',
     fieldClass:

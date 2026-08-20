@@ -1,5 +1,6 @@
 'use client'
 
+import { useId } from 'react'
 import type { CommodityType } from '@/modules/gallery/services/commodityService'
 import {
   withAutoGrtTierLabels,
@@ -33,13 +34,20 @@ export function NumberField({
   value: number
   onChange: (n: number) => void
 }) {
+  const inputId = useId()
+
   return (
     <div className='grid gap-2'>
-      <Label className='text-sm font-medium text-muted-foreground'>
+      <Label
+        htmlFor={inputId}
+        className='text-sm font-medium text-muted-foreground'
+      >
         {label}
       </Label>
       <NumberInput
+        id={inputId}
         value={value}
+        decimalScale={6}
         onValueChange={(next) => onChange(next ?? 0)}
         className='h-11 text-base tabular-nums'
       />
@@ -268,6 +276,7 @@ export function CargoAgencyRateTable({
                 <NumberInput
                   className='text-base tabular-nums'
                   value={rateFor(type.id)}
+                  decimalScale={6}
                   onValueChange={(next) => setRate(type, next ?? 0)}
                 />
               </TableCell>

@@ -88,20 +88,18 @@ export function PortDuesSection({
           />
         </div>
 
-        {variantConfig.chargeLayout === 'HCM' && (
-          <div className='grid gap-2'>
-            <FieldLabel htmlFor='anchorageHours'>
-              {t('epda.anchorageHours')}
-            </FieldLabel>
-            <NumberInput
-              id='anchorageHours'
-              value={values.anchorageHours}
-              onValueChange={(_value, canonical) =>
-                handlers.setAnchorageHours(canonical)
-              }
-            />
-          </div>
-        )}
+        <div className='grid gap-2'>
+          <FieldLabel htmlFor='anchorageHours'>
+            {t('epda.anchorageHours')}
+          </FieldLabel>
+          <NumberInput
+            id='anchorageHours'
+            value={values.anchorageHours}
+            onValueChange={(_value, canonical) =>
+              handlers.setAnchorageHours(canonical)
+            }
+          />
+        </div>
 
         {variantConfig.pilotageMode === 'SINGLE_RATE' ? (
           <div className='grid gap-2'>

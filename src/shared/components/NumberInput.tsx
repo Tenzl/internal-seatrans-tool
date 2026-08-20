@@ -2,8 +2,8 @@
 
 import { useEffect, useRef, useState, type ComponentProps } from 'react'
 import {
+  DEFAULT_NUMBER_INPUT_DECIMALS,
   formatNumberInputValue,
-  MAX_NUMBER_INPUT_DECIMALS,
   type NumberInputDecimalScale,
   parseNumberInputDraft,
 } from '@/shared/utils/numberInput'
@@ -29,7 +29,7 @@ export interface NumberInputProps extends Omit<
 export function NumberInput({
   value,
   onValueChange,
-  decimalScale = MAX_NUMBER_INPUT_DECIMALS,
+  decimalScale = DEFAULT_NUMBER_INPUT_DECIMALS,
   min = 0,
   max,
   maxLength = 32,

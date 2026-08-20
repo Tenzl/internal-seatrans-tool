@@ -186,7 +186,11 @@ export function resolveQuoteTotals(
     totalA: escapeHtml(totalA),
     totalB: escapeHtml(totalB),
     grandTotal:
-      grandTotal || (grandNumeric ? formatAmount(grandNumeric) : undefined),
+      grandTotal !== undefined && grandTotal !== ''
+        ? grandTotal
+        : grandNumeric !== null && grandNumeric !== undefined
+          ? formatAmount(grandNumeric)
+          : undefined,
   }
 }
 

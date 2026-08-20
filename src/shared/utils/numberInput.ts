@@ -1,4 +1,5 @@
-export const MAX_NUMBER_INPUT_DECIMALS = 3
+export const DEFAULT_NUMBER_INPUT_DECIMALS = 3
+export const MAX_NUMBER_INPUT_DECIMALS = 6
 
 const GROUPING_SEPARATOR_PATTERN = /\B(?=(\d{3})+(?!\d))/g
 const LEADING_ZERO_PATTERN = /^0+(?=\d)/
@@ -14,7 +15,7 @@ const NUMBER_FORMATTERS = Array.from(
     })
 )
 
-export type NumberInputDecimalScale = 0 | 1 | 2 | 3
+export type NumberInputDecimalScale = 0 | 1 | 2 | 3 | 4 | 5 | 6
 
 export type ParsedNumberInputDraft = {
   canonical: string
@@ -31,7 +32,7 @@ type ParseNumberInputOptions = {
 export function parseNumberInputDraft(
   raw: string,
   {
-    decimalScale = MAX_NUMBER_INPUT_DECIMALS,
+    decimalScale = DEFAULT_NUMBER_INPUT_DECIMALS,
     min = 0,
     max,
   }: ParseNumberInputOptions = {}
@@ -65,7 +66,7 @@ export function parseNumberInputDraft(
 
 export function formatNumberInputValue(
   value: number | string | null | undefined,
-  decimalScale: NumberInputDecimalScale = MAX_NUMBER_INPUT_DECIMALS
+  decimalScale: NumberInputDecimalScale = DEFAULT_NUMBER_INPUT_DECIMALS
 ): string {
   if (value === null || value === undefined || value === '') return ''
   if (typeof value === 'string') {

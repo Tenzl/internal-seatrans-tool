@@ -368,13 +368,11 @@ export function ValuesEditor({
                 onChange={(n) => setCoeff('buoyDuePerGrtHour', n)}
               />
             )}
-            {isHcmWorksheet(variant) && (
-              <NumberField
-                label={t('f.anchorageDue')}
-                value={values.coeff.anchoragePerGrtHour}
-                onChange={(n) => setCoeff('anchoragePerGrtHour', n)}
-              />
-            )}
+            <NumberField
+              label={t('f.anchorageDue')}
+              value={values.coeff.anchoragePerGrtHour}
+              onChange={(n) => setCoeff('anchoragePerGrtHour', n)}
+            />
           </div>
           {/* GRT + (berth / anchorage) hours → live results */}
           <BerthDuesCalculator variant={variant} coeff={values.coeff} />

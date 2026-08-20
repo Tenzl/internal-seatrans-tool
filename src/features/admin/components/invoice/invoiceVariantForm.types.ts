@@ -152,7 +152,10 @@ export interface InvoiceVariantFormProps {
   handlers: InvoiceVariantFormHandlers
   options: InvoiceVariantFormOptions
   computed: InvoiceVariantFormComputed
-  getRequiredState: (value: string | null | undefined) => {
+  getRequiredState: (
+    value: string | null | undefined,
+    field?: EpdaCustomerTrackedField
+  ) => {
     labelClass: string
     fieldClass: string
   }

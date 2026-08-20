@@ -99,4 +99,45 @@ describe('EPDA quote variant golden output', () => {
       expect(html).toContain('<td class="bb-amount">300.00</td>')
     }
   )
+
+  it.each(['HCM', 'HN', 'QN'] as const)(
+    '%s retains the cargo row at a 100 percent agency discount',
+    (variant) => {
+      const params = defaultParameterValues(variant)
+      params.cargoAgencyRates = [
+        { commodityTypeId: 2, typeNameSnapshot: 'BULK', rate: 0.05 },
+      ]
+
+      const html = renderQuoteHtmlForVariant(variant, template, {
+        ...fixture,
+        cargo_qty_mt: '12000',
+        commodity_type_id: 2,
+        agency_discount_percent: 100,
+        params,
+      })
+
+      expect(html).toContain(
+        'On cargo: USD0.05/mt x 12,000mts x 0%(sub-agency)'
+      )
+      expect(html).toContain('<td class="bb-amount">0.00</td>')
+    }
+  )
+
+  it('escapes user-controlled custom fee text in generated HTML', () => {
+    const html = renderQuoteHtmlForVariant('QN', template, {
+      ...fixture,
+      BB_ROWS: [
+        {
+          item: '<script>alert(1)</script>',
+          details: '<img src=x>',
+          amount: 1,
+        },
+      ],
+    })
+
+    expect(html).toContain('&lt;script&gt;alert(1)&lt;/script&gt;')
+    expect(html).toContain('&lt;img src=x&gt;')
+    expect(html).not.toContain('<script>')
+    expect(html).not.toContain('<img src=x>')
+  })
 })
