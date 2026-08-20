@@ -52,9 +52,7 @@ import {
 } from './documentNumberDuplicate'
 import type {
   AnContainer,
-  ArrivalNoticePayload,
   BookingConfirmationPayload,
-  DeliveryOrderPayload,
   BookingFlow,
   DocumentNumberCheck,
   TransportDocumentPayloadMap,
@@ -69,8 +67,9 @@ import {
 } from './transportDocumentFormRules'
 import {
   applyPrefillFromPrevious,
+  buildWorkflowPrefillKey,
   getPrefillSourceType,
-  syncDeliveryOrderCargoFromArrivalNotice,
+  isWorkflowPrefillEnabled,
 } from './transportDocumentPrefill'
 import {
   createEmptyTransportDocuments,
@@ -189,7 +188,6 @@ export function TransportDocumentsScreen({
     payloadSnapshot(createEmptyTransportDocuments()[documentType])
   )
   const [trackedRecordId, setTrackedRecordId] = useState(validRecordId)
-  const [doCargoSyncKey, setDoCargoSyncKey] = useState<string | null>(null)
   const [bookingPicSeedApplied, setBookingPicSeedApplied] = useState(false)
   const [debouncedDocumentNumber, setDebouncedDocumentNumber] = useState('')
   const [saveDuplicateCheck, setSaveDuplicateCheck] =
@@ -202,7 +200,6 @@ export function TransportDocumentsScreen({
   // Adjust session state when URL recordId changes (avoid setState-in-effect).
   if (trackedRecordId !== validRecordId) {
     setTrackedRecordId(validRecordId)
-    setDoCargoSyncKey(null)
     if (validRecordId == null) {
       setActiveRecordId(null)
       setActiveRecordVersion(null)
@@ -215,45 +212,6 @@ export function TransportDocumentsScreen({
       )
     } else {
       setIsHydrating(true)
-    }
-  }
-
-  /**
-   * Refresh DO cargo from linked AN during render (not an effect) so load
-   * alone does not mark the form dirty — existing records also patch
-   * savedSnapshot cargo in the same update.
-   */
-  if (
-    documentType === 'do' &&
-    !isHydrating &&
-    !(validRecordId != null && activeRecordId == null)
-  ) {
-    const anSource = getWorkflowRecord(workflow, 'an')
-    if (anSource) {
-      const key = `${validBookingId ?? 'x'}:${activeRecordId ?? 'new'}:${anSource.id}:${anSource.updatedAt}`
-      if (doCargoSyncKey !== key) {
-        setDoCargoSyncKey(key)
-        const an = normalizeArrivalNoticePayload(anSource.payload)
-        setForms((previous) => {
-          const synced = syncDeliveryOrderCargoFromArrivalNotice(
-            an,
-            previous.do as DeliveryOrderPayload
-          )
-          return { ...previous, do: synced } as TransportDocumentPayloadMap
-        })
-        if (activeRecordId != null) {
-          setSavedSnapshot((previous) => {
-            try {
-              const saved = JSON.parse(previous) as DeliveryOrderPayload
-              return payloadSnapshot(
-                syncDeliveryOrderCargoFromArrivalNotice(an, saved)
-              )
-            } catch {
-              return previous
-            }
-          })
-        }
-      }
     }
   }
 
@@ -389,29 +347,6 @@ export function TransportDocumentsScreen({
     [documentType, router, validBookingId]
   )
 
-  const getWorkflowArrivalNotice =
-    useCallback((): ArrivalNoticePayload | null => {
-      const source = getWorkflowRecord(workflow, 'an')
-      if (!source) return null
-      return normalizeArrivalNoticePayload(source.payload)
-    }, [workflow])
-
-  /** Overwrite DO cargo from linked AN whenever we persist or preview. */
-  const withCargoFromAn = useCallback(
-    (
-      payload: TransportDocumentPayloadMap[typeof documentType]
-    ): TransportDocumentPayloadMap[typeof documentType] => {
-      if (documentType !== 'do') return payload
-      const an = getWorkflowArrivalNotice()
-      if (!an) return payload
-      return syncDeliveryOrderCargoFromArrivalNotice(
-        an,
-        payload as DeliveryOrderPayload
-      ) as TransportDocumentPayloadMap[typeof documentType]
-    },
-    [documentType, getWorkflowArrivalNotice]
-  )
-
   const withBookingPic = useCallback(
     (
       payload: TransportDocumentPayloadMap[typeof documentType]
@@ -509,14 +444,11 @@ export function TransportDocumentsScreen({
 
   const resolvePayloadForPersist = useCallback(() => {
     let payload = activePayload
-    if (documentType === 'do') {
-      payload = withCargoFromAn(payload)
-    }
     if (documentType === 'booking') {
       payload = withBookingPic(payload)
     }
     return payload
-  }, [activePayload, documentType, withBookingPic, withCargoFromAn])
+  }, [activePayload, documentType, withBookingPic])
 
   const validatePayload = useCallback(() => {
     try {
@@ -971,17 +903,33 @@ export function TransportDocumentsScreen({
   )
 
   useEffect(() => {
-    if (validBookingId == null || validRecordId != null || !prefillSourceType) {
+    if (validRecordId == null && activeRecordId == null) {
+      autoWorkflowPrefillKey.current = null
+    }
+  }, [activeRecordId, validRecordId])
+
+  useEffect(() => {
+    const targetRecordId = activeRecordId ?? validRecordId
+    if (
+      validBookingId == null ||
+      !prefillSourceType ||
+      !isWorkflowPrefillEnabled({
+        bookingId: validBookingId,
+        targetRecordId,
+        sourceType: prefillSourceType,
+      })
+    ) {
       return
     }
     const source = getWorkflowRecord(workflow, prefillSourceType)
     if (!source) return
-    const key = `${validBookingId}:${documentType}:${source.id}`
+    const key = buildWorkflowPrefillKey(validBookingId, documentType, source)
     if (autoWorkflowPrefillKey.current === key) return
     autoWorkflowPrefillKey.current = key
     applyWorkflowPrefill(source)
   }, [
     applyWorkflowPrefill,
+    activeRecordId,
     documentType,
     prefillSourceType,
     validBookingId,

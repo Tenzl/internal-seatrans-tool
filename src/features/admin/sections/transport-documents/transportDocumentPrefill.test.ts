@@ -1,7 +1,9 @@
 import { describe, expect, it } from 'vitest'
 import {
   applyPrefillFromPrevious,
+  buildWorkflowPrefillKey,
   getPrefillSourceType,
+  isWorkflowPrefillEnabled,
   mapArrivalNoticeCargoFromBooking,
   prefillArrivalNoticeFromBooking,
   prefillArrivalNoticeHeaderFromBooking,
@@ -19,6 +21,47 @@ import {
 } from './transportDocumentSchemas'
 
 describe('transportDocumentPrefill', () => {
+  it('keeps workflow prefill enabled until the target document is created', () => {
+    expect(
+      isWorkflowPrefillEnabled({
+        bookingId: 12,
+        targetRecordId: null,
+        sourceType: 'booking',
+      })
+    ).toBe(true)
+    expect(
+      isWorkflowPrefillEnabled({
+        bookingId: 12,
+        targetRecordId: 99,
+        sourceType: 'booking',
+      })
+    ).toBe(false)
+    expect(
+      isWorkflowPrefillEnabled({
+        bookingId: 12,
+        targetRecordId: null,
+        sourceType: 'an',
+      })
+    ).toBe(true)
+  })
+
+  it('invalidates the workflow prefill key whenever Booking changes', () => {
+    const source = {
+      id: 12,
+      version: 1,
+      updatedAt: '2026-08-20T00:00:00.000Z',
+    }
+    const initial = buildWorkflowPrefillKey(12, 'bl', source)
+
+    expect(
+      buildWorkflowPrefillKey(12, 'bl', {
+        ...source,
+        version: 2,
+        updatedAt: '2026-08-20T00:01:00.000Z',
+      })
+    ).not.toBe(initial)
+  })
+
   it('resolves previous types for both booking workflow branches', () => {
     expect(getPrefillSourceType('booking')).toBeNull()
     expect(getPrefillSourceType('an')).toBe('booking')
@@ -90,6 +133,7 @@ describe('transportDocumentPrefill', () => {
     expect(next.containers[0]?.sealNo).toBe('')
     expect(next.containers[0]?.grossWeight).toBe('24000')
     expect(next.containers[0]?.measurement).toBe('20')
+    expect(next.containers.every((row) => row.packageType === '')).toBe(true)
     expect(next.containers[0]?.note).toBe('')
     expect(next.descriptionOfGoods).toBe('Rice IN Foodstuffs')
     expect(next.commodityId).toBe(42)
@@ -173,23 +217,51 @@ describe('transportDocumentPrefill', () => {
     expect(bl.descriptionOfGoods).toBe('Historical commodity IN Old group')
   })
 
-  it('never overwrites AN container details already entered by staff', () => {
-    const booking = emptyBookingConfirmation()
-    booking.cargoVolumes = { "20'DC": 2 }
-    booking.commodity = 'STONE'
+  it('refreshes Booking-owned fields on an uncreated AN and preserves AN-owned fields', () => {
+    const initialBooking = emptyBookingConfirmation()
+    initialBooking.cargoVolumes = { "20'DC": 1 }
+    initialBooking.commodityTypeId = 7
+    initialBooking.commodityType = 'BAG(S)'
+    initialBooking.commodityId = 42
+    initialBooking.commodityName = 'RICE'
+    initialBooking.portOfLoading = 'DA NANG'
 
-    const current = emptyArrivalNotice()
-    current.descriptionOfGoods = 'CUSTOM DESCRIPTION'
-    current.containers[0] = {
-      ...current.containers[0]!,
-      containerNo: 'SEGU1234567',
-      sealNo: 'SEAL-01',
+    const draft = prefillArrivalNoticeFromBooking(
+      initialBooking,
+      emptyArrivalNotice()
+    )
+    draft.mblNumber = 'MBL-DRAFT-01'
+    draft.hblNumber = 'HBL-DRAFT-01'
+
+    const updatedBooking = {
+      ...initialBooking,
+      cargoVolumes: { "40'HC": 2 },
+      commodityTypeId: 19,
+      commodityType: 'PALLET(S)',
+      commodityId: 81,
+      commodityName: 'MACHINERY',
+      portOfLoading: 'CAT LAI',
     }
+    const refreshed = prefillArrivalNoticeFromBooking(updatedBooking, draft)
 
-    const next = mapArrivalNoticeCargoFromBooking(booking, current)
-
-    expect(next.containers).toEqual(current.containers)
-    expect(next.descriptionOfGoods).toBe('CUSTOM DESCRIPTION')
+    expect(refreshed.portOfLoading).toBe('CAT LAI')
+    expect(refreshed.containers.map((row) => row.type)).toEqual([
+      "40'HC",
+      "40'HC",
+    ])
+    expect(refreshed.containers.map((row) => row.packageType)).toEqual([
+      'PALLET(S)',
+      'PALLET(S)',
+    ])
+    expect(refreshed).toMatchObject({
+      commodityTypeId: 19,
+      commodityType: 'PALLET(S)',
+      commodityId: 81,
+      commodityName: 'MACHINERY',
+      descriptionOfGoods: 'MACHINERY IN PALLET(S)',
+      mblNumber: 'MBL-DRAFT-01',
+      hblNumber: 'HBL-DRAFT-01',
+    })
   })
 
   it('prefillArrivalNoticeFromBooking still applies header + cargo together', () => {
@@ -347,6 +419,40 @@ describe('transportDocumentPrefill', () => {
     ])
   })
 
+  it('refreshes Booking-owned fields on an uncreated BL and preserves BL-owned fields', () => {
+    const initialBooking = emptyBookingConfirmation()
+    initialBooking.cargoVolumes = { "20'DC": 1 }
+    initialBooking.commodityType = 'BAG(S)'
+    initialBooking.portOfLoading = 'DA NANG'
+
+    const draft = prefillBillOfLadingFromBooking(
+      initialBooking,
+      emptyBillOfLading()
+    )
+    draft.fblNumber = 'FBL-DRAFT-01'
+    draft.consignor = 'SEATRANS CUSTOMER'
+
+    const updatedBooking = {
+      ...initialBooking,
+      cargoVolumes: { "40'HC": 2 },
+      commodityType: 'PALLET(S)',
+      portOfLoading: 'CAT LAI',
+    }
+    const refreshed = prefillBillOfLadingFromBooking(updatedBooking, draft)
+
+    expect(refreshed.portOfLoading).toBe('CAT LAI')
+    expect(refreshed.containers.map((row) => row.type)).toEqual([
+      "40'HC",
+      "40'HC",
+    ])
+    expect(refreshed.containers.map((row) => row.packageType)).toEqual([
+      'PALLET(S)',
+      'PALLET(S)',
+    ])
+    expect(refreshed.fblNumber).toBe('FBL-DRAFT-01')
+    expect(refreshed.consignor).toBe('SEATRANS CUSTOMER')
+  })
+
   it('maps AN containers onto DO cargo rows without sharing arrays', () => {
     const an = emptyArrivalNotice()
     an.mblNumber = 'MBL1'
@@ -454,6 +560,53 @@ describe('transportDocumentPrefill', () => {
         measurement: '8 CBM',
       },
     ])
+  })
+
+  it('refreshes AN-owned fields on an uncreated DO and preserves DO-owned fields', () => {
+    const initialAn = emptyArrivalNotice()
+    initialAn.portOfDischarge = 'CAT LAI'
+    initialAn.descriptionOfGoods = 'RICE'
+    initialAn.containers = [
+      {
+        ...initialAn.containers[0]!,
+        type: "20'DC",
+        packageType: 'BAG(S)',
+      },
+    ]
+
+    const draft = prefillDeliveryOrderFromAn(initialAn, emptyDeliveryOrder())
+    draft.doNumber = 'DO-DRAFT-01'
+
+    const updatedAn = {
+      ...initialAn,
+      portOfDischarge: 'HAI PHONG',
+      descriptionOfGoods: 'MACHINERY',
+      containers: [
+        {
+          ...initialAn.containers[0]!,
+          type: "40'HC" as const,
+          packageType: 'PALLET(S)',
+        },
+        {
+          ...initialAn.containers[0]!,
+          type: "40'HC" as const,
+          packageType: 'PALLET(S)',
+        },
+      ],
+    }
+    const refreshed = prefillDeliveryOrderFromAn(updatedAn, draft)
+
+    expect(refreshed.portOfDischarge).toBe('HAI PHONG')
+    expect(refreshed.descriptionOfGoods).toBe('MACHINERY')
+    expect(refreshed.containers.map((row) => row.type)).toEqual([
+      "40'HC",
+      "40'HC",
+    ])
+    expect(refreshed.containers.map((row) => row.packageType)).toEqual([
+      'PALLET(S)',
+      'PALLET(S)',
+    ])
+    expect(refreshed.doNumber).toBe('DO-DRAFT-01')
   })
 
   it('dispatches prefill only for the configured previous step', () => {

@@ -1,16 +1,25 @@
 'use client'
 
+import * as React from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { commodityService } from '@/modules/gallery/services/commodityService'
+import { Check, ChevronsUpDown, Loader2 } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { Button } from '@/components/ui/button'
+import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from '@/components/ui/command'
 import { Label } from '@/components/ui/label'
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select'
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from '@/components/ui/popover'
 import { TRANSPORT_FILLED_FIELD_RING } from './TransportDocumentField'
 import { resolveSelectFieldOptions } from './transportDocumentFormConfig'
 
@@ -32,6 +41,7 @@ interface CatalogOption {
 }
 
 const EMPTY_VALUE = '__empty__'
+const SIX_OPTION_LIST_HEIGHT = 'max-h-[200px]'
 
 function resolveCatalogSelect(
   options: CatalogOption[],
@@ -56,6 +66,148 @@ function resolveCatalogSelect(
     return { ...option, label: snapshot || option.label }
   })
   return { selectedValue, resolved }
+}
+
+interface CatalogSearchSelectProps {
+  id: string
+  label: string
+  selectedValue: string
+  options: Array<{ value: string; label: string }>
+  placeholder: string
+  searchPlaceholder: string
+  emptyMessage: string
+  pending: boolean
+  disabled: boolean
+  filled: boolean
+  onValueChange: (value: string) => void
+}
+
+/** Route-style searchable picker with exactly six visible option rows. */
+function CatalogSearchSelect({
+  id,
+  label,
+  selectedValue,
+  options,
+  placeholder,
+  searchPlaceholder,
+  emptyMessage,
+  pending,
+  disabled,
+  filled,
+  onValueChange,
+}: CatalogSearchSelectProps) {
+  const [open, setOpen] = React.useState(false)
+  const [search, setSearch] = React.useState('')
+  const selectedLabel = options.find(
+    (option) => option.value === selectedValue
+  )?.label
+
+  return (
+    <div className='space-y-1.5'>
+      <Label
+        id={`${id}-label`}
+        htmlFor={id}
+        className='text-sm font-medium text-muted-foreground'
+      >
+        {label}
+      </Label>
+      <Popover
+        open={open}
+        onOpenChange={(nextOpen) => {
+          setOpen(nextOpen)
+          if (!nextOpen) setSearch('')
+        }}
+      >
+        <PopoverTrigger asChild>
+          <Button
+            id={id}
+            type='button'
+            variant='outline'
+            role='combobox'
+            aria-labelledby={`${id}-label`}
+            aria-expanded={open}
+            disabled={disabled}
+            className={cn(
+              'w-full justify-between bg-background font-normal',
+              filled ? TRANSPORT_FILLED_FIELD_RING : undefined
+            )}
+          >
+            <span
+              className={cn(
+                'truncate',
+                !selectedLabel && 'text-muted-foreground'
+              )}
+            >
+              {selectedLabel || placeholder}
+            </span>
+            {pending ? (
+              <Loader2 className='ml-2 h-4 w-4 shrink-0 animate-spin opacity-60' />
+            ) : (
+              <ChevronsUpDown className='ml-2 h-4 w-4 shrink-0 opacity-50' />
+            )}
+          </Button>
+        </PopoverTrigger>
+        <PopoverContent
+          className='w-[var(--radix-popover-trigger-width)] p-0'
+          align='start'
+        >
+          <Command>
+            <CommandInput
+              placeholder={searchPlaceholder}
+              value={search}
+              onValueChange={setSearch}
+            />
+            <CommandList className={SIX_OPTION_LIST_HEIGHT}>
+              <CommandEmpty>{emptyMessage}</CommandEmpty>
+              <CommandGroup>
+                <CommandItem
+                  value={`${label} clear selection`}
+                  className='h-8'
+                  onSelect={() => {
+                    onValueChange(EMPTY_VALUE)
+                    setOpen(false)
+                    setSearch('')
+                  }}
+                >
+                  <Check
+                    className={cn(
+                      'h-4 w-4 shrink-0',
+                      selectedValue === EMPTY_VALUE
+                        ? 'opacity-100'
+                        : 'opacity-0'
+                    )}
+                  />
+                  <span className='truncate'>{placeholder}</span>
+                </CommandItem>
+                {options.map((option) => (
+                  <CommandItem
+                    key={option.value}
+                    value={`${option.label} ${option.value}`}
+                    className='h-8'
+                    onSelect={() => {
+                      onValueChange(option.value)
+                      setOpen(false)
+                      setSearch('')
+                    }}
+                  >
+                    <Check
+                      className={cn(
+                        'h-4 w-4 shrink-0',
+                        selectedValue === option.value
+                          ? 'opacity-100'
+                          : 'opacity-0'
+                      )}
+                    />
+                    <span className='truncate'>{option.label}</span>
+                  </CommandItem>
+                ))}
+              </CommandGroup>
+            </CommandList>
+          </Command>
+        </PopoverContent>
+      </Popover>
+    </div>
+  )
 }
 
 /** Independent Freight Forwarding Type and Commodity catalog controls. */
@@ -131,15 +283,25 @@ export function BookingCommoditySelect({
   return (
     <>
       <div className='space-y-1.5'>
-        <Label
-          htmlFor='transport-document-commodity-type'
-          className='text-sm font-medium text-muted-foreground'
-        >
-          Type
-        </Label>
-        <Select
-          value={typeSelect.selectedValue}
+        <CatalogSearchSelect
+          id='transport-document-commodity-type'
+          label='Type'
+          selectedValue={typeSelect.selectedValue}
+          options={typeSelect.resolved}
+          placeholder={
+            typePending
+              ? 'Loading types...'
+              : typeError
+                ? 'Type catalog unavailable'
+                : typeOptions.length === 0
+                  ? 'No freight-forwarding types'
+                  : 'Select type'
+          }
+          searchPlaceholder='Search types...'
+          emptyMessage='No type found.'
+          pending={typePending}
           disabled={disabled || (typePending && !commodityType)}
+          filled={Boolean(commodityType.trim())}
           onValueChange={(next) => {
             if (next === EMPTY_VALUE) {
               onTypeChange('', null)
@@ -150,35 +312,7 @@ export function BookingCommoditySelect({
             )
             if (option) onTypeChange(option.name, option.id)
           }}
-        >
-          <SelectTrigger
-            id='transport-document-commodity-type'
-            className={cn(
-              'w-full bg-background',
-              commodityType.trim() ? TRANSPORT_FILLED_FIELD_RING : undefined
-            )}
-          >
-            <SelectValue
-              placeholder={
-                typePending
-                  ? 'Loading types...'
-                  : typeError
-                    ? 'Type catalog unavailable'
-                    : typeOptions.length === 0
-                      ? 'No freight-forwarding types'
-                      : 'Select type'
-              }
-            />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value={EMPTY_VALUE}>Select type</SelectItem>
-            {typeSelect.resolved.map((option) => (
-              <SelectItem key={option.value} value={option.value}>
-                {option.label}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+        />
         {typeError ? (
           <p className='text-xs text-destructive'>
             Could not load Types. The saved value is still available.
@@ -187,15 +321,25 @@ export function BookingCommoditySelect({
       </div>
 
       <div className='space-y-1.5'>
-        <Label
-          htmlFor='transport-document-commodity'
-          className='text-sm font-medium text-muted-foreground'
-        >
-          Commodity
-        </Label>
-        <Select
-          value={commoditySelect.selectedValue}
+        <CatalogSearchSelect
+          id='transport-document-commodity'
+          label='Commodity'
+          selectedValue={commoditySelect.selectedValue}
+          options={commoditySelect.resolved}
+          placeholder={
+            commodityPending
+              ? 'Loading commodities...'
+              : commodityError
+                ? 'Commodity catalog unavailable'
+                : commodityOptions.length === 0
+                  ? 'No freight-forwarding commodities'
+                  : 'Select commodity'
+          }
+          searchPlaceholder='Search commodities...'
+          emptyMessage='No commodity found.'
+          pending={commodityPending}
           disabled={disabled || (commodityPending && !legacyCommoditySnapshot)}
+          filled={Boolean(legacyCommoditySnapshot.trim())}
           onValueChange={(next) => {
             if (next === EMPTY_VALUE) {
               onCommodityChange('', null)
@@ -208,37 +352,7 @@ export function BookingCommoditySelect({
               onCommodityChange(option.displayName || option.name, option.id)
             }
           }}
-        >
-          <SelectTrigger
-            id='transport-document-commodity'
-            className={cn(
-              'w-full bg-background',
-              legacyCommoditySnapshot.trim()
-                ? TRANSPORT_FILLED_FIELD_RING
-                : undefined
-            )}
-          >
-            <SelectValue
-              placeholder={
-                commodityPending
-                  ? 'Loading commodities...'
-                  : commodityError
-                    ? 'Commodity catalog unavailable'
-                    : commodityOptions.length === 0
-                      ? 'No freight-forwarding commodities'
-                      : 'Select commodity'
-              }
-            />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value={EMPTY_VALUE}>Select commodity</SelectItem>
-            {commoditySelect.resolved.map((option) => (
-              <SelectItem key={option.value} value={option.value}>
-                {option.label}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+        />
         {commodityError ? (
           <p className='text-xs text-destructive'>
             Could not load Commodities. The saved value is still available.

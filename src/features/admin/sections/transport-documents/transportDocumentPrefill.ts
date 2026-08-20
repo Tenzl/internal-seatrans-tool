@@ -14,6 +14,7 @@ import type {
   BookingConfirmationPayload,
   DeliveryOrderPayload,
   TransportDocumentPayloadMap,
+  TransportDocumentRecord,
   TransportDocumentType,
 } from './transportDocument.types'
 import { formatBookingCommodityDescription } from './transportDocumentSchemas'
@@ -31,6 +32,32 @@ export function getPrefillSourceType(
   target: TransportDocumentType
 ): TransportDocumentType | null {
   return PREFILL_SOURCE_TYPE[target] ?? null
+}
+
+export function isWorkflowPrefillEnabled({
+  bookingId,
+  targetRecordId,
+  sourceType,
+}: {
+  bookingId: number | null
+  targetRecordId: number | null
+  sourceType: TransportDocumentType | null
+}): boolean {
+  return bookingId != null && targetRecordId == null && sourceType != null
+}
+
+export function buildWorkflowPrefillKey(
+  bookingId: number,
+  targetType: TransportDocumentType,
+  source: Pick<TransportDocumentRecord, 'id' | 'version' | 'updatedAt'>
+): string {
+  return [
+    bookingId,
+    targetType,
+    source.id,
+    source.version,
+    source.updatedAt,
+  ].join(':')
 }
 
 /**
@@ -93,26 +120,22 @@ export function prefillArrivalNoticeHeaderFromBooking(
 }
 
 /**
- * Seed AN container rows from Booking cargo volumes when the create form opens.
- * Totals (GW / measurement) stay on row 1; each row keeps its Type.
- * If staff already entered container data while the workflow was loading,
- * preserve it instead of replacing it with Booking defaults.
+ * Keep Booking-owned AN cargo synchronized while the AN is still uncreated.
+ * Totals (GW / measurement) stay on row 1; every row receives the selected
+ * Booking Type as its package type. The screen stops calling this mapper once
+ * AN creation returns a persisted ID.
  */
 export function mapArrivalNoticeCargoFromBooking(
   source: BookingConfirmationPayload,
   current: ArrivalNoticePayload
 ): ArrivalNoticePayload {
   const { cargoVolumes } = normalizeBookingCargoVolumes(source)
-  const seeded = seedAnContainersFromVolumes(cargoVolumes)
+  const packageType = source.commodityType.trim()
+  const seeded = seedAnContainersFromVolumes(cargoVolumes).map((row) => ({
+    ...row,
+    packageType,
+  }))
   const containers = applyBookingCargoTotalsToFirstRow(seeded, source)
-  const hasEnteredContainer = current.containers.some((row) =>
-    Object.values(row).some((value) => value.trim().length > 0)
-  )
-  const nextContainers = hasEnteredContainer
-    ? current.containers
-    : containers.length > 0
-      ? containers
-      : current.containers
   const bookingDescription =
     source.commodity.trim() ||
     formatBookingCommodityDescription(
@@ -122,13 +145,13 @@ export function mapArrivalNoticeCargoFromBooking(
 
   return {
     ...current,
-    commodityTypeId: current.commodityTypeId ?? source.commodityTypeId ?? null,
-    commodityType: (current.commodityType ?? '').trim() || source.commodityType,
-    commodityId: current.commodityId ?? source.commodityId ?? null,
-    commodityName: (current.commodityName ?? '').trim() || source.commodityName,
-    descriptionOfGoods: current.descriptionOfGoods.trim() || bookingDescription,
-    volume: current.volume.trim() || anContainersToVolumeText(nextContainers),
-    containers: nextContainers,
+    commodityTypeId: source.commodityTypeId ?? null,
+    commodityType: source.commodityType,
+    commodityId: source.commodityId ?? null,
+    commodityName: source.commodityName,
+    descriptionOfGoods: bookingDescription,
+    volume: anContainersToVolumeText(containers),
+    containers,
   }
 }
 
@@ -143,9 +166,10 @@ export function prefillArrivalNoticeFromBooking(
 }
 
 /**
- * One-time BL seed from Booking on create: route, schedule, cargo containers,
- * and derived packages / GW / measurement. Parties, FBL no., service mode,
- * and shipping mark stay BL-owned (not copied from booking).
+ * Keep Booking-owned BL fields synchronized while the BL is still a new form:
+ * route, schedule, cargo containers, and derived packages / GW / measurement.
+ * Parties, FBL no., service mode, and shipping mark stay BL-owned. The screen
+ * stops calling this mapper as soon as BL creation returns a persisted ID.
  */
 export function prefillBillOfLadingFromBooking(
   source: BookingConfirmationPayload,
@@ -192,11 +216,11 @@ export function prefillBillOfLadingFromBooking(
 }
 
 /**
- * DO cargo/containers mirror BL: owned by Arrival Notice. Overwrite
+ * DO cargo/containers are owned by Arrival Notice. Overwrite
  * `containers` + derived `cargoRows` (PDF table), plus `serviceMode` and
  * `descriptionOfGoods` (read-only mirrors of AN, not editable on DO); leave
- * all other DO fields. Call on DO open, DO save, and after AN save so the
- * sibling DO never drifts.
+ * all other DO fields. The screen calls this only while DO is uncreated and
+ * stops as soon as Create returns a persisted ID.
  */
 export function syncDeliveryOrderCargoFromArrivalNotice(
   source: ArrivalNoticePayload,

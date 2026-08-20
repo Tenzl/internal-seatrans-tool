@@ -68,7 +68,7 @@ describe('CommodityTypesTable', () => {
     expect(onDelete).toHaveBeenCalledWith(1)
   })
 
-  it('searches Types by name and keeps a ten-row scroll viewport', () => {
+  it('searches Types by name and keeps a four-row scroll viewport', () => {
     const types = Array.from({ length: 11 }, (_, index) => ({
       ...bulkType,
       id: index + 1,
@@ -88,7 +88,7 @@ describe('CommodityTypesTable', () => {
 
     const catalog = screen.getByRole('list', { name: 'Types catalog' })
     expect(catalog).toHaveClass('overflow-y-auto')
-    expect(catalog.className).toContain('max-h-')
+    expect(catalog).toHaveClass('max-h-[13.25rem]')
 
     fireEvent.change(screen.getByLabelText('Search Types'), {
       target: { value: 'liquid' },

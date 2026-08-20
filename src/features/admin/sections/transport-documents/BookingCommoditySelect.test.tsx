@@ -129,4 +129,65 @@ describe('BookingCommoditySelect', () => {
       })
     ).toBeInTheDocument()
   })
+
+  it('searches Type and Commodity in six-row scrollable lists', async () => {
+    commodityServiceMock.listCommodityTypes.mockResolvedValue(
+      Array.from({ length: 10 }, (_, index) => ({
+        id: index + 1,
+        serviceTypeId: 2,
+        name: `TYPE ${String(index + 1).padStart(2, '0')}`,
+      }))
+    )
+    commodityServiceMock.listAdminCommodities.mockResolvedValue(
+      Array.from({ length: 10 }, (_, index) => ({
+        id: index + 101,
+        serviceTypeId: 2,
+        name: `COMMODITY ${String(index + 1).padStart(2, '0')}`,
+        displayName: `COMMODITY ${String(index + 1).padStart(2, '0')}`,
+      }))
+    )
+    const { onTypeChange, onCommodityChange } = renderSelect()
+
+    await waitFor(() => {
+      expect(commodityServiceMock.listCommodityTypes).toHaveBeenCalled()
+      expect(commodityServiceMock.listAdminCommodities).toHaveBeenCalled()
+    })
+    fireEvent.click(screen.getByRole('combobox', { name: 'Type' }))
+    const typeSearch = await screen.findByPlaceholderText('Search types...')
+    const typeList = typeSearch
+      .closest('[data-slot="command"]')
+      ?.querySelector('[data-slot="command-list"]')
+    expect(typeList).toHaveClass('max-h-[200px]')
+
+    fireEvent.change(typeSearch, { target: { value: 'TYPE 09' } })
+    fireEvent.click(await screen.findByRole('option', { name: 'TYPE 09' }))
+    expect(onTypeChange).toHaveBeenCalledWith('TYPE 09', 9)
+
+    await waitFor(() =>
+      expect(screen.getByRole('combobox', { name: 'Type' })).toHaveAttribute(
+        'aria-expanded',
+        'false'
+      )
+    )
+    const commodityTrigger = screen.getByRole('combobox', {
+      name: 'Commodity',
+    })
+    fireEvent.click(commodityTrigger)
+    await waitFor(() =>
+      expect(commodityTrigger).toHaveAttribute('aria-expanded', 'true')
+    )
+    const commoditySearch = await screen.findByPlaceholderText(
+      'Search commodities...'
+    )
+    const commodityList = commoditySearch
+      .closest('[data-slot="command"]')
+      ?.querySelector('[data-slot="command-list"]')
+    expect(commodityList).toHaveClass('max-h-[200px]')
+
+    fireEvent.change(commoditySearch, {
+      target: { value: 'COMMODITY 10' },
+    })
+    fireEvent.click(await screen.findByRole('option', { name: 'COMMODITY 10' }))
+    expect(onCommodityChange).toHaveBeenCalledWith('COMMODITY 10', 110)
+  })
 })

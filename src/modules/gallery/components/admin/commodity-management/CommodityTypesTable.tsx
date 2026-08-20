@@ -163,7 +163,7 @@ export function CommodityTypesTable({
       ) : (
         <ul
           aria-label='Types catalog'
-          className='max-h-[31.25rem] space-y-1 overflow-y-auto overscroll-contain bg-background/55 p-2 sm:p-3'
+          className='max-h-[13.25rem] space-y-1 overflow-y-auto overscroll-contain bg-background/55 p-2 sm:p-3'
         >
           {visibleTypes.map((type) => {
             const editing = editingId === type.id

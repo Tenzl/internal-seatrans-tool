@@ -87,7 +87,7 @@ describe('CommoditiesTable hidden internal code contract', () => {
     )
   })
 
-  it('filters by Commodity name and keeps a ten-row scroll viewport', () => {
+  it('filters by Commodity name and keeps a six-row scroll viewport', () => {
     render(
       <CommoditiesTable
         commodities={[
@@ -112,7 +112,7 @@ describe('CommoditiesTable hidden internal code contract', () => {
       name: 'Commodities catalog',
     }).parentElement
     expect(catalog).toHaveClass('overflow-y-auto')
-    expect(catalog?.className).toContain('max-h-')
+    expect(catalog).toHaveClass('max-h-[15rem]')
 
     fireEvent.change(screen.getByLabelText('Search Commodities'), {
       target: { value: 'rice' },

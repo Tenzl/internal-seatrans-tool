@@ -181,7 +181,7 @@ export function CommoditiesTable({
           </p>
         </div>
       ) : (
-        <div className='max-h-[28rem] overflow-x-auto overflow-y-auto overscroll-contain'>
+        <div className='max-h-[15rem] overflow-x-auto overflow-y-auto overscroll-contain'>
           <table className='w-full' aria-label='Commodities catalog'>
             <tbody>
               {visibleCommodities.map((commodity) => {
