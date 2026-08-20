@@ -1,6 +1,7 @@
 import { createHash } from 'node:crypto'
 import { describe, expect, it } from 'vitest'
 import type { QuoteData } from './quoteCommon'
+import { defaultParameterValues } from './quoteParameters'
 import { renderQuoteHtmlForVariant } from './quoteVariantRenderer'
 
 const template = [
@@ -69,6 +70,33 @@ describe('EPDA quote variant golden output', () => {
       )
       expect(html).toContain('<td class="bb-amount">0.00</td>')
       expect(signature(html)).toMatchSnapshot()
+    }
+  )
+
+  it.each(['HCM', 'HN', 'QN'] as const)(
+    '%s keeps the numeric commodity Type ID when resolving the cargo agency rate',
+    (variant) => {
+      const params = defaultParameterValues(variant)
+      params.cargoAgencyRates = [
+        {
+          commodityTypeId: 2,
+          typeNameSnapshot: 'BULK',
+          rate: 0.05,
+        },
+      ]
+
+      const html = renderQuoteHtmlForVariant(variant, template, {
+        ...fixture,
+        cargo_qty_mt: '12000',
+        commodity_type_id: 2,
+        agency_discount_percent: 50,
+        params,
+      })
+
+      expect(html).toContain(
+        'On cargo: USD0.05/mt x 12,000mts x 50%(sub-agency)'
+      )
+      expect(html).toContain('<td class="bb-amount">300.00</td>')
     }
   )
 })

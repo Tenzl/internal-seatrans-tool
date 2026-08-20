@@ -876,7 +876,7 @@ export const renderQuoteHtml = (template: string, data: QuoteData) => {
     normalizedData.grt,
     normalizedData.cargo_qty_mt,
     normalizedData.cargo_name_upper,
-    normalizedData.commodity_type_id,
+    data.commodity_type_id,
     normalizedData.cargo_type,
     normalizedData.transport_ls,
     normalizedData.boat_hire_entry,
