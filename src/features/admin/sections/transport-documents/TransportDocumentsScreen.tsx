@@ -973,7 +973,22 @@ export function TransportDocumentsScreen({
                     : 'bg-warning text-white hover:bg-warning/90'
                 }
               >
-                {status === 'COMPLETED' ? 'Completed' : 'Processing'}
+                Document: {status === 'COMPLETED' ? 'Completed' : 'Processing'}
+              </Badge>
+            ) : null}
+            {workflow ? (
+              <Badge
+                variant={
+                  workflow.status === 'COMPLETED' ? 'default' : 'secondary'
+                }
+                className={
+                  workflow.status === 'COMPLETED'
+                    ? 'bg-success text-success-foreground hover:bg-success/90'
+                    : 'bg-warning text-white hover:bg-warning/90'
+                }
+              >
+                Workflow:{' '}
+                {workflow.status === 'COMPLETED' ? 'Completed' : 'Processing'}
               </Badge>
             ) : null}
             {isLocked ? (

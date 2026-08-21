@@ -73,9 +73,9 @@ describe('dashboard route policy', () => {
     expect(
       resolvePostLoginPath({ role: 'ROLE_OPERATOR', sections: ['epda-create'] })
     ).toBe(CANONICAL_CREATE_EPDA_PATH)
-    expect(
-      resolvePostLoginPath({ role: 'ROLE_OPERATOR', sections: [] })
-    ).toBe('/')
+    expect(resolvePostLoginPath({ role: 'ROLE_OPERATOR', sections: [] })).toBe(
+      '/'
+    )
     expect(
       resolvePostLoginPath(
         { role: 'ROLE_OPERATOR', sections: [] },
@@ -104,7 +104,7 @@ describe('dashboard route policy', () => {
     expect(canAccessPath('/booking/documents', operator)).toBe(false)
   })
 
-  it('shows Create Booking and History under Booking Management', () => {
+  it('shows Create Booking, History, and Reports under Booking Management', () => {
     const general = sidebarData.navGroups.find(
       (group) => group.title === 'General'
     )
@@ -120,6 +120,10 @@ describe('dashboard route policy', () => {
       {
         title: 'History',
         url: '/booking/documents/history',
+      },
+      {
+        title: 'Reports',
+        url: '/booking/documents/reports',
       },
     ])
   })

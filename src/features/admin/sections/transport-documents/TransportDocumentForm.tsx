@@ -35,9 +35,13 @@ import type {
 } from './transportDocument.types'
 import {
   BL_FORM_VARIANT_OPTIONS,
+  TRANSPORT_PORT_ID_KEY_BY_FIELD,
   TRANSPORT_DOCUMENT_FORM_SECTIONS,
+  type TransportDocumentPortFieldKey,
   type TransportDocumentFieldSpec,
 } from './transportDocumentFormConfig'
+import { applyBillOfLadingFormVariantChange } from './transportDocumentFormRules'
+import { isTransportDocumentFieldRequired } from './transportDocumentRequirements'
 import { applyBookingCatalogChange } from './transportDocumentSchemas'
 
 interface TransportDocumentFormProps {
@@ -134,40 +138,54 @@ export function TransportDocumentForm({
   const renderField = (
     field: TransportDocumentFieldSpec,
     options?: { disabled?: boolean }
-  ) => (
-    <TransportDocumentField
-      key={field.key}
-      field={field}
-      value={String(values[field.key] ?? '')}
-      selectedPartyId={asPartyId(
-        field.partyIdKey ? values[field.partyIdKey] : null
-      )}
-      selectedInternalUserId={asPartyId(
-        field.internalUserIdKey ? values[field.internalUserIdKey] : null
-      )}
-      disabled={
-        options?.disabled === true ||
-        field.syncedFromAn === true ||
-        (documentType === 'an' &&
-          field.key === 'notifyParty' &&
-          notifySameAsConsignee) ||
-        (documentType === 'bl' &&
-          field.key === 'notifyAddress' &&
-          notifySameAsConsignee)
-      }
-      onChange={(value) => updateField(field.key, value)}
-      onPartyIdChange={
-        field.partyIdKey
-          ? (value) => updateField(field.partyIdKey!, value)
-          : undefined
-      }
-      onInternalUserIdChange={
-        field.internalUserIdKey
-          ? (value) => updateField(field.internalUserIdKey!, value)
-          : undefined
-      }
-    />
-  )
+  ) => {
+    const inferredPortIdKey =
+      field.kind === 'port-name'
+        ? TRANSPORT_PORT_ID_KEY_BY_FIELD[
+            field.key as TransportDocumentPortFieldKey
+          ]
+        : undefined
+    const portIdKey = field.portIdKey ?? inferredPortIdKey
+    return (
+      <TransportDocumentField
+        key={field.key}
+        field={field}
+        value={String(values[field.key] ?? '')}
+        selectedPartyId={asPartyId(
+          field.partyIdKey ? values[field.partyIdKey] : null
+        )}
+        selectedInternalUserId={asPartyId(
+          field.internalUserIdKey ? values[field.internalUserIdKey] : null
+        )}
+        selectedPortId={asPartyId(portIdKey ? values[portIdKey] : null)}
+        disabled={
+          options?.disabled === true ||
+          field.syncedFromAn === true ||
+          (documentType === 'an' &&
+            field.key === 'notifyParty' &&
+            notifySameAsConsignee) ||
+          (documentType === 'bl' &&
+            field.key === 'notifyAddress' &&
+            notifySameAsConsignee)
+        }
+        required={isTransportDocumentFieldRequired(documentType, field.key)}
+        onChange={(value) => updateField(field.key, value)}
+        onPartyIdChange={
+          field.partyIdKey
+            ? (value) => updateField(field.partyIdKey!, value)
+            : undefined
+        }
+        onInternalUserIdChange={
+          field.internalUserIdKey
+            ? (value) => updateField(field.internalUserIdKey!, value)
+            : undefined
+        }
+        onPortIdChange={
+          portIdKey ? (value) => updateField(portIdKey, value) : undefined
+        }
+      />
+    )
+  }
 
   const notifySameDisabled =
     !notifySameAsConsignee &&
@@ -264,6 +282,7 @@ export function TransportDocumentForm({
       <div className='space-y-4'>
         <CargoVolumeEditor
           volumes={bookingVolumes}
+          required
           onChange={(next) => {
             const compact = compactCargoVolumes(next)
             updateField('cargoVolumes', compact)
@@ -277,6 +296,7 @@ export function TransportDocumentForm({
             commodityName={catalogState.commodityName}
             commodityId={catalogState.commodityId}
             description={catalogState.commodity}
+            required
             onTypeChange={(name, id) => {
               patchFields(
                 applyBookingCatalogChange(catalogState, {
@@ -458,7 +478,13 @@ export function TransportDocumentForm({
             </Label>
             <Select
               value={blFormVariant}
-              onValueChange={(next) => updateField('blFormVariant', next)}
+              onValueChange={(next) =>
+                patchFields(
+                  applyBillOfLadingFormVariantChange(
+                    next as 'non_negotiable' | 'original' | 'surrendered'
+                  )
+                )
+              }
             >
               <SelectTrigger
                 id='transport-document-bl-form-variant'

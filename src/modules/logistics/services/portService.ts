@@ -27,6 +27,8 @@ export const PORTS_ADMIN_LIST_SIZE = 20
 export interface Port {
   id: number
   name: string
+  subName1?: string | null
+  subName2?: string | null
   portOfCall?: string
   provinceId: number | null
   provinceName?: string | null
@@ -48,6 +50,8 @@ export interface Port {
 export interface PortOption {
   id: number
   name: string
+  subName1?: string | null
+  subName2?: string | null
   provinceName?: string | null
   code?: string | null
   countryCode?: string | null
@@ -71,6 +75,8 @@ export interface ListPortOptionsParams {
 
 export interface SavePortPayload {
   name: string
+  subName1?: string
+  subName2?: string
   provinceId: number | null
   portOfCall?: string
   code?: string

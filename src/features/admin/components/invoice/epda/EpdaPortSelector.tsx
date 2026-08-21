@@ -2,7 +2,7 @@
 
 import { formatPortDisplay } from '@/modules/logistics/portDisplay'
 import { useI18n } from '@/shared/i18n/I18nProvider'
-import { ChevronDown, ChevronUp } from 'lucide-react'
+import { ChevronDown, ChevronUp, LockKeyhole } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { Label } from '@/components/ui/label'
 import {
@@ -30,6 +30,7 @@ interface EpdaPortSelectorProps {
   ports: EpdaPortOption[]
   collapsed: boolean
   isLoading: boolean
+  areaLocked: boolean
   onAreaChange: (area: EpdaArea) => void
   onPortChange: (port: string, portId: number | null) => void
   onCollapsedChange: (collapsed: boolean) => void
@@ -42,6 +43,7 @@ export function EpdaPortSelector({
   ports,
   collapsed,
   isLoading,
+  areaLocked,
   onAreaChange,
   onPortChange,
   onCollapsedChange,
@@ -87,12 +89,21 @@ export function EpdaPortSelector({
         )}
       >
         <div className='grid gap-2'>
-          <Label htmlFor='portArea' className='font-bold'>
-            {t('epda.portArea')}
-          </Label>
+          <div className='flex items-center justify-between gap-2'>
+            <Label htmlFor='portArea' className='font-bold'>
+              {t('epda.portArea')}
+            </Label>
+            {areaLocked ? (
+              <span className='inline-flex items-center gap-1 text-xs text-muted-foreground'>
+                <LockKeyhole className='h-3.5 w-3.5' />
+                {t('epda.areaLocked')}
+              </span>
+            ) : null}
+          </div>
           <Select
             value={area}
             onValueChange={(value) => onAreaChange(value as EpdaArea)}
+            disabled={areaLocked}
           >
             <SelectTrigger id='portArea'>
               <SelectValue placeholder={t('epda.selectArea')}>

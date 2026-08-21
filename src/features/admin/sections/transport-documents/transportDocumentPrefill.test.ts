@@ -73,9 +73,13 @@ describe('transportDocumentPrefill', () => {
     const booking = emptyBookingConfirmation()
     booking.bookingNumber = 'BK-101'
     booking.placeOfReceipt = 'QUI NHON'
+    booking.placeOfReceiptPortId = 11
     booking.portOfLoading = 'DA NANG'
+    booking.portOfLoadingPortId = 12
     booking.portOfDischarge = 'KOBE'
+    booking.portOfDischargePortId = 13
     booking.placeOfDelivery = 'KOBE'
+    booking.placeOfDeliveryPortId = 13
     booking.vesselVoyage = 'YOUCAN / 001E'
     booking.grossWeight = '24000'
     booking.measurement = '20'
@@ -92,6 +96,11 @@ describe('transportDocumentPrefill', () => {
     )
     expect(next.shipmentNumber).toBe('BK-101')
     expect(next.placeOfReceipt).toBe('QUI NHON')
+    expect(next.placeOfReceiptPortId).toBe(11)
+    expect(next.portOfLoadingPortId).toBe(12)
+    expect(next.portOfDischargePortId).toBe(13)
+    expect(next.placeOfDeliveryPortId).toBe(13)
+    expect(next.finalDestinationPortId).toBe(13)
     expect(next.vesselVoyage).toBe('YOUCAN / 001E')
     expect(next.etd).toBe('2026-08-06')
     expect(next.eta).toBe('2026-08-12')
@@ -128,10 +137,10 @@ describe('transportDocumentPrefill', () => {
       "20'DC",
       "40'RF",
     ])
-    // Totals stay on row 1 only — no invented per-container splits or numbers.
+    // Booking GW is shipment-level and must not be invented for any container.
     expect(next.containers[0]?.containerNo).toBe('')
     expect(next.containers[0]?.sealNo).toBe('')
-    expect(next.containers[0]?.grossWeight).toBe('24000')
+    expect(next.containers[0]?.grossWeight).toBe('')
     expect(next.containers[0]?.measurement).toBe('20')
     expect(next.containers.every((row) => row.packageType === '')).toBe(true)
     expect(next.containers[0]?.note).toBe('')
@@ -278,7 +287,7 @@ describe('transportDocumentPrefill', () => {
     expect(next.descriptionOfGoods).toBe('Rice IN Foodstuffs')
   })
 
-  it("seeds 3 typed rows from 20'DC: 3 with GW/measurement on first row only", () => {
+  it("seeds 3 typed rows from 20'DC: 3 without copying Booking GW into a container", () => {
     const booking = emptyBookingConfirmation()
     booking.cargoVolumes = { "20'DC": 3 }
     booking.grossWeight = '15000 KGS'
@@ -292,7 +301,7 @@ describe('transportDocumentPrefill', () => {
       "20'DC",
     ])
     expect(next.containers.every((row) => row.containerNo === '')).toBe(true)
-    expect(next.containers[0]?.grossWeight).toBe('15000 KGS')
+    expect(next.containers[0]?.grossWeight).toBe('')
     expect(next.containers[0]?.measurement).toBe('45 CBM')
     expect(
       next.containers.slice(1).every((row) => row.grossWeight === '')
@@ -315,12 +324,12 @@ describe('transportDocumentPrefill', () => {
       "20'DC",
       "40'HC",
     ])
-    expect(next.containers[0]?.grossWeight).toBe('9000')
+    expect(next.containers[0]?.grossWeight).toBe('')
     expect(next.containers[0]?.measurement).toBe('12')
     expect(next.volume).toBe("2 x 20'DC\n1 x 40'HC")
   })
 
-  it('falls back to one blank row with booking GW/measurement when volumes empty', () => {
+  it('does not create a cargo row from Booking GW when volumes are empty', () => {
     const booking = emptyBookingConfirmation()
     booking.cargoVolumes = {}
     booking.volume = ''
@@ -329,12 +338,7 @@ describe('transportDocumentPrefill', () => {
     booking.commodity = 'GENERAL'
 
     const next = prefillArrivalNoticeFromBooking(booking, emptyArrivalNotice())
-    expect(next.containers).toHaveLength(1)
-    expect(next.containers[0]?.type).toBe('')
-    expect(next.containers[0]?.containerNo).toBe('')
-    expect(next.containers[0]?.grossWeight).toBe('1000')
-    expect(next.containers[0]?.measurement).toBe('2')
-    expect(next.containers[0]?.note).toBe('')
+    expect(next.containers).toEqual([])
     expect(next.descriptionOfGoods).toBe('GENERAL')
   })
 
@@ -343,9 +347,15 @@ describe('transportDocumentPrefill', () => {
     booking.date = '2026-08-05'
     booking.etd = '2026-08-06'
     booking.placeOfReceipt = 'QUI NHON'
+    booking.placeOfReceiptPortId = 11
     booking.portOfLoading = 'DA NANG'
+    booking.portOfLoadingPortId = 12
+    booking.placeOfIssue = 'QUI NHON, VN (VNUIH)'
+    booking.placeOfIssuePortId = 11
     booking.portOfDischarge = 'KOBE'
+    booking.portOfDischargePortId = 13
     booking.placeOfDelivery = 'KOBE'
+    booking.placeOfDeliveryPortId = 13
     booking.vesselVoyage = 'YOUCAN / 001E'
     booking.grossWeight = '24000'
     booking.measurement = '20'
@@ -360,22 +370,27 @@ describe('transportDocumentPrefill', () => {
     expect(next.portOfLoading).toBe('DA NANG')
     expect(next.portOfDischarge).toBe('KOBE')
     expect(next.placeOfDelivery).toBe('KOBE')
-    expect(next.placeOfIssue).toBe('DA NANG')
+    expect(next.placeOfIssue).toBe('QUI NHON, VN (VNUIH)')
+    expect(next.placeOfReceiptPortId).toBe(11)
+    expect(next.portOfLoadingPortId).toBe(12)
+    expect(next.portOfDischargePortId).toBe(13)
+    expect(next.placeOfDeliveryPortId).toBe(13)
+    expect(next.placeOfIssuePortId).toBe(11)
     expect(next.freightPayableAt).toBe('KOBE')
     expect(next.oceanVessel).toBe('YOUCAN / 001E')
     expect(next.fblNumber).toBe('')
     expect(next.consignor).toBe('')
     expect(next.serviceMode).toBe('')
-    expect(next.shippingMark).toBe('')
+    expect(next.shippingMark).toBe('N/M')
     expect(next.numberAndKindOfPackages).toBe("2 x 20'DC")
     expect(next.containers).toHaveLength(2)
     expect(next.containers.map((row) => row.type)).toEqual(["20'DC", "20'DC"])
     expect(next.containers[0]?.containerNo).toBe('')
     expect(next.containers[0]?.sealNo).toBe('')
-    expect(next.containers[0]?.grossWeight).toBe('24000')
+    expect(next.containers[0]?.grossWeight).toBe('')
     expect(next.containers[0]?.measurement).toBe('20')
     expect(next.descriptionOfGoods).toBe('Rice IN Foodstuffs')
-    expect(next.grossWeight).toBe('24000 KGS')
+    expect(next.grossWeight).toBe('')
     expect(next.measurement).toBe('20 CBM')
   })
 

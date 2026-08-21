@@ -8,6 +8,7 @@ import {
   TRANSPORT_DOCUMENTS,
 } from './transportDocumentFormConfig'
 import {
+  applyBillOfLadingFormVariantChange,
   buildTransportDocumentFileName,
   getTransportDocumentContainers,
 } from './transportDocumentFormRules'
@@ -29,6 +30,21 @@ const fieldSpec = (type: 'an' | 'booking' | 'do' | 'bl', key: string) =>
     .find((field) => field.key === key)
 
 describe('transport document form config', () => {
+  it('sets an editable originals default when the BL form changes', () => {
+    expect(applyBillOfLadingFormVariantChange('original')).toEqual({
+      blFormVariant: 'original',
+      numberOfOriginals: 'THREE/3',
+    })
+    expect(applyBillOfLadingFormVariantChange('non_negotiable')).toEqual({
+      blFormVariant: 'non_negotiable',
+      numberOfOriginals: 'THREE/3',
+    })
+    expect(applyBillOfLadingFormVariantChange('surrendered')).toEqual({
+      blFormVariant: 'surrendered',
+      numberOfOriginals: 'ZERO/0',
+    })
+  })
+
   it('lists Booking and Arrival Notice before the two final document types', () => {
     expect(TRANSPORT_DOCUMENTS.map((document) => document.type)).toEqual([
       'booking',
@@ -50,6 +66,7 @@ describe('transport document form config', () => {
       'to',
       'placeOfReceipt',
       'portOfLoading',
+      'placeOfIssue',
       'portOfDischarge',
       'placeOfDelivery',
       'transitPort',

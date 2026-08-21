@@ -93,7 +93,19 @@ export function usePortsTable({
         accessorKey: 'name',
         header: renderSortableHeader('Name'),
         cell: ({ row }) => (
-          <span className='font-medium'>{row.original.name}</span>
+          <span className='flex min-w-0 flex-col'>
+            <span className='truncate font-medium'>{row.original.name}</span>
+            {[row.original.subName1, row.original.subName2]
+              .filter(Boolean)
+              .map((subName) => (
+                <span
+                  key={subName}
+                  className='truncate text-xs text-muted-foreground'
+                >
+                  {subName}
+                </span>
+              ))}
+          </span>
         ),
       },
       {

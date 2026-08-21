@@ -1,7 +1,10 @@
 import { apiClient } from '@/shared/utils/apiClient'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { emptyArrivalNotice } from '@/features/admin/sections/transport-documents/transportDocumentSchemas'
-import { transportDocumentService } from './transportDocumentService'
+import {
+  toTransportDocumentV2Envelope,
+  transportDocumentService,
+} from './transportDocumentService'
 
 vi.mock('@/shared/utils/apiClient', async (importOriginal) => {
   const actual =
@@ -18,6 +21,57 @@ describe('transportDocumentService', () => {
     vi.mocked(apiClient.post).mockReset()
     vi.mocked(apiClient.put).mockReset()
     vi.mocked(apiClient.delete).mockReset()
+  })
+
+  it('splits presentation and removes blank repeated rows on the v2 wire', () => {
+    const payload = {
+      ...emptyArrivalNotice(),
+      anNumber: 'AN-1',
+      consigneePartyId: 7,
+      portOfLoading: 'QUY NHON (VNUIH)',
+      portOfLoadingPortId: 42,
+      descriptionOfGoods: 'STONE',
+      containers: [
+        {
+          type: '',
+          containerNo: '',
+          sealNo: '',
+          grossWeight: '',
+          measurement: '',
+          tare: '',
+          packageType: '',
+          noOfPkgs: '',
+          note: '',
+          method: '',
+        },
+        {
+          type: "20'DC",
+          containerNo: '',
+          sealNo: '',
+          grossWeight: '',
+          measurement: '',
+          tare: '',
+          packageType: 'PALLET(S)',
+          noOfPkgs: '',
+          note: '',
+          method: '',
+        },
+      ],
+    }
+    const wire = toTransportDocumentV2Envelope(payload)
+    expect(wire.document).toMatchObject({
+      anNumber: 'AN-1',
+      consigneePartyId: 7,
+      portOfLoadingPortId: 42,
+    })
+    expect(wire.presentation).toMatchObject({
+      descriptionOfGoods: 'STONE',
+      portOfLoading: 'QUY NHON (VNUIH)',
+    })
+    expect(wire.presentation).not.toHaveProperty('consigneePartyId')
+    expect(wire.presentation).not.toHaveProperty('portOfLoadingPortId')
+    expect(wire.containers).toHaveLength(1)
+    expect(wire.containers[0].type).toBe("20'DC")
   })
 
   it('posts the type-specific DTO and returns the raw PDF blob', async () => {
@@ -116,8 +170,12 @@ describe('transportDocumentService', () => {
     const result = await transportDocumentService.create('an', payload)
 
     expect(apiClient.post).toHaveBeenCalledWith(
-      '/admin/booking-documents/an/records',
-      payload
+      '/api/v2/admin/booking-documents/an/records',
+      expect.objectContaining({
+        document: expect.objectContaining({ anNumber: 'AN-001' }),
+        presentation: expect.objectContaining({ descriptionOfGoods: '' }),
+        containers: [],
+      })
     )
     expect(payload).not.toHaveProperty('status')
     expect(result).toMatchObject({
@@ -260,11 +318,15 @@ describe('transportDocumentService', () => {
     await transportDocumentService.delete('an', 5)
 
     expect(apiClient.get).toHaveBeenCalledWith(
-      '/admin/booking-documents/an/records/5'
+      '/api/v2/admin/booking-documents/an/records/5'
     )
     expect(apiClient.put).toHaveBeenCalledWith(
-      '/admin/booking-documents/an/records/5',
-      expect.objectContaining({ expectedVersion: 3 })
+      '/api/v2/admin/booking-documents/an/records/5',
+      expect.objectContaining({
+        expectedVersion: 3,
+        document: expect.any(Object),
+        presentation: expect.any(Object),
+      })
     )
     expect(apiClient.post).toHaveBeenNthCalledWith(
       1,
@@ -304,7 +366,7 @@ describe('transportDocumentService', () => {
     })
 
     expect(apiClient.get).toHaveBeenCalledWith(
-      '/admin/booking-documents/do/records?page=2&size=10'
+      '/api/v2/admin/booking-documents/do/records?page=2&size=10'
     )
   })
 
@@ -332,7 +394,7 @@ describe('transportDocumentService', () => {
     })
 
     expect(apiClient.get).toHaveBeenCalledWith(
-      '/admin/booking-documents/booking/records?page=0&size=10&bookingNo=BK+24%2F001'
+      '/api/v2/admin/booking-documents/booking/records?page=0&size=10&bookingNo=BK+24%2F001'
     )
   })
 })

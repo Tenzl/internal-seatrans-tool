@@ -33,10 +33,13 @@ interface TransportDocumentFieldProps {
   value: string
   selectedPartyId?: number | null
   selectedInternalUserId?: number | null
+  selectedPortId?: number | null
   onChange: (value: unknown) => void
   onPartyIdChange?: (value: number | null) => void
   onInternalUserIdChange?: (value: number | null) => void
+  onPortIdChange?: (value: number | null) => void
   disabled?: boolean
+  required?: boolean
 }
 
 export function TransportDocumentField({
@@ -44,10 +47,13 @@ export function TransportDocumentField({
   value,
   selectedPartyId,
   selectedInternalUserId,
+  selectedPortId,
   onChange,
   onPartyIdChange,
   onInternalUserIdChange,
+  onPortIdChange,
   disabled = false,
+  required = false,
 }: TransportDocumentFieldProps) {
   const id = `transport-document-${field.key}`
   const isFilled = value.trim().length > 0
@@ -66,6 +72,11 @@ export function TransportDocumentField({
         }
       >
         {field.label}
+        {required ? (
+          <span className='ml-1 text-destructive' aria-hidden='true'>
+            *
+          </span>
+        ) : null}
       </Label>
       {field.kind === 'party' ? (
         <PartySearchSelect
@@ -96,6 +107,7 @@ export function TransportDocumentField({
           placeholder={field.placeholder}
           disabled={disabled}
           readOnly={disabled}
+          aria-required={required || undefined}
           onChange={(event) => onChange(event.target.value)}
           className={cn(
             'min-h-20 resize-y bg-background disabled:cursor-not-allowed disabled:opacity-70',
@@ -110,6 +122,7 @@ export function TransportDocumentField({
         >
           <SelectTrigger
             id={id}
+            aria-required={required || undefined}
             className={cn('w-full bg-background', filledRingClass)}
           >
             <SelectValue placeholder={field.placeholder ?? 'Select'} />
@@ -129,8 +142,10 @@ export function TransportDocumentField({
         <PortNameSearchSelect
           id={id}
           value={value}
+          selectedPortId={selectedPortId}
           disabled={disabled}
           onValueChange={onChange}
+          onPortIdChange={onPortIdChange}
           placeholder={field.placeholder ?? 'Search port name...'}
           className={filledRingClass}
         />
@@ -166,6 +181,7 @@ export function TransportDocumentField({
           placeholder={field.placeholder}
           disabled={disabled}
           readOnly={disabled}
+          aria-required={required || undefined}
           onChange={(event) => onChange(event.target.value)}
           className={cn(
             'bg-background disabled:cursor-not-allowed disabled:opacity-70',

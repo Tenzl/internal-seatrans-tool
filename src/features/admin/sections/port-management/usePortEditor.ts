@@ -11,6 +11,7 @@ import {
   buildSavePortPayload,
   createPortForm,
   editPortForm,
+  getProvinceOptionsForEdit,
 } from './portManagement.helpers'
 import { EMPTY_PORT_FORM, type PortFormState } from './portManagement.types'
 
@@ -108,9 +109,8 @@ export function usePortEditor({
   }, [close, editingPortId, form, onSaved])
 
   const provincesForArea = useMemo(
-    () =>
-      provinces.filter((province) => String(province.area ?? '') === form.area),
-    [form.area, provinces]
+    () => getProvinceOptionsForEdit(provinces, form.area, form.provinceId),
+    [form.area, form.provinceId, provinces]
   )
 
   return {

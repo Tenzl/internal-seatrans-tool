@@ -41,10 +41,15 @@ export function BookingWorkflowNav({
             previousType == null || Boolean(workflow?.documents[previousType])
           const content = (
             <>
-              {record ? (
+              {record?.status === 'COMPLETED' ? (
                 <Check className='h-4 w-4 shrink-0 text-success' />
               ) : (
-                <Circle className='h-3.5 w-3.5 shrink-0' />
+                <Circle
+                  className={cn(
+                    'h-3.5 w-3.5 shrink-0',
+                    record && 'fill-warning/20 text-warning'
+                  )}
+                />
               )}
               <span className='truncate'>
                 {index + 1}. {definition.shortLabel}

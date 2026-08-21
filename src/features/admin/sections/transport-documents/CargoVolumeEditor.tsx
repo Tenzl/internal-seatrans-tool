@@ -1,10 +1,10 @@
 'use client'
 
 import { Minus, Plus } from 'lucide-react'
+import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { cn } from '@/lib/utils'
 import {
   CARGO_VOLUME_TYPES,
   expandCargoVolumes,
@@ -16,6 +16,7 @@ interface CargoVolumeEditorProps {
   volumes: CargoVolumes
   onChange: (volumes: CargoVolumes) => void
   disabled?: boolean
+  required?: boolean
 }
 
 function parseQty(raw: string): number {
@@ -34,6 +35,7 @@ export function CargoVolumeEditor({
   volumes,
   onChange,
   disabled = false,
+  required = false,
 }: CargoVolumeEditorProps) {
   const grid = expandCargoVolumes(volumes)
   const summary = formatSummary(grid)
@@ -48,13 +50,15 @@ export function CargoVolumeEditor({
   }
 
   return (
-    <div
-      data-testid='cargo-volume-editor'
-      className='space-y-2'
-    >
+    <div data-testid='cargo-volume-editor' className='space-y-2'>
       <div className='space-y-0.5'>
         <Label className='text-sm font-medium text-muted-foreground'>
           Cargo volume
+          {required ? (
+            <span className='ml-1 text-destructive' aria-hidden='true'>
+              *
+            </span>
+          ) : null}
         </Label>
         <p className='text-sm leading-snug text-muted-foreground/80'>
           Set quantity per container type
@@ -64,6 +68,7 @@ export function CargoVolumeEditor({
       <div
         role='group'
         aria-label='Cargo volume by container type'
+        aria-required={required || undefined}
         className='grid grid-cols-2 gap-2 sm:grid-cols-3 md:grid-cols-5'
       >
         {CARGO_VOLUME_TYPES.map((type) => {
@@ -84,7 +89,7 @@ export function CargoVolumeEditor({
               <label
                 htmlFor={id}
                 className={cn(
-                  'text-xs font-medium leading-none tracking-wide tabular-nums',
+                  'text-xs leading-none font-medium tracking-wide tabular-nums',
                   active ? 'text-primary' : 'text-muted-foreground'
                 )}
               >

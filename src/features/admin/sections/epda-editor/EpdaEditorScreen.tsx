@@ -277,6 +277,7 @@ export function EpdaEditorScreen({
     paramDiffDialogOpen,
     paramDiffRows,
     isParamDecisionPending,
+    paramDecision,
     applyLatestParams,
     skipLatestParams,
   } = useEpdaParameterApplySkip({
@@ -326,6 +327,7 @@ export function EpdaEditorScreen({
   })
   const { isSavingDraft } = persistence
   const isLoading = preview.isLoading
+  const isCreateMode = !linkedInquiryId
 
   // Order creator panel is intentionally hidden on create/edit EPDA.
   const showCreatorSection = false
@@ -353,11 +355,25 @@ export function EpdaEditorScreen({
     isSavingDraft ||
     isLoadingInquiry
 
+  const showTariffDecisionMessage = (action: 'saving' | 'previewing') => {
+    if (paramDiffDialogOpen) {
+      toast.error(
+        `Review the tariff changes in the open dialog before ${action}.`
+      )
+      return
+    }
+    if (paramDecision === 'error') {
+      toast.error(
+        `Tariffs could not be loaded. Reload the page before ${action}.`
+      )
+      return
+    }
+    toast.error(`Tariffs are still loading. Wait before ${action}.`)
+  }
+
   const handleSaveDraft = async () => {
     if (isParamDecisionPending) {
-      toast.error(
-        'Choose Apply latest or Skip on the tariff changes before saving.'
-      )
+      showTariffDecisionMessage('saving')
       return
     }
     setShowValidationErrors(true)
@@ -412,9 +428,7 @@ export function EpdaEditorScreen({
 
   const handlePreview = async () => {
     if (isParamDecisionPending) {
-      toast.error(
-        'Choose Apply latest or Skip on the tariff changes before previewing.'
-      )
+      showTariffDecisionMessage('previewing')
       return
     }
     setShowValidationErrors(true)
@@ -523,6 +537,7 @@ export function EpdaEditorScreen({
       isLoadingPreview={isLoading}
       isLocked={isEpdaLocked}
       showSaveDraft={showSaveDraftButton}
+      mode={isCreateMode ? 'create' : 'save'}
       onReset={handleReset}
       onSaveDraft={() => void handleSaveDraft()}
       onPreview={() => void handlePreview()}
@@ -576,7 +591,9 @@ export function EpdaEditorScreen({
         ports={portsByArea}
         portPickerCollapsed={portPickerCollapsed}
         isLoadingPorts={isLoadingPorts}
+        areaLocked={!isCreateMode}
         onAreaChange={(value) => {
+          if (!isCreateMode) return
           setPort('')
           setPortPickerCollapsed(false)
           referenceData.selectArea(value)
@@ -681,9 +698,14 @@ export function EpdaEditorScreen({
           <AlertDialogHeader>
             <AlertDialogTitle>{t('epda.incompleteSaveTitle')}</AlertDialogTitle>
             <AlertDialogDescription>
-              {t('epda.incompleteSaveBody', {
-                count: missingRequiredFields.length,
-              })}
+              {t(
+                isCreateMode
+                  ? 'epda.incompleteCreateBody'
+                  : 'epda.incompleteSaveBody',
+                {
+                  count: missingRequiredFields.length,
+                }
+              )}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -696,7 +718,11 @@ export function EpdaEditorScreen({
                 void proceedSaveDraft(false)
               }}
             >
-              {t('epda.incompleteSaveContinue')}
+              {t(
+                isCreateMode
+                  ? 'epda.incompleteCreateContinue'
+                  : 'epda.incompleteSaveContinue'
+              )}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

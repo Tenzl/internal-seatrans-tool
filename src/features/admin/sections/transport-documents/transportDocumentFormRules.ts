@@ -1,8 +1,26 @@
 import type {
   AnContainer,
+  BillOfLadingPayload,
   TransportDocumentPayloadMap,
   TransportDocumentType,
 } from './transportDocument.types'
+
+export type BillOfLadingFormVariant = BillOfLadingPayload['blFormVariant']
+
+/**
+ * Selecting a BL form resets the editable originals field to that form's
+ * operational default. The field remains a normal text input afterwards, so
+ * staff can still override the generated value.
+ */
+export function applyBillOfLadingFormVariantChange(
+  blFormVariant: BillOfLadingFormVariant
+): Pick<BillOfLadingPayload, 'blFormVariant' | 'numberOfOriginals'> {
+  return {
+    blFormVariant,
+    numberOfOriginals:
+      blFormVariant === 'surrendered' ? 'ZERO/0' : 'THREE/3',
+  }
+}
 
 export function getTransportDocumentReference(
   type: TransportDocumentType,

@@ -2,7 +2,7 @@
 
 import * as React from 'react'
 import { useInfiniteQuery } from '@tanstack/react-query'
-import { formatPortDisplay } from '@/modules/logistics/portDisplay'
+import { buildPortDisplayOptions } from '@/modules/logistics/portDisplay'
 import {
   portService,
   type Port,
@@ -30,6 +30,8 @@ interface PortNameSearchSelectProps {
   id?: string
   value: string
   onValueChange: (value: string) => void
+  selectedPortId?: number | null
+  onPortIdChange?: (value: number | null) => void
   placeholder?: string
   disabled?: boolean
   className?: string
@@ -39,6 +41,8 @@ export function PortNameSearchSelect({
   id,
   value,
   onValueChange,
+  selectedPortId,
+  onPortIdChange,
   placeholder = 'Search port name or code...',
   disabled = false,
   className,
@@ -71,6 +75,14 @@ export function PortNameSearchSelect({
     })
     return [...byId.values()]
   }, [portsQuery.data])
+
+  const displayOptions = React.useMemo(
+    () =>
+      ports.flatMap((port) =>
+        buildPortDisplayOptions(port).map((option) => ({ option, port }))
+      ),
+    [ports]
+  )
 
   const loadNextPage = () => {
     if (!portsQuery.hasNextPage || portsQuery.isFetchingNextPage) return
@@ -141,6 +153,7 @@ export function PortNameSearchSelect({
                       value='clear-port'
                       onSelect={() => {
                         onValueChange('')
+                        onPortIdChange?.(null)
                         setOpen(false)
                       }}
                     >
@@ -148,12 +161,13 @@ export function PortNameSearchSelect({
                     </CommandItem>
                   ) : null}
 
-                  {ports.map((port) => (
+                  {displayOptions.map(({ option, port }) => (
                     <CommandItem
-                      key={port.id}
-                      value={`port-${port.id}`}
+                      key={option.key}
+                      value={`port-${option.key}`}
                       onSelect={() => {
-                        onValueChange(formatPortDisplay(port))
+                        onValueChange(option.label)
+                        onPortIdChange?.(port.id)
                         setOpen(false)
                         setSearch('')
                       }}
@@ -161,19 +175,18 @@ export function PortNameSearchSelect({
                       <Check
                         className={cn(
                           'h-4 w-4 shrink-0',
-                          value === formatPortDisplay(port) ||
-                            value === port.name
+                          selectedPortId === port.id &&
+                            (value === option.label || value === option.name)
                             ? 'opacity-100'
                             : 'opacity-0'
                         )}
                       />
                       <span className='flex min-w-0 flex-col'>
-                        <span className='truncate'>
-                          {formatPortDisplay(port)}
-                        </span>
-                        {port.provinceName ? (
+                        <span className='truncate'>{option.label}</span>
+                        {option.kind === 'sub' || port.provinceName ? (
                           <span className='truncate text-xs text-muted-foreground'>
-                            {port.provinceName}
+                            {option.kind === 'sub' ? 'Sub name' : 'Main name'}
+                            {port.provinceName ? ` · ${port.provinceName}` : ''}
                           </span>
                         ) : null}
                       </span>

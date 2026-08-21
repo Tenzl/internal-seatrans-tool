@@ -96,9 +96,10 @@ function renderSortableHeader(label: string, onSort: () => void) {
 export function renderTransportDocumentStatusBadge(
   record: TransportDocumentRecord
 ) {
-  const config = STATUS_BADGE_CONFIG[record.status as InquiryStatus] || {
+  const displayedStatus = record.workflowStatus ?? record.status
+  const config = STATUS_BADGE_CONFIG[displayedStatus as InquiryStatus] || {
     variant: 'outline' as const,
-    label: record.status,
+    label: displayedStatus,
   }
   return (
     <Badge variant={config.variant} className={config.className}>

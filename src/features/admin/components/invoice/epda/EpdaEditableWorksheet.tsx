@@ -41,6 +41,7 @@ interface EpdaEditableWorksheetProps {
   ports: PortOption[]
   portPickerCollapsed: boolean
   isLoadingPorts: boolean
+  areaLocked: boolean
   onAreaChange: (area: EpdaArea) => void
   onPortChange: (port: string, portId: number | null) => void
   onPortPickerCollapsedChange: (collapsed: boolean) => void
@@ -80,6 +81,7 @@ export function EpdaEditableWorksheet({
   ports,
   portPickerCollapsed,
   isLoadingPorts,
+  areaLocked,
   onAreaChange,
   onPortChange,
   onPortPickerCollapsedChange,
@@ -153,6 +155,7 @@ export function EpdaEditableWorksheet({
             ports={ports}
             collapsed={portPickerCollapsed}
             isLoading={isLoadingPorts}
+            areaLocked={areaLocked}
             onAreaChange={onAreaChange}
             onPortChange={onPortChange}
             onCollapsedChange={onPortPickerCollapsedChange}

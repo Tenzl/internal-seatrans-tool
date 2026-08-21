@@ -61,12 +61,14 @@ export function buildWorkflowPrefillKey(
 }
 
 /**
- * Booking cargo totals are shipment-level (one GW KGS + one CBM), not per
- * container. Put them on the first AN row only — do not invent equal splits.
+ * Booking gross weight is shipment-level and is not a container weight.
+ * Container gross weight therefore stays blank until the operator enters the
+ * actual value for that container. Measurement keeps the existing first-row
+ * prefill because it is still represented by the cargo table today.
  * Commodity maps to shipment `descriptionOfGoods` (not container note).
  * Never invent containerNo / sealNo.
  */
-function applyBookingCargoTotalsToFirstRow(
+function applyBookingMeasurementToFirstRow(
   rows: AnContainer[],
   source: BookingConfirmationPayload
 ): AnContainer[] {
@@ -75,23 +77,11 @@ function applyBookingCargoTotalsToFirstRow(
     const { cargoVolumes } = normalizeBookingCargoVolumes(source)
     base = seedAnContainersFromVolumes(cargoVolumes)
   }
-  if (base.length === 0) {
-    if (!source.grossWeight.trim() && !source.measurement.trim()) {
-      return []
-    }
-    return [
-      {
-        ...emptyAnContainer(),
-        grossWeight: source.grossWeight,
-        measurement: source.measurement,
-      },
-    ]
-  }
+  if (base.length === 0) return []
   return base.map((row, index) =>
     index === 0
       ? {
           ...row,
-          grossWeight: source.grossWeight,
           measurement: source.measurement,
         }
       : row
@@ -112,18 +102,23 @@ export function prefillArrivalNoticeHeaderFromBooking(
     etd: source.etd,
     eta: source.eta,
     placeOfReceipt: source.placeOfReceipt,
+    placeOfReceiptPortId: source.placeOfReceiptPortId ?? null,
     portOfLoading: source.portOfLoading,
+    portOfLoadingPortId: source.portOfLoadingPortId ?? null,
     portOfDischarge: source.portOfDischarge,
+    portOfDischargePortId: source.portOfDischargePortId ?? null,
     placeOfDelivery: source.placeOfDelivery,
+    placeOfDeliveryPortId: source.placeOfDeliveryPortId ?? null,
     finalDestination: source.placeOfDelivery,
+    finalDestinationPortId: source.placeOfDeliveryPortId ?? null,
   }
 }
 
 /**
  * Keep Booking-owned AN cargo synchronized while the AN is still uncreated.
- * Totals (GW / measurement) stay on row 1; every row receives the selected
- * Booking Type as its package type. The screen stops calling this mapper once
- * AN creation returns a persisted ID.
+ * Booking GW is never copied into a container. Measurement stays on row 1;
+ * every row receives the selected Booking Type as its package type. The screen
+ * stops calling this mapper once AN creation returns a persisted ID.
  */
 export function mapArrivalNoticeCargoFromBooking(
   source: BookingConfirmationPayload,
@@ -135,7 +130,7 @@ export function mapArrivalNoticeCargoFromBooking(
     ...row,
     packageType,
   }))
-  const containers = applyBookingCargoTotalsToFirstRow(seeded, source)
+  const containers = applyBookingMeasurementToFirstRow(seeded, source)
   const bookingDescription =
     source.commodity.trim() ||
     formatBookingCommodityDescription(
@@ -182,7 +177,7 @@ export function prefillBillOfLadingFromBooking(
     packageType,
   }))
   const containers =
-    seeded.length > 0 ? applyBookingCargoTotalsToFirstRow(seeded, source) : []
+    seeded.length > 0 ? applyBookingMeasurementToFirstRow(seeded, source) : []
   const descriptionOfGoods =
     source.commodity.trim() ||
     formatBookingCommodityDescription(
@@ -202,10 +197,15 @@ export function prefillBillOfLadingFromBooking(
     // Full vessel/voyage string — BL PDF uses one combined oceanVessel cell.
     oceanVessel: source.vesselVoyage.trim(),
     placeOfReceipt: source.placeOfReceipt,
+    placeOfReceiptPortId: source.placeOfReceiptPortId ?? null,
     portOfLoading: source.portOfLoading,
+    portOfLoadingPortId: source.portOfLoadingPortId ?? null,
     portOfDischarge: source.portOfDischarge,
+    portOfDischargePortId: source.portOfDischargePortId ?? null,
     placeOfDelivery: source.placeOfDelivery,
-    placeOfIssue: source.portOfLoading,
+    placeOfDeliveryPortId: source.placeOfDeliveryPortId ?? null,
+    placeOfIssue: source.placeOfIssue,
+    placeOfIssuePortId: source.placeOfIssuePortId ?? null,
     freightPayableAt: source.placeOfDelivery,
     numberAndKindOfPackages: volumeText,
     containers,
@@ -262,10 +262,15 @@ export function prefillDeliveryOrderFromAn(
     etd: source.etd,
     eta: source.eta,
     placeOfReceipt: source.placeOfReceipt,
+    placeOfReceiptPortId: source.placeOfReceiptPortId ?? null,
     portOfLoading: source.portOfLoading,
+    portOfLoadingPortId: source.portOfLoadingPortId ?? null,
     portOfDischarge: source.portOfDischarge,
+    portOfDischargePortId: source.portOfDischargePortId ?? null,
     placeOfDelivery: source.placeOfDelivery,
+    placeOfDeliveryPortId: source.placeOfDeliveryPortId ?? null,
     finalDestination: source.finalDestination,
+    finalDestinationPortId: source.finalDestinationPortId ?? null,
     cfsTerminal: source.cfsTerminal,
     marks: source.marks,
     volume: volumeText,

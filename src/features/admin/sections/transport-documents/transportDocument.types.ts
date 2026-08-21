@@ -1,3 +1,5 @@
+import type { PageResponse } from '@/shared/types/api.types'
+
 export const TRANSPORT_DOCUMENT_TYPES = ['an', 'booking', 'do', 'bl'] as const
 
 export type TransportDocumentType = (typeof TRANSPORT_DOCUMENT_TYPES)[number]
@@ -55,10 +57,15 @@ export interface ArrivalNoticePayload {
   referenceNumber: string
   billOfLadingType: string
   placeOfReceipt: string
+  placeOfReceiptPortId?: number | null
   portOfLoading: string
+  portOfLoadingPortId?: number | null
   portOfDischarge: string
+  portOfDischargePortId?: number | null
   placeOfDelivery: string
+  placeOfDeliveryPortId?: number | null
   finalDestination: string
+  finalDestinationPortId?: number | null
   serviceMode: string
   note: string
   marks: string
@@ -94,10 +101,15 @@ export interface DeliveryOrderPayload {
   shipmentNumber: string
   vesselVoyage: string
   placeOfReceipt: string
+  placeOfReceiptPortId?: number | null
   portOfLoading: string
+  portOfLoadingPortId?: number | null
   portOfDischarge: string
+  portOfDischargePortId?: number | null
   placeOfDelivery: string
+  placeOfDeliveryPortId?: number | null
   finalDestination: string
+  finalDestinationPortId?: number | null
   /**
    * AN service mode (e.g. `FCL/FCL - CY/CY`). Synced from Arrival Notice;
    * not edited on DO.
@@ -146,12 +158,21 @@ export interface BookingConfirmationPayload {
   etd: string
   eta: string
   placeOfReceipt: string
+  placeOfReceiptPortId?: number | null
   portOfLoading: string
+  portOfLoadingPortId?: number | null
+  /** Independent B/L issuing place; not derived from the cargo route. */
+  placeOfIssue: string
+  placeOfIssuePortId?: number | null
   pickupDate: string
   pickupPlace: string
+  pickupPlacePortId?: number | null
   portOfDischarge: string
+  portOfDischargePortId?: number | null
   placeOfDelivery: string
+  placeOfDeliveryPortId?: number | null
   dropoffPlace: string
+  dropoffPlacePortId?: number | null
   closingTime: string
   siCutoff: string
   vgmCutoff: string
@@ -171,6 +192,7 @@ export interface BookingConfirmationPayload {
   grossWeight: string
   measurement: string
   transitPort: string
+  transitPortId?: number | null
   specialRemark: string
   motherVessel: string
   motherVoyage: string
@@ -189,11 +211,15 @@ export interface BillOfLadingPayload {
   /** Same as Consignee — copies Consigned to order of into Notify address. */
   notifyPartySameAsConsignee?: boolean
   placeOfReceipt: string
+  placeOfReceiptPortId?: number | null
   /** Vessel + voyage in one field (e.g. `SITC MINHE / 2615N`). */
   oceanVessel: string
   portOfLoading: string
+  portOfLoadingPortId?: number | null
   portOfDischarge: string
+  portOfDischargePortId?: number | null
   placeOfDelivery: string
+  placeOfDeliveryPortId?: number | null
   /**
    * AN service mode (e.g. `FCL/FCL - CY/CY`) — PDF marks column first line.
    * Synced from Arrival Notice; not edited on BL.
@@ -224,6 +250,7 @@ export interface BillOfLadingPayload {
   freightAmount: string
   freightPayableAt: string
   placeOfIssue: string
+  placeOfIssuePortId?: number | null
   dateOfIssue: string
   numberOfOriginals: string
   cargoInsurance: '' | 'not_covered' | 'covered'
@@ -242,6 +269,89 @@ export interface TransportDocumentPayloadMap {
 export type TransportDocumentPayload =
   TransportDocumentPayloadMap[TransportDocumentType]
 
+export interface TransportDocumentV2CargoVolume {
+  containerTypeCode: string
+  quantity: number
+  rowOrder?: number
+}
+
+export interface TransportDocumentV2Envelope {
+  document: Record<string, unknown>
+  presentation: Record<string, unknown>
+  cargoVolumes: TransportDocumentV2CargoVolume[]
+  containers: AnContainer[]
+  expectedVersion?: number
+  bookingFlow?: BookingFlow
+  bookingId?: number
+}
+
+export interface TransportDocumentV2Record extends Omit<
+  TransportDocumentRecord,
+  | 'referenceNumber'
+  | 'payload'
+  | 'updatedByUserId'
+  | 'deletedAt'
+  | 'deletedByUserId'
+> {
+  document: Record<string, unknown>
+  presentation: Record<string, unknown>
+  cargoVolumes: TransportDocumentV2CargoVolume[]
+  containers: AnContainer[]
+}
+
+export interface BookingReportRow {
+  booking_id: number
+  booking_flow: BookingFlow
+  booking_number: string | null
+  booking_date: string
+  booking_status: TransportDocumentStatus
+  workflow_status: TransportDocumentStatus
+  client_party_id: number | null
+  client_name: string | null
+  port_of_loading_id: number | null
+  port_of_loading_name: string | null
+  port_of_discharge_id: number | null
+  port_of_discharge_name: string | null
+  commodity_type_id: number | null
+  commodity_type_name: string | null
+  commodity_id: number | null
+  commodity_name: string | null
+  vessel_voyage: string | null
+  planned_container_count: string
+  planned_container_types: Record<string, number>
+  planned_gross_weight_kg: string | null
+  planned_measurement_cbm: string | null
+  actual_container_count: string
+  actual_gross_weight_kg: string
+  actual_measurement_cbm: string
+  has_bl: boolean
+  has_an: boolean
+  has_do: boolean
+  bl_id: number | null
+  bl_status: TransportDocumentStatus | null
+  bl_date: string | null
+  an_id: number | null
+  an_status: TransportDocumentStatus | null
+  an_date: string | null
+  do_id: number | null
+  do_status: TransportDocumentStatus | null
+  do_date: string | null
+}
+
+export interface BookingReportSummary {
+  total_bookings: number
+  planned_containers: string
+  planned_gross_weight_kg: string
+  planned_measurement_cbm: string
+  actual_containers: string
+  actual_gross_weight_kg: string
+  actual_measurement_cbm: string
+}
+
+export interface BookingReportResponse extends PageResponse<BookingReportRow> {
+  summary: BookingReportSummary
+}
+
 export interface TransportDocumentRecord {
   id: number
   version: number
@@ -252,6 +362,8 @@ export interface TransportDocumentRecord {
   referenceNumber: string | null
   payload: TransportDocumentPayload
   status: TransportDocumentStatus
+  /** Aggregate status for the entire Booking workflow; present on Booking rows. */
+  workflowStatus?: TransportDocumentStatus
   createdByUserId: number
   createdAt: string
   updatedAt: string
@@ -269,6 +381,7 @@ export interface TransportDocumentRecord {
 export interface BookingWorkflow {
   id: number
   flow: BookingFlow
+  status: TransportDocumentStatus
   documents: Partial<Record<TransportDocumentType, TransportDocumentRecord>>
 }
 

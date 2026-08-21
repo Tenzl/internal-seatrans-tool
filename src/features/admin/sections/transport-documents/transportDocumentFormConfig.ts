@@ -22,6 +22,43 @@ export type TransportDocumentFieldKind =
   | 'internal-user'
   | 'party'
 
+export type TransportDocumentPortFieldKey =
+  | 'placeOfReceipt'
+  | 'portOfLoading'
+  | 'placeOfIssue'
+  | 'pickupPlace'
+  | 'portOfDischarge'
+  | 'placeOfDelivery'
+  | 'dropoffPlace'
+  | 'transitPort'
+  | 'finalDestination'
+
+export type TransportDocumentPortIdKey =
+  | 'placeOfReceiptPortId'
+  | 'portOfLoadingPortId'
+  | 'placeOfIssuePortId'
+  | 'pickupPlacePortId'
+  | 'portOfDischargePortId'
+  | 'placeOfDeliveryPortId'
+  | 'dropoffPlacePortId'
+  | 'transitPortId'
+  | 'finalDestinationPortId'
+
+export const TRANSPORT_PORT_ID_KEY_BY_FIELD: Record<
+  TransportDocumentPortFieldKey,
+  TransportDocumentPortIdKey
+> = {
+  placeOfReceipt: 'placeOfReceiptPortId',
+  portOfLoading: 'portOfLoadingPortId',
+  placeOfIssue: 'placeOfIssuePortId',
+  pickupPlace: 'pickupPlacePortId',
+  portOfDischarge: 'portOfDischargePortId',
+  placeOfDelivery: 'placeOfDeliveryPortId',
+  dropoffPlace: 'dropoffPlacePortId',
+  transitPort: 'transitPortId',
+  finalDestination: 'finalDestinationPortId',
+}
+
 type TransportDocumentFieldKey = Exclude<
   | keyof ArrivalNoticePayload
   | keyof BookingConfirmationPayload
@@ -49,6 +86,8 @@ export interface TransportDocumentFieldSpec {
     | 'consigneePartyId'
     | 'notifyPartyId'
   internalUserIdKey?: 'picUserId'
+  /** Relational Port identity persisted beside the historical label snapshot. */
+  portIdKey?: TransportDocumentPortIdKey
   additionType?: PartnerAdditionType
   customerType?: CustomerType
   /** `name` = fill partner name only (Booking Client). Default full block. */
@@ -155,6 +194,11 @@ export const TRANSPORT_DOCUMENT_FORM_SECTIONS: Record<
         {
           key: 'portOfLoading',
           label: 'Port of loading',
+          kind: 'port-name',
+        },
+        {
+          key: 'placeOfIssue',
+          label: 'B/L place of issue',
           kind: 'port-name',
         },
         {

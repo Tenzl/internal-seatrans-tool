@@ -58,8 +58,7 @@ interface PortEditorDialogProps {
 }
 
 function formatMatchMeta(port: Port): string {
-  const area =
-    port.provinceArea != null ? String(port.provinceArea) : null
+  const area = port.provinceArea != null ? String(port.provinceArea) : null
   const bits = [
     port.type ?? 'PORT',
     area && isPortAreaCode(area) ? getPortAreaShortLabel(area) : null,
@@ -121,8 +120,7 @@ export function PortEditorDialog({
 
   const showNameSearch = searchEnabled && searchQuery.length > 0
   const nameSearchLoading = showNameSearch && matchesForQuery !== searchQuery
-  const visibleNameMatches =
-    matchesForQuery === searchQuery ? nameMatches : []
+  const visibleNameMatches = matchesForQuery === searchQuery ? nameMatches : []
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -191,6 +189,28 @@ export function PortEditorDialog({
                   )}
                 </div>
               ) : null}
+            </div>
+
+            <div className='space-y-2'>
+              <Label htmlFor='port-sub-name-1'>Sub name 1 (optional)</Label>
+              <Input
+                id='port-sub-name-1'
+                value={form.subName1}
+                onChange={(event) => onChange('subName1', event.target.value)}
+                placeholder='e.g., QUY NHON'
+                maxLength={100}
+              />
+            </div>
+
+            <div className='space-y-2'>
+              <Label htmlFor='port-sub-name-2'>Sub name 2 (optional)</Label>
+              <Input
+                id='port-sub-name-2'
+                value={form.subName2}
+                onChange={(event) => onChange('subName2', event.target.value)}
+                placeholder='Another commonly used name'
+                maxLength={100}
+              />
             </div>
 
             <div className='flex flex-wrap items-end gap-x-5 gap-y-2 pb-2 md:col-span-2'>
@@ -305,7 +325,9 @@ export function PortEditorDialog({
             </div>
 
             <div className='space-y-2'>
-              <Label htmlFor='port-zone-code'>Zone Code (default Vietnam)</Label>
+              <Label htmlFor='port-zone-code'>
+                Zone Code (default Vietnam)
+              </Label>
               <Input
                 id='port-zone-code'
                 value={form.zoneCode}

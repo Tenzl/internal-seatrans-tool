@@ -318,6 +318,7 @@ const enMessages: Record<string, string> = {
   'epda.requiredFields': 'Required fields',
   'epda.portArea': 'Select the area of ports',
   'epda.selectArea': 'Select the area of ports',
+  'epda.areaLocked': 'Locked after creation',
   'epda.portOfCall': 'Port of call',
   'epda.selectAreaFirst': 'Select the area of ports first',
   'epda.loadingPorts': 'Loading ports...',
@@ -329,8 +330,11 @@ const enMessages: Record<string, string> = {
   'epda.incompleteSaveTitle': 'Some required fields are empty',
   'epda.incompleteSaveBody':
     'There are still {count} required field(s) not filled in. Save anyway as a Processing draft?',
+  'epda.incompleteCreateBody':
+    'There are still {count} required field(s) not filled in. Create it as a Processing draft?',
   'epda.incompleteSaveCancel': 'Keep editing',
-  'epda.incompleteSaveContinue': 'Save anyway',
+  'epda.incompleteSaveContinue': 'Save draft',
+  'epda.incompleteCreateContinue': 'Create draft',
   'epda.paramDiffTitle': 'Tariff parameters have changed',
   'epda.paramDiffBody':
     'Review the table below. Choose Apply latest to save these tariffs and use them on the PDF, or Skip to keep the current values.',
@@ -411,8 +415,10 @@ const enMessages: Record<string, string> = {
   'epda.pageSubtitle':
     'Build an estimated port disbursement: pick the port, fill the sections, preview, then save.',
   // create epda — buttons & misc
-  'epda.saveDraft': 'Save',
-  'epda.saveShort': 'Save',
+  'epda.create': 'Create',
+  'epda.creating': 'Creating...',
+  'epda.save': 'Save',
+  'epda.saving': 'Saving...',
   'epda.lock': 'Lock edit',
   'epda.lockShort': 'Lock',
   'epda.locked': 'Locked',

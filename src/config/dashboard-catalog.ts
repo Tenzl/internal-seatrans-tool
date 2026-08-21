@@ -85,6 +85,10 @@ export const DASHBOARD_CATALOG: readonly NavigationCategory[] = [
             title: 'History',
             url: '/booking/documents/history',
           },
+          {
+            title: 'Reports',
+            url: '/booking/documents/reports',
+          },
         ],
       },
     ],

@@ -7,6 +7,7 @@ import {
   buildSavePortPayload,
   createPortForm,
   editPortForm,
+  getProvinceOptionsForEdit,
 } from './portManagement.helpers'
 import { EMPTY_PORT_FORM } from './portManagement.types'
 
@@ -28,14 +29,36 @@ describe('port management helpers', () => {
       id: 1,
       name: 'Cai Mep',
       portOfCall: 'CAI MEP',
+      subName1: 'CAI MEP PORT',
+      subName2: 'CAI MEP TERMINAL',
       provinceId: 10,
     }
 
     expect(editPortForm(port, provinces)).toMatchObject({
       name: 'Cai Mep',
+      subName1: 'CAI MEP PORT',
+      subName2: 'CAI MEP TERMINAL',
       area: '2',
       provinceId: 10,
     })
+  })
+
+  it('keeps the selected province visible in Edit even when its area metadata is stale', () => {
+    expect(getProvinceOptionsForEdit(provinces, '1', 10)).toEqual(provinces)
+  })
+
+  it('sends both sub names and allows clearing them during Edit', () => {
+    expect(
+      buildSavePortPayload(
+        {
+          ...EMPTY_PORT_FORM,
+          name: 'QUY NHON PORT',
+          subName1: ' QUI NHON ',
+          subName2: '',
+        },
+        true
+      )
+    ).toMatchObject({ subName1: 'QUI NHON', subName2: '' })
   })
 
   it('normalizes optional coordinates for the backend DTO', () => {

@@ -1,7 +1,7 @@
 'use client'
 
 import { useI18n } from '@/shared/i18n/I18nProvider'
-import { Loader2, Lock, Printer, Save } from 'lucide-react'
+import { FilePlus2, Loader2, Lock, Printer, Save } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { EpdaFieldChangeHistory } from './EpdaFieldChangeHistory'
 
@@ -14,6 +14,7 @@ interface EpdaEditorActionsProps {
   isLoadingPreview: boolean
   isLocked: boolean
   showSaveDraft: boolean
+  mode: 'create' | 'save'
   onReset: () => void
   onSaveDraft: () => void
   onPreview: () => void
@@ -29,6 +30,7 @@ export function EpdaEditorActions({
   isLoadingPreview,
   isLocked,
   showSaveDraft,
+  mode,
   onReset,
   onSaveDraft,
   onPreview,
@@ -79,11 +81,16 @@ export function EpdaEditorActions({
         >
           {isSavingDraft ? (
             <Loader2 className='h-4 w-4 animate-spin' />
+          ) : mode === 'create' ? (
+            <FilePlus2 className='h-4 w-4' />
           ) : (
             <Save className='h-4 w-4' />
           )}
-          <span className='hidden sm:inline'>{t('epda.saveDraft')}</span>
-          <span className='sm:hidden'>{t('epda.saveShort')}</span>
+          <span>
+            {isSavingDraft
+              ? t(mode === 'create' ? 'epda.creating' : 'epda.saving')
+              : t(mode === 'create' ? 'epda.create' : 'epda.save')}
+          </span>
         </Button>
       ) : null}
       {isLocked ? (

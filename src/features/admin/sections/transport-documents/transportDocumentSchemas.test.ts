@@ -16,9 +16,13 @@ import {
 } from './transportDocumentSchemas'
 
 describe('transport document schemas', () => {
-  it('keeps a new or empty BL at zero container rows', () => {
+  it('keeps a new or empty BL at zero containers with editable BL defaults', () => {
     expect(emptyBillOfLading().containers).toEqual([])
-    expect(normalizeBillOfLadingPayload({}).containers).toEqual([])
+    expect(normalizeBillOfLadingPayload({})).toMatchObject({
+      containers: [],
+      numberOfOriginals: 'THREE/3',
+      shippingMark: 'N/M',
+    })
   })
 
   it('keeps the backend cargo row property names intact', () => {
@@ -514,6 +518,7 @@ describe('transport document schemas', () => {
         'eta',
         'etd',
         'finalDestination',
+        'finalDestinationPortId',
         'hblNumber',
         'marks',
         'mblNumber',
@@ -522,9 +527,13 @@ describe('transport document schemas', () => {
         'notifyPartyId',
         'notifyPartySameAsConsignee',
         'placeOfDelivery',
+        'placeOfDeliveryPortId',
         'placeOfReceipt',
+        'placeOfReceiptPortId',
         'portOfDischarge',
+        'portOfDischargePortId',
         'portOfLoading',
+        'portOfLoadingPortId',
         'referenceNumber',
         'serviceMode',
         'shipmentNumber',
@@ -548,6 +557,7 @@ describe('transport document schemas', () => {
         'contact',
         'date',
         'dropoffPlace',
+        'dropoffPlacePortId',
         'eta',
         'etd',
         'grossWeight',
@@ -558,14 +568,22 @@ describe('transport document schemas', () => {
         'picUserId',
         'pickupDate',
         'pickupPlace',
+        'pickupPlacePortId',
         'placeOfDelivery',
+        'placeOfDeliveryPortId',
+        'placeOfIssue',
+        'placeOfIssuePortId',
         'placeOfReceipt',
+        'placeOfReceiptPortId',
         'portOfDischarge',
+        'portOfDischargePortId',
         'portOfLoading',
+        'portOfLoadingPortId',
         'siCutoff',
         'specialRemark',
         'to',
         'transitPort',
+        'transitPortId',
         'vgmCutoff',
         'vesselVoyage',
         'volume',
@@ -585,6 +603,7 @@ describe('transport document schemas', () => {
         'eta',
         'etd',
         'finalDestination',
+        'finalDestinationPortId',
         'hblNumber',
         'marks',
         'mblNumber',
@@ -592,9 +611,13 @@ describe('transport document schemas', () => {
         'notifyParty',
         'notifyPartyId',
         'placeOfDelivery',
+        'placeOfDeliveryPortId',
         'placeOfReceipt',
+        'placeOfReceiptPortId',
         'portOfDischarge',
+        'portOfDischargePortId',
         'portOfLoading',
+        'portOfLoadingPortId',
         'serviceMode',
         'shipmentNumber',
         'to',
@@ -630,13 +653,23 @@ describe('transport document schemas', () => {
         'numberOfOriginals',
         'oceanVessel',
         'placeOfDelivery',
+        'placeOfDeliveryPortId',
         'placeOfIssue',
+        'placeOfIssuePortId',
         'placeOfReceipt',
+        'placeOfReceiptPortId',
         'portOfDischarge',
+        'portOfDischargePortId',
         'portOfLoading',
+        'portOfLoadingPortId',
         'serviceMode',
         'shipperPartyId',
       ].sort()
     )
+    expect(emptyBillOfLading()).toMatchObject({
+      blFormVariant: 'non_negotiable',
+      numberOfOriginals: 'THREE/3',
+      shippingMark: 'N/M',
+    })
   })
 })

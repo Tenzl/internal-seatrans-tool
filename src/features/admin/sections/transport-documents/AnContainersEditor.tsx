@@ -21,6 +21,7 @@ import {
 } from './anContainerModel'
 import type { AnContainer } from './transportDocument.types'
 import { AN_CONTAINER_COLUMNS } from './transportDocumentFormConfig'
+import { REQUIRED_CONTAINER_FIELDS } from './transportDocumentRequirements'
 
 interface AnContainersEditorProps {
   rows: AnContainer[]
@@ -87,6 +88,9 @@ export function AnContainersEditor({
         <div className='space-y-0.5'>
           <p className='text-sm font-medium text-muted-foreground'>
             Container rows
+            <span className='ml-1 text-destructive' aria-hidden='true'>
+              *
+            </span>
           </p>
           <p className='text-sm leading-snug text-muted-foreground/80'>
             {readOnly
@@ -112,15 +116,26 @@ export function AnContainersEditor({
             className={`grid ${gridCols} gap-px bg-border text-xs font-medium tracking-wide text-table-header-foreground`}
           >
             {[
-              'No',
-              ...AN_CONTAINER_COLUMNS.map((column) => column.label),
-              ...(readOnly ? [] : ['']),
-            ].map((label) => (
+              { key: 'no', label: 'No', required: false },
+              ...AN_CONTAINER_COLUMNS.map((column) => ({
+                key: column.key,
+                label: column.label,
+                required: REQUIRED_CONTAINER_FIELDS.has(column.key),
+              })),
+              ...(readOnly
+                ? []
+                : [{ key: 'actions', label: '', required: false }]),
+            ].map((header) => (
               <div
-                key={label || 'actions'}
+                key={header.key}
                 className='bg-table-header px-2.5 py-2 leading-snug break-words whitespace-normal'
               >
-                {label}
+                {header.label}
+                {header.required ? (
+                  <span className='ml-1 text-destructive' aria-hidden='true'>
+                    *
+                  </span>
+                ) : null}
               </div>
             ))}
           </div>

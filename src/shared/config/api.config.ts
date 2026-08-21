@@ -73,6 +73,15 @@ export const API_CONFIG = {
   },
 
   BOOKING_DOCUMENTS: {
+    V2_CREATE: (type: 'an' | 'booking' | 'do' | 'bl') =>
+      `/api/v2/admin/booking-documents/${type}/records`,
+    V2_HISTORY: (type: 'an' | 'booking' | 'do' | 'bl') =>
+      `/api/v2/admin/booking-documents/${type}/records`,
+    V2_BY_ID: (type: 'an' | 'booking' | 'do' | 'bl', id: number) =>
+      `/api/v2/admin/booking-documents/${type}/records/${id}`,
+    V2_UPDATE: (type: 'an' | 'booking' | 'do' | 'bl', id: number) =>
+      `/api/v2/admin/booking-documents/${type}/records/${id}`,
+    V2_REPORT: '/api/v2/admin/booking-documents/reports/bookings',
     ADMIN_PREVIEW: (type: 'an' | 'booking' | 'do' | 'bl') =>
       `/admin/booking-documents/${type}/preview`,
     ADMIN_CREATE: (type: 'an' | 'booking' | 'do' | 'bl') =>

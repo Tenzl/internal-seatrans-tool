@@ -28,7 +28,7 @@ type HourFieldSetters = {
   setGarbageUsdRate: (value: string) => void
 }
 
-type ParamDecision = 'idle' | 'pending' | 'applied' | 'skipped'
+type ParamDecision = 'idle' | 'pending' | 'applied' | 'skipped' | 'error'
 
 type UseEpdaParameterApplySkipOptions = {
   linkedInquiryId: number | null | undefined
@@ -78,7 +78,7 @@ export function useEpdaParameterApplySkip({
   const [compareToken, setCompareToken] = useState(0)
   /** Mirrors decisionRef so callers can gate Save / Preview / auto-PDF. */
   const [paramDecision, setParamDecision] = useState<ParamDecision>('idle')
-  const decisionRef = useRef<'pending' | 'applied' | 'skipped' | null>(null)
+  const decisionRef = useRef<Exclude<ParamDecision, 'idle'> | null>(null)
   const baselineRef = useRef<EpdaParameterValues | null>(null)
   const latestRef = useRef<EpdaParameterValues | null>(null)
   const forceLatestRef = useRef(false)
@@ -86,7 +86,9 @@ export function useEpdaParameterApplySkip({
   const hourSettersRef = useRef(hourSetters)
   const effectiveParamsRef = useRef(effectiveParams)
 
-  const setDecision = (value: 'pending' | 'applied' | 'skipped' | null) => {
+  const setDecision = (
+    value: 'pending' | 'applied' | 'skipped' | 'error' | null
+  ) => {
     decisionRef.current = value
     setParamDecision(value ?? 'idle')
   }
@@ -239,7 +241,7 @@ export function useEpdaParameterApplySkip({
       } catch {
         if (cancelled) return
         if (forceLatestRef.current) {
-          setDecision('pending')
+          setDecision('error')
           setDialogOpen(false)
           toast.error(
             'Could not load tariffs for the selected port. Reload before saving.'
@@ -321,8 +323,10 @@ export function useEpdaParameterApplySkip({
   return {
     paramDiffDialogOpen: dialogOpen,
     paramDiffRows: diffRows,
-    /** True while diffs are open / waiting for Apply or Skip. */
-    isParamDecisionPending: paramDecision === 'pending' || dialogOpen,
+    paramDecision,
+    /** True while tariff resolution must block Save and Preview. */
+    isParamDecisionPending:
+      paramDecision === 'pending' || paramDecision === 'error' || dialogOpen,
     applyLatestParams: applyLatest,
     skipLatestParams: skipLatest,
   }

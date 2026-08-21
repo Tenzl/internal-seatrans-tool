@@ -34,6 +34,8 @@ export interface PortTableRow extends Port {
 
 export interface PortFormState {
   name: string
+  subName1: string
+  subName2: string
   portOfCall: string
   code: string
   zoneCode: string
@@ -48,6 +50,8 @@ export interface PortFormState {
 
 export const EMPTY_PORT_FORM: PortFormState = {
   name: '',
+  subName1: '',
+  subName2: '',
   portOfCall: '',
   code: '',
   zoneCode: 'AS-SIN',

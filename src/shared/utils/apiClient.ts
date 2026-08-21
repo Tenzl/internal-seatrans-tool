@@ -128,6 +128,9 @@ class ApiClient {
 
   private buildUrl(endpoint: string): string {
     if (endpoint.startsWith('http')) return endpoint
+    if (endpoint.startsWith('/api/')) {
+      return `${API_CONFIG.API_ORIGIN}${endpoint}`
+    }
 
     const normalizedEndpoint = endpoint.startsWith('/')
       ? endpoint

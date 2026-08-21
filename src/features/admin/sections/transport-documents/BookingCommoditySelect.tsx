@@ -33,6 +33,7 @@ interface BookingCommoditySelectProps {
   onTypeChange: (name: string, id: number | null) => void
   onCommodityChange: (name: string, id: number | null) => void
   disabled?: boolean
+  required?: boolean
 }
 
 interface CatalogOption {
@@ -80,6 +81,7 @@ interface CatalogSearchSelectProps {
   disabled: boolean
   filled: boolean
   onValueChange: (value: string) => void
+  required?: boolean
 }
 
 /** Route-style searchable picker with exactly six visible option rows. */
@@ -95,6 +97,7 @@ function CatalogSearchSelect({
   disabled,
   filled,
   onValueChange,
+  required = false,
 }: CatalogSearchSelectProps) {
   const [open, setOpen] = React.useState(false)
   const [search, setSearch] = React.useState('')
@@ -110,6 +113,11 @@ function CatalogSearchSelect({
         className='text-sm font-medium text-muted-foreground'
       >
         {label}
+        {required ? (
+          <span className='ml-1 text-destructive' aria-hidden='true'>
+            *
+          </span>
+        ) : null}
       </Label>
       <Popover
         open={open}
@@ -126,6 +134,7 @@ function CatalogSearchSelect({
             role='combobox'
             aria-labelledby={`${id}-label`}
             aria-expanded={open}
+            aria-required={required || undefined}
             disabled={disabled}
             className={cn(
               'w-full justify-between bg-background font-normal',
@@ -220,6 +229,7 @@ export function BookingCommoditySelect({
   onTypeChange,
   onCommodityChange,
   disabled = false,
+  required = false,
 }: BookingCommoditySelectProps) {
   const serviceQuery = useQuery({
     queryKey: ['admin', 'booking', 'service', 'freight-forwarding'],
@@ -312,6 +322,7 @@ export function BookingCommoditySelect({
             )
             if (option) onTypeChange(option.name, option.id)
           }}
+          required={required}
         />
         {typeError ? (
           <p className='text-xs text-destructive'>
@@ -352,6 +363,7 @@ export function BookingCommoditySelect({
               onCommodityChange(option.displayName || option.name, option.id)
             }
           }}
+          required={required}
         />
         {commodityError ? (
           <p className='text-xs text-destructive'>

@@ -44,6 +44,8 @@ export function editPortForm(port: Port, provinces: Province[]): PortFormState {
 
   return {
     name: port.name ?? '',
+    subName1: port.subName1 ?? '',
+    subName2: port.subName2 ?? '',
     portOfCall: port.portOfCall ?? '',
     code: port.code ?? '',
     zoneCode: port.zoneCode ?? '',
@@ -101,6 +103,11 @@ export function buildSavePortPayload(
     inCharge: form.inCharge,
   }
 
+  const subName1 = form.subName1.trim()
+  const subName2 = form.subName2.trim()
+  if (subName1 || isEditing) payload.subName1 = subName1
+  if (subName2 || isEditing) payload.subName2 = subName2
+
   const portOfCall = form.portOfCall.trim()
   // Editing must send an empty value so an existing port-of-call can be cleared.
   if (portOfCall || isEditing) payload.portOfCall = portOfCall
@@ -122,6 +129,17 @@ export function buildSavePortPayload(
   if (longitude !== undefined) payload.longitude = String(longitude)
 
   return payload
+}
+
+export function getProvinceOptionsForEdit(
+  provinces: Province[],
+  area: string,
+  selectedProvinceId: number | null
+): Province[] {
+  return provinces.filter(
+    (province) =>
+      String(province.area ?? '') === area || province.id === selectedProvinceId
+  )
 }
 
 export function buildPortTableRows(
